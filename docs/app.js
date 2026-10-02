@@ -190,6 +190,7 @@ function renderMethod(){
 function notFound(){main.innerHTML='<div class="empty"><h1>Страница не найдена</h1><p>Такого проекта или кейса нет в сохранённом каталоге.</p><a class="button" href="#catalog">Открыть каталог</a></div>';}
 function renderRoute(){
  const hash=(location.hash||'#catalog').slice(1);const [path,query]=hash.split('?');route=path||'catalog';params=new URLSearchParams(query||'');
+ main.dataset.page=route.split('/')[0];
  nav.innerHTML=[['catalog','Проекты'],['cases','Кейсы'],['stats','Статистика'],['method','Как считаем']].map(([id,title])=>`<a class="nav-link ${route===id||(id==='cases'&&route.startsWith('case/'))||(id==='catalog'&&route.startsWith('project/'))?'active':''}" href="#${id}" ${route===id?'aria-current="page"':''}>${title}</a>`).join('');
  if(route==='catalog')renderCatalog();else if(route==='cases')renderCases();else if(route==='stats')renderStats();else if(route==='method')renderMethod();else if(route.startsWith('project/'))renderProject(decodeURIComponent(route.slice(8)));else if(route.startsWith('case/'))renderCase(route.slice(5));else notFound();
  document.title=(route.startsWith('project/')?(data.projects.find(p=>p.id===route.slice(8))?.name||'Проект'):route==='stats'?'Статистика':route==='cases'?'Кейсы':route==='method'?'Как считаем':'Проекты')+' | HackAlem';
