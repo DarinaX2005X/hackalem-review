@@ -1,4 +1,4 @@
-import {renderReviewView,demoStatusLink} from './review-view.js';
+import {renderReviewView,demoStatusLink} from './review-view.js?v=20261003-criteria';
 import {rankingMarks,disqualified} from './ranking.js';
 import {renderPaginationControls} from './pagination.js';
 const main=document.querySelector('#main');
