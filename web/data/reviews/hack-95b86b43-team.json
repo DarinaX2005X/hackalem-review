@@ -1,0 +1,809 @@
+{
+  "methodVersion": 4,
+  "repoId": "hack-95b86b43-team",
+  "repoUrl": "https://github.com/BAITC-Hacks/hack-95b86b43-team",
+  "caseId": 5,
+  "snapshot": "9ae8d52fdd83a0541165d309b5e04128448ea9bb",
+  "judges": [
+    {
+      "methodVersion": 4,
+      "repoId": "hack-95b86b43-team",
+      "caseId": 5,
+      "model": "GPT-5.6 Luna",
+      "snapshot": "9ae8d52fdd83a0541165d309b5e04128448ea9bb",
+      "overallSummary": "Проект представляет цельный локальный MVP для закупщика: девять CSV проходят строгую валидацию, продажи подготавливаются с восстановлением спроса при stockout и консервативным анализом крупных клиентских событий, затем строится прогноз с сезонностью и трендом, календарная потребность учитывает остаток и поставки в пути, а менеджер может изменить, утвердить и экспортировать заказ. Сборка frontend, HTTP-старт и полный расчёт на синтетическом наборе воспроизведены. Главная граница относительно материалов кейса подтверждена самим репозиторием: 12 исходных XLSX партнёра не подключаются напрямую, адаптеры Excel отсутствуют, поэтому рабочий результат продемонстрирован на CSV-контракте и синтетике, а не на реальных таблицах кейса.",
+      "global": {
+        "criteria": [
+          {
+            "name": "Ценность решения",
+            "score": 21,
+            "max": 25,
+            "awarded": "Решение адресует понятную и дорогую для закупок проблему: ручное сведение истории, остатков и поставок, из-за которого разовые продажи и stockout искажают пополнение.",
+            "deductions": "До максимума не хватает доказанной работы с фактическими XLSX партнёра: пользователь должен сначала привести выгрузку к каноническому CSV, а это оставляет существенную ручную границу между проблемой и продуктом.",
+            "evidence": [
+              "README.md:3-14",
+              "README.md:32-57",
+              "docs/ARCHITECTURE.md:5-20",
+              "scenario-calculation"
+            ],
+            "deductionItems": [
+              {
+                "points": 4,
+                "findingId": "F-005",
+                "reason": "Ценность для менеджера закупа снижена тем, что предоставленные выгрузки IEK/Systeme electric в XLSX нельзя загрузить напрямую; путь к реальным данным заканчивается на ручном преобразовании в CSV."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Конкретный пользовательский эффект",
+                "implementation": "README описывает последовательность «продажи и остатки → объяснимый прогноз → рекомендации по поставщикам → корректировка менеджером → утверждённый CSV». В API этот путь разделён на расчёт, создание черновика, изменение строк, утверждение и экспорт.",
+                "value": "Это превращает разрозненные Excel-операции в повторяемый рабочий цикл закупщика и даёт на выходе не только число, но и документ, пригодный для дальнейшей обработки.",
+                "verification": "observed",
+                "evidence": [
+                  "README.md:1-3",
+                  "backend/app/api/runtime_api.py:73-109",
+                  "backend/app/modules/calculations/local_service.py:186-275"
+                ]
+              },
+              {
+                "aspect": "Защита от дефицита и лишнего запаса",
+                "implementation": "Ядро вычитает reserved и blocked из on_hand, раскладывает потребление по дням горизонта, учитывает только неполученную часть допустимых inbound внутри горизонта и отдельно отмечает дефицит до ETA как critical.",
+                "value": "Такой календарный расчёт лучше соответствует реальному решению менеджера, чем простое сравнение среднемесячных продаж с текущим остатком: поздняя поставка не маскирует провал до её прибытия.",
+                "verification": "source",
+                "evidence": [
+                  "backend/app/engine/replenishment.py:29-61",
+                  "backend/app/engine/replenishment.py:133-177",
+                  "tests/test_forecast_replenishment.py:76-115"
+                ]
+              },
+              {
+                "aspect": "Объяснимость количества",
+                "implementation": "Каждая рекомендация сохраняет forecast_demand, safety_stock, available_stock, inbound_qty, raw_requirement, balance_requirement, timing_adjustment, rounding_adjustment и explanation_steps, а UI показывает их как последовательность формулы.",
+                "value": "Закупщик может проверить происхождение количества и отличить расчёт алгоритма от своей последующей ручной правки; это снижает риск слепого принятия автоматического заказа.",
+                "verification": "source",
+                "evidence": [
+                  "backend/app/engine/replenishment.py:197-253",
+                  "frontend/src/pages/ProductPage.tsx:37-41",
+                  "backend/app/modules/calculations/local_service.py:202-206"
+                ]
+              },
+              {
+                "aspect": "Практический контроль менеджера",
+                "implementation": "Заказ создаётся как draft для одного поставщика, отклонение от рекомендации требует причины, MOQ и кратность проверяются, утверждённый заказ становится неизменяемым и только после approval доступен CSV-экспорт.",
+                "value": "Это прямо закрывает запрет на автоматическую отправку поставщику и оставляет финальное решение ответственному сотруднику.",
+                "verification": "source",
+                "evidence": [
+                  "backend/app/modules/calculations/local_service.py:186-232",
+                  "backend/app/modules/calculations/local_service.py:240-275",
+                  "frontend/src/app/App.tsx:76-81"
+                ]
+              }
+            ],
+            "scoreReasoning": "21 балл заслужен за ясное соответствие целевой боли, полезный результат для менеджера и наличие объяснимого ручного контрольного шага. Четыре балла удержаны не за отсутствие производственной инфраструктуры, а за подтверждённую границу самого продукта: исходные файлы кейса — Excel с партнёрскими полями и листами — не имеют адаптера в коде, тогда как API принимает только девять канонических CSV. Для пятичасового MVP это разумное ограничение, но оно уменьшает непосредственную применимость к данным владельца задачи."
+          },
+          {
+            "name": "Результат и качество решения",
+            "score": 17,
+            "max": 20,
+            "awarded": "На поддерживаемом CSV-контракте реализован целостный сценарий от проверки данных до расчёта и утверждённого заказа; сборка, старт и основной HTTP-сценарий прошли.",
+            "deductions": "Результат не является прямым runnable-сценарием для предоставленного XLSX-пакета; кроме того, гарантия анонимности клиента остаётся контрактным обещанием, а не проверяемым свойством содержимого ID.",
+            "evidence": [
+              "build-frontend",
+              "start-health",
+              "scenario-bootstrap",
+              "scenario-calculation",
+              "backend/app/modules/imports/csv_loader.py:31-113"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "F-005",
+                "reason": "Качество конечного пользовательского результата подтверждено на синтетическом CSV, но не на реальном наборе кейса, поскольку XLSX не проходит через приложение."
+              },
+              {
+                "points": 1,
+                "findingId": "F-007",
+                "reason": "Импорт требует поле customer_anon_id, но валидатор проверяет только непустую строку и не обнаруживает случайно переданные ФИО, телефон или email; это ослабляет защиту качества входных данных."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Сборка и воспроизводимый запуск",
+                "implementation": "Production-сборка выполняет tsc --noEmit и Vite build; FastAPI обслуживает собранный React из одного процесса, а корневые инструкции фиксируют создание окружения, сборку и запуск.",
+                "value": "Репозиторий можно подготовить без отдельного frontend-сервера в демо-режиме, что соответствует локальному хакатонному MVP и уменьшает число ручных шагов.",
+                "verification": "observed",
+                "evidence": [
+                  "build-frontend",
+                  "README.md:5-30",
+                  "backend/app/main.py:40-67"
+                ]
+              },
+              {
+                "aspect": "Реальный HTTP-расчёт",
+                "implementation": "GET /health вернул 200 и версию 0.1.0; bootstrap создал синтетический набор 120 SKU, 2 склада, 72 370 строк продаж и 10 741 inbound; POST расчёта вернул 202, а последующий polling завершился completed.",
+                "value": "Это подтверждает не только наличие функций в исходниках, но и работающий основной сценарий внутри приложения на штатном наборе.",
+                "verification": "observed",
+                "evidence": [
+                  "start-health",
+                  "scenario-bootstrap",
+                  "scenario-calculation",
+                  "captures/20261002T074223258546-build.stdout.log"
+                ]
+              },
+              {
+                "aspect": "Проверка и атомарность импорта",
+                "implementation": "CSV-loader проверяет заголовки, дубли, типы, строки и ссылки; при ошибке dataset не публикуется. Импорт сохраняется в отдельный каталог и активируется только при valid=true.",
+                "value": "Ошибочный вход не превращается молча в частичный расчёт, а диагностика содержит файл, строку и поле — полезный operational feedback для закупочного источника.",
+                "verification": "source",
+                "evidence": [
+                  "backend/app/modules/imports/csv_loader.py:31-113",
+                  "backend/app/modules/imports/validation.py:21-128",
+                  "backend/app/modules/calculations/local_service.py:93-111"
+                ]
+              },
+              {
+                "aspect": "Тестируемая бизнес-логика",
+                "implementation": "Тесты покрывают остаток, частичные и просроченные inbound, lost sales, MOQ, дробные количества, сезонность, тренд, outlier-сценарии, фильтры, deterministic output, orders и HTTP API.",
+                "value": "Для критических числовых решений есть проверяемые инварианты, включая баланс объяснения, отсутствие phantom pack и запрет превращать lost sales в backorder.",
+                "verification": "source",
+                "evidence": [
+                  "tests/test_forecast_replenishment.py:53-173",
+                  "tests/test_forecast_replenishment.py:175-311",
+                  "tests/test_runtime_api.py:1-260"
+                ]
+              }
+            ],
+            "scoreReasoning": "17 баллов отражают реально проверенный end-to-end контур: production build прошёл, процесс стартовал, bootstrap и расчёт синтетики завершились, а архитектура содержит нужные переходы состояния заказа. Три балла сняты за границы результата, а не за отсутствие браузерной проверки: исходный кейс нельзя прогнать без предварительного XLSX→CSV преобразования, и поле с именем customer_anon_id не гарантирует фактическую анонимность."
+          },
+          {
+            "name": "Инновационность",
+            "score": 12,
+            "max": 15,
+            "awarded": "Нестандартная часть решения — объяснимая причинная очистка спроса и датированная lost-sales модель вместо безусловного среднего или чёрного ящика.",
+            "deductions": "Подход остаётся эвристическим статистическим MVP без измеренного backtesting на партнёрских данных; часть инновационного преимущества поэтому подтверждена кодом и тестовыми сценариями, а не бизнес-метрикой.",
+            "evidence": [
+              "backend/app/engine/outliers.py:1-260",
+              "backend/app/engine/stockouts.py:1-220",
+              "backend/app/engine/forecast.py:75-155",
+              "tests/test_forecast_replenishment.py:146-223"
+            ],
+            "deductionItems": [
+              {
+                "points": 3,
+                "findingId": "F-005",
+                "reason": "Инновационные алгоритмы не проверены на фактических XLSX кейса; отсутствие адаптера не позволяет связать статистический результат с реальным ассортиментом и семантикой партнёра."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Разделение подозрения и исключения выброса",
+                "implementation": "Подготовка сначала группирует клиентские продажи в события, оценивает типичный уровень, MAD и пороги, затем требует историю, превышение прошлых максимумов и отсутствие повторяемого события для фактического исключения.",
+                "value": "Это заметно аккуратнее правила «всё большое удалить»: регулярный крупный клиент сохраняется, а первая неоднозначная покупка получает review вместо бездоказательного удаления.",
+                "verification": "source",
+                "evidence": [
+                  "backend/app/engine/outliers.py:60-230",
+                  "docs/preprocessing.md:63-88",
+                  "tests/test_forecast_replenishment.py:282-311"
+                ]
+              },
+              {
+                "aspect": "Восстановление скрытого спроса",
+                "implementation": "Stockout-дни используют только реальные доступные доноры из прошлого; при недостатке истории применяются same-weekday/recent окна или fallback на SKU той же категории и единицы. Оценённые дни не возвращаются в донорскую историю.",
+                "value": "Модель не путает нулевые продажи из-за отсутствия товара с нулевым спросом и при этом не создаёт искусственное знание будущего.",
+                "verification": "source",
+                "evidence": [
+                  "backend/app/engine/forecast.py:38-72",
+                  "docs/preprocessing.md:42-61",
+                  "tests/test_forecast_replenishment.py:146-159"
+                ]
+              },
+              {
+                "aspect": "Нормированная сезонность и устойчивый тренд",
+                "implementation": "Сезонный профиль сначала detrend-ится по парным месяцам и нормируется, затем для SKU с короткой историей применяется профиль категории без сложения абсолютных метров и штук; тренд вычисляется по устойчивому направлению недельных или месячных наблюдений и ограничивается ±20/30% за 30 дней.",
+                "value": "Это объяснимый компромисс для хакатона: сезонная форма переносится между товарами только в безразмерном виде, а короткие шумные всплески не экстраполируются без поддержки.",
+                "verification": "source",
+                "evidence": [
+                  "backend/app/engine/forecast.py:75-155",
+                  "backend/app/engine/forecast.py:175-241",
+                  "tests/test_forecast_replenishment.py:175-223"
+                ]
+              },
+              {
+                "aspect": "Календарь поставок как часть инновации расчёта",
+                "implementation": "Рекомендация симулирует дневной запас с inbound по ETA, различает shortage до arrival и потребность после arrival, считает lost sales отдельно и сохраняет projection с запасом с заказом и без него.",
+                "value": "Для закупщика объяснение времени поставки — более полезное отличие от обычного среднего, чем абстрактная модель без даты прихода.",
+                "verification": "source",
+                "evidence": [
+                  "backend/app/engine/replenishment.py:29-61",
+                  "backend/app/engine/replenishment.py:141-201",
+                  "frontend/src/pages/ProductPage.tsx:40-47"
+                ]
+              }
+            ],
+            "scoreReasoning": "12 баллов заслужены за собственную связку причинной очистки, восстановления stockout, нормированной сезонности и dated inventory simulation. Снятие ограничено тремя баллами: код и тесты доказывают внутренние свойства эвристик, но отсутствие реального адаптера не даёт проверить, что нестандартная обработка корректно интерпретирует колонки и единицы именно партнёрских XLSX; также нет измерения точности на отложенном факте продаж."
+          },
+          {
+            "name": "Потенциал развития и масштабирования",
+            "score": 14,
+            "max": 20,
+            "awarded": "Архитектура выделяет source-independent engine, CSV adapter, сервис расчёта и UI; это создаёт понятную точку расширения для реальных адаптеров и новых политик.",
+            "deductions": "Текущий runtime — один локальный процесс с одним worker, SQLite без аутентификации и ограниченным CSV API; репозиторий сам описывает отсутствие промышленного multi-user/deployment-контура.",
+            "evidence": [
+              "docs/ARCHITECTURE.md:22-46",
+              "backend/app/engine/contracts.py:129-156",
+              "backend/app/modules/calculations/local_service.py:35-48",
+              "README.md:68-76"
+            ],
+            "deductionItems": [
+              {
+                "points": 6,
+                "findingId": "F-006",
+                "reason": "Для масштабирования на несколько пользователей и организации подтверждённо отсутствуют аутентификация/авторизация, распределённая очередь и многопользовательское хранилище: код использует один ThreadPoolExecutor и локальный SQLite, а API предупреждает не выставлять его в общую сеть."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Независимое расчётное ядро",
+                "implementation": "InputDataset и engine-модули типизированы и не читают файлы; forecasting и replenishment получают уже подготовленные данные, поэтому новый источник может выдавать тот же контракт без переписывания формул.",
+                "value": "Это хорошая архитектурная граница для добавления адаптера IEK/Systeme electric, ERP-источника или другого поставщика данных.",
+                "verification": "source",
+                "evidence": [
+                  "backend/app/engine/contracts.py:1-8",
+                  "backend/app/engine/forecast.py:158-174",
+                  "docs/ARCHITECTURE.md:24-36"
+                ]
+              },
+              {
+                "aspect": "Снимки и воспроизводимость",
+                "implementation": "Перед расчётом сервис копирует девять CSV в run snapshot, считает SHA-256 входов и дат, хранит результат и аудит заказа в SQLite; повторный расчёт может использовать cache подготовленного ряда для того же digest.",
+                "value": "Для масштабирования качества это сохраняет связь между рекомендацией и конкретным срезом входов, а не только последнее состояние каталога.",
+                "verification": "source",
+                "evidence": [
+                  "backend/app/modules/calculations/local_service.py:121-166",
+                  "docs/ARCHITECTURE.md:38-46",
+                  "backend/app/core/store.py:41-66"
+                ]
+              },
+              {
+                "aspect": "Расширение сценариев без изменения UI-контракта",
+                "implementation": "Расчётные переключатели stockout, outliers, seasonality и trend передаются через строгую CalculationRequest; ответ содержит отдельные источники, warnings, policy и projection, а frontend не пересчитывает количество.",
+                "value": "Новые политики можно сравнивать как сценарии, сохраняя объяснение и единый API-ответ для интерфейса.",
+                "verification": "source",
+                "evidence": [
+                  "backend/app/api/runtime_api.py:14-23",
+                  "backend/app/engine/replenishment.py:93-102",
+                  "docs/API_CONTRACT.md:37-58"
+                ]
+              },
+              {
+                "aspect": "Понятные следующие шаги",
+                "implementation": "README и data-contract прямо отделяют реализованный CSV-контракт от будущих Excel-адаптеров, а архитектура перечисляет отдельные модули для imports, orders, exports и jobs.",
+                "value": "Потенциал развития не заявлен абстрактно: наиболее важное расширение — добавить согласованный маппинг реальных колонок и затем использовать существующее ядро.",
+                "verification": "source",
+                "evidence": [
+                  "docs/data-contract.md:1-3",
+                  "docs/data-contract.md:63-75",
+                  "backend/README.md:17-43"
+                ]
+              }
+            ],
+            "scoreReasoning": "14 баллов соответствуют хорошей модульности и воспроизводимому локальному контуру, который естественно расширяется адаптерами и политиками. Шесть баллов удержаны за реальные архитектурные границы, прямо зафиксированные в коде: один worker, локальное SQLite-хранилище и отсутствие доступа пользователей. Это не чрезмерное требование production для пяти часов, но такие ограничения существенны именно для критерия дальнейшего масштабирования."
+          },
+          {
+            "name": "Презентация, демо и ответы на вопросы",
+            "score": 17,
+            "max": 20,
+            "awarded": "Вместо устной презентации репозиторий содержит ясный README, отдельный demo walkthrough, acceptance-таблицу, API/data-contract и объяснение границ; локальное демо действительно воспроизводится через build/start/API.",
+            "deductions": "Устного выступления и публичной live-ссылки не было, поэтому они не штрафуются; удержание связано только с тем, что описанный walkthrough демонстрирует synthetic CSV, а не исходные XLSX, и визуальное поведение намеренно не проверялось судьёй.",
+            "evidence": [
+              "README.md:32-41",
+              "docs/DEMO.md:1-120",
+              "docs/ACCEPTANCE.md:5-44",
+              "build-frontend",
+              "scenario-calculation"
+            ],
+            "deductionItems": [
+              {
+                "points": 3,
+                "findingId": "F-005",
+                "reason": "Для демонстрации реального кейса README честно предлагает синтетику и CSV-контракт, но не даёт работающего пути от 12 предоставленных XLSX к результату; это уменьшает убедительность demo относительно исходного материала."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Быстрый walkthrough основного сценария",
+                "implementation": "README перечисляет шесть последовательных действий: открыть обзор, выбрать склад/категорию, выполнить расчёт, открыть рекомендацию, сравнить сценарий, создать/изменить/утвердить заказ и скачать CSV.",
+                "value": "Участнику или проверяющему легко понять, что именно показывать и какой пользовательский результат ожидать.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:32-41",
+                  "docs/DEMO.md:1-120"
+                ]
+              },
+              {
+                "aspect": "Документация связывает требования и проверки",
+                "implementation": "ACCEPTANCE.md перечисляет входные факторы и признаки корректности, включая ETA, stockout, MOQ, leading zeros, объяснение и manager decision; TESTING.md и data-contract уточняют запуск и формат ошибок.",
+                "value": "Документация помогает отличить наличие экрана от проверяемого поведения и делает демо предметным.",
+                "verification": "source",
+                "evidence": [
+                  "docs/ACCEPTANCE.md:5-44",
+                  "docs/TESTING.md:1-160",
+                  "docs/data-contract.md:53-75"
+                ]
+              },
+              {
+                "aspect": "Честное раскрытие границ",
+                "implementation": "README явно отмечает синтетический набор, localhost-only режим, отсутствие полноценной аутентификации и отсутствие прямых Excel-адаптеров; UI также помечает demo synthetic data.",
+                "value": "Такой уровень честности повышает доверие к демонстрации: проверяющий не принимает синтетику за производственные данные.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:43-57",
+                  "README.md:68-76",
+                  "frontend/src/app/App.tsx:99-102"
+                ]
+              },
+              {
+                "aspect": "Воспроизводимость demo",
+                "implementation": "Production build завершился без stderr, `/health` и `/api/bootstrap` ответили, а расчёт через polling дошёл до completed с числовым summary и recommendation.",
+                "value": "Это превращает инструкции README в воспроизводимое локальное демо, а не только в описание интерфейса.",
+                "verification": "observed",
+                "evidence": [
+                  "build-frontend",
+                  "start-health",
+                  "scenario-bootstrap",
+                  "scenario-calculation"
+                ]
+              }
+            ],
+            "scoreReasoning": "17 баллов даны за сильную письменную демонстрацию и фактически воспроизведённый API-сценарий. Согласно правилам проверки отсутствие устной презентации, ответов и публичной ссылки не является штрафом. Три балла сняты только за содержательную границу demo: показ работает на synthetic CSV, тогда как реальные XLSX требуют отдельной ручной подготовки; визуальный интерфейс пользователем не проверялся и потому не используется как основание ни для бонуса, ни для штрафа."
+          }
+        ],
+        "total": 81
+      },
+      "case": null,
+      "judgeScore": 81,
+      "caseRequirements": [
+        {
+          "requirement": "Расчёт базовой потребности по артикулу с учётом истории продаж, текущего остатка, товаров в пути, категории, прогноза прироста и условий поставщика",
+          "status": "partial",
+          "explanation": "Все факторы присутствуют в расчётном ядре и изменяют выход на каноническом CSV-контракте, но прямые XLSX из пакета кейса не импортируются.",
+          "evidence": [
+            "backend/app/engine/replenishment.py:101-165",
+            "backend/app/engine/forecast.py:158-241",
+            "docs/data-contract.md:1-3",
+            "scenario-calculation"
+          ]
+        },
+        {
+          "requirement": "Учёт сезонности и устойчивого роста, а не только общего среднего",
+          "status": "met",
+          "explanation": "Есть SKU- и category-seasonal profiles, weekly/monthly robust trend, caps и scenario switch; unit tests проверяют seasonal pattern, growth и decline.",
+          "evidence": [
+            "backend/app/engine/forecast.py:75-155",
+            "backend/app/engine/forecast.py:175-205",
+            "tests/test_forecast_replenishment.py:175-223"
+          ]
+        },
+        {
+          "requirement": "Компенсация упущенного спроса в периоды stockout",
+          "status": "met",
+          "explanation": "Stockout дни не становятся обычными нулями, оценка строится по прошлым донорам, отображается отдельно и влияет на forecast; тест сравнивает включённую и выключенную коррекцию.",
+          "evidence": [
+            "backend/app/engine/forecast.py:38-72",
+            "backend/app/engine/replenishment.py:181-185",
+            "tests/test_forecast_replenishment.py:146-159"
+          ]
+        },
+        {
+          "requirement": "Выявление и исключение разовых крупных заказов, включая одного клиента, без удаления регулярного крупного клиента",
+          "status": "met",
+          "explanation": "Outlier pipeline использует customer/SKU/warehouse/date и историю клиента, различает excluded, recurring и review; scenario switch сохраняет raw chart и меняет baseline.",
+          "evidence": [
+            "backend/app/engine/outliers.py:60-230",
+            "backend/app/engine/replenishment.py:64-90",
+            "tests/test_forecast_replenishment.py:161-173",
+            "tests/test_forecast_replenishment.py:282-311"
+          ]
+        },
+        {
+          "requirement": "Группировка итоговых заказов по поставщикам, количество и краткое обоснование для каждой позиции",
+          "status": "met",
+          "explanation": "Каждый inventory pair получает primary supplier, recommendations сортируются по supplier/SKU, содержат explanation и numeric steps, а UI группирует строки по supplier.",
+          "evidence": [
+            "backend/app/engine/replenishment.py:103-115",
+            "backend/app/engine/replenishment.py:205-248",
+            "frontend/src/pages/RecommendationsPage.tsx:16-31"
+          ]
+        },
+        {
+          "requirement": "Ручная проверка и подтверждение до отправки заказа",
+          "status": "met",
+          "explanation": "Состояния draft и approved разделены, правка требует reason, approve проверяет ненулевую строку, экспорт закрыт до утверждения; endpoint отправки поставщику отсутствует.",
+          "evidence": [
+            "backend/app/modules/calculations/local_service.py:186-275",
+            "backend/app/api/runtime_api.py:89-109",
+            "docs/API_CONTRACT.md:60-68"
+          ]
+        },
+        {
+          "requirement": "Обезличивание клиентских данных",
+          "status": "partial",
+          "explanation": "Контракт принимает customer_anon_id и не содержит ФИО/телефона/email в модели, synthetic data использует обезличенные IDs, но валидатор не умеет доказать, что произвольная строка действительно анонимна.",
+          "evidence": [
+            "backend/app/engine/contracts.py:89-99",
+            "backend/app/modules/imports/csv_loader.py:71-86",
+            "docs/data-contract.md:15-16",
+            "backend/synthetic/generator.py:1-120"
+          ]
+        },
+        {
+          "requirement": "Объяснимость формулы и различение рекомендации от решения менеджера",
+          "status": "met",
+          "explanation": "Ответ содержит точные компоненты потребности, policy, projection и explanation; order line хранит recommended_qty отдельно от quantity и reason.",
+          "evidence": [
+            "backend/app/engine/replenishment.py:205-253",
+            "backend/app/modules/calculations/local_service.py:202-206",
+            "frontend/src/pages/ProductPage.tsx:37-41"
+          ]
+        },
+        {
+          "requirement": "Устойчивость к товарам в пути: частичный, отменённый, просроченный и поздний приход",
+          "status": "met",
+          "explanation": "Учитывается только remaining для confirmed/in_transit с ETA внутри горизонта; overdue исключается и предупреждается, received/cancelled и поздняя поставка не уменьшают текущую потребность.",
+          "evidence": [
+            "backend/app/engine/replenishment.py:141-157",
+            "tests/test_forecast_replenishment.py:76-115",
+            "docs/ACCEPTANCE.md:10-11"
+          ]
+        },
+        {
+          "requirement": "MOQ, кратность, дробные единицы и совместимый экспорт",
+          "status": "partial",
+          "explanation": "MOQ, multiple, Decimal и CSV UTF-8 BOM/semicolon реализованы; совместимость с конкретной загрузкой 1С оставлена на согласование шаблона, прямого Excel-экспорта нет.",
+          "evidence": [
+            "backend/app/engine/replenishment.py:17-26",
+            "backend/app/modules/calculations/local_service.py:260-275",
+            "README.md:68-76",
+            "docs/API_CONTRACT.md:64-68"
+          ]
+        },
+        {
+          "requirement": "Проверка реальных 12 XLSX файлов кейса в заявленном сценарии",
+          "status": "missing",
+          "explanation": "Файлы физически являются валидными XLSX с партнёрскими листами, но проект не содержит XLSX reader/adapter и принимает ровно девять CSV. Поэтому расчёт по ним из репозитория не запускается.",
+          "evidence": [
+            "README.md:47-53",
+            "docs/data-contract.md:1-3",
+            "backend/app/modules/calculations/local_service.py:93-111",
+            "testData-xlsx-structure"
+          ]
+        }
+      ],
+      "testData": {
+        "provided": [
+          "cases/5/case-data/IEK/MOQ ИЭК.xlsx",
+          "cases/5/case-data/IEK/Динамика продаж_2025-2026.xlsx",
+          "cases/5/case-data/IEK/Ежемесячные остатки продукции за последние 2 года ИЭК.xlsx",
+          "cases/5/case-data/IEK/Ежемесячные продажи в количественном выражении за последние 2 года.xlsx",
+          "cases/5/case-data/IEK/Путь ИЭК 22.09.2026.xlsx",
+          "cases/5/case-data/IEK/Сезонность ИЭК.xlsx",
+          "cases/5/case-data/Systeme electric/MOQ SystemElectric.xlsx",
+          "cases/5/case-data/Systeme electric/Динамика продаж_Syseme Electric_2025-2026.xlsx",
+          "cases/5/case-data/Systeme electric/Ежемесячные остатки SystemElectric 2024-2026.xlsx",
+          "cases/5/case-data/Systeme electric/Ежемесячные продажи в кол-м выражении SystemElectric 2024-2026.xlsx",
+          "cases/5/case-data/Systeme electric/Сезонность SystemElectric 2024-2026.xlsx",
+          "cases/5/case-data/Systeme electric/Товар в пути_SystemElectric на 22.09.2026.xlsx"
+        ],
+        "used": [
+          "cases/5/case-data/IEK/*.xlsx — проверена ZIP/XLSX целостность, workbook.xml и имена листов; MOQ ИЭК дополнительно прочитан до первых строк заголовка.",
+          "cases/5/case-data/Systeme electric/*.xlsx — проверена ZIP/XLSX целостность, workbook.xml и имена листов.",
+          "data/samples/minimal/*.csv — этот репозиторный fixture используется HTTP/unit тестами проекта; он не является заменой 12 XLSX кейса.",
+          "data/synthetic/*.csv — сгенерирован самим приложением при HTTP bootstrap и затем использован в расчёте.",
+          "tests/test_forecast_replenishment.py — синтетические доменные fixtures для факторов stockout, outlier, seasonality, growth, inbound и MOQ."
+        ],
+        "checks": [
+          {
+            "input": "12 XLSX из cases/5/case-data/IEK и Systeme electric",
+            "method": "Открытие контейнера стандартным ZIP-парсером и чтение xl/workbook.xml; без публикации полного набора данных.",
+            "result": "Все 12 файлов открылись; листы совпали с dossier: IEK имеет Лист7/Лист_1/Лист4/Сезонность, Systeme electric — Лист_1/Лист1/TDSheet.",
+            "conclusion": "Пакет структурно читаем, но это не стало расчётным входом проекта, поскольку в нём нет XLSX адаптера."
+          },
+          {
+            "input": "IEK/MOQ ИЭК.xlsx, первые строки листа Лист7",
+            "method": "Точечное чтение заголовка и двух первых строк без выгрузки всего датасета.",
+            "result": "Видны поля «Код 1с», «Артикул поставщика», «Наименование», «Мин. разр. к отгр.»; это не имена канонического product_suppliers.csv.",
+            "conclusion": "Нужен явный маппинг партнёрских колонок и семантики, которого текущий проект не реализует."
+          },
+          {
+            "input": "Проектный data path и минимальный CSV fixture",
+            "method": "Сопоставление loader/API с девятью именами TABLE_MODELS и запуском тестового HTTP-контурa.",
+            "result": "API требует ровно products.csv, categories.csv, warehouses.csv, suppliers.csv, product_suppliers.csv, sales.csv, inventory.csv, stockouts.csv, inbound.csv; минимальный fixture валиден в тестах.",
+            "conclusion": "CSV сценарий поддержан, XLSX сценарий из кейса — нет."
+          },
+          {
+            "input": "Синтетический runtime dataset seed=42",
+            "method": "GET /api/bootstrap после старта приложения, затем POST /api/calculations и polling GET расчёта.",
+            "result": "Bootstrap: 120 SKU, 2 склада, 72 370 sales, 10 741 inbound; расчёт: completed, 240 positions, 164 order_positions, 8 suppliers, 521 stockout_days, 3 excluded_events.",
+            "conclusion": "Основной заявленный сценарий воспроизводится на поддерживаемом CSV/synthetic входе."
+          }
+        ],
+        "limitations": [
+          "Реальные XLSX не конвертировались молча и не подменялись синтетикой; поэтому для них нет честного runtime-результата.",
+          "Проверка UI ограничена статической сборкой и HTTP/API: визуальную и браузерную проверку выполняет пользователь согласно правилам кейса.",
+          "Синтетический расчёт выполнялся без внешних API и credentials; проект их не требует."
+        ]
+      },
+      "runtime": {
+        "status": "working",
+        "build": "Frontend production build прошёл; TypeScript и Vite завершились с exit code 0.",
+        "start": "FastAPI-процесс стартовал и обслужил health/bootstrap.",
+        "scenario": "Расчёт на штатной синтетике завершился completed и вернул рекомендации; путь утверждения/экспорта дополнительно подтверждён исходниками и unit/API тестами.",
+        "environment": "Изолированный Docker-контейнер без секретов, с ограничениями 3 ГБ памяти и 2 CPU; визуальная проверка намеренно не выполнялась.",
+        "summary": "Рабочий runtime подтверждён для локального CSV/synthetic сценария. Это не подтверждение обработки исходных XLSX кейса.",
+        "checks": [
+          {
+            "command": "npm run build",
+            "result": "exit code 0; tsc --noEmit и Vite production build, 38 modules transformed, dist/index.html и assets созданы.",
+            "id": "build-frontend",
+            "stage": "build",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Frontend компилируется без TypeScript/build ошибок."
+          },
+          {
+            "command": "python -m pytest -q",
+            "result": "exit code 0; 170 passed in 691.71s (0:11:31). Полный stdout сохранён в captures/20261002T073652155389-test.stdout.log.",
+            "id": "test-python",
+            "stage": "build",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Unit/domain/HTTP тесты проекта проходят."
+          },
+          {
+            "command": "python -m uvicorn backend.main:app",
+            "result": "Процесс стартовал; GET /health вернул HTTP 200 и {status: ok, version: 0.1.0}.",
+            "id": "start-health",
+            "stage": "start",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Приложение стартует и health endpoint отвечает 200."
+          },
+          {
+            "command": "GET /api/bootstrap",
+            "result": "HTTP 200; создан и провалидирован synthetic manifest: 120 SKU, 2 склада, 6 категорий, 8 поставщиков, 72 370 sales, 10 741 inbound.",
+            "id": "scenario-bootstrap",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Основной набор доступен приложению с публичным манифестом и справочниками."
+          },
+          {
+            "command": "POST /api/calculations; GET /api/calculations/{run_id}",
+            "result": "POST вернул HTTP 202 queued; polling прошёл queued→running→completed. Итог: 240 positions, 164 order_positions, 139 critical, 8 suppliers, 521 stockout_days, 3 excluded_events; первая рекомендация SKU 00009 — 20.0 SUP-001 critical.",
+            "id": "scenario-calculation",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Расчёт возвращает рекомендации с поставщиком, количеством, срочностью, объяснением и summary."
+          }
+        ],
+        "limitations": [
+          "Runtime сценарий подтверждён на синтетическом CSV, потому что прямого XLSX входа в проекте нет.",
+          "Визуальная работа React-интерфейса не утверждается этим отчётом: проверяющий не использовал браузер или screenshot automation.",
+          "API локальный и без аутентификации; README предупреждает не выставлять его в общую сеть."
+        ]
+      },
+      "liveDemo": {
+        "status": "none",
+        "url": null,
+        "notes": "Публичная live-ссылка в репозитории не предоставлена; локальное демо проверено через build и HTTP/API, отсутствие URL не использовано как штраф."
+      },
+      "fiveHourContext": "Для пятичасового хакатона объём реализации высокий: типизированный контракт, генератор синтетики, preprocessing, прогноз, календарь поставок, очередь расчёта, SQLite-аудит, React UI и тестовый контур собраны в одном репозитории. Оценка не требует production deployment. При этом отсутствие Excel-адаптера — не требование к промышленности, а конкретная незакрытая часть входного сценария кейса, поэтому она учтена в баллах там, где влияет на применимость.",
+      "strengths": [
+        "Целостный рабочий CSV/synthetic сценарий от bootstrap до рекомендаций и ручного заказа.",
+        "Объяснимый расчёт с календарём ETA, lost-sales semantics, stockout correction, outlier review, сезонностью и устойчивым трендом.",
+        "Чёткое разделение рекомендации и решения менеджера: draft, reason, version check, approval, BOM CSV.",
+        "Сильная документация и тесты, включая инварианты дробных единиц, MOQ, lead time, future leakage и customer events."
+      ],
+      "gaps": [
+        "Предоставленные партнёрские XLSX не подключаются напрямую: нет адаптеров, маппинга листов/колонок и запуска расчёта по этим источникам.",
+        "Поле customer_anon_id обязано быть заполнено, но валидатор не проверяет, что в нём действительно нет PII."
+      ],
+      "futureAdvice": [
+        {
+          "principle": "Сначала закрывайте границу источника явным адаптером и контрактным маппингом",
+          "why": "F-005 показывает, что сильное расчётное ядро останавливается перед реальными XLSX: пользователю нужно вручную привести партнёрскую выгрузку к девяти CSV.",
+          "how": "В следующем хакатоне сначала зафиксируйте таблицу соответствий лист→каноническая сущность, единицы, даты и обязательные поля; затем добавьте один CLI-адаптер, который сохраняет исходную строку и выдаёт ValidationReport до запуска engine.",
+          "findingIds": [
+            "F-005"
+          ],
+          "successCheck": "Один предоставленный XLSX-пакет проходит adapter→InputDataset→calculation без ручного переименования, а отчёт показывает маппинг и ошибки конкретной строки.",
+          "timeboxMinutes": 90
+        },
+        {
+          "principle": "Разделяйте контрактное имя поля и доказательство приватности",
+          "why": "F-007: customer_anon_id документирован как обезличенный, но произвольная строка вроде имени или телефона технически принимается.",
+          "how": "Для другого кейса добавьте явную стадию privacy validation: allowlist формата идентификатора, запрет очевидных PII-паттернов, счётчик отклонённых строк и безопасное сообщение без вывода значения.",
+          "findingIds": [
+            "F-007"
+          ],
+          "successCheck": "Набор с допустимым ID проходит, набор с тестовым email/телефоном блокируется с file:row:field, а исходное значение не попадает в публичную диагностику.",
+          "timeboxMinutes": 45
+        },
+        {
+          "principle": "Сохраняйте сильную причинную объяснимость при проверке на реальном holdout",
+          "why": "F-005 ограничивает доказательство качества алгоритмов синтетикой и unit fixtures, хотя код уже выделяет факторы и projection.",
+          "how": "Для следующего кейса отложите последнюю часть истории, зафиксируйте метрики по SKU/единицам и сравните baseline, stockout correction и outlier policy на одном контрольном наборе; показывайте одновременно ошибку и explanation.",
+          "findingIds": [
+            "F-005"
+          ],
+          "successCheck": "Для реального CSV/XLSX-derived набора есть reproducible backtest command, число наблюдений, baseline и сравнение сценариев без доступа к hidden truth во время расчёта.",
+          "timeboxMinutes": 75
+        }
+      ],
+      "uncertainties": [
+        "UI визуально не проверялся; build и статические accessibility/flow признаки в коде не заменяют пользовательскую визуальную проверку.",
+        "XLSX был проверен на контейнерную целостность и структуру листов, но не переводился в CSV, поэтому бизнес-семантика всех колонок партнёра не утверждается.",
+        "Точность прогноза на будущих фактических продажах не измерялась; оценка основана на реализации, тестовых инвариантах и runtime-сценарии."
+      ],
+      "reviewPolicyVersion": 2,
+      "assessmentStatus": "ready",
+      "findings": [
+        {
+          "id": "F-001",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Основной runtime-сценарий на синтетическом CSV реально отработал до completed и выдал рекомендации.",
+          "expected": "POST расчёта должен поставить job, polling должен закончиться completed с числовым результатом.",
+          "actual": "202 queued → completed; 240 позиций, 164 позиции к заказу, 8 поставщиков, 521 stockout-день, 3 исключённых события.",
+          "evidence": [
+            "scenario-calculation",
+            "backend/app/modules/calculations/local_service.py:141-172"
+          ],
+          "checkIds": [
+            "scenario-calculation"
+          ]
+        },
+        {
+          "id": "F-002",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Frontend production build воспроизводим.",
+          "expected": "TypeScript и Vite должны завершиться без ошибок и создать dist.",
+          "actual": "exit code 0; 38 modules transformed; dist/index.html и assets созданы.",
+          "evidence": [
+            "build-frontend",
+            "captures/20261002T074223258546-build.stdout.log"
+          ],
+          "checkIds": [
+            "build-frontend"
+          ]
+        },
+        {
+          "id": "F-003",
+          "kind": "strength",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Календарная рекомендация учитывает дату поставки, частичный остаток inbound, lost sales, MOQ и объяснение компонентов.",
+          "expected": "Расчёт не должен скрывать дефицит до ETA и должен выдавать аудируемое количество.",
+          "actual": "Есть _timed_requirement, dated receipts, shortage/urgency, projection, exact quantities и explanation_steps.",
+          "evidence": [
+            "backend/app/engine/replenishment.py:29-61",
+            "backend/app/engine/replenishment.py:141-253",
+            "tests/test_forecast_replenishment.py:97-115"
+          ],
+          "checkIds": [
+            "scenario-calculation",
+            "test-python"
+          ]
+        },
+        {
+          "id": "F-004",
+          "kind": "strength",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Подготовка продаж различает разовый и регулярный крупный клиентский спрос и не использует оценки stockout как обычные доноры.",
+          "expected": "Разовая партия должна быть исключена только при подтверждении, регулярная — сохранена.",
+          "actual": "Код хранит reason codes, exclusion flags, customer history и scenario behavior; тесты проверяют excluded/recurring/review.",
+          "evidence": [
+            "backend/app/engine/outliers.py:60-230",
+            "backend/app/engine/forecast.py:38-72",
+            "tests/test_forecast_replenishment.py:146-173",
+            "tests/test_forecast_replenishment.py:282-311"
+          ],
+          "checkIds": [
+            "test-python"
+          ]
+        },
+        {
+          "id": "F-005",
+          "kind": "defect",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Прямой вход предоставленных партнёрских XLSX не реализован.",
+          "expected": "Заявленный кейс должен позволять применить 12 предоставленных XLSX либо иметь явный адаптер к тому же InputDataset.",
+          "actual": "Проект принимает ровно девять текстовых CSV с каноническими именами; README и docs/data-contract прямо говорят, что Excel adapters пока не реализованы.",
+          "evidence": [
+            "backend/app/modules/calculations/local_service.py:22-24",
+            "backend/app/modules/calculations/local_service.py:93-111",
+            "docs/data-contract.md:1-3",
+            "README.md:47-53"
+          ],
+          "checkIds": [
+            "scenario-bootstrap"
+          ]
+        },
+        {
+          "id": "F-006",
+          "kind": "defect",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Runtime масштабируется только как локальный single-worker/single-workspace контур без аутентификации.",
+          "expected": "Для дальнейшего применения несколькими закупщиками нужны защищённый доступ и масштабируемое выполнение/хранение.",
+          "actual": "LocalService создаёт ThreadPoolExecutor(max_workers=1), Store использует локальный SQLite, API не имеет auth, а документация предупреждает не выставлять его в общую сеть.",
+          "evidence": [
+            "backend/app/modules/calculations/local_service.py:35-48",
+            "backend/app/core/store.py:9-18",
+            "docs/API_CONTRACT.md:70-78",
+            "README.md:68-76"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "F-007",
+          "kind": "defect",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Проверка customer_anon_id не подтверждает фактическое отсутствие персональных данных.",
+          "expected": "Импорт должен либо принимать только заранее проверенный безопасный формат, либо обнаруживать очевидные PII-паттерны и блокировать их.",
+          "actual": "Pydantic требует непустую строку, а loader проверяет тип/формат строки, но любой текстовый идентификатор проходит; docs прямо признаёт невозможность гарантировать обезличенность.",
+          "evidence": [
+            "backend/app/engine/contracts.py:89-99",
+            "backend/app/modules/imports/csv_loader.py:71-86",
+            "docs/data-contract.md:15-16"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "F-008",
+          "kind": "limitation",
+          "verification": "observed",
+          "responsibility": "review_environment",
+          "claim": "Визуальная браузерная проверка не выполнялась.",
+          "expected": "Визуальные детали и UX должен проверить пользователь.",
+          "actual": "Проверены только production build, HTTP/API и статический код; визуальный verdict не заявляется.",
+          "evidence": [
+            "build-frontend",
+            "runtime limitations"
+          ],
+          "checkIds": [
+            "build-frontend"
+          ]
+        },
+        {
+          "id": "F-009",
+          "kind": "limitation",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Публичного live demo и полноценной auth-интеграции в проекте нет.",
+          "expected": "Для локального MVP публичный URL не обязателен, но production exposure требует отдельного доступа.",
+          "actual": "README ограничивает демо localhost и API предупреждает не выставлять его в общую сеть.",
+          "evidence": [
+            "README.md:68-76",
+            "docs/API_CONTRACT.md:70-78"
+          ],
+          "checkIds": []
+        }
+      ],
+      "gapFindingIds": [
+        "F-005",
+        "F-007"
+      ]
+    }
+  ],
+  "score": 81.0,
+  "status": "complete",
+  "expectedJudges": 1
+}

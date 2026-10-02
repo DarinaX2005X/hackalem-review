@@ -1,0 +1,1098 @@
+{
+  "methodVersion": 4,
+  "repoId": "hack-3cc2878c-offscript",
+  "repoUrl": "https://github.com/BAITC-Hacks/hack-3cc2878c-offscript",
+  "caseId": 1,
+  "snapshot": "0791548dd2a8c0a2e8eadcdfe886be7738ba823a",
+  "judges": [
+    {
+      "methodVersion": 4,
+      "repoId": "hack-3cc2878c-offscript",
+      "caseId": 1,
+      "model": "GPT-5.6 Luna",
+      "snapshot": "0791548dd2a8c0a2e8eadcdfe886be7738ba823a",
+      "overallSummary": "OpenWind представляет целостный offline-прототип для почасового вероятностного прогноза выработки двухтурбинной ВЭС на 24–48 часов. Проверены сборка backend и frontend, запуск API, реальный ML forecast без USE_ML_STUB, полный replay 28 последовательных issues, agentic cycle с overlap-пересчётом, hash-chained ledger и tamper detection. Предоставленные организаторами CSV применены непосредственно: оба файла побитно совпадают с data/raw проекта, а inspect ограничил SCADA периодом до 31 января 2026 года. Ключ LLM не требовался: при LLM_PROVIDER=none сработал заявленный детерминированный policy fallback. Ограничения честно отмечены в самом решении: у Previous Runs нет проверенных provider release timestamps, фактическая выработка февраля 2026 не предоставлена, а визуальная часть не проверялась по правилам ревью. Ни одно из этих ограничений не является подтверждённым дефектом ответственности проекта для пятичасового MVP.",
+      "global": {
+        "criteria": [
+          {
+            "name": "Ценность решения",
+            "score": 25,
+            "max": 25,
+            "awarded": "Решение точно адресует операционную задачу диспетчера ВЭС: заранее видеть почасовую выработку, диапазон неопределённости и рисковые часы для планирования балансирующего резерва.",
+            "deductions": "Снятый балл отсутствует: подтверждённых дефектов ответственности проекта по этому критерию не установлено.",
+            "evidence": [
+              "README.md:35-47",
+              "README.md:41",
+              "captures/20261002T154334912873-http-forecast-valid.stdout.log"
+            ],
+            "deductionItems": [],
+            "awardedDetails": [
+              {
+                "aspect": "Понятная целевая проблема",
+                "implementation": "README связывает переменность ветровой генерации с задачей оператора сети и фермы: нужен следующий день с честным диапазоном, чтобы планировать reserve и снижать imbalance costs. Это не абстрактная демонстрация ML, а сценарий принятия решения по конкретным часам.",
+                "value": "Для энергетической аудитории ценность формулируется через действие: P10/P50/P90 и risk flags дают диспетчеру прогноз и предупреждения, а не только одно число модели.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:35-47",
+                  "backend/app/agent/briefing.py:39-50"
+                ]
+              },
+              {
+                "aspect": "Продуктовый результат, а не только модель",
+                "implementation": "Forecast API возвращает 48 hourly rows, summary, flags, trilingual briefing и ledger record. Проверенный запрос issue_date=2026-02-15 вернул HTTP 200, 48-часовой прогноз, P10/P50/P90, briefing EN/RU/KK и verified ledger.",
+                "value": "Результат пригоден для операционного просмотра: есть диапазон, средняя энергия, риски, рекомендации и подтверждение неизменности опубликованного payload.",
+                "verification": "observed",
+                "evidence": [
+                  "captures/20261002T154334912873-http-forecast-valid.stdout.log",
+                  "captures/20261002T154951529941-http-ledger-verify.stdout.log"
+                ]
+              },
+              {
+                "aspect": "Корректное объяснение шкалы",
+                "implementation": "Документация явно различает нормированную active power, процент от принятой 5 MW capacity и вероятностные квантили P10/P50/P90; 100% не выдаётся за confidence.",
+                "value": "Это снижает риск неправильного использования прогноза диспетчером и показывает, что команда учитывает предметную семантику данных, а не только визуальную привлекательность графика.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:38-45",
+                  "ml/openwind_ml/config.py:25-45",
+                  "backend/app/schemas.py:41-63"
+                ]
+              },
+              {
+                "aspect": "Связь неопределённости с действиями",
+                "implementation": "Risk scan формирует события ramp, low confidence, model disagreement, cut-out и icing; template briefing переводит их в короткие EN/RU/KK сообщения и рекомендацию держать balancing reserve.",
+                "value": "Такой слой делает прогноз полезным для пользователя: модельные признаки превращаются в объяснимое предупреждение и действие, сохраняя числовой forecast в Python.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/app/agent/briefing.py:39-50",
+                  "backend/app/agent/orchestrator.py:136-177",
+                  "captures/20261002T154334912873-http-forecast-valid.stdout.log"
+                ]
+              }
+            ],
+            "scoreReasoning": "Критерий закрыт полностью для заявленного MVP: проблема, аудитория, измеримый результат и путь от прогноза к диспетчерскому действию связаны в одном сценарии. Отсутствие фактической выработки февраля не уменьшает балл, поскольку это ограничение предоставленного кейса и README не делает неподтверждённых claims о test accuracy."
+          },
+          {
+            "name": "Результат и качество решения",
+            "score": 20,
+            "max": 20,
+            "awarded": "Основной сценарий воспроизведён от данных и модели до API, agent run, replay и tamper-evident публикации.",
+            "deductions": "Снятый балл отсутствует: наблюдательные проверки прошли, а ограничения внешних данных вынесены отдельно и не являются дефектом проекта.",
+            "evidence": [
+              "captures/20261002T154108389525-tests-valid.stdout.log",
+              "captures/20261002T154601799847-test-run.stdout.log",
+              "captures/20261002T154428604269-http-agent-status.stdout.log"
+            ],
+            "deductionItems": [],
+            "awardedDetails": [
+              {
+                "aspect": "Реальная сборка backend",
+                "implementation": "Dockerfile устанавливает pinned Python dependencies, editable ml package, backend, shared и data; сборка backend завершилась успешно. Образ запускает uvicorn с app.main:app и реальным ML engine.",
+                "value": "Это подтверждает deployability на чистом runtime, а не только наличие исходников или заранее сгенерированных JSON.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/Dockerfile:1-18",
+                  "captures/20261002T153819816912-build-backend.stderr.log"
+                ]
+              },
+              {
+                "aspect": "Полный воспроизводимый replay",
+                "implementation": "Команда test-run в изолированном контейнере обучила test bundle и последовательно обработала 28 issues; фактический результат сообщает n_issues=28, n_rows_all=1344 и n_rows_dayahead=672.",
+                "value": "Это прямо проверяет ключевое требование кейса, включая границы test period и day-ahead выборку, вместо доверия готовым артефактам.",
+                "verification": "observed",
+                "evidence": [
+                  "captures/20261002T154601799847-test-run.stdout.log",
+                  "ml/openwind_ml/backtest.py:91-155"
+                ]
+              },
+              {
+                "aspect": "Рабочий agentic цикл",
+                "implementation": "POST /api/agent/run для 2026-02-15 завершился status=done; в записи 13 events со стадиями PLAN, FETCH, QC, PREDICT, ANALYZE, DECIDE, CRITIC, RECALC, BRIEF, PUBLISH, DONE. Result содержит 48 rows, briefing, input fingerprints, historical_overlap на 24 часа и verified ledger.",
+                "value": "Цикл не симулирован mock-ответом: health показал ml_stub=false, forecast отработал через backend bridge, а agent run сформировал новый ledger block.",
+                "verification": "observed",
+                "evidence": [
+                  "captures/20261002T154317712165-http-health-valid.stdout.log",
+                  "captures/20261002T154428604269-http-agent-status.stdout.log",
+                  "backend/app/agent/orchestrator.py:66-278"
+                ]
+              },
+              {
+                "aspect": "Проверяемая публикация и защита результата",
+                "implementation": "Ledger хранит hash chain, payload SHA и file SHA; endpoint verify вернул valid=true, checked=10, errors=[]; tamper-demo с block_index=2 вернул valid=false и payload_sha256 mismatch.",
+                "value": "Пользовательский результат имеет audit trail и демонстрируемое обнаружение изменения опубликованного payload, что существенно для энергетического прогноза.",
+                "verification": "observed",
+                "evidence": [
+                  "captures/20261002T154951529941-http-ledger-verify.stdout.log",
+                  "captures/20261002T155002328120-http-ledger-tamper.stdout.log",
+                  "backend/app/ledger.py:99-172"
+                ]
+              }
+            ],
+            "scoreReasoning": "Результат заслуживает максимум: сборки, unit/domain suite, HTTP health/forecast, полный test replay и agent/ledger сценарии завершились успешно. Внешняя LLM не была нужна для базового режима, а отсутствие ключа не блокирует заявленный deterministic fallback. Визуальная проверка UI намеренно не выполнялась и не учитывается как снижение балла."
+          },
+          {
+            "name": "Инновационность",
+            "score": 15,
+            "max": 15,
+            "awarded": "Нестандартность заключается в соединении temporal availability policy, физически мотивированного ML, agentic critic/recalculation и аудируемого ledger в одном offline-сценарии.",
+            "deductions": "Снятый балл отсутствует: подтверждённого дефекта реализации инновационных частей нет.",
+            "evidence": [
+              "ml/openwind_ml/temporal_guard.py:15-124",
+              "ml/openwind_ml/models.py:51-143",
+              "README.md:129-142"
+            ],
+            "deductionItems": [],
+            "awardedDetails": [
+              {
+                "aspect": "TemporalGuard вместо наивного использования погоды",
+                "implementation": "Для lead_h вычисляется previous_dayK с K=ceil((lead_h+latency)/24), selected inputs проходят assert_no_lookahead, а metadata записывает policy version, estimated init time и configured latency.",
+                "value": "Это нестандартный и релевантный кейсу способ сделать historical replay честнее, чем использование actual weather или live run без контроля доступности.",
+                "verification": "source",
+                "evidence": [
+                  "ml/openwind_ml/features.py:89-98",
+                  "ml/openwind_ml/temporal_guard.py:74-124",
+                  "ml/tests/test_temporal_guard.py:1-160"
+                ]
+              },
+              {
+                "aspect": "Гибрид физической кривой и quantile ML",
+                "implementation": "Pipeline использует isotonic power curve, MOS correction, HistGradientBoosting quantile models, availability factor и conformal qhat; P50 фиксированно смешивает quantile prediction с MOS power curve, P10/P90 сортируются и clipped.",
+                "value": "Подход сочетает физическую интерпретируемость и вероятностную модель, а interval calibration и availability correction адресуют реальные свойства SCADA, а не только среднюю ошибку.",
+                "verification": "source",
+                "evidence": [
+                  "ml/openwind_ml/power_curve.py:8-27",
+                  "ml/openwind_ml/models.py:51-143",
+                  "README.md:53-68"
+                ]
+              },
+              {
+                "aspect": "Critic с детерминированным veto",
+                "implementation": "После DECIDE policy.critic проверяет quantile crossing, power bounds и слишком узкий interval; при rejection возможны до двух reruns, а физический audit может отклонить approval LLM.",
+                "value": "Агент имеет контролируемый feedback loop и guardrail для числового результата, поэтому LLM не получает права произвольно менять forecast.",
+                "verification": "source",
+                "evidence": [
+                  "backend/app/agent/policy.py:29-44",
+                  "backend/app/agent/orchestrator.py:157-180",
+                  "backend/tests/test_recalculation.py:1-200"
+                ]
+              },
+              {
+                "aspect": "Автономная проверяемость без ключа",
+                "implementation": "LLM adapter отделён от policy; LLMUnavailable преобразуется в warning и fallback, а numeric forecasts всегда вычисляются Python. Режим LLM_PROVIDER=none был реально использован в HTTP agent run.",
+                "value": "Это практичная инновация для hackathon MVP: agentic flow сохраняет структуру и auditability даже без платного внешнего сервиса, без подмены реального ML mock-ответом.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/app/agent/orchestrator.py:30-37",
+                  "backend/app/agent/llm.py:52-68",
+                  "captures/20261002T154428604269-http-agent-status.stdout.log"
+                ]
+              }
+            ],
+            "scoreReasoning": "Заявленный нестандартный подход подтверждён исходниками и запуском: temporal policy, calibrated hybrid model, critic loop, grounded briefing и immutable ledger образуют связанную систему. Это не просто использование слова agentic в README, а наблюдаемый оркестратор с инструментами и guardrails."
+          },
+          {
+            "name": "Потенциал развития и масштабирования",
+            "score": 20,
+            "max": 20,
+            "awarded": "Архитектура разделяет ML package, FastAPI bridge, agent, ledger и React UI; расширение на новые режимы, модели, фермы и внешние провайдеры предусмотрено интерфейсами.",
+            "deductions": "Снятый балл отсутствует: отключённый live endpoint является явно заявленной границей historical MVP, а не нарушением задания.",
+            "evidence": [
+              "README.md:118-158",
+              "backend/app/main.py:18-44",
+              "ml/openwind_ml/api.py:24-74"
+            ],
+            "deductionItems": [],
+            "awardedDetails": [
+              {
+                "aspect": "Разделение ответственности",
+                "implementation": "ML package предоставляет stable JSON API, backend содержит routers/orchestrator/ledger, а frontend обращается к API и имеет mock fixtures только как отдельный режим. Это позволяет менять модель без переписывания UI.",
+                "value": "Слои можно тестировать и масштабировать независимо: batch/replay и HTTP service используют один ML контракт, что уменьшает связность.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:118-127",
+                  "backend/app/ml_bridge.py:1-80",
+                  "frontend/src/api/client.ts:1-220"
+                ]
+              },
+              {
+                "aspect": "Расширение по режимам и baseline",
+                "implementation": "Mode поддерживает test, val_feb2025 и val_winter; Variant включает hybrid, mos_pc, raw_pc, climatology и persistence; backtest считает метрики по моделям и lead time.",
+                "value": "Для следующего хакатона или нескольких площадок есть понятные точки добавления новых period, model variant и validation без потери существующих baseline.",
+                "verification": "source",
+                "evidence": [
+                  "backend/app/schemas.py:7-10",
+                  "ml/openwind_ml/api.py:24-38",
+                  "ml/openwind_ml/backtest.py:91-155"
+                ]
+              },
+              {
+                "aspect": "Расширение агентского контура",
+                "implementation": "Planner, decider, critic и briefing имеют provider-neutral adapter, structured Pydantic schemas, cache и deterministic fallback; optional watcher может следить за выбранным archived cache и запускать recalculation.",
+                "value": "Внешний LLM или новый weather provider можно подключать постепенно, не делая его обязательным для локальной проверки и не отдавая ему числовую часть прогноза.",
+                "verification": "source",
+                "evidence": [
+                  "backend/app/agent/llm.py:39-105",
+                  "backend/app/agent/orchestrator.py:30-37",
+                  "backend/app/watch.py:1-130",
+                  "README.md:144-145"
+                ]
+              },
+              {
+                "aspect": "Auditability при росте количества выпусков",
+                "implementation": "Каждый payload получает отдельный immutable file, file hash, row hash, previous block hash, model version, input hash и availability metadata; recalculation различает historical overlap, weather update и manual uncertainty review.",
+                "value": "Это создаёт основу для многодневной эксплуатации, расследования изменений и сравнения выпусков, а не только для единичного demo request.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/app/ledger.py:33-59",
+                  "backend/app/agent/recalculation.py:13-67",
+                  "captures/20261002T154428604269-http-agent-status.stdout.log"
+                ]
+              }
+            ],
+            "scoreReasoning": "Потенциал подтверждается не обещаниями, а уже выделенными контрактами и режимами. Live/tomorrow сознательно отключён и новая погода требует отдельного fetch, но это честная граница historical case и не основание требовать production-scale realtime service от пятичасового MVP."
+          },
+          {
+            "name": "Презентация, демо и ответы на вопросы",
+            "score": 20,
+            "max": 20,
+            "awarded": "Устного выступления не было; по правилам оценены ясность README и воспроизводимое демо из репозитория. README содержит архитектуру, API, команды, ожидаемые ответы и troubleshooting, а локальный сценарий воспроизведён.",
+            "deductions": "Снятый балл отсутствует: отсутствие публичного URL и визуальной проверки не штрафуется по политике ревью.",
+            "evidence": [
+              "README.md:188-202",
+              "README.md:291-374",
+              "captures/20261002T153819816912-build-backend.stderr.log",
+              "captures/20261002T154131354753-build-frontend.stderr.log"
+            ],
+            "deductionItems": [],
+            "awardedDetails": [
+              {
+                "aspect": "Воспроизводимая установка",
+                "implementation": "README даёт Docker option, копирование .env.example, docker compose build/up и локальный вариант; Dockerfiles и compose согласованы с backend/frontend разделением.",
+                "value": "Комиссия может перейти от чистого checkout к запускаемым образам без угадывания зависимостей и порядка действий.",
+                "verification": "observed",
+                "evidence": [
+                  "README.md:179-202",
+                  "docker-compose.yml:1-17",
+                  "backend/Dockerfile:1-18",
+                  "frontend/Dockerfile:1-22"
+                ]
+              },
+              {
+                "aspect": "Пошаговое основное демо",
+                "implementation": "Раздел 9 перечисляет health, forecast tab, agent console, ledger verify/tamper, backtest и submission files с ожидаемыми значениями; по этим backend/API шагам получены HTTP 200 и содержательные JSON результаты.",
+                "value": "Документ позволяет повторить демонстрацию и сопоставить observed output с ожидаемым, что особенно важно при отсутствии устной презентации.",
+                "verification": "observed",
+                "evidence": [
+                  "README.md:324-374",
+                  "captures/20261002T154317712165-http-health-valid.stdout.log",
+                  "captures/20261002T154334912873-http-forecast-valid.stdout.log",
+                  "captures/20261002T155002328120-http-ledger-tamper.stdout.log"
+                ]
+              },
+              {
+                "aspect": "Честная документация ограничений",
+                "implementation": "README отдельно указывает source_release_time_verified=false, отсутствие фактической выработки февраля, illustrative 5 MW economics и отключённый live endpoint; не выдаёт validation metrics за test-period accuracy.",
+                "value": "Такая подача повышает доверие: пользователь понимает, что измерено, что является assumption и где заканчивается доказательство.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:60-86",
+                  "README.md:378-399",
+                  "ml/openwind_ml/temporal_guard.py:78-82"
+                ]
+              },
+              {
+                "aspect": "Рабочие build и HTTP smoke checks",
+                "implementation": "Frontend production image собран через tsc и vite build, nginx отдал index.html HTTP 200; backend health и forecast отдали ожидаемые ответы. Визуальный layout намеренно не инспектировался.",
+                "value": "Можно доказать доступность приложения и целостность build без выдумывания результатов визуального просмотра.",
+                "verification": "observed",
+                "evidence": [
+                  "captures/20261002T154131354753-build-frontend.stderr.log",
+                  "captures/20261002T155019532160-http-frontend.stdout.log",
+                  "captures/20261002T154317712165-http-health-valid.stdout.log"
+                ]
+              }
+            ],
+            "scoreReasoning": "README unusually detailed for a five-hour prototype: он объясняет предметную модель, commands, outputs, API, limitation boundaries и expected checks. Backend/frontend builds и HTTP smoke подтвердили воспроизводимость. Визуальная проверка запрещена инструкциями пользователя, поэтому непроверенное поведение явно вынесено в uncertainties и не превращено в deduction."
+          }
+        ],
+        "total": 100
+      },
+      "case": {
+        "criteria": [
+          {
+            "name": "Соответствие задаче и работоспособность",
+            "score": 25,
+            "max": 25,
+            "awarded": "Основной сценарий кейса реализован и воспроизведён: модель обучается на истории до cutoff, каждый issue даёт 48 hourly rows, а 28-day replay покрывает day-ahead февраль.",
+            "deductions": "Снятый балл отсутствует. Невозможность подтвердить provider release timestamps отмечена как limitation внешнего archived source, не как дефект проекта.",
+            "evidence": [
+              "README.md:43-58",
+              "captures/20261002T154513804896-dataset-inspect.stdout.log",
+              "captures/20261002T154601799847-test-run.stdout.log"
+            ],
+            "deductionItems": [],
+            "awardedDetails": [
+              {
+                "aspect": "История и cutoff",
+                "implementation": "SCADA loader читает два файла, нормализует локальное Asia/Almaty время с переходом UTC+6→UTC+5, объединяет turbines в hourly farm frame и сохраняет flags. Реальный inspect вернул start 2023-03-10T18:00Z и end 2026-01-31T18:00Z.",
+                "value": "Фактический input соответствует предоставленной истории до 31 января, а не содержит февральские targets в training frame.",
+                "verification": "observed",
+                "evidence": [
+                  "ml/openwind_ml/data.py:14-74",
+                  "captures/20261002T154513804896-dataset-inspect.stdout.log",
+                  "captures/20261002T154108389525-tests-valid.stdout.log"
+                ]
+              },
+              {
+                "aspect": "24–48 часов с почасовой детализацией",
+                "implementation": "api.run_forecast строит leads 1..48, сериализует target_time/target_time_local, lead_h, lead_day и P10/P50/P90; validated forecast response содержит 48 rows.",
+                "value": "Это прямо выполняет центральное количественное требование кейса и сохраняет day-ahead slice leads 24–47 в submission.",
+                "verification": "observed",
+                "evidence": [
+                  "ml/openwind_ml/api.py:89-210",
+                  "backend/app/schemas.py:25-63",
+                  "captures/20261002T154334912873-http-forecast-valid.stdout.log"
+                ]
+              },
+              {
+                "aspect": "Последовательный historical replay",
+                "implementation": "Mode test задаёт issues от 2026-01-31 до 2026-02-27; backtest replay обучает bundle, последовательно вызывает run_forecast и сохраняет 28 issue files и две submission CSV.",
+                "value": "Replay проверяет именно заявленный сценарий обновления на каждый день, а не только один красивый forecast.",
+                "verification": "observed",
+                "evidence": [
+                  "ml/openwind_ml/api.py:24-38",
+                  "ml/openwind_ml/backtest.py:91-155",
+                  "captures/20261002T154601799847-test-run.stdout.log"
+                ]
+              },
+              {
+                "aspect": "Отсутствие lookahead",
+                "implementation": "Feature builder selects only previous_dayK columns, runs assert_no_lookahead for issue and training frames, а forecast records max_scada_time_used and source_release_time_verified=false.",
+                "value": "Проект не подмешивает target actuals в test mode и делает temporal assumption проверяемой через unit tests и ledger metadata.",
+                "verification": "source",
+                "evidence": [
+                  "ml/openwind_ml/features.py:89-133",
+                  "ml/openwind_ml/temporal_guard.py:74-124",
+                  "ml/tests/test_temporal_guard.py:1-160"
+                ]
+              }
+            ],
+            "scoreReasoning": "Все обязательные функциональные части кейса наблюдались в полном replay и HTTP/agent smoke. Case data реально использовано, cutoff соблюдён, 28 issues и 672 day-ahead hours получены. Архивная API provenance не может доказать фактическое время выпуска, но команда не скрывает это и применяет явно обозначенную offset policy; по review policy это limitation, а не основание для штрафа."
+          },
+          {
+            "name": "Техническая реализация",
+            "score": 25,
+            "max": 25,
+            "awarded": "Реализация технически цельная: data cleaning, temporal guard, physics-informed ML, risk/agent orchestration, structured fallback и ledger связаны через стабильные контракты.",
+            "deductions": "Снятый балл отсутствует: source-level и runtime проверки не обнаружили подтверждённого project defect.",
+            "evidence": [
+              "ml/openwind_ml/models.py:51-143",
+              "backend/app/agent/orchestrator.py:66-278",
+              "captures/20261002T154108389525-tests-valid.stdout.log"
+            ],
+            "deductionItems": [],
+            "awardedDetails": [
+              {
+                "aspect": "Обработка SCADA",
+                "implementation": "data.py проверяет русские source columns, coercion numeric values, time normalization, hourly resampling, missing/stuck/outage/icing flags и усредняет доступные turbines без молчаливого превращения одного outage в farm zero.",
+                "value": "Такой preprocessing подходит фактическому кейс-формату и сохраняет диагностические признаки для прозрачности модели.",
+                "verification": "source",
+                "evidence": [
+                  "ml/openwind_ml/data.py:29-74",
+                  "ml/openwind_ml/config.py:43-60",
+                  "captures/20261002T154513804896-dataset-inspect.stdout.log"
+                ]
+              },
+              {
+                "aspect": "Modeling and calibration",
+                "implementation": "train_bundle ограничивает scada/training end, исключает flagged rows из fit, обучает MOS wind regressor и three quantile HGB models, оценивает availability factor на calibration window и вычисляет conformal qhat.",
+                "value": "Pipeline соответствует задаче выработки: в нём есть связь wind→power, uncertainty interval и поправка на наблюдаемую доступность.",
+                "verification": "source",
+                "evidence": [
+                  "ml/openwind_ml/models.py:51-113",
+                  "ml/openwind_ml/power_curve.py:8-27",
+                  "README.md:60-85"
+                ]
+              },
+              {
+                "aspect": "Компоненты agent",
+                "implementation": "Orchestrator вызывает планирование, cached weather fetch, QC, ML, risk scan, decision, critic, recalculation, briefing и publish; Pydantic schemas ограничивают stage/mode/variant и форму результата.",
+                "value": "Взаимодействие компонентов прослеживается от REST input до persisted run и ledger block, а не заканчивается на демонстрационном event stream.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/app/routers/agent.py:14-59",
+                  "backend/app/agent/orchestrator.py:66-278",
+                  "backend/app/schemas.py:88-111",
+                  "captures/20261002T154428604269-http-agent-status.stdout.log"
+                ]
+              },
+              {
+                "aspect": "Quality gates",
+                "implementation": "Числовые квантили сортируются и clip-ятся в [0,1], critic проверяет crossing/bounds/band, briefing grounding отбрасывает LLM text с числами вне computed facts, ledger повторно проверяет hashes и temporal policy.",
+                "value": "Несколько независимых проверок уменьшают риск выдачи формально красивого, но физически или аудиторски некорректного результата.",
+                "verification": "source",
+                "evidence": [
+                  "ml/openwind_ml/models.py:116-143",
+                  "backend/app/agent/policy.py:29-44",
+                  "backend/app/agent/briefing.py:24-37",
+                  "backend/app/ledger.py:99-154"
+                ]
+              }
+            ],
+            "scoreReasoning": "Техническая реализация доказана 45 passing tests и рабочими контейнерными сценариями. Архитектура не маскирует отсутствие ключа mock forecast-ом: health явно показал ml_stub=false, а LLM оставлен опциональным. Реальных нарушений входного формата, temporal policy или API contract в проверках не найдено."
+          },
+          {
+            "name": "README и воспроизводимость",
+            "score": 25,
+            "max": 25,
+            "awarded": "Документация достаточна для понимания решения, установки, воспроизведения основного сценария и интерпретации результатов; команды из README подтверждены сборкой и replay.",
+            "deductions": "Снятый балл отсутствует: документация содержит нужные ограничения и фактические expected outputs.",
+            "evidence": [
+              "README.md:49-86",
+              "README.md:188-320",
+              "README.md:324-374",
+              "captures/20261002T154601799847-test-run.stdout.log"
+            ],
+            "deductionItems": [],
+            "awardedDetails": [
+              {
+                "aspect": "Объяснение устройства",
+                "implementation": "README отдельно описывает data, ml, backend, frontend, shared mocks, agent stages, REST API, modes и outputs; таблицы связывают requirement с implementation и файлами.",
+                "value": "Читатель может перейти от бизнес-задачи к конкретному модулю без reverse engineering всего repository.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:49-58",
+                  "README.md:118-158"
+                ]
+              },
+              {
+                "aspect": "Reproducible setup",
+                "implementation": "Dockerfile-ы pin-ят Python/Node runtime path, package manifests и lockfile присутствуют, .env.example описывает offline defaults, а README даёт Docker и local варианты.",
+                "value": "Деплой не зависит от предоставленного API key и может быть собран на чистой машине с Docker.",
+                "verification": "observed",
+                "evidence": [
+                  "README.md:179-220",
+                  "backend/requirements.txt:1-12",
+                  "frontend/package.json:1-20",
+                  "captures/20261002T153819816912-build-backend.stderr.log",
+                  "captures/20261002T154131354753-build-frontend.stderr.log"
+                ]
+              },
+              {
+                "aspect": "Описанная проверка main scenario",
+                "implementation": "README перечисляет health, forecast, agent, ledger, backtest, submission и tests, включая ожидаемый ml_stub=false, 673 CSV lines и 28/672 coverage.",
+                "value": "Это превращает README в воспроизводимый runbook для комиссии, а не в маркетинговое описание.",
+                "verification": "observed",
+                "evidence": [
+                  "README.md:324-374",
+                  "captures/20261002T154317712165-http-health-valid.stdout.log",
+                  "captures/20261002T154601799847-test-run.stdout.log"
+                ]
+              },
+              {
+                "aspect": "Воспроизводимость данных",
+                "implementation": "Проверенные case CSV совпали SHA-256 с repo raw; committed NWP cache и models включены в data, а полный test-run без внешней сети создал 28/1344/672 результатов.",
+                "value": "Ключевой результат можно пересобрать без скачивания production dataset или обращения к provider во время запуска.",
+                "verification": "observed",
+                "evidence": [
+                  "data/raw/turbine_1.csv",
+                  "data/raw/turbine_2.csv",
+                  "data/cache/nwp/",
+                  "captures/20261002T154513804896-dataset-inspect.stdout.log",
+                  "captures/20261002T154601799847-test-run.stdout.log"
+                ]
+              }
+            ],
+            "scoreReasoning": "README и repository образуют самодостаточный runbook: команды, конфигурация, API, expected response, outputs и ограничения согласуются с observed checks. Полный replay и build подтвердили воспроизводимость, поэтому максимум заслужен."
+          },
+          {
+            "name": "Ценность и применимость решения",
+            "score": 15,
+            "max": 15,
+            "awarded": "Практическая ценность показана через day-ahead energy forecast, uncertainty bands, operational flags, trilingual briefing, economics view и audit trail.",
+            "deductions": "Снятый балл отсутствует: отсутствие фактического февраля ограничивает измерение accuracy, но является ограничением предоставленных данных и не project defect.",
+            "evidence": [
+              "README.md:35-47",
+              "README.md:60-86",
+              "backend/app/agent/briefing.py:39-50",
+              "captures/20261002T154334912873-http-forecast-valid.stdout.log"
+            ],
+            "deductionItems": [],
+            "awardedDetails": [
+              {
+                "aspect": "Релевантный operational output",
+                "implementation": "Forecast summary содержит mean P50, energy MWh, mean P10–P90 band и day-ahead mean; risk scan и briefing сообщают ramp/low-confidence периоды и резервное действие.",
+                "value": "Оператор получает информацию для reserve and imbalance planning, а не только ML score.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/app/agent/briefing.py:39-50",
+                  "captures/20261002T154334912873-http-forecast-valid.stdout.log"
+                ]
+              },
+              {
+                "aspect": "Валидация на доступных фактических данных",
+                "implementation": "Проект не присваивает February 2026 actuals, но хранит held-out Feb 2025 и winter 2025–26 metrics: NMAE, bias, skill vs persistence, P10–P90 coverage и lead-wise errors.",
+                "value": "Это корректный способ показать применимость там, где actuals существуют, не подменяя test-period accuracy выдуманным числом.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:60-86",
+                  "data/outputs/metrics/val_feb2025.json",
+                  "data/outputs/metrics/val_winter.json"
+                ]
+              },
+              {
+                "aspect": "Понятные пределы применения",
+                "implementation": "Capacity 5 MW и imbalance prices обозначены illustrative assumptions; live/tomorrow endpoint намеренно возвращает 501; archived weather provenance маркируется unverified.",
+                "value": "Такой контракт снижает риск ошибочного production claim и помогает пользователю понять, что нужно заменить перед live deployment.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:393-399",
+                  "backend/app/routers/live.py:1-8",
+                  "ml/openwind_ml/temporal_guard.py:15-18"
+                ]
+              },
+              {
+                "aspect": "Аудируемость применимого результата",
+                "implementation": "Каждый forecast сохраняется с model version, input fingerprints, temporal metadata и ledger hashes; verify и tamper-demo проверены HTTP.",
+                "value": "Для энергетической аудитории можно установить, какой выпуск и какие входы породили число, и обнаружить post-publication alteration.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/app/ledger.py:33-59",
+                  "captures/20261002T154951529941-http-ledger-verify.stdout.log",
+                  "captures/20261002T155002328120-http-ledger-tamper.stdout.log"
+                ]
+              }
+            ],
+            "scoreReasoning": "Ценность подтверждена конкретным пользовательским результатом и доступной validation evidence. Test accuracy честно не заявляется из-за отсутствия February actuals; согласно правилам это limitation данных, не причина снимать баллы с команды."
+          },
+          {
+            "name": "Потенциал развития и оригинальность подхода",
+            "score": 10,
+            "max": 10,
+            "awarded": "Решение оригинально сочетает offset-aware archived NWP, quantile/availability model, policy-driven agent, recalculation comparison и tamper-evident ledger; расширение описано через уже существующие mode/provider/variant boundaries.",
+            "deductions": "Снятый балл отсутствует: ограничения live provenance раскрыты и не являются пропущенным обязательным MVP-функционалом.",
+            "evidence": [
+              "README.md:53-58",
+              "README.md:129-145",
+              "backend/app/agent/recalculation.py:13-67"
+            ],
+            "deductionItems": [],
+            "awardedDetails": [
+              {
+                "aspect": "Оригинальная комбинация ML и агентского управления",
+                "implementation": "ML отвечает за числа, policy/LLM отвечает за plan/decision/critic/briefing, а orchestrator связывает инструменты и publish. Numeric forecast прямо не передаётся на генерацию текста.",
+                "value": "Разделение позволяет развивать reasoning слой без потери детерминированности числового ядра.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:129-142",
+                  "backend/app/agent/orchestrator.py:136-235"
+                ]
+              },
+              {
+                "aspect": "Механизм обновления прогноза",
+                "implementation": "Historical overlap сравнивает 24 common hours, MAE/max change и input fingerprints; same-issue recalculation различает changed weather inputs и manual uncertainty review.",
+                "value": "Это полезная основа для operational revision workflow, а не простое перезаписывание последнего forecast.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/app/agent/recalculation.py:13-67",
+                  "captures/20261002T154428604269-http-agent-status.stdout.log"
+                ]
+              },
+              {
+                "aspect": "Переносимость на другие условия",
+                "implementation": "Configurable coordinates/capacity/latency, modes, variants, provider-neutral LLM и cache manifests отделены от domain UI.",
+                "value": "Следующая команда может заменить site data или NWP model, сохранив тестовый contract, guardrails и ledger shape.",
+                "verification": "source",
+                "evidence": [
+                  "ml/openwind_ml/config.py:16-60",
+                  "backend/app/settings.py:1-95",
+                  "README.md:144-158"
+                ]
+              },
+              {
+                "aspect": "Оригинальная provenance-позиция",
+                "implementation": "Вместо неподтверждённого утверждения о времени выпуска проект хранит estimated init time, explicit source_release_time_verified=false, request manifests и policy version.",
+                "value": "Честная provenance-модель лучше скрытого lookahead claim и создаёт конкретную точку развития для будущего provider с release metadata.",
+                "verification": "observed",
+                "evidence": [
+                  "ml/openwind_ml/weather.py:35-91",
+                  "ml/openwind_ml/temporal_guard.py:63-124",
+                  "captures/20261002T154334912873-http-forecast-valid.stdout.log"
+                ]
+              }
+            ],
+            "scoreReasoning": "Для пятичасового проекта потенциал и оригинальность высоки: уже есть расширяемые contracts и осмысленный revision/audit workflow. Внешнюю верификацию времени выпуска следует усилить при production-переносе, но команда явно оставила эту границу и не выдала assumption за доказанный факт."
+          }
+        ],
+        "total": 100
+      },
+      "judgeScore": 100,
+      "caseRequirements": [
+        {
+          "requirement": "Построить модель почасовой выработки двухтурбинной ВЭС на предоставленной истории до 31 января 2026 года.",
+          "status": "met",
+          "explanation": "Два предоставленных CSV побитно совпали с data/raw проекта; inspect и код loader показали объединение, hourly aggregation и end_utc=2026-01-31T18:00Z. Model bundle использует power curve, MOS и quantile models с train_end.",
+          "evidence": [
+            "ml/openwind_ml/data.py:29-74",
+            "ml/openwind_ml/models.py:51-113",
+            "captures/20261002T154513804896-dataset-inspect.stdout.log",
+            "captures/20261002T154601799847-test-run.stdout.log"
+          ]
+        },
+        {
+          "requirement": "Получать по координатам ВЭС архивные прогнозы погоды, доступные на момент прогноза.",
+          "status": "partial",
+          "explanation": "Код использует координаты фермы, три Open-Meteo Previous Runs model и previous_dayK offsets; TemporalGuard проверяет арифметику доступности. Однако сами архивные manifests для legacy chunks не содержат provider release timestamp, поэтому фактическая доступность конкретного run подтверждается policy assumption, а не provider metadata. Это явно указано как limitation и source_release_time_verified=false.",
+          "evidence": [
+            "ml/openwind_ml/config.py:16-41",
+            "ml/openwind_ml/weather.py:35-91",
+            "ml/openwind_ml/temporal_guard.py:74-124",
+            "README.md:378-391",
+            "captures/20261002T154334912873-http-forecast-valid.stdout.log"
+          ]
+        },
+        {
+          "requirement": "Сформировать прогноз на следующие 24–48 часов с почасовой детализацией и P10/P50/P90.",
+          "status": "met",
+          "explanation": "Forecast endpoint реально вернул HTTP 200 и 48 hourly rows; test replay сформировал 1344 all-lead rows и 672 day-ahead rows за 28 issues.",
+          "evidence": [
+            "ml/openwind_ml/api.py:151-210",
+            "captures/20261002T154334912873-http-forecast-valid.stdout.log",
+            "captures/20261002T154601799847-test-run.stdout.log"
+          ]
+        },
+        {
+          "requirement": "Реализовать agentic цикл получения погоды, подготовки, модели, прогноза, анализа и повторного расчёта при обновлении входа.",
+          "status": "met",
+          "explanation": "Agent run прошёл стадии PLAN→FETCH→QC→PREDICT→ANALYZE→DECIDE→CRITIC→RECALC→BRIEF→PUBLISH→DONE. В result наблюдались 24 overlap hours, MAE/max change и forecast_materially_changed=true для предыдущего issue.",
+          "evidence": [
+            "backend/app/agent/orchestrator.py:66-278",
+            "captures/20261002T154422298378-http-agent-run-valid2.stdout.log",
+            "captures/20261002T154428604269-http-agent-status.stdout.log"
+          ]
+        },
+        {
+          "requirement": "Воспроизвести последовательное прогнозирование с 31 января через весь тестовый февраль 2026 года.",
+          "status": "met",
+          "explanation": "Mode test задаёт 28 issue dates с 2026-01-31 по 2026-02-27; полный CLI replay завершился без ошибок с n_issues=28, n_rows_all=1344 и n_rows_dayahead=672.",
+          "evidence": [
+            "ml/openwind_ml/api.py:24-38",
+            "ml/openwind_ml/backtest.py:91-155",
+            "captures/20261002T154601799847-test-run.stdout.log"
+          ]
+        },
+        {
+          "requirement": "Не использовать фактическую будущую погоду или фактическую февральскую выработку как вход прогноза.",
+          "status": "met",
+          "explanation": "Feature builder отбирает previous_dayK NWP, temporal tests проверяют lookahead и test mode serializes actual=null; SCADA cutoff наблюдался на 31 января. Фактической February generation в предоставленных данных нет.",
+          "evidence": [
+            "ml/openwind_ml/features.py:89-133",
+            "ml/openwind_ml/api.py:151-184",
+            "ml/tests/test_temporal_guard.py:1-160",
+            "README.md:84-86",
+            "captures/20261002T154513804896-dataset-inspect.stdout.log"
+          ]
+        }
+      ],
+      "testData": {
+        "provided": [
+          "cases/1/case-data/Dataset HackAlemAI для участников 11.03.2023-28.02.2026 - turbine 1.csv",
+          "cases/1/case-data/Dataset HackAlemAI для участников 11.03.2023-28.02.2026 - turbine 2.csv",
+          "cases/1/case-data/HackAlem AI_ Agentic AI для прогнозирования выработки ВЭС.md",
+          "cases/1/task.txt"
+        ],
+        "used": [
+          "data/raw/turbine_1.csv и data/raw/turbine_2.csv: SHA-256 каждого файла совпал с соответствующим provided CSV; эти файлы использовал ml/openwind_ml/data.py внутри образа.",
+          "data/cache/nwp/: committed archived Previous Runs chunks, использованные WEATHER_OFFLINE=1 в inspect, forecast и test-run.",
+          "data/models/: committed model bundles использованы HTTP forecast и agent run; полный test-run также обучил test bundle в изолированном filesystem.",
+          "data/outputs/metrics/val_feb2025.json и val_winter.json: прочитаны для validation evidence; February 2026 actuals не заявлялись."
+        ],
+        "checks": [
+          {
+            "input": "Два organizer CSV по turbine 1/2.",
+            "method": "Сравнение SHA-256 provided files с data/raw/turbine_1.csv и turbine_2.csv, затем python -m openwind_ml.cli inspect в backend image.",
+            "result": "Оба SHA-256 совпали. inspect вернул 25393 hourly rows, start_utc=2023-03-10T18:00:00Z, end_utc=2026-01-31T18:00:00Z, power range 0.003333..0.9925 и wind range 0.235..19.9025 m/s.",
+            "conclusion": "Входной формат и train cutoff применены к фактическим кейс-данным; будущие February SCADA rows в inspect не присутствуют."
+          },
+          {
+            "input": "ML/API forecast for issue_date=2026-02-15, mode=test, variant=hybrid.",
+            "method": "HTTP GET /api/forecast с offline cache и LLM_PROVIDER=none.",
+            "result": "HTTP 200; ответ содержит 48 rows, p10/p50/p90, risk flags, EN/RU/KK briefing, source_release_time_verified=false и ledger verified=true.",
+            "conclusion": "Single-issue forecast воспроизведён через реальный ML path, не через USE_ML_STUB."
+          },
+          {
+            "input": "Все test issues от 2026-01-31 до 2026-02-27.",
+            "method": "python -m openwind_ml.cli test-run в изолированном контейнере с WEATHER_OFFLINE=1.",
+            "result": "Exit code 0; n_issues=28; n_rows_all=1344; n_rows_dayahead=672; созданы forecast_feb2026_dayahead.csv и forecast_feb2026_all_issues.csv.",
+            "conclusion": "Последовательный case replay и требуемое покрытие 1–28 февраля подтверждены запуском."
+          },
+          {
+            "input": "SCADA/temporal guard/model/ledger/backend tests.",
+            "method": "python -m pytest ml/tests backend/tests -q из /app.",
+            "result": "45 passed, 1 deprecation warning, exit code 0.",
+            "conclusion": "Unit/domain/API contract, grounding, ledger, recalculation, runs, model shapes и temporal checks прошли."
+          },
+          {
+            "input": "POST /api/agent/run с issue_date=2026-02-15, mode=test, use_llm=false.",
+            "method": "HTTP POST, затем GET /api/agent/runs/{run_id}.",
+            "result": "HTTP 200 при запуске; status=done, 13 events, stages PLAN/FETCH/QC/PREDICT/ANALYZE/DECIDE/CRITIC/RECALC/BRIEF/PUBLISH/DONE; historical_overlap=24, forecast_materially_changed=true, briefing grounded=true, ledger verified=true.",
+            "conclusion": "Agentic scenario и deterministic fallback реально завершились."
+          },
+          {
+            "input": "Ledger after forecast and agent publication.",
+            "method": "POST /api/ledger/verify и POST /api/ledger/tamper-demo с block_index=2.",
+            "result": "Verify: HTTP 200, valid=true, checked=10, errors=[]. Tamper demo: HTTP 200, valid=false, first_bad_block=2, reason=payload_sha256 mismatch.",
+            "conclusion": "Hash chain валиден, а изменение payload обнаруживается ожидаемым способом."
+          }
+        ],
+        "limitations": [
+          "Внешний organizer package не содержит February 2026 actual generation, поэтому test-period accuracy измерить нельзя и она не заявляется.",
+          "Legacy NWP cache manifests имеют retrieved_at=null; код проверяет configured offset/latency, но не может доказать реальный provider release timestamp. Ответы явно содержат source_release_time_verified=false.",
+          "Визуальный layout, клики и browser-only поведение не проверялись по user-owned visual verification policy; выполнены статические, build и HTTP/API проверки."
+        ]
+      },
+      "runtime": {
+        "status": "working",
+        "build": "Backend Docker image собран успешно: pinned Python 3.11 dependencies, editable openwind_ml package, backend/shared/data. Frontend production image собран успешно: npm ci, tsc -b, vite build и nginx stage; build warning о размере JS chunk не блокирует сборку.",
+        "start": "Backend и frontend контейнеры стартовали с именованными ресурсами и ограниченными CPU/memory. GET /api/health вернул HTTP 200 и status=ok; frontend nginx отдал index.html HTTP 200.",
+        "scenario": "Проверены GET /api/forecast, полный test-run, POST /api/agent/run + status polling, ledger verify и tamper-demo. Основной сценарий воспроизведён без LLM/API ключа в offline режиме.",
+        "environment": "Изолированные Docker runtime-ы на Python 3.11 и Node 20/nginx; WEATHER_OFFLINE=1, LLM_PROVIDER=none, USE_ML_STUB=0. Публичный браузер и визуальная инспекция намеренно не использовались.",
+        "summary": "Система working для заявленного historical/offline MVP. Реальный forecast и agentic result достигли HTTP/API уровня, а 28-day replay создал 1344 all-lead и 672 day-ahead строки.",
+        "checks": [
+          {
+            "command": "docker build --file backend/Dockerfile --tag <backend-image> .",
+            "result": "Exit code 0; dependencies installed, openwind_ml editable package built, image exported.",
+            "id": "BLD-BE",
+            "stage": "build",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Backend image builds from repository and contains ML/backend/data."
+          },
+          {
+            "command": "docker build --file frontend/Dockerfile --tag <frontend-image> .",
+            "result": "Exit code 0; npm ci, TypeScript build and Vite production build completed; nginx image exported.",
+            "id": "BLD-FE",
+            "stage": "build",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Frontend production image builds without TypeScript or bundler errors."
+          },
+          {
+            "command": "python -m pytest ml/tests backend/tests -q",
+            "result": "45 passed, 1 warning, exit code 0.",
+            "id": "TEST-ALL",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "All ML and backend unit/domain/API contract tests pass."
+          },
+          {
+            "command": "python -m openwind_ml.cli inspect",
+            "result": "Exit code 0; 25393 hourly rows, data end 2026-01-31T18:00:00Z, expected columns and finite power/wind ranges returned.",
+            "id": "DATA-INSPECT",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Provided SCADA can be parsed, aggregated hourly and checked for cutoff/quality."
+          },
+          {
+            "command": "python -m openwind_ml.cli test-run",
+            "result": "Exit code 0; n_issues=28, n_rows_all=1344, n_rows_dayahead=672, both submission files written.",
+            "id": "SCN-REPLAY",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Historical replay covers 31 Jan issue through all February day-ahead hours."
+          },
+          {
+            "command": "GET /api/health",
+            "result": "HTTP 200; {status:ok, version:0.1.0, llm_provider:none, weather_offline:true, ml_stub:false}.",
+            "id": "HTTP-HEALTH",
+            "stage": "start",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Service starts and reports real ML/offline configuration."
+          },
+          {
+            "command": "GET /api/forecast?issue_date=2026-02-15&mode=test&variant=hybrid",
+            "result": "HTTP 200; 48 forecast rows, risks, briefing and verified ledger record returned.",
+            "id": "HTTP-FORECAST",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "One real 48-hour forecast is served from archived NWP and model bundle."
+          },
+          {
+            "command": "POST /api/agent/run with issue_date=2026-02-15, mode=test, use_llm=false",
+            "result": "HTTP 200 and run_id returned.",
+            "id": "HTTP-AGENT-START",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Agent run is accepted without an external LLM key."
+          },
+          {
+            "command": "GET /api/agent/runs/{run_id}",
+            "result": "HTTP 200; status=done; 13 events; historical overlap comparison and verified ledger result present.",
+            "id": "HTTP-AGENT-STATUS",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Agent completes PLAN through DONE and persists a usable result."
+          },
+          {
+            "command": "POST /api/ledger/verify",
+            "result": "HTTP 200; valid=true, checked=10, errors=[], legacy_policy_evidence_blocks reported separately.",
+            "id": "HTTP-LEDGER-VERIFY",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Published chain and payload integrity verify successfully."
+          },
+          {
+            "command": "POST /api/ledger/tamper-demo",
+            "result": "HTTP 200; valid=false and payload_sha256 mismatch reported for altered block.",
+            "id": "HTTP-LEDGER-TAMPER",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Deliberately altered published payload is detected."
+          },
+          {
+            "command": "GET /",
+            "result": "Frontend nginx returned HTTP 200 with text/html index document.",
+            "id": "HTTP-FRONTEND",
+            "stage": "start",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Production frontend serves its built entry document."
+          },
+          {
+            "command": "python -m pytest ml/tests backend/tests -q from Dockerfile default workdir",
+            "result": "No tests ran: relative ml/tests was not found under /app/backend; rerun from documented /app workdir passed 45 tests.",
+            "id": "ENV-TEST-CWD",
+            "stage": "scenario",
+            "status": "fail",
+            "cause": "review_environment",
+            "expected": "Reviewer command should be issued from repository root or /app as documented."
+          },
+          {
+            "command": "GET /api/forecast with malformed shell query escaping",
+            "result": "HTTP 422 Unknown mode; corrected query string returned HTTP 200 and the forecast.",
+            "id": "ENV-QUERY-ESCAPE",
+            "stage": "scenario",
+            "status": "fail",
+            "cause": "review_environment",
+            "expected": "Application receives mode=test, not a shell-escaped value."
+          }
+        ],
+        "limitations": [
+          "Часть первоначальных неуспешных invocations была вызвана рабочим каталогом и shell escaping; валидные documented commands повторно выполнены успешно и именно они определяют runtime status.",
+          "Проверка frontend ограничена build и HTTP serving; browser/CUA/visual automation запрещены пользовательской политикой.",
+          "No LLM_API_KEY был предоставлен намеренно; проверен keyless policy fallback, а не внешний provider call."
+        ]
+      },
+      "liveDemo": {
+        "status": "unverified",
+        "url": null,
+        "notes": "Публичная Live URL не предоставлена. Локальный backend API и frontend HTTP serving подтверждены, но визуальное browser-поведение не проверялось по user-owned visual verification policy; отсутствие публичного URL не использовано как deduction."
+      },
+      "fiveHourContext": "Оценка сделана как five-hour hackathon MVP, а не production service. В этом контексте особенно существенны готовые кейс-данные, cached NWP, real ML path, 45 passing tests, один reproducible command для 28-day replay, deterministic fallback без ключа, agent stages и ledger audit. Не требовались live tomorrow endpoint, production deployment, provider release certification при отсутствии таких timestamps в archived API, фактическая February accuracy при отсутствии actuals или устная презентация. Эти границы отражены в limitations/uncertainties, а не превращены в штрафы.",
+      "strengths": [
+        "Полный case replay реально завершён: 28 issues, 1344 all-lead rows и 672 day-ahead rows.",
+        "Предоставленные CSV побитно совпали с repo raw и использованы реальным ML loader.",
+        "TemporalGuard, previous_dayK policy и test cutoff проверены исходниками и тестами.",
+        "Agentic orchestrator прошёл от PLAN до DONE с 24-hour overlap comparison, grounded trilingual briefing и verified ledger.",
+        "Hash chain и payload tamper detection подтверждены HTTP.",
+        "README подробно описывает архитектуру, запуск, ожидаемые outputs и честные ограничения."
+      ],
+      "gaps": [],
+      "futureAdvice": [
+        {
+          "principle": "Сохраняйте один короткий deterministic smoke replay рядом с полным backtest",
+          "why": "В проекте уже есть раздельно проверяемые single-issue API/agent paths и полный replay; это наблюдаемая сильная сторона, которую полезно превратить в стандартный первый шаг для следующего кейса.",
+          "how": "Для другого hackathon заранее добавьте команду, которая на одном issue проверяет input cutoff, 48 rows, grounded briefing, publish и verify, а затем запускайте полный replay после успешного smoke.",
+          "findingIds": [
+            "STR-REPLAY",
+            "STR-AGENT"
+          ],
+          "successCheck": "Новая машина получает за одну команду non-mock forecast и verified ledger, после чего полный replay воспроизводит ожидаемое число issues/rows.",
+          "timeboxMinutes": 20
+        }
+      ],
+      "uncertainties": [
+        "Фактическая выработка 1–28 февраля 2026 не входит в provided data, поэтому accuracy test period не установлена.",
+        "Open-Meteo Previous Runs cache records explicit source_release_time_verified=false; configured 8-hour latency is an assumption and not provider-certified publication timing.",
+        "Визуальная компоновка React UI, клики по tabs и browser-only rendering не проверялись; подтверждены только frontend build и HTTP serving.",
+        "External LLM provider path с LLM_API_KEY не запускался, поскольку credentials намеренно не предоставлены; keyless deterministic path проверен отдельно."
+      ],
+      "reviewPolicyVersion": 2,
+      "assessmentStatus": "ready",
+      "findings": [
+        {
+          "id": "STR-REPLAY",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Полный заявленный test replay работает на 28 последовательных issues.",
+          "expected": "Каждый issue от 31 января до 27 февраля должен дать 48 rows и общий day-ahead coverage февраля.",
+          "actual": "CLI test-run завершился exit code 0 с n_issues=28, n_rows_all=1344 и n_rows_dayahead=672.",
+          "evidence": [
+            "captures/20261002T154601799847-test-run.stdout.log",
+            "ml/openwind_ml/backtest.py:91-155"
+          ],
+          "checkIds": [
+            "SCN-REPLAY"
+          ]
+        },
+        {
+          "id": "STR-DATA-CUTOFF",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Проект применяет предоставленные SCADA files и соблюдает cutoff до 31 января 2026.",
+          "expected": "Парсер должен принимать case columns, агрегировать их и не использовать будущую February SCADA в test training.",
+          "actual": "SHA-256 provided/repo CSV совпали; inspect показал end_utc=2026-01-31T18:00:00Z и корректные aggregated columns.",
+          "evidence": [
+            "ml/openwind_ml/data.py:29-74",
+            "captures/20261002T154513804896-dataset-inspect.stdout.log"
+          ],
+          "checkIds": [
+            "DATA-INSPECT"
+          ]
+        },
+        {
+          "id": "STR-TEMPORAL",
+          "kind": "strength",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "TemporalGuard и feature builder проверяют offset policy и SCADA lookahead.",
+          "expected": "Будущие actual weather/SCADA не должны попадать в forecast features; selected previous_dayK должен соответствовать latency rule.",
+          "actual": "assert_no_lookahead вызывается в issue и training frame; source metadata и unit tests покрывают arithmetic и future-SCADA refusal.",
+          "evidence": [
+            "ml/openwind_ml/features.py:89-133",
+            "ml/openwind_ml/temporal_guard.py:74-124",
+            "ml/tests/test_temporal_guard.py:1-160"
+          ],
+          "checkIds": [
+            "TEST-ALL"
+          ]
+        },
+        {
+          "id": "STR-AGENT",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Agentic orchestration и keyless fallback завершают полный цикл без LLM key.",
+          "expected": "POST agent run должен создать persisted done result с этапами, forecast, briefing и publication.",
+          "actual": "status=done; 13 events; stages до DONE; 24 overlap hours; grounded briefing; ledger verified=true; health сообщает ml_stub=false.",
+          "evidence": [
+            "backend/app/agent/orchestrator.py:30-37",
+            "captures/20261002T154317712165-http-health-valid.stdout.log",
+            "captures/20261002T154428604269-http-agent-status.stdout.log"
+          ],
+          "checkIds": [
+            "HTTP-HEALTH",
+            "HTTP-AGENT-START",
+            "HTTP-AGENT-STATUS"
+          ]
+        },
+        {
+          "id": "STR-LEDGER",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Ledger проверяет цепочку и обнаруживает изменение опубликованного payload.",
+          "expected": "Неповреждённая цепь должна быть valid, а tamper-demo должен сообщать hash mismatch.",
+          "actual": "verify вернул valid=true/errors=[]; tamper-demo вернул valid=false/reason=payload_sha256 mismatch.",
+          "evidence": [
+            "backend/app/ledger.py:99-172",
+            "captures/20261002T154951529941-http-ledger-verify.stdout.log",
+            "captures/20261002T155002328120-http-ledger-tamper.stdout.log"
+          ],
+          "checkIds": [
+            "HTTP-LEDGER-VERIFY",
+            "HTTP-LEDGER-TAMPER"
+          ]
+        },
+        {
+          "id": "STR-DOCS",
+          "kind": "strength",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "README описывает воспроизводимый путь от установки до результатов и не скрывает ограничения.",
+          "expected": "Документация должна объяснять setup, main scenario, expected outputs, tests и границы claims.",
+          "actual": "README содержит Docker/local setup, API paths, full replay commands, expected health/submission outputs, validation metrics и provenance/test-data limitations.",
+          "evidence": [
+            "README.md:179-220",
+            "README.md:291-374",
+            "README.md:378-399"
+          ],
+          "checkIds": [
+            "BLD-BE",
+            "BLD-FE",
+            "SCN-REPLAY"
+          ]
+        },
+        {
+          "id": "LIM-PROVENANCE",
+          "kind": "limitation",
+          "verification": "observed",
+          "responsibility": "external_service",
+          "claim": "Время фактического выпуска archived provider run не подтверждено.",
+          "expected": "Для строгого доказательства доступности weather input на issue time нужны provider release/init timestamps.",
+          "actual": "Forecast и ledger явно содержат source_release_time_verified=false; legacy manifests имеют retrieved_at=null, а policy доказывает только offset arithmetic с latency=8.",
+          "evidence": [
+            "ml/openwind_ml/weather.py:35-91",
+            "README.md:378-391",
+            "captures/20261002T154334912873-http-forecast-valid.stdout.log"
+          ],
+          "checkIds": [
+            "HTTP-FORECAST",
+            "TEST-ALL"
+          ]
+        },
+        {
+          "id": "LIM-TEST-ACTUALS",
+          "kind": "limitation",
+          "verification": "source",
+          "responsibility": "external_service",
+          "claim": "Точность именно на February 2026 test period не измеряется.",
+          "expected": "Для test-period accuracy нужны фактические February generation values.",
+          "actual": "README прямо указывает, что February 2026 actual generation не предоставлена; test mode возвращает actual=null.",
+          "evidence": [
+            "README.md:84-86",
+            "ml/openwind_ml/api.py:174-184",
+            "cases/1/task.txt:1-4"
+          ],
+          "checkIds": [
+            "DATA-INSPECT",
+            "SCN-REPLAY"
+          ]
+        },
+        {
+          "id": "LIM-VISUAL",
+          "kind": "limitation",
+          "verification": "unverified",
+          "responsibility": "review_environment",
+          "claim": "Визуальное поведение React control room не установлено этим ревью.",
+          "expected": "Visual/browser interaction would require user-owned visual verification.",
+          "actual": "Frontend image собран и nginx отдаёт index.html HTTP 200, но browser tabs, chart layout и clicks не инспектировались по обязательному запрету UI automation.",
+          "evidence": [
+            "frontend/src/App.tsx:1-220",
+            "captures/20261002T154131354753-build-frontend.stderr.log",
+            "captures/20261002T155019532160-http-frontend.stdout.log"
+          ],
+          "checkIds": [
+            "BLD-FE",
+            "HTTP-FRONTEND"
+          ]
+        }
+      ],
+      "gapFindingIds": []
+    }
+  ],
+  "score": 100.0,
+  "status": "complete",
+  "expectedJudges": 1
+}

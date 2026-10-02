@@ -1,0 +1,913 @@
+{
+  "methodVersion": 4,
+  "repoId": "hack-80299a21-nexis",
+  "repoUrl": "https://github.com/BAITC-Hacks/hack-80299a21-nexis",
+  "caseId": 10,
+  "snapshot": "e44238290bd6d131746377afe7a5945115470c72",
+  "judges": [
+    {
+      "methodVersion": 4,
+      "repoId": "hack-80299a21-nexis",
+      "caseId": 10,
+      "model": "GPT-5.6 Luna",
+      "snapshot": "e44238290bd6d131746377afe7a5945115470c72",
+      "overallSummary": "NEXIS — цельный и аккуратно ограниченный прототип консультанта ekt.kz: он связывает каталог, базу знаний, подбор аналогов, обработку спецификаций и подтверждаемую демонстрационную корзину. Docker-сборка, старт без секретов, 160 backend-тестов, 44 frontend-теста и 72 офлайн-сценария воспроизведены успешно. Основной live-сценарий каталога в этой проверке не был выполнен, потому что credentials намеренно не предоставлялись; приложение корректно вернуло 503 вместо выдуманных товарных фактов. Главные проектные ограничения, удерживающие оценку ниже максимума, — неполный импорт каталога и процесс-локальные контекст, кеш и rate limiter для многоворкерного развёртывания. Партнёрская корзина, резервирование и заказ не подключены по причине доступного только read-only API и не штрафуются как внешнее ограничение.",
+      "global": {
+        "criteria": [
+          {
+            "name": "Ценность решения",
+            "score": 23,
+            "max": 25,
+            "awarded": "Решение адресует конкретное узкое место ekt.kz: клиент получает консультацию и подготовку списка покупки в чате, а менеджер освобождается от однотипных вопросов.",
+            "deductions": "-2 балла за неполное покрытие каталога: при широком поиске индекс содержит только часть магазина, поэтому ценность поиска ассортимента не равна ценности полного каталога.",
+            "evidence": [
+              "README.md:8-17",
+              "README.md:216",
+              "README.md:319-321",
+              "D-001"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "D-001",
+                "reason": "Заявленная пользовательская польза опирается на поиск по ассортименту, но широкое имя/параметрическое сопоставление ограничено уже импортированными страницами; README фиксирует 220 товаров и неполный магазин."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Понятная проблема закупщика и частного покупателя",
+                "implementation": "README связывает консультацию по характеристикам, сертификатам, остаткам, аналогам и условиям покупки с сокращением обращений к менеджеру. Frontend и backend оформлены вокруг единого chat-first сценария, а не вокруг набора разрозненных API.",
+                "value": "Пользователь получает понятный результат в момент выбора товара: проверенную карточку, пояснение и следующий шаг. Это напрямую отвечает описанной проблеме задержки решения о покупке.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:8-17",
+                  "README.md:39-53",
+                  "docs/architecture.md:7-34"
+                ]
+              },
+              {
+                "aspect": "Снижение риска для коммерческих фактов",
+                "implementation": "EktClient разделяет поиск и свежую карточку: индекс нужен для обнаружения, а цена, остаток и склады запрашиваются из detail API. При отсутствии credentials `_request` помечает credentials_missing, а HTTP endpoint возвращает catalog_unavailable.",
+                "value": "Для торгового консультанта честное ‘не удалось проверить’ существенно полезнее убедительной, но неверной цены или наличия. В нашей HTTP-проверке это поведение наблюдалось фактически.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/ekt_client.py:111-133",
+                  "backend/ekt_client.py:273-291",
+                  "captures/20261002T122012038777-http-products-no-credentials.stdout.log"
+                ]
+              },
+              {
+                "aspect": "Польза для закупки по документу",
+                "implementation": "SpecificationParser принимает табличные строки, извлекает количество, сопоставляет артикулы с каталогом и возвращает найденные, неоднозначные и неизвестные позиции с частичной сметой. Загрузка явно не меняет корзину.",
+                "value": "Это расширяет ценность чата с одиночного вопроса до первичной обработки спецификации закупщика, сохраняя понятную границу между оценкой и изменением корзины.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/spec_parser.py:14-17",
+                  "backend/spec_parser.py:162-209",
+                  "backend/spec_parser.py:240-273",
+                  "captures/20261002T121931363579-http-upload-spec.stdout.log"
+                ]
+              },
+              {
+                "aspect": "Практическая польза сохранённого результата",
+                "implementation": "CartService сохраняет демонстрационную корзину в SQLite и выдаёт временную ссылку чтения; frontend после записи перечитывает актуальную корзину и не повторяет неопределённую запись автоматически.",
+                "value": "Пользователь получает не только текстовый совет, но и переход к конкретному списку покупки. Это делает ценность измеримой в пользовательском действии, даже при отсутствии write API партнёра.",
+                "verification": "source",
+                "evidence": [
+                  "backend/cart_service.py:76-101",
+                  "backend/cart_service.py:228-258",
+                  "frontend/src/main.ts:243-258",
+                  "docs/api-contract.md:67-73"
+                ]
+              }
+            ],
+            "scoreReasoning": "23/25 заслужены ясностью проблемы, ориентированностью на покупателя и менеджера, честным отношением к торговым фактам и переходом от консультации к сохраняемой корзине. Два балла удержаны не за отсутствие внешнего доступа ревью, а за подтверждённое самим проектом ограничение: текущий индекс охватывает только 220 товаров и не является полным магазином, поэтому часть поисковых запросов не получает полного ассортимента."
+          },
+          {
+            "name": "Результат и качество решения",
+            "score": 18,
+            "max": 20,
+            "awarded": "Основной прототип собран в работающий backend/frontend контур с документами, мультиязычными ответами, источниками, корзиной и тестовой защитой от опасных действий.",
+            "deductions": "-2 балла за неполную поисковую выборку: основные сценарии по известному ID могут обходить индекс, но широкий поиск остаётся ограниченным импортированными страницами.",
+            "evidence": [
+              "captures/20261002T121548188475-backend-test.stderr.log",
+              "captures/20261002T121720823819-backend-eval.stdout.log",
+              "captures/20261002T121840174088-frontend-test.stdout.log",
+              "captures/20261002T121909236523-http-health.stdout.log",
+              "D-001"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "D-001",
+                "reason": "Качество результата для запроса по свободному названию зависит от частичного индекса; источник прямо говорит, что текущий импорт не охватывает полный магазин."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Воспроизводимая сборка и старт",
+                "implementation": "Backend Dockerfile устанавливает зависимости и Tesseract, frontend Dockerfile выполняет typecheck и production build. Фактические backend/frontend образы собраны; backend стартовал без credentials и /api/health вернул online, version 3.0.0.",
+                "value": "Это подтверждает, что прототип не ограничивается README и может быть поднят в изолированном окружении без передачи секретов.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/Dockerfile:1-34",
+                  "frontend/Dockerfile:1-18",
+                  "captures/20261002T121047897540-backend-build.stderr.log",
+                  "captures/20261002T121807454063-frontend-build.stderr.log",
+                  "captures/20261002T121909236523-http-health.stdout.log"
+                ]
+              },
+              {
+                "aspect": "Тестируемый защитный сценарий корзины",
+                "implementation": "Сначала создаётся offer с товаром, количеством, ценой и остатком, затем confirm требует confirmed=true, одноразовый токен, совпадающие товар/количество и повторную свежую проверку. SQLite-транзакции защищают запись от повторного изменения.",
+                "value": "Критическое требование ‘не менять корзину без согласия’ реализовано на сервере, а не только скрыто кнопкой в UI. Это делает пользовательский результат предсказуемым при ошибках или повторных запросах.",
+                "verification": "source",
+                "evidence": [
+                  "backend/cart_service.py:126-161",
+                  "backend/cart_service.py:228-258",
+                  "backend/tests/test_guardrails.py:1-80",
+                  "backend/tests/test_cart_changes.py:1-104"
+                ]
+              },
+              {
+                "aspect": "Согласованный frontend/backend контракт",
+                "implementation": "Frontend передаёт язык, сессию и multipart-файл, отображает reasoning steps, источники, предупреждения и pending offer; после подтверждения перечитывает корзину, а после неопределённой записи не делает автоматический replay.",
+                "value": "Результат для пользователя включает не только текст, но и структурированные карточки, статус действия, ссылку и состояние корзины. Это снижает риск рассинхронизации между интерфейсом и сервером.",
+                "verification": "source",
+                "evidence": [
+                  "frontend/src/chat/api.ts:1-190",
+                  "frontend/src/main.ts:237-290",
+                  "frontend/src/main.ts:347-370",
+                  "frontend/tests/api.test.mjs:1-180"
+                ]
+              },
+              {
+                "aspect": "Реальные локальные проверки вместо только заявлений",
+                "implementation": "В изолированном Docker-прогоне прошло 160 backend-тестов; офлайн-оценка дала 24/24 на каждом из RU/KK/EN; frontend дал 44/44. Отдельно проверены health, session и upload HTTP endpoints.",
+                "value": "Широкая регрессия покрывает guardrails, документы, локализацию, поиск и сбои инструментов. Она не заменяет live каталога, но подтверждает целостность значительной части MVP.",
+                "verification": "observed",
+                "evidence": [
+                  "captures/20261002T121548188475-backend-test.stderr.log",
+                  "captures/20261002T121720823819-backend-eval.stdout.log",
+                  "captures/20261002T121840174088-frontend-test.stdout.log",
+                  "captures/20261002T121909236523-http-health.stdout.log",
+                  "captures/20261002T121931363579-http-upload-spec.stdout.log"
+                ]
+              }
+            ],
+            "scoreReasoning": "18/20 отражают фактически собранный и протестированный контур: сборка, старт, guardrails, parser, мультиязычные регрессии и HTTP-ошибка без выдуманных данных работают. Максимум удерживает D-001: даже при корректной архитектуре широкий товарный поиск не гарантирует результат по полному ассортименту, пока импорт остаётся частичным. Отсутствие credentials не использовано как штраф."
+          },
+          {
+            "name": "Инновационность",
+            "score": 15,
+            "max": 15,
+            "awarded": "Прототип заслуживает полный балл за сочетание source-grounded агента, объяснимых аналогов, безопасного предложения корзины и обработки закупочных документов в одном сценарии.",
+            "deductions": "Подтверждённых project-owned дефектов, влияющих именно на инновационность, не установлено; ограничения каталога и масштабирования учтены в соответствующих критериях.",
+            "evidence": [
+              "docs/architecture.md:34-60",
+              "backend/agent_service.py:35-50",
+              "backend/ekt_client.py:352-399",
+              "backend/cart_service.py:126-161"
+            ],
+            "deductionItems": [],
+            "awardedDetails": [
+              {
+                "aspect": "Инструменты только для чтения и компоновка по доказательствам",
+                "implementation": "Агент имеет отдельные allowlisted tools для поиска, detail, аналогов, knowledge base и складов города. System prompt запрещает инструментам менять корзину, а ToolExecutor валидирует аргументы и собирает результаты в Evidence.",
+                "value": "Это более безопасная и объяснимая схема, чем свободная генерация коммерческого ответа: модель планирует, но запись остаётся серверной операцией с отдельной политикой согласия.",
+                "verification": "source",
+                "evidence": [
+                  "backend/agent_service.py:35-50",
+                  "backend/agent_service.py:83-128",
+                  "backend/agent/tool_executor.py:32-72"
+                ]
+              },
+              {
+                "aspect": "Аналог как проверяемое соответствие параметров",
+                "implementation": "analog_match сначала требует одинаковое семейство, затем проверяет обязательные характеристики: ток, полюса, напряжение, отключающую способность, дифференциальный ток или параметры кабеля. Для каждого совпадения возвращается matched_parameters и rationale.",
+                "value": "Рекомендация объясняется техническими причинами и не сводится к похожему названию или случайному товару. Для торгового ассистента это заметное преимущество по доверию.",
+                "verification": "source",
+                "evidence": [
+                  "backend/ekt_client.py:352-399",
+                  "backend/agent_service.py:190-210",
+                  "backend/agent/composer.py:99-106"
+                ]
+              },
+              {
+                "aspect": "Предложение корзины как отдельное состояние",
+                "implementation": "Выбор товара только создаёт pending offer; подтверждение требует одноразового токена, точного товара и количества, свежих цены/остатка и явного boolean подтверждения. В модельные tools операция записи намеренно не включена.",
+                "value": "Такое разделение консультации, предложения и мутации учитывает риск prompt injection и случайного изменения покупки; оно полезно именно для commerce-сценария.",
+                "verification": "source",
+                "evidence": [
+                  "backend/agent_service.py:42-50",
+                  "backend/agent_service.py:212-235",
+                  "backend/cart_service.py:154-161",
+                  "backend/cart_service.py:228-248"
+                ]
+              },
+              {
+                "aspect": "Документ как безопасный вход в тот же workflow",
+                "implementation": "PDF/DOCX/XLSX/XLS/TXT и изображения проходят bounded parsing/OCR, строки получают статусы и количества, неизвестные строки сохраняются отдельно, а cart_updated всегда остаётся false на upload path.",
+                "value": "Команда расширила чат от вопроса о карточке до первичной закупочной спецификации, не смешивая автоматическое распознавание с полномочием покупать.",
+                "verification": "source",
+                "evidence": [
+                  "backend/spec_parser.py:14-17",
+                  "backend/spec_parser.py:75-159",
+                  "backend/spec_parser.py:240-273",
+                  "backend/main.py:360-369"
+                ]
+              }
+            ],
+            "scoreReasoning": "15/15: в рамках пятичасового MVP нестандартность выражена не отдельной модной технологией, а связкой объяснимого retrieval/аналогов, серверных consent-ограничений и спецификаций. В коде есть собственное преимущество — модель не получает права записи, а коммерческие факты и rationale выводятся из проверенных структурированных данных."
+          },
+          {
+            "name": "Потенциал развития и масштабирования",
+            "score": 17,
+            "max": 20,
+            "awarded": "Архитектура хорошо разложена по заменяемым компонентам: каталог, knowledge index, agent, parser, cart и frontend имеют отдельные контракты и точки расширения.",
+            "deductions": "-1 балл за частичный каталог как операционное ограничение роста и -2 балла за состояние диалога, кеш и rate limiter, локальные одному процессу и требующие общего состояния для нескольких workers.",
+            "evidence": [
+              "docs/architecture.md:7-34",
+              "README.md:216",
+              "README.md:319-327",
+              "docs/architecture.md:116-122",
+              "D-001",
+              "D-002"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "D-001",
+                "reason": "Расширение на весь магазин требует завершить checkpoint-импорт и обновление каталога; текущий partial index ограничивает горизонтальное покрытие ассортимента."
+              },
+              {
+                "points": 2,
+                "findingId": "D-002",
+                "reason": "Диалоговый RAM-контекст, оперативный кеш и limiter локальны процессу; README прямо указывает, что несколько workers требуют согласованного общего состояния. Это подтверждённый барьер для масштабирования за пределы одного процесса."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Модульная архитектура",
+                "implementation": "Документированная схема отделяет AgentService, router/state, ToolExecutor, composer, EktClient, knowledge retrieval, parser и CartService. Frontend общается через описанный API-контракт.",
+                "value": "Компоненты можно развивать независимо: например, заменить read-only каталог или добавить официальный cart API без переписывания parser и UI целиком.",
+                "verification": "source",
+                "evidence": [
+                  "docs/architecture.md:7-34",
+                  "docs/api-contract.md:1-181"
+                ]
+              },
+              {
+                "aspect": "Подготовленные точки интеграции",
+                "implementation": "Есть health/integrations endpoints, coverage/checkpoint каталога, источник и версия знаний, CSV/HTML read-link корзины, ручная эскалация и явное перечисление требований к partner cart/CRM.",
+                "value": "Проект не маскирует отсутствующие интеграции и тем самым оставляет ясный путь от демо к официальному API партнёра, CRM и авторизации покупателя.",
+                "verification": "source",
+                "evidence": [
+                  "backend/main.py:206-213",
+                  "backend/main.py:272-278",
+                  "docs/api-contract.md:95-96",
+                  "README.md:319",
+                  "README.md:326"
+                ]
+              },
+              {
+                "aspect": "Возобновляемое покрытие каталога",
+                "implementation": "CatalogIndex и import CLI сохраняют checkpoint, дедуплицируют товары, обрабатывают повтор страниц и 429; detail API остаётся источником свежих торговых фактов.",
+                "value": "Это разумная основа для постепенного расширения каталога, а не одноразовый hard-coded demo dataset. Ограничение текущего охвата зафиксировано честно.",
+                "verification": "source",
+                "evidence": [
+                  "backend/retrieval/catalog_index.py:1-180",
+                  "README.md:212-216",
+                  "docs/architecture.md:83-91"
+                ]
+              },
+              {
+                "aspect": "Языки и corpus как расширяемый слой",
+                "implementation": "Knowledge corpus версионируется и индексируется в SQLite; ответы и сервисные ошибки локализованы для RU/KK/EN, а embeddings являются opt-in и имеют lexical fallback.",
+                "value": "Можно добавлять материалы и языки без обязательного доступа к OpenAI, а provenance и статус проверки сохраняются для дальнейшего редакционного контроля.",
+                "verification": "source",
+                "evidence": [
+                  "docs/architecture.md:60-82",
+                  "database/knowledge/README.md:1-120",
+                  "backend/localization.py:1-115",
+                  "captures/20261002T121909236523-http-health.stdout.log"
+                ]
+              }
+            ],
+            "scoreReasoning": "17/20: модульность, checkpoint-импорт, версионируемый knowledge layer и явные integration contracts дают хороший путь развития. Три балла удержаны за project-owned ограничения D-001 и D-002: каталог ещё не покрывает весь магазин, а process-local state потребует общей инфраструктуры прежде, чем безопасно масштабировать несколько workers. Неподключённые partner cart/CRM не включены в deductions, поскольку в доступном кейсе заявлен только read-only API."
+          },
+          {
+            "name": "Презентация, демо и ответы на вопросы",
+            "score": 20,
+            "max": 20,
+            "awarded": "README даёт воспроизводимую локальную демонстрацию, архитектуру, API-контракт, команды проверок, ограничения и ожидаемые результаты. Устной презентации и вопросов в этом разборе не было, поэтому оценивается только репозиторная демонстрация.",
+            "deductions": "Подтверждённых project-owned дефектов, влияющих именно на репозиторную ясность и воспроизводимое демо, не установлено. Визуальная непроверенность относится к review environment и не является снятием баллов.",
+            "evidence": [
+              "README.md:1-17",
+              "README.md:114-176",
+              "README.md:256-303",
+              "README.md:317-345",
+              "docs/architecture.md:1-122"
+            ],
+            "deductionItems": [],
+            "awardedDetails": [
+              {
+                "aspect": "README объясняет ценность и границы",
+                "implementation": "Документ последовательно раскрывает проблему, состав возможностей, поток данных, технологии, интеграции и ограничения; отдельно сказано, что бизнес-метрики пока не измерялись.",
+                "value": "Участнику и жюри легко отличить готовое в прототипе от будущей интеграции; это повышает убедительность демонстрации и не выдаёт демо-корзину за настоящий заказ.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:8-17",
+                  "README.md:18-53",
+                  "README.md:305-328"
+                ]
+              },
+              {
+                "aspect": "Пошаговый сценарий демо",
+                "implementation": "README содержит последовательность поиска товара, уточнения города, отмены offer, подтверждения, восстановления корзины, загрузки спецификации, условий покупки и переключения RU/KK/EN.",
+                "value": "Сценарий показывает не одну красивую карточку, а целостное пользовательское путешествие и контрольные точки безопасности.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:231-253"
+                ]
+              },
+              {
+                "aspect": "Репозиторные команды и ожидаемые результаты",
+                "implementation": "Раздел проверки приводит Docker backend tests, eval runner, OCR smoke, live smoke, frontend typecheck/test/build и таблицу ожидаемых итогов.",
+                "value": "Локальное демо воспроизводимо без публичного URL; наши прогоны подтвердили ключевые команды для backend/frontend и health.",
+                "verification": "observed",
+                "evidence": [
+                  "README.md:256-303",
+                  "captures/20261002T121548188475-backend-test.stderr.log",
+                  "captures/20261002T121720823819-backend-eval.stdout.log",
+                  "captures/20261002T121840174088-frontend-test.stdout.log"
+                ]
+              },
+              {
+                "aspect": "Честная документация неизвестного",
+                "implementation": "README отдельно отмечает partial catalog, demo cart, отсутствие публичного deploy, необязательные OpenAI/embeddings, native review для казахского и неполную мобильную приёмку.",
+                "value": "Это делает ответы на вопросы жюри проверяемыми: проект не приписывает себе резервирование, полную LLM-оценку или полноценный production SLA.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:317-328",
+                  "README.md:332-345",
+                  "docs/architecture.md:118-122"
+                ]
+              }
+            ],
+            "scoreReasoning": "20/20: README достаточно подробен для воспроизводимого локального демо и ясно отделяет подтверждённое от планируемого. Публичная ссылка и устная презентация отсутствуют, но правила этого разбора не считают их обязательными и не снимают баллы за отсутствие. Визуальный браузерный осмотр оставлен пользователю и не превращён в deduction."
+          }
+        ],
+        "total": 93
+      },
+      "case": null,
+      "judgeScore": 93,
+      "caseRequirements": [
+        {
+          "requirement": "Отвечать по существующему товару из каталога: карточка, технические характеристики, сертификат и наличие.",
+          "status": "unverified",
+          "explanation": "Код проходит через live detail API, нормализует свойства, сертификат, склады, цену и остаток; известный ID обрабатывается отдельным путём. Но в текущем ревью credentials намеренно не предоставлялись: фактический запрос к /api/products вернул 503 catalog_unavailable. Это ограничение проверки, а не доказательство поломки.",
+          "evidence": [
+            "backend/ekt_client.py:208-291",
+            "backend/ekt_client.py:293-350",
+            "backend/agent/composer.py:79-107",
+            "captures/20261002T122012038777-http-products-no-credentials.stdout.log"
+          ]
+        },
+        {
+          "requirement": "При нулевом остатке находить релевантный аналог и объяснять соответствие.",
+          "status": "partial",
+          "explanation": "Алгоритм проверяет семейство, обязательные параметры, положительный остаток и возвращает matched_parameters/rationale; агент повторно связывает аналог с исходным товаром. Live нулевой товар из предоставленного API не удалось проверить без credentials, а поиск ограничен доступной выборкой каталога.",
+          "evidence": [
+            "backend/ekt_client.py:352-399",
+            "backend/agent_service.py:190-210",
+            "backend/agent_service.py:390-421",
+            "README.md:320-321"
+          ]
+        },
+        {
+          "requirement": "Отвечать об оплате, доставке, возврате, минимальной партии и других условиях покупки.",
+          "status": "met",
+          "explanation": "Условия вынесены в версионируемую knowledge base, router выделяет policy intents, а ответы сопровождаются источниками. Это не требует live catalog credentials и покрыто офлайн-тестами локализации/retrieval.",
+          "evidence": [
+            "backend/agent/router.py:137-183",
+            "backend/agent_service.py:252-279",
+            "backend/knowledge_base.py:1-160",
+            "backend/tests/test_agent_api.py:1-90",
+            "captures/20261002T121720823819-backend-eval.stdout.log"
+          ]
+        },
+        {
+          "requirement": "Менять корзину только после явного подтверждения, с учётом количества и остатка.",
+          "status": "met",
+          "explanation": "Offer и confirm разделены сервером. Confirm требует confirmed=true и одноразовый токен, повторно проверяет цену/остаток и отклоняет превышение остатка; без подтверждения возвращается confirmation_required. Тесты отдельно проверяют неизвестный каталог, повтор и изменение корзины.",
+          "evidence": [
+            "backend/cart_service.py:108-141",
+            "backend/cart_service.py:154-161",
+            "backend/cart_service.py:228-258",
+            "backend/tests/test_guardrails.py:22-80",
+            "backend/tests/test_cart_changes.py:89-104"
+          ]
+        },
+        {
+          "requirement": "После добавления давать ссылку на актуальное состояние корзины.",
+          "status": "met",
+          "explanation": "После подтверждения сервер формирует новый read-link и возвращает cart_url; GET /cart/{token} читает SQLite-состояние, а frontend перечитывает корзину после успешной записи. Ссылка ведёт на демонстрационную сохранённую корзину, а не утверждает создание заказа ekt.kz.",
+          "evidence": [
+            "backend/cart_service.py:76-101",
+            "backend/cart_service.py:249-258",
+            "backend/main.py:329-347",
+            "frontend/src/main.ts:243-258",
+            "docs/api-contract.md:67-73"
+          ]
+        },
+        {
+          "requirement": "Принимать текст, PDF, Word/Excel и изображения для спецификации.",
+          "status": "met",
+          "explanation": "Backend принимает PDF, TXT, DOCX, XLSX, XLS, JPEG, PNG и WEBP; текстовые документы разбираются локально, сканы/фото идут через bounded OCR при наличии Tesseract. Legacy .doc явно отклоняется с предложением сохранить как .docx.",
+          "evidence": [
+            "backend/spec_parser.py:14-17",
+            "backend/spec_parser.py:29-57",
+            "backend/spec_parser.py:75-159",
+            "backend/main.py:360-369",
+            "captures/20261002T121548188475-backend-test.stderr.log"
+          ]
+        },
+        {
+          "requirement": "Не выдумывать цену/наличие и не менять корзину при загрузке документа.",
+          "status": "met",
+          "explanation": "Неизвестные цена и stock остаются неизвестными, ошибки каталога не подменяются синтетическими ответами, а upload возвращает cart_updated=false. В HTTP-проверке без credentials строки были распознаны по количеству, но не превращены в товары и корзина не изменилась.",
+          "evidence": [
+            "backend/ekt_client.py:111-133",
+            "backend/agent/composer.py:79-92",
+            "backend/spec_parser.py:266-273",
+            "frontend/src/main.ts:347-355",
+            "captures/20261002T121931363579-http-upload-spec.stdout.log"
+          ]
+        },
+        {
+          "requirement": "Не запрашивать и не хранить платёжные данные.",
+          "status": "met",
+          "explanation": "Router распознаёт сообщения с CVV/CVC и контекстом карточных реквизитов как sensitive, исключает такие сообщения из истории обработки, а README фиксирует отсутствие хранения платёжных реквизитов и chat history в БД.",
+          "evidence": [
+            "backend/agent/router.py:68-74",
+            "backend/agent_service.py:218-220",
+            "README.md:312-315",
+            "backend/tests/test_guardrails.py:1-21"
+          ]
+        },
+        {
+          "requirement": "Объяснять аналог и сохранять источники/предупреждения в ответе.",
+          "status": "met",
+          "explanation": "Карточки содержат source-grounded поля, rationale и matched parameters; конфликтующие свойства не скрываются, а выводятся как предупреждение. Knowledge responses возвращают metadata источников.",
+          "evidence": [
+            "backend/ekt_client.py:344-350",
+            "backend/agent/composer.py:97-106",
+            "backend/agent_service.py:156-165",
+            "frontend/src/main.ts:266-270",
+            "backend/tests/test_agent_v3.py:295-335"
+          ]
+        },
+        {
+          "requirement": "Поддерживать desktop/mobile интерфейс и языковые сценарии.",
+          "status": "unverified",
+          "explanation": "RU/KK/EN контракты и frontend unit tests проходят, но правила этого ревью запрещают визуальный/browser осмотр. Репозиторий сам указывает, что отдельная приёмка на настоящем телефоне не выполнена; это оставлено как неопределённость без штрафа.",
+          "evidence": [
+            "frontend/src/chat/i18n.ts:1-95",
+            "frontend/tests/localization.test.mjs:1-45",
+            "README.md:325-328"
+          ]
+        }
+      ],
+      "testData": {
+        "provided": [
+          "cases/10/case-data/HackAlem AI_ ИИ-ассистент для чата на сайте ekt.kz.md",
+          "cases/10/case-data/ИИ-ассистент для чата на сайте ekt.kz ДАННЫЕ.docx.md"
+        ],
+        "used": [
+          "cases/10/task.txt",
+          "cases/10/case-data/HackAlem AI_ ИИ-ассистент для чата на сайте ekt.kz.md",
+          "cases/10/case-data/ИИ-ассистент для чата на сайте ekt.kz ДАННЫЕ.docx.md",
+          "docs/sample_specification.txt"
+        ],
+        "checks": [
+          {
+            "input": "Краткое задание и case-data: требования к каталогу, аналогам, условиям, подтверждаемой корзине и входным форматам; data-документ содержит тестовый API и credentials, которые не публиковались и не применялись.",
+            "method": "Сопоставление требований с исходниками backend/frontend и API-контрактом.",
+            "result": "Найдены отдельные пути для catalog detail, analogs, knowledge, upload, offer/confirm и read-link; ограничения demo cart и read-only partner API явно документированы.",
+            "conclusion": "Требования применены к оценке; секретные значения из data-документа в отчёт не перенесены."
+          },
+          {
+            "input": "docs/sample_specification.txt: табличный файл с двумя строками — одним артикулом из примера и одной намеренно неизвестной позицией; количества проверены как целые.",
+            "method": "POST /api/agent/upload-spec через локально запущенный backend без credentials.",
+            "result": "HTTP 200; заголовок распознан, обе строки получили quantity 2/3, но total_positions_found=0 и обе остались unmatched с ambiguous_match, потому что catalog search без credentials не вернул товары; cart_updated=false.",
+            "conclusion": "Парсер и guardrail загрузки наблюдались; сопоставление с live catalog осталось внешне заблокированным и не трактуется как дефект проекта."
+          },
+          {
+            "input": "Запрос к /api/products?page=1 в запущенном приложении без EKT credentials.",
+            "method": "HTTP GET /api/products?page=1.",
+            "result": "HTTP 503, code catalog_unavailable, локализованный ответ без synthetic product data.",
+            "conclusion": "Поведение соответствует требованию не выдумывать цену и наличие; live product/zero-stock/analog checks требуют внешнего доступа."
+          }
+        ],
+        "limitations": [
+          "Credentials из кейса намеренно не передавались; живой каталог, live analog и реальный товар нельзя было сопоставить.",
+          "Документальный upload проверен на TXT, а PDF/DOCX/XLSX/XLS и OCR покрыты исходниками и unit-тестами, без визуального browser-теста.",
+          "Проверялся локальный demo cart; partner cart API в исходных материалах read-only и не подключён."
+        ]
+      },
+      "runtime": {
+        "status": "partial",
+        "build": "Backend Docker image и frontend build-target собраны успешно. Frontend image при сборке выполнил npm run typecheck и npm run build.",
+        "start": "Backend запущен без credentials; /api/health вернул HTTP 200 и status=online, agent_mode=rules, OCR доступен.",
+        "scenario": "Локальный parser/session/health и все офлайн-регрессии воспроизведены. Основной live catalog-сценарий частичен: без credentials /api/products возвращает 503, поэтому live карточка, нулевой остаток и live analog не проверены.",
+        "environment": "Изолированные Docker-контейнеры из snapshot e44238290bd6d131746377afe7a5945115470c72; секреты не передавались; browser/CUA не использовались.",
+        "summary": "Проект deployable и тестируемый локально, но runtime status partial соответствует правилу: приложение стартовало, а основной сценарий внешнего каталога заблокирован отсутствием credentials.",
+        "checks": [
+          {
+            "command": "docker build -f backend/Dockerfile .",
+            "result": "Успешно создан backend image; зависимости установлены, Tesseract и исходники скопированы.",
+            "id": "check-build-backend",
+            "stage": "build",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Backend image собирается из snapshot без секретов."
+          },
+          {
+            "command": "docker build --target build -f frontend/Dockerfile frontend",
+            "result": "Успешно; npm run typecheck и npm run build завершились с production bundle.",
+            "id": "check-build-frontend",
+            "stage": "build",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Frontend typecheck и production build завершаются успешно."
+          },
+          {
+            "command": "python -m unittest discover -s backend/tests -p test_*.py -v",
+            "result": "160 tests, 160 passed, 0 failed, exit code 0.",
+            "id": "check-backend-tests",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Backend unit/domain/API/guardrail/upload tests проходят на synthetic transport без внешнего API."
+          },
+          {
+            "command": "python -m backend.evals.run",
+            "result": "offline_rules: RU 24/24, KK 24/24, EN 24/24; failed=[]; exit code 0.",
+            "id": "check-backend-eval",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "72 синтетических диалоговых сценария проходят с проверкой языка, числовых фактов и cart invariants."
+          },
+          {
+            "command": "npm test",
+            "result": "44 tests passed, 0 failed, exit code 0.",
+            "id": "check-frontend-tests",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Frontend API, localization, cart links, comparison и product safety tests проходят."
+          },
+          {
+            "command": "python backend/main.py",
+            "result": "Процесс стартовал; GET /api/health вернул HTTP 200, status=online, version 3.0.0, agent_mode=rules, catalog_configured=false, partner_cart_connected=false.",
+            "id": "check-backend-start",
+            "stage": "start",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Backend стартует без OpenAI/EKT credentials и публикует health endpoint."
+          },
+          {
+            "command": "GET /api/session",
+            "result": "POST /api/session вернул HTTP 200 и новую guest session; секреты и session token в отчёт не включены.",
+            "id": "check-http-session",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Сессия корзины создаётся до chat/cart операций."
+          },
+          {
+            "command": "GET /api/health",
+            "result": "HTTP 200; 53 documents, 159 chunks, lexical retrieval, OCR available, SQLite persistence.",
+            "id": "check-http-health",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Health отражает честный режим источников, готовность OCR и состояние интеграций."
+          },
+          {
+            "command": "POST /api/agent/upload-spec",
+            "result": "HTTP 200 на docs/sample_specification.txt; строки/количества распознаны, unmatched сохранены, cart_updated=false.",
+            "id": "check-http-upload-spec",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Загрузка спецификации обрабатывается без изменения корзины и без подстановки товара при неизвестном сопоставлении."
+          },
+          {
+            "command": "GET /api/products?page=1",
+            "result": "HTTP 503 catalog_unavailable из-за отсутствующих EKT credentials; synthetic result не возвращён.",
+            "id": "check-http-live-catalog",
+            "stage": "scenario",
+            "status": "blocked",
+            "cause": "external_service",
+            "expected": "Получить реальные товары для проверки существующего товара, нулевого остатка и аналогов."
+          }
+        ],
+        "limitations": [
+          "EKT credentials и OpenAI key не предоставлялись; live catalog и model-planner не запускались.",
+          "Partner cart/CRM/reservation не тестировались, потому что в проекте заявлен только read-only catalog API.",
+          "Визуальный desktop/mobile/browser осмотр выполняет пользователь по условиям задания; здесь не проводился."
+        ]
+      },
+      "liveDemo": {
+        "status": "none",
+        "url": null,
+        "notes": "Публичная deployed-ссылка в репозитории не указана. Локальный backend был подтверждён HTTP health/session/upload проверками; frontend визуально не проверялся по пользовательской политике. Отсутствие публичного URL не использовано как deduction."
+      },
+      "fiveHourContext": "Для пятичасового хакатона это сильный объём: команда собрала полноценный локальный workflow, мультиязычный retrieval, безопасную корзину, document ingestion, Docker packaging и обширную регрессию. Оценка не требует production cart/CRM, публичного deployment или платной модели, которых нет в исходном API и окружении. Максимум ограничен только подтверждёнными проектными свойствами: каталог оставлен частично импортированным, а process-local state требует инфраструктурного шага перед multi-worker масштабированием.",
+      "strengths": [
+        "S-001: коммерческие факты не подменяются синтетическими при недоступном каталоге.",
+        "S-002: серверная offer/confirm политика защищает корзину от действий без явного согласия.",
+        "S-003: спецификации и изображения проходят ограниченный разбор с неизвестными строками и без автоматической записи.",
+        "S-004: RU/KK/EN offline evaluation и retrieval regression проходят полностью.",
+        "S-005: README и API contract дают воспроизводимое локальное демо и честно фиксируют ограничения.",
+        "S-006: аналоги объясняются проверяемыми техническими параметрами, а не только названием."
+      ],
+      "gaps": [
+        "Широкий поиск не покрывает полный ассортимент: текущий импорт каталога — 220 товаров, а complete_catalog=false.",
+        "Контекст диалога, оперативный кеш и rate limiter локальны процессу; для нескольких workers нужно общее согласованное состояние."
+      ],
+      "futureAdvice": [
+        {
+          "principle": "Сначала закрывать coverage-gate для основного источника фактов",
+          "why": "D-001: пользовательская ценность поиска ассортимента зависит от partial index, поэтому запросы по названию/параметрам могут не увидеть товар вне уже импортированных страниц.",
+          "how": "В следующем хакатоне добавьте короткий coverage checklist: checkpoint-импорт до пустой страницы, health-поле complete_catalog и отдельный тест поиска товара с последней импортированной страницы; только после этого демонстрируйте широкий поиск.",
+          "findingIds": [
+            "D-001"
+          ],
+          "successCheck": "Health сообщает complete_catalog=true либо UI явно показывает scope, а два поиска из разных страниц каталога возвращают detail с актуальными ценой и остатком.",
+          "timeboxMinutes": 45
+        },
+        {
+          "principle": "Рано отделять process-local state от stateless HTTP слоя",
+          "why": "D-002: RAM-контекст, кеш и limiter корректны для одного процесса, но README прямо указывает на необходимость общего состояния для нескольких workers.",
+          "how": "Для другого MVP зафиксируйте state boundary в контракте: вынесите session context/limits в Redis или другой общий store, оставив SQLite/каталог за отдельными репозиториями, и добавьте тест с двумя worker-инстансами.",
+          "findingIds": [
+            "D-002"
+          ],
+          "successCheck": "После переключения между двумя backend workers сохраняются выбранный кандидат, pending clarification и rate-limit semantics без расхождения.",
+          "timeboxMinutes": 60
+        }
+      ],
+      "uncertainties": [
+        "Живой API ekt.kz не был доступен в проверке без credentials; существующий товар, нулевой остаток и аналог не получили фактический live-ответ.",
+        "OPENAI planner и embeddings не запускались; проверен deterministic rules/lexical режим и code path внешнего провайдера.",
+        "Реальная корзина ekt.kz, резервирование, CRM и оформление заказа не подключены в самом проекте, потому что исходный partner API read-only.",
+        "Визуальное поведение desktop/mobile и настоящего телефона не проверялось: такую проверку выполняет пользователь.",
+        "Казахская естественность и бизнес-эффект не подтверждены независимой выборкой или измерениями; README это явно отмечает."
+      ],
+      "reviewPolicyVersion": 2,
+      "assessmentStatus": "ready",
+      "findings": [
+        {
+          "id": "S-001",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "При отсутствии EKT credentials backend не выдумывает карточку, цену или остаток, а возвращает catalog_unavailable.",
+          "expected": "Ошибку внешнего источника нужно показать явно и не превращать в коммерческий факт.",
+          "actual": "GET /api/products?page=1 вернул HTTP 503 с code=catalog_unavailable; health сообщил catalog_configured=false.",
+          "evidence": [
+            "backend/ekt_client.py:111-133",
+            "captures/20261002T122012038777-http-products-no-credentials.stdout.log",
+            "backend/tests/test_agent_api.py:71-90"
+          ],
+          "checkIds": [
+            "check-http-live-catalog",
+            "check-http-health"
+          ]
+        },
+        {
+          "id": "S-002",
+          "kind": "strength",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Изменение корзины защищено отдельным offer/confirm этапом, токеном, проверкой подтверждения, цены и остатка.",
+          "expected": "До явного подтверждения корзина не меняется; после него количество не превышает свежий остаток.",
+          "actual": "CartService отвергает confirmed != true, связывает offer с товаром/количеством/операцией и выполняет свежий _product плюс _check_stock перед записью.",
+          "evidence": [
+            "backend/cart_service.py:108-141",
+            "backend/cart_service.py:154-161",
+            "backend/cart_service.py:228-258",
+            "backend/tests/test_guardrails.py:22-80"
+          ],
+          "checkIds": [
+            "check-backend-tests",
+            "check-frontend-tests"
+          ]
+        },
+        {
+          "id": "S-003",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Загрузка спецификации распознаёт строки и количества, но не авторизует изменение корзины.",
+          "expected": "Неизвестные строки остаются неизвестными, а upload не меняет cart.",
+          "actual": "HTTP upload вернул success, обе строки остались unmatched при недоступном каталоге, cart_updated=false.",
+          "evidence": [
+            "backend/spec_parser.py:162-209",
+            "backend/spec_parser.py:240-273",
+            "backend/main.py:360-369",
+            "captures/20261002T121931363579-http-upload-spec.stdout.log"
+          ],
+          "checkIds": [
+            "check-http-upload-spec",
+            "check-backend-tests"
+          ]
+        },
+        {
+          "id": "S-004",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Мультиязычный rules/retrieval контур и frontend utility layer проходят заявленную локальную регрессию.",
+          "expected": "Сценарии RU/KK/EN и API/UI safety tests должны завершаться без ошибок.",
+          "actual": "Офлайн eval: 24/24 на каждом языке; backend: 160/160; frontend: 44/44.",
+          "evidence": [
+            "captures/20261002T121720823819-backend-eval.stdout.log",
+            "captures/20261002T121548188475-backend-test.stderr.log",
+            "captures/20261002T121840174088-frontend-test.stdout.log"
+          ],
+          "checkIds": [
+            "check-backend-eval",
+            "check-backend-tests",
+            "check-frontend-tests"
+          ]
+        },
+        {
+          "id": "S-005",
+          "kind": "strength",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "README, API contract и архитектурный документ образуют воспроизводимое локальное демо с честными границами.",
+          "expected": "Участник должен понимать запуск, happy path, проверки и ограничения без устной презентации.",
+          "actual": "Документы описывают Docker/local запуск, 5–7 minute сценарий, тесты, partial catalog, demo cart, источники и внешние зависимости.",
+          "evidence": [
+            "README.md:114-176",
+            "README.md:231-303",
+            "README.md:317-345",
+            "docs/api-contract.md:1-181"
+          ],
+          "checkIds": [
+            "check-build-backend",
+            "check-build-frontend"
+          ]
+        },
+        {
+          "id": "S-006",
+          "kind": "strength",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Подбор аналогов объясняет совпавшие параметры и связывает альтернативу с исходным товаром.",
+          "expected": "Аналог должен быть технически совместимым, в наличии и объяснимым.",
+          "actual": "analog_match проверяет семейство и обязательные поля, find_analogs фильтрует stock>0, а AgentService добавляет matched_parameters, rationale и analog_for_product_id.",
+          "evidence": [
+            "backend/ekt_client.py:352-399",
+            "backend/agent_service.py:190-210",
+            "backend/agent/composer.py:99-106"
+          ],
+          "checkIds": [
+            "check-backend-tests",
+            "check-backend-eval"
+          ]
+        },
+        {
+          "id": "D-001",
+          "kind": "defect",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Текущий каталог не является полным: импортировано 220 товаров, complete_catalog=false, а широкий поиск использует индекс и уже загруженные страницы.",
+          "expected": "Для требования консультанта по ассортименту поиск по названию/параметрам должен охватывать весь доступный каталог либо явно иметь завершённый coverage.",
+          "actual": "README и architecture фиксируют partial index; прямой ID может запрашиваться отдельно, но свободный поиск за пределами индекса не гарантирован.",
+          "evidence": [
+            "README.md:216",
+            "README.md:320",
+            "docs/architecture.md:83-91"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "D-002",
+          "kind": "defect",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Диалоговый RAM-контекст, оперативный кеш и limiter локальны одному процессу.",
+          "expected": "При масштабировании на несколько workers пользовательский context и safety limits должны иметь согласованное общее состояние.",
+          "actual": "README прямо указывает, что несколько workers требуют общего состояния; текущая реализация такого слоя не предоставляет.",
+          "evidence": [
+            "README.md:312",
+            "README.md:327",
+            "docs/architecture.md:116-120",
+            "backend/dialogue_context.py:1-120"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "L-001",
+          "kind": "limitation",
+          "verification": "observed",
+          "responsibility": "external_service",
+          "claim": "В текущем ревью отсутствовал доступ к EKT credentials, поэтому live catalog path не выполнил detail/analog сценарии.",
+          "expected": "Для live проверки нужен действующий внешний доступ к read-only API.",
+          "actual": "Health сообщил catalog_configured=false, products endpoint вернул 503, upload сохранил unmatched rows.",
+          "evidence": [
+            "captures/20261002T121909236523-http-health.stdout.log",
+            "captures/20261002T122012038777-http-products-no-credentials.stdout.log",
+            "captures/20261002T121931363579-http-upload-spec.stdout.log"
+          ],
+          "checkIds": [
+            "check-http-health",
+            "check-http-live-catalog",
+            "check-http-upload-spec"
+          ]
+        },
+        {
+          "id": "L-002",
+          "kind": "limitation",
+          "verification": "unverified",
+          "responsibility": "review_environment",
+          "claim": "Визуальный browser/mobile результат в этом ревью не подтверждался.",
+          "expected": "Для визуальной оценки нужен пользовательский browser/device review.",
+          "actual": "Проведены только static, unit/domain, build и HTTP/API проверки; визуальный осмотр запрещён условиями проверки.",
+          "evidence": [
+            "README.md:328",
+            "frontend/src/index.css:1-190"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "L-003",
+          "kind": "limitation",
+          "verification": "observed",
+          "responsibility": "external_service",
+          "claim": "Без OPENAI_API_KEY приложение работает в deterministic rules/lexical режиме, а embeddings отключены.",
+          "expected": "Model planner/embeddings требуют внешнего ключа и не должны блокировать локальный MVP.",
+          "actual": "Health сообщил agent_mode=rules, retrieval_mode=lexical, embeddings_enabled=false; локальные evals прошли.",
+          "evidence": [
+            "backend/agent_service.py:54-63",
+            "captures/20261002T121909236523-http-health.stdout.log",
+            "captures/20261002T121720823819-backend-eval.stdout.log"
+          ],
+          "checkIds": [
+            "check-http-health",
+            "check-backend-eval"
+          ]
+        },
+        {
+          "id": "L-004",
+          "kind": "limitation",
+          "verification": "source",
+          "responsibility": "external_service",
+          "claim": "Корзина проекта демонстрационная: partner API доступен только для чтения, резервирование, CRM и заказ не подключены.",
+          "expected": "Настоящая интеграция возможна после официального cart/CRM контракта партнёра.",
+          "actual": "Проект явно возвращает cart_mode=demo, partner_cart_connected=false и сохраняет только локальную SQLite корзину/read-link.",
+          "evidence": [
+            "backend/main.py:272-278",
+            "backend/cart_service.py:76-101",
+            "README.md:319",
+            "docs/architecture.md:122"
+          ],
+          "checkIds": [
+            "check-http-health"
+          ]
+        },
+        {
+          "id": "L-005",
+          "kind": "limitation",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Казахский корпус и качество реальной модели не проходили независимую native/holdout-проверку.",
+          "expected": "После MVP нужен native review KK и независимая выборка пользовательских вопросов.",
+          "actual": "Есть 24/24 synthetic KK сценария и локализованные материалы, но README требует дальнейшей вычитки носителем.",
+          "evidence": [
+            "README.md:325",
+            "backend/evals/README.md:20-30",
+            "captures/20261002T121720823819-backend-eval.stdout.log"
+          ],
+          "checkIds": [
+            "check-backend-eval"
+          ]
+        }
+      ],
+      "gapFindingIds": [
+        "D-001",
+        "D-002"
+      ]
+    }
+  ],
+  "score": 93.0,
+  "status": "complete",
+  "expectedJudges": 1
+}

@@ -1,0 +1,1190 @@
+{
+  "methodVersion": 4,
+  "repoId": "hack-07de2d2d-pushin-code",
+  "repoUrl": "https://github.com/BAITC-Hacks/hack-07de2d2d-pushin-code",
+  "caseId": 1,
+  "snapshot": "c68c84c7a13b7e0a45cb60e06d5fdce313806dc1",
+  "judges": [
+    {
+      "methodVersion": 4,
+      "repoId": "hack-07de2d2d-pushin-code",
+      "caseId": 1,
+      "model": "GPT-5.6 Luna",
+      "snapshot": "c68c84c7a13b7e0a45cb60e06d5fdce313806dc1",
+      "overallSummary": "Windcast — цельный и воспроизводимый прототип прогнозирования ВЭС: он нормализует 10-минутную SCADA-историю, получает архивные прогнозы Open-Meteo по двум координатам, проверяет правило «без будущего», строит квантильный прогноз для двух турбин и ВЭС, анализирует риски, принимает решение о пересчёте и публикует версию с трассой агента. Независимый verify.py подтвердил 29 выпусков, 4176 строк, 174 погодных прогона без утечки и превосходство январской модели над тремя базовыми линиями. Docker-сборка backend и frontend прошла, /health и архивный forecast доступны, а детерминированный запуск без OPENAI_API_KEY завершился выпуском v2. Оценка сдержана двумя подтверждёнными ограничениями: исходник модели отбрасывает валидные метки до 2024-06-01, а score.py не умеет напрямую вывести номер турбины из точного длинного имени предоставленного файла. Проверка внешнего LLM/API и визуального интерфейса не проводилась по ограничениям среды и не уменьшает баллы.",
+      "global": {
+        "criteria": [
+          {
+            "name": "Ценность решения",
+            "score": 24,
+            "max": 25,
+            "awarded": "Высокая практическая ценность для диспетчера ВЭС: продукт переводит прогноз погоды в почасовую выработку, вероятный диапазон и предупреждения, пригодные для планирования резерва и заявки.",
+            "deductions": "Снята 1 балл за подтверждённое сужение исторического окна обучения, которое может уменьшить устойчивость модели к более ранним режимам работы.",
+            "evidence": [
+              "README.md:1-19",
+              "README.md:67-70",
+              "outputs/metrics_jan.json",
+              "backend/windcast/model.py:116-145"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "D1",
+                "reason": "Модель получает понятную и полезную бизнес-функцию, но source-фильтр с 2024-06-01 исключает часть предоставленной истории до контрольной даты; это снижает полноту доказанной применимости к сезонным режимам, хотя основной сценарий работает."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Понятная операционная задача",
+                "implementation": "README описывает диспетчера ВЭС как целевого пользователя: на каждом выпуске система показывает пик, минимум, среднее, P10–P90, риски и изменение относительно предыдущей версии; эти значения формируются из plant-строк прогноза, а не из свободного текста LLM.",
+                "value": "Результат непосредственно связан с планированием выработки и резервов, поэтому польза не сводится к демонстрации модели.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:1-19",
+                  "README.md:60-87",
+                  "backend/windcast/tools.py:230-257",
+                  "backend/windcast/tools.py:495-510"
+                ]
+              },
+              {
+                "aspect": "Вероятностный результат для решений",
+                "implementation": "Для каждой из двух турбин и агрегированной ВЭС публикуются P10, P50 и P90 на 48 часов; модель сортирует и ограничивает квантили, а интерфейс выводит диапазон и его покрытие.",
+                "value": "Диапазон неопределённости полезнее одной точки для диспетчерских решений и позволяет обсуждать риск недовыработки.",
+                "verification": "source",
+                "evidence": [
+                  "backend/windcast/model.py:259-340",
+                  "backend/windcast/tools.py:179-228",
+                  "frontend/src/February.jsx:451-472",
+                  "outputs/metrics_jan.json"
+                ]
+              },
+              {
+                "aspect": "Риски превращены в действие агента",
+                "implementation": "analyze_forecast выделяет рампы, обледенение, ветер выше 20 м/с и расхождение моделей; summary_text формирует короткую сводку с временем риска и рекомендацией для диспетчера.",
+                "value": "Система помогает не только узнать прогноз, но и заметить ситуации, требующие внимания оператора.",
+                "verification": "source",
+                "evidence": [
+                  "backend/windcast/tools.py:257-375",
+                  "backend/windcast/tools.py:434-510",
+                  "frontend/src/February.jsx:188-205"
+                ]
+              },
+              {
+                "aspect": "Измеримый эффект на январе",
+                "implementation": "Артефакт метрик содержит nMAE модели 0.1576 против 0.1935 у power_curve, 0.2682 у climatology и 0.3645 у persistence; покрытие P10–P90 равно 0.8052 на 1417 строках.",
+                "value": "Есть проверяемое количественное основание считать подход полезнее простых baseline на отложенном январском окне, а не только заявленная демонстрация.",
+                "verification": "observed",
+                "evidence": [
+                  "outputs/metrics_jan.json",
+                  "verify_backtest: PASS, check=metrics",
+                  "README.md:67-70"
+                ]
+              }
+            ],
+            "scoreReasoning": "Почасовой прогноз, диапазон неопределённости, предупреждения и история версий образуют понятный инструмент для диспетчера. Январские метрики подтверждают пользу относительно трёх простых методов. До максимума не хватает только полноты использования доступной истории: source-фильтр в D1 исключает период с марта 2023 до июня 2024, поэтому устойчивость к более ранним режимам не доказана кодом."
+          },
+          {
+            "name": "Результат и качество решения",
+            "score": 19,
+            "max": 20,
+            "awarded": "Основной пользовательский сценарий воспроизведён: backend стартует, выдаёт готовые выпуски и выполняет детерминированный агентный run с обновлением версии.",
+            "deductions": "Снята 1 балл за неполное использование исторических наблюдений в реально обучаемом артефакте; это не ломает выпуск, но ограничивает качество обобщения.",
+            "evidence": [
+              "runtime.checks: build_backend_docker, http_health, http_archive_forecast, http_deterministic_run",
+              "scripts/verify.py: PASS",
+              "backend/windcast/model.py:138-145"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "D1",
+                "reason": "Проверенный выпуск целостен, но обучение отбрасывает все валидные labels до 2024-06-01; для результата модели это подтверждённый, хотя и некритичный дефект полноты данных."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Работающий backend-контур",
+                "implementation": "Образ backend собран из backend/Dockerfile; контейнер Python 3.12 поднял Uvicorn, healthcheck стал healthy, /health вернул ok=true, deterministic mode и issues_ready=29.",
+                "value": "Это подтверждает deployability и доступность результата из чистого runtime, а не только наличие файлов в checkout.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/Dockerfile:1-32",
+                  "docker build capture=build",
+                  "runtime.checks: http_health"
+                ]
+              },
+              {
+                "aspect": "Проверенный архивный выпуск",
+                "implementation": "GET архивного выпуска вернул version=2, 144 строки и три погодных сегмента; данные были прочитаны из образа, где присутствуют models, data и outputs.",
+                "value": "Пользовательский результат доступен через API без необходимости пересобирать прогноз или подключать LLM.",
+                "verification": "observed",
+                "evidence": [
+                  "runtime.checks: http_archive_forecast",
+                  "backend/Dockerfile:20-24",
+                  "backend/windcast/api.py:735-740"
+                ]
+              },
+              {
+                "aspect": "Сценарий выпуска и пересчёта",
+                "implementation": "POST /api/runs с issue_date 2026-02-13 и mode deterministic завершился done=true, version=2, 20 событиями и последним событием verdict; код запускает v1, получает latest, применяет политику пересчёта и публикует v2.",
+                "value": "Проверен не только read-only endpoint, но и полный пользовательский запуск с изменением состояния и трассировкой.",
+                "verification": "observed",
+                "evidence": [
+                  "runtime.checks: http_deterministic_run",
+                  "backend/windcast/agent.py:273-385",
+                  "backend/windcast/agent.py:112-168"
+                ]
+              },
+              {
+                "aspect": "Целостность заранее посчитанного февраля",
+                "implementation": "Независимый scripts/verify.py, не импортирующий timeline проверяемого кода, проверил наличие 29 выпусков, 4176 строк, формат времени, квантили, диапазон ветра, trace, records, отсутствие stub, сводный CSV и метрики.",
+                "value": "Ключевой заявленный результат проверен отдельным валидатором, устойчивым к ошибкам в самом runtime-коде.",
+                "verification": "observed",
+                "evidence": [
+                  "scripts/verify.py:1-20",
+                  "verify_backtest: result=PASS, failed_checks=[]",
+                  "outputs/forecast_feb2026.csv"
+                ]
+              }
+            ],
+            "scoreReasoning": "Качество подтверждено и статическим независимым валидатором, и запуском Docker/API. Есть готовая модель, публикация, версия, трасса и обработка отказа источника. Один балл удержан за фильтрацию периода истории в model.py: это не даёт наблюдаемого сбоя для текущего выпуска, но объективно уменьшает обучающую выборку."
+          },
+          {
+            "name": "Инновационность",
+            "score": 14,
+            "max": 15,
+            "awarded": "Нестандартность — в сочетании архивной доступности погоды, агентного контроля полного цикла, версии при обновлении входа и явной доказуемости отсутствия утечки.",
+            "deductions": "Снята 1 балл за то, что собственно прогнозный алгоритм остаётся стандартным HistGradientBoostingRegressor; инновационная часть сосредоточена преимущественно в оркестрации и контракте данных.",
+            "evidence": [
+              "backend/windcast/agent.py:35-63",
+              "backend/windcast/weather.py:39-235",
+              "backend/windcast/model.py:193-259",
+              "verify_backtest: no_future PASS"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "D1",
+                "reason": "Суженное окно истории не является поломкой, но уменьшает пространство для демонстрации нового моделирующего подхода; модельная часть остаётся обычной табличной квантильной регрессией."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Агент как управляемый диспетчерский цикл",
+                "implementation": "LLM выбирает инструменты fetch_weather, check_data, run_model, analyze_forecast, recalc_forecast и publish_forecast, а deterministic driver может продолжить цикл после сбоя или отсутствия ключа.",
+                "value": "Это более содержательное применение agentic AI, чем генерация пояснения поверх заранее готового CSV: агент управляет последовательностью и решением о новой версии.",
+                "verification": "source",
+                "evidence": [
+                  "backend/windcast/agent.py:1-9",
+                  "backend/windcast/agent.py:35-63",
+                  "backend/windcast/tools.py:814-879"
+                ]
+              },
+              {
+                "aspect": "Временная честность как исполняемый контракт",
+                "implementation": "weather.py вычисляет lag по горизонту, строит init_time_utc, проверяет источник и отказывает при публикации после T; data.check_data и model.predict повторяют проверки на разных границах.",
+                "value": "Защита от будущих данных встроена в несколько слоёв и не оставлена на обещание агента.",
+                "verification": "source",
+                "evidence": [
+                  "backend/windcast/weather.py:198-235",
+                  "backend/windcast/data.py:190-287",
+                  "backend/windcast/model.py:285-318",
+                  "scripts/verify.py:1-20"
+                ]
+              },
+              {
+                "aspect": "Решение о пересчёте по фактам",
+                "implementation": "Порог 0,5 м/с, freshness, отсутствие поздних прогонов и новые риски собраны в policy_recalc; recalc создаёт новую версию только после проверки и сохраняет change_note.",
+                "value": "Повторный расчёт не выполняется безусловно: система ограничивает шум и объясняет, почему v1 остаётся или появляется v2.",
+                "verification": "source",
+                "evidence": [
+                  "backend/windcast/agent.py:48-55",
+                  "backend/windcast/tools.py:588-628",
+                  "backend/windcast/tools.py:1290-1450"
+                ]
+              },
+              {
+                "aspect": "Детерминированный режим без потери сценария",
+                "implementation": "При отсутствии OPENAI_API_KEY backend переключается на фиксированный driver, использующий те же инструменты и модельные числа; это позволяет выполнить локальный цикл без имитации ответа внешнего сервиса.",
+                "value": "Прототип остаётся проверяемым в офлайн-режиме, а LLM используется там, где она действительно нужна — для выбора шага и объяснения решения.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/windcast/runs.py:65-75",
+                  "runtime.checks: http_health",
+                  "runtime.checks: http_deterministic_run"
+                ]
+              }
+            ],
+            "scoreReasoning": "Архитектурная инновация хорошо обоснована: агентный цикл, архивные previous runs и executable no-future contract вместе решают специфику кейса. До максимума не хватает новизны именно ML-части: source показывает стандартный HistGradientBoosting и урезанную историю, поэтому нестандартность решения в основном системная."
+          },
+          {
+            "name": "Потенциал развития и масштабирования",
+            "score": 18,
+            "max": 20,
+            "awarded": "Проект уже разделён на API, watcher, модель, weather port, store и frontend, поэтому его можно расширять на новые фермы и провайдеры при сохранении временного контракта.",
+            "deductions": "Сняты 2 балла: текущая обучающая выборка жёстко ограничена датой 2024-06-01, а runtime опирается на один погодный источник и один основной ML-артефакт.",
+            "evidence": [
+              "backend/windcast/ports.py:1-88",
+              "backend/windcast/watcher.py",
+              "backend/windcast/model.py:138-145",
+              "backend/windcast/weather.py:17-35"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "D1",
+                "reason": "Для масштабирования на другие климатические режимы полезный исторический диапазон должен быть полнее; жёсткий нижний предел 2024-06-01 ограничивает переносимость, даже при корректном cutoff 2026-01-31."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Слабая связанность компонентов",
+                "implementation": "ports.py разрешает weather, data и model лениво и отдельно, а paths/store отделяют артефакты от API; это позволяет менять ML-реализацию без переписывания agent.py.",
+                "value": "Такой контракт является практичной основой для замены модели или добавления провайдера погоды.",
+                "verification": "source",
+                "evidence": [
+                  "backend/windcast/ports.py:1-88",
+                  "backend/windcast/paths.py:1-60",
+                  "backend/windcast/store.py:1-180"
+                ]
+              },
+              {
+                "aspect": "Live-наблюдатель и повторные выпуски",
+                "implementation": "watcher запускает проверки по расписанию, runs ведёт фоновые задачи и SSE, а journal сохраняет решения; API имеет отдельные endpoints для live status, journal и запуска.",
+                "value": "После хакатона тот же контур можно подключить к операционному расписанию, а не только к воспроизведению февраля.",
+                "verification": "source",
+                "evidence": [
+                  "backend/windcast/watcher.py:1-220",
+                  "backend/windcast/runs.py:1-80",
+                  "backend/windcast/api.py:746-876"
+                ]
+              },
+              {
+                "aspect": "Offline-first и кэш",
+                "implementation": "Для архивной погоды сначала предусмотрен API-запрос, затем строгая валидация кэша; образ включает data/weather_cache, а источник api/cache отражается в выпуске.",
+                "value": "Воспроизводимость не зависит от постоянной доступности внешнего сервиса, что полезно для пакетных расчётов и аудита.",
+                "verification": "source",
+                "evidence": [
+                  "backend/windcast/weather.py:95-127",
+                  "backend/windcast/weather.py:198-235",
+                  "README.md:388-409"
+                ]
+              },
+              {
+                "aspect": "Расширяемый пользовательский слой",
+                "implementation": "React/Vite frontend содержит календарь февраля, Live, Quality, графики, trace playback и загрузку CSV; backend публикует REST и SSE через Caddy/nginx.",
+                "value": "Есть путь от API-прототипа к нескольким операционным сценариям и новым потребителям данных.",
+                "verification": "source",
+                "evidence": [
+                  "frontend/src/App.jsx:1-180",
+                  "frontend/src/February.jsx:210-515",
+                  "frontend/src/api.js:1-220",
+                  "frontend/nginx.conf:1-37"
+                ]
+              }
+            ],
+            "scoreReasoning": "Компонентная архитектура, кэш, watcher, REST/SSE и отдельные версии создают хороший фундамент масштабирования. Снижение связано не с отсутствием production-функций, которые не требовались пятичасовому MVP, а с конкретным ограничением данных D1 и фактической зависимостью погодного контура от одного провайдера/модели."
+          },
+          {
+            "name": "Презентация, демо и ответы на вопросы",
+            "score": 19,
+            "max": 20,
+            "awarded": "Устное выступление не оценивалось; README, встроенные документы, screenshots и воспроизводимое Docker/API демо ясно объясняют продукт, порядок запуска и доказательства.",
+            "deductions": "Снят 1 балл за то, что вспомогательный score.py не принимает напрямую точные длинные имена файлов организаторского набора: для проверки пришлось привести имена к его задокументированному шаблону.",
+            "evidence": [
+              "README.md:1-145",
+              "README.md:283-340",
+              "frontend/Dockerfile:1-18",
+              "testData.checks: provided_file_score"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "D2",
+                "reason": "Документация ясно требует папку с turbine_1.csv и turbine_2.csv, но прямой запуск score.py на точных именах из case-data извлекает номер 11 из даты 11.03.2023 и не находит совпадений; это лишний ручной шаг в воспроизводимом демо."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "README как сценарий демо",
+                "implementation": "README начинается с назначения, пяти минут проверки, команды docker compose up --build, endpoint health, verify.py, результатов и ссылок на разделы; далее даёт карту требований, архитектуру и ограничения.",
+                "value": "Проверяющему не нужно восстанавливать намерение команды по исходникам: путь от запуска к доказательству результата описан последовательно.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:1-19",
+                  "README.md:106-145",
+                  "README.md:621-677"
+                ]
+              },
+              {
+                "aspect": "Объяснение правила без будущего",
+                "implementation": "README раскрывает T, задержку 8 часов, previous_dayN по горизонту, примеры h=1/17/18/41/42/48 и независимый verify.py.",
+                "value": "Самая рискованная часть кейса объяснена конкретными временами и проверяемыми числами, а не лозунгом «утечки нет».",
+                "verification": "source",
+                "evidence": [
+                  "README.md:283-340",
+                  "docs/CONTRACT.md:1-260",
+                  "scripts/verify.py:1-20"
+                ]
+              },
+              {
+                "aspect": "Демо с двумя режимами",
+                "implementation": "Документация описывает LLM-режим и deterministic fallback без ключа; Docker-сборка frontend запускает npm ci и vite build, backend демонстрирует REST/SSE.",
+                "value": "Проверка не зависит от предоставления платной внешней интеграции, при этом граница между LLM и локальным режимом честно обозначена.",
+                "verification": "observed",
+                "evidence": [
+                  "README.md:89-103",
+                  "frontend/Dockerfile:1-18",
+                  "runtime.checks: http_deterministic_run",
+                  "frontend_root_http: 200"
+                ]
+              },
+              {
+                "aspect": "Материалы для самостоятельной проверки",
+                "implementation": "В репозитории есть outputs, docs/CONTRACT.md, architecture.html, UI mockup, tests, scripts/verify.py и outputs/evaluation/README.md с формулами метрик.",
+                "value": "Артефакты позволяют повторить статическую проверку и понять формат данных без доступа к приватной инфраструктуре.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:828-875",
+                  "outputs/evaluation/README.md:1-48",
+                  "docs/architecture.html:390-420"
+                ]
+              }
+            ],
+            "scoreReasoning": "Документация заметно сильнее среднего хакатонного README: она объясняет контракт, временную модель, API и результат, а Docker-сборки воспроизводят backend и frontend. Единственное снятие — наблюдаемая шероховатость score.py на исходных именах case-data; это не мешает основному приложению, но ухудшает путь проверки организаторского набора."
+          }
+        ],
+        "total": 94
+      },
+      "case": {
+        "criteria": [
+          {
+            "name": "Соответствие задаче и работоспособность",
+            "score": 24,
+            "max": 25,
+            "awarded": "Почти полное соответствие: 29 ежедневных выпусков, 48 часов, две турбины и plant, архивная погода, no-future validation, агентный цикл и пересчёт подтверждены кодом, артефактами и запуском.",
+            "deductions": "Снят 1 балл за то, что модельный training_frame начинает labels только с 2024-06-01, поэтому используется не вся доступная историческая часть входных данных.",
+            "evidence": [
+              "caseRequirements: met/partial statuses",
+              "verify_backtest: 14/14 PASS",
+              "runtime.checks: http_deterministic_run",
+              "backend/windcast/model.py:138-145"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "D1",
+                "reason": "Сценарий прогнозирования работает и cutoff соблюдён, но заявленная историческая база дана с 2023-03-11, тогда как labels до 2024-06-01 отбрасываются без требования кейса."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Две ВЭС/турбины и агрегат",
+                "implementation": "data.py читает turbine_1.csv и turbine_2.csv, а model.py добавляет plant как среднее парных labels; итоговые выпускные CSV содержат 1, 2 и plant × 48.",
+                "value": "Основной объект задания покрыт не одной усреднённой серией, а раздельным и агрегированным прогнозом.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/windcast/data.py:32-109",
+                  "backend/windcast/model.py:82-114",
+                  "verify_backtest: rows PASS 29/29"
+                ]
+              },
+              {
+                "aspect": "Архивная погода по моменту выпуска",
+                "implementation": "weather.py задаёт две координаты, запрашивает Previous Runs, выбирает лаги 1–4 суток и вычисляет upper-bound init; просроченный прогон вызывает WeatherUnavailable.",
+                "value": "Это прямо реализует критическое условие кейса, а не заменяет его фактической погодой или будущим наблюдением.",
+                "verification": "source",
+                "evidence": [
+                  "backend/windcast/weather.py:17-49",
+                  "backend/windcast/weather.py:198-235",
+                  "backend/windcast/timeline.py:72-84"
+                ]
+              },
+              {
+                "aspect": "Ежедневная последовательность",
+                "implementation": "backtest.py проходит issue dates 31.01–28.02, а verify.py независимо проверяет 29 CSV, JSON-записи и trace-файлы.",
+                "value": "Покрыт требуемый переход от выпуска 31 января к каждому дню февраля, включая второй день горизонта там, где он заявлен.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/windcast/backtest.py:1-80",
+                  "verify_backtest: issues checked=29, combined checked=4176"
+                ]
+              },
+              {
+                "aspect": "Пересчёт при обновлении входа",
+                "implementation": "После v1 агент вызывает latest, сравнивает fresh run, сдвиг ветра и новые риски, затем либо сохраняет v1, либо recalc_forecast публикует v2.",
+                "value": "Закрыта не только задача первичного прогноза, но и требуемый agentic update loop.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/windcast/agent.py:296-307",
+                  "backend/windcast/tools.py:588-628",
+                  "runtime.checks: http_deterministic_run"
+                ]
+              }
+            ],
+            "scoreReasoning": "Все существенные этапы кейса реально представлены и проверены: выпускной формат, архивная погода, 29 дней, no-future и обновление версии. Один балл удержан только за D1 — это ограничение полноты обучения, а не нарушение горизонта или утечка в готовых прогнозах."
+          },
+          {
+            "name": "Техническая реализация",
+            "score": 23,
+            "max": 25,
+            "awarded": "Сильная реализация с разделением data/weather/model/agent/store/API, квантильным артефактом, SSE и watcher; контракты проверяются на границах пути данных.",
+            "deductions": "Сняты 2 балла за D1: технический pipeline сознательно выбрасывает валидный период до 2024-06-01, что ухудшает полноту обучения и переносимость модели.",
+            "evidence": [
+              "backend/windcast/data.py:1-287",
+              "backend/windcast/weather.py:1-370",
+              "backend/windcast/model.py:40-340",
+              "backend/windcast/api.py:631-876"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "D1",
+                "reason": "Архитектура и no-future-контракт качественные, но training_frame содержит явный нижний фильтр ts_utc >= 2024-06-01; это подтверждённый технический дефект полноты данных, а не ограничение ревью."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Нормализация SCADA",
+                "implementation": "data.py переводит локальные 10-минутные строки в UTC, агрегирует по часам, требует 6 слотов и конечных значений, маркирует простои и строит parquet с metadata offset.",
+                "value": "Модель получает проверенный часовой ряд вместо неявной обработки грязного CSV; правила валидности согласованы со score.py.",
+                "verification": "source",
+                "evidence": [
+                  "backend/windcast/data.py:32-150",
+                  "backend/windcast/data.py:151-188",
+                  "backend/tests/test_data.py"
+                ]
+              },
+              {
+                "aspect": "Квантильная модель без leakage",
+                "implementation": "model.py использует погодные признаки, локальный час/месяц, горизонт, turbine_id и lag_days; target labels фильтруются по cutoff, а predict проверяет 48 часов, init, issue time и artifact cutoff.",
+                "value": "Технический путь от архивной погоды к P10/P50/P90 согласован с временной постановкой кейса.",
+                "verification": "source",
+                "evidence": [
+                  "backend/windcast/model.py:40-80",
+                  "backend/windcast/model.py:116-151",
+                  "backend/windcast/model.py:259-318"
+                ]
+              },
+              {
+                "aspect": "Контракты и обработка ошибок",
+                "implementation": "check_data проверяет ровно 48 h, target_time_utc, конечные признаки и публикацию runs; ToolRegistry валидирует порядок действий, а agent trace записывает ошибки и verdict.",
+                "value": "Нельзя незаметно запустить модель на неполной или будущей погоде, и отказ виден в API/журнале.",
+                "verification": "source",
+                "evidence": [
+                  "backend/windcast/data.py:190-287",
+                  "backend/windcast/tools.py:939-1000",
+                  "backend/windcast/agent.py:140-168"
+                ]
+              },
+              {
+                "aspect": "Сервисный контур",
+                "implementation": "FastAPI предоставляет health, forecast, issues, metrics, runs, SSE, ask и live endpoints; Dockerfile фиксирует Python 3.12 и зависимости, frontend nginx проксирует API.",
+                "value": "Технический результат можно подключить к UI и CLI, а не только вызвать одной функцией в ноутбуке.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/windcast/api.py:631-876",
+                  "backend/Dockerfile:1-32",
+                  "frontend/nginx.conf:1-37",
+                  "frontend-build capture: PASS"
+                ]
+              }
+            ],
+            "scoreReasoning": "Кодовая архитектура и исполнение сильные: зависимости фиксированы, модельный артефакт проверяется, погодные данные проходят несколько контрактов, сервис даёт REST/SSE, а тесты ml-пакета проходят 80/80. Два балла удержаны за конкретный нижний фильтр истории, который не требовался кейсом и снижает техническую полноту обучения."
+          },
+          {
+            "name": "README и воспроизводимость",
+            "score": 24,
+            "max": 25,
+            "awarded": "README и связанные документы подробно описывают установку, архитектуру, формат выпусков, метрики, no-future правило, fallback и команды проверки; Docker-сборка frontend/backend воспроизводится.",
+            "deductions": "Снят 1 балл за D2: CLI оценки требует переименования/копирования точных файлов кейса в turbine_1.csv и turbine_2.csv.",
+            "evidence": [
+              "README.md:1-19",
+              "README.md:106-145",
+              "README.md:621-677",
+              "outputs/evaluation/README.md:1-48",
+              "frontend-build capture: PASS"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "D2",
+                "reason": "Задокументированный шаблон turbine_1.csv работает, но прямой вход с именем case-data `...11.03.2023-28.02.2026 - turbine 1.csv` проходит через normalise_turbine и определяется как турбина 11; это ухудшает воспроизводимость именно на предоставленных именах."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Команды запуска",
+                "implementation": "README даёт docker compose up --build, health, backtest, verify и score; Dockerfile явно копирует data/models/outputs и задаёт PYTHONPATH.",
+                "value": "Проверяющий получает короткий путь от чистого checkout к результату, что подтверждено фактической сборкой образов.",
+                "verification": "observed",
+                "evidence": [
+                  "README.md:20-44",
+                  "backend/Dockerfile:1-32",
+                  "docker build capture=build",
+                  "frontend-build capture: PASS"
+                ]
+              },
+              {
+                "aspect": "Документированный контракт",
+                "implementation": "docs/CONTRACT.md и разделы README фиксируют timestamp conventions, 144 строки выпуска, версии, traces, endpoint-ы и правила доступности погоды.",
+                "value": "Формат можно проверять независимо от UI и переносить между backend и внешним скорером.",
+                "verification": "source",
+                "evidence": [
+                  "docs/CONTRACT.md:1-260",
+                  "README.md:283-340",
+                  "README.md:714-772"
+                ]
+              },
+              {
+                "aspect": "Самопроверка качества",
+                "implementation": "README объясняет разницу январских выборок, nMAE/nRMSE, coverage и baseline, а outputs/evaluation/README содержит команды для raw SCADA и tidy CSV.",
+                "value": "Числа качества не оставлены без определения и позволяют отличить day-ahead от all-horizons.",
+                "verification": "source",
+                "evidence": [
+                  "outputs/evaluation/README.md:21-48",
+                  "outputs/metrics_jan.json",
+                  "scripts/score.py:1-20"
+                ]
+              },
+              {
+                "aspect": "Доступный fallback",
+                "implementation": "Документация прямо говорит, что OPENAI_API_KEY не нужен локально; без ключа агент проходит тот же deterministic цикл и выдаёт те же модельные числа, а weather cache включён в образ.",
+                "value": "Репозиторий воспроизводим без секрета команды и не маскирует отсутствие внешнего ключа под LLM-прохождение.",
+                "verification": "observed",
+                "evidence": [
+                  "README.md:89-96",
+                  "docker-compose.yml:1-34",
+                  "runtime.checks: http_health, http_deterministic_run"
+                ]
+              }
+            ],
+            "scoreReasoning": "Документация достаточна для понимания и локального воспроизведения основного сценария; обе production-сборки прошли. Один балл — только за небольшой, но воспроизводимый разрыв между точными именами файлов кейса и path-based inference в score.py."
+          },
+          {
+            "name": "Ценность и применимость решения",
+            "score": 15,
+            "max": 15,
+            "awarded": "Решение прямо отвечает задаче Самрук-Казына: выдаёт почасовой прогноз ВЭС для операционного пользователя, показывает вероятный диапазон, риски, происхождение погоды и историю пересчётов.",
+            "deductions": "Подтверждённых проектных дефектов, требующих снятия именно в этом критерии, не установлено.",
+            "evidence": [
+              "README.md:1-19",
+              "README.md:106-127",
+              "backend/windcast/tools.py:434-510",
+              "runtime.checks: http_archive_forecast"
+            ],
+            "deductionItems": [],
+            "awardedDetails": [
+              {
+                "aspect": "Целевой пользователь и контекст",
+                "implementation": "Сценарий строится вокруг выпуска в фиксированный T, почасового горизонта, рисков и действий диспетчера; UI разделяет февральские выпуски, Live и Quality.",
+                "value": "Практический контекст не придуман после модели: он отражён в данных, API и представлении результата.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:1-19",
+                  "frontend/src/App.jsx:1-180",
+                  "frontend/src/February.jsx:210-515"
+                ]
+              },
+              {
+                "aspect": "Понятный результат на час",
+                "implementation": "Для каждого target hour есть p10/p50/p90, wind forecast, turbine и plant; CSV можно скачать, а API отдаёт тот же выпуск.",
+                "value": "Результат можно использовать и человеком через интерфейс, и downstream-системой через CSV/API.",
+                "verification": "observed",
+                "evidence": [
+                  "verify_backtest: header/rows/quantiles/wind PASS",
+                  "backend/windcast/api.py:714-740",
+                  "outputs/forecast_feb2026.csv"
+                ]
+              },
+              {
+                "aspect": "Применимость при сбоях",
+                "implementation": "Weather API имеет валидируемый cache fallback, агент повторяет запрос, пишет предупреждение и не пересчитывает на позднем прогоне.",
+                "value": "Операционный сценарий не предполагает идеальную доступность сети и оставляет аудируемый след деградации доверия.",
+                "verification": "source",
+                "evidence": [
+                  "backend/windcast/weather.py:211-235",
+                  "backend/windcast/agent.py:342-384",
+                  "README.md:89-92"
+                ]
+              },
+              {
+                "aspect": "Проверяемая полезность",
+                "implementation": "На январском окне модель превосходит power_curve, climatology и persistence, а coverage близко к заявленной цели 80 %.",
+                "value": "У применимости есть количественная опора, а не только эстетика интерфейса.",
+                "verification": "observed",
+                "evidence": [
+                  "outputs/metrics_jan.json",
+                  "verify_backtest: metrics PASS",
+                  "README.md:749-768"
+                ]
+              }
+            ],
+            "scoreReasoning": "Кейс требует полезный прогнозный инструмент, и именно такой результат подтверждён кодом, артефактами и HTTP/API. Внешняя февральская точность не могла быть посчитана на предоставленных организаторами данных, которые заканчиваются 2026-01-31, но это ограничение входного пакета, а не основание уменьшать балл за применимость; январская оценка и работающий сценарий достаточны."
+          },
+          {
+            "name": "Потенциал развития и оригинальность подхода",
+            "score": 9,
+            "max": 10,
+            "awarded": "Оригинальная часть — честный архивный replay с агентным пересчётом и объяснимой provenance; архитектура допускает Live и новые модели.",
+            "deductions": "Снят 1 балл за D1: неполное историческое окно ограничивает переносимость модели до расширения обучающего набора или явного обоснования фильтра.",
+            "evidence": [
+              "backend/windcast/agent.py:35-63",
+              "backend/windcast/weather.py:17-35",
+              "backend/windcast/ports.py:1-88",
+              "backend/windcast/model.py:138-145"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "D1",
+                "reason": "Масштабирование на иные сезоны и площадки будет убедительнее при использовании всей валидной истории; текущий нижний предел обучения оставляет это техническим риском."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Replay как самостоятельная методика",
+                "implementation": "Архивные выпуски моделируют последовательность доступной информации на 31.01–28.02, а не просто прогоняют один batch после окончания месяца.",
+                "value": "Этот подход переносим на аудит forecasting-систем, где важна временная честность и воспроизводимость решений.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/windcast/backtest.py:26-80",
+                  "verify_backtest: no_future/no_future_runs PASS"
+                ]
+              },
+              {
+                "aspect": "Разделение LLM и численного расчёта",
+                "implementation": "LLM выбирает следующий инструмент и объясняет решение, а модель и проверки остаются детерминированным кодом; fallback завершает цикл без LLM.",
+                "value": "Такую границу легче переносить на другие домены, где генеративная модель должна оркестрировать, но не подменять расчёт.",
+                "verification": "source",
+                "evidence": [
+                  "backend/windcast/agent.py:1-9",
+                  "backend/windcast/agent.py:437-550",
+                  "backend/windcast/runs.py:65-75"
+                ]
+              },
+              {
+                "aspect": "Готовые точки расширения",
+                "implementation": "ports, weather cache, live watcher, versioned store, REST/SSE и frontend trace playback уже разделены по ответственности.",
+                "value": "Развитие до новых погодных провайдеров, новых площадок или операторских экранов не требует переписывать весь путь.",
+                "verification": "source",
+                "evidence": [
+                  "backend/windcast/ports.py:20-88",
+                  "backend/windcast/watcher.py:1-220",
+                  "frontend/src/useAgentRun.js:1-100"
+                ]
+              },
+              {
+                "aspect": "Ограниченная, но честная ML-новизна",
+                "implementation": "Квантильная HistGradientBoosting-модель использует lag_days, wind cubed, направление, температуру, локальный час и номер турбины; baseline-ы считаются рядом.",
+                "value": "Есть осмысленная feature design и оценка baseline, хотя сама модель не является новым ML-алгоритмом.",
+                "verification": "source",
+                "evidence": [
+                  "backend/windcast/model.py:17-38",
+                  "backend/windcast/model.py:40-80",
+                  "outputs/metrics_jan.json"
+                ]
+              }
+            ],
+            "scoreReasoning": "Потенциал высокий благодаря модульности, Live-контру и agentic replay. Один балл удержан за D1, который станет важнее при переносе на новые сезоны и площадки; это конкретный риск масштабирования, а не требование production-функции вне кейса."
+          }
+        ],
+        "total": 95
+      },
+      "judgeScore": 94.5,
+      "caseRequirements": [
+        {
+          "requirement": "Обучение на исторической SCADA-истории до 31.01.2026",
+          "status": "partial",
+          "explanation": "Артефакт имеет cutoff 2026-01-31 и использует предоставленные SCADA-файлы, которые побайтно совпадают с data/raw. Однако training_frame явно отбрасывает labels до 2024-06-01, поэтому используется не вся валидная история из набора, начинающегося 2023-03-11.",
+          "evidence": [
+            "backend/windcast/model.py:116-145",
+            "data/raw/turbine_1.csv",
+            "data/raw/turbine_2.csv",
+            "D1"
+          ]
+        },
+        {
+          "requirement": "Самостоятельно получать архивный прогноз погоды по двум координатам",
+          "status": "met",
+          "explanation": "weather.py содержит обе координаты, Open-Meteo Previous Runs URL, валидацию payload и cache fallback; source и weather_runs сохраняются в выпуске.",
+          "evidence": [
+            "backend/windcast/weather.py:17-49",
+            "backend/windcast/weather.py:95-127",
+            "backend/windcast/weather.py:198-235"
+          ]
+        },
+        {
+          "requirement": "Формировать почасовой прогноз на 24–48 часов",
+          "status": "met",
+          "explanation": "Каждый выпуск содержит 48 горизонтов для турбин 1, 2 и plant, P10/P50/P90 и погодные признаки; независимый verifier подтвердил 29 файлов и 144 строки в каждом.",
+          "evidence": [
+            "backend/windcast/model.py:259-340",
+            "verify_backtest: rows=29/29, quantiles=4176/4176",
+            "outputs/forecast_feb2026.csv"
+          ]
+        },
+        {
+          "requirement": "Полный Agentic AI цикл: погода, подготовка, модель, прогноз, анализ, публикация",
+          "status": "met",
+          "explanation": "Шесть инструментов зарегистрированы в ToolRegistry; agent.py задаёт порядок, трассирует события и имеет deterministic driver, который повторяет цикл без LLM.",
+          "evidence": [
+            "backend/windcast/agent.py:35-63",
+            "backend/windcast/agent.py:273-385",
+            "backend/windcast/tools.py:814-879",
+            "runtime.checks: http_deterministic_run"
+          ]
+        },
+        {
+          "requirement": "Использовать только информацию, доступную на момент выпуска, без будущей погоды и target",
+          "status": "met",
+          "explanation": "В коде нет SCADA/fact в inference features, init проверяется через публикационную задержку 8 часов, а verify.py независимо подтвердил все 4176 CSV-строк и 174 погодных прогона.",
+          "evidence": [
+            "backend/windcast/model.py:40-80",
+            "backend/windcast/data.py:190-287",
+            "scripts/verify.py:1-20",
+            "verify_backtest: no_future=PASS, no_future_runs=PASS"
+          ]
+        },
+        {
+          "requirement": "Воспроизвести выпуск 31.01 и каждый день тестового февраля 2026",
+          "status": "met",
+          "explanation": "В outputs есть 29 выпусков 31.01–28.02, записи и traces; проверка combined CSV совпала с 4176 строками отдельных выпусков.",
+          "evidence": [
+            "backend/windcast/backtest.py:26-80",
+            "outputs/forecasts",
+            "verify_backtest: issues=29/29, combined=4176/4176"
+          ]
+        },
+        {
+          "requirement": "Повторный расчёт при новом погодном прогоне с обоснованным решением",
+          "status": "met",
+          "explanation": "Сравниваются freshness, сдвиг ветра и новые риски; deterministic run в Docker завершился v2, 20 событиями и финальным verdict.",
+          "evidence": [
+            "backend/windcast/tools.py:588-628",
+            "backend/windcast/agent.py:296-307",
+            "runtime.checks: http_deterministic_run"
+          ]
+        },
+        {
+          "requirement": "Публиковать результат для пользователя и сохранять provenance",
+          "status": "met",
+          "explanation": "FastAPI отдаёт forecast/metrics/issues, CSV содержит weather_init_max_utc, а agent сохраняет JSON record и JSONL trace; frontend build прошёл.",
+          "evidence": [
+            "backend/windcast/api.py:670-740",
+            "backend/windcast/store.py:1-180",
+            "frontend/Dockerfile:1-18",
+            "frontend_root_http: 200"
+          ]
+        }
+      ],
+      "testData": {
+        "provided": [
+          "cases/1/task.txt",
+          "cases/1/case-data/HackAlem AI_ Agentic AI для прогнозирования выработки ВЭС.md",
+          "cases/1/case-data/Dataset HackAlemAI для участников 11.03.2023-28.02.2026 - turbine 1.csv",
+          "cases/1/case-data/Dataset HackAlemAI для участников 11.03.2023-28.02.2026 - turbine 2.csv"
+        ],
+        "used": [
+          "cases/1/task.txt",
+          "cases/1/case-data/HackAlem AI_ Agentic AI для прогнозирования выработки ВЭС.md",
+          "cases/1/case-data/Dataset HackAlemAI для участников 11.03.2023-28.02.2026 - turbine 1.csv",
+          "cases/1/case-data/Dataset HackAlemAI для участников 11.03.2023-28.02.2026 - turbine 2.csv"
+        ],
+        "checks": [
+          {
+            "input": "Два предоставленных CSV turbine 1 и turbine 2",
+            "method": "Открыты заголовки, первые и последние строки; SHA-256 каждого файла сравнен с data/raw/turbine_1.csv и data/raw/turbine_2.csv.",
+            "result": "Заголовки соответствуют пяти полям кейса; размеры 6049266 и 6354725 байт; оба файла побайтно совпали с соответствующими data/raw. Данные начинаются 2023-03-11 и заканчиваются 2026-01-31 23:50.",
+            "conclusion": "Репозиторий действительно содержит предоставленную историю и использует тот же вход; cutoff до 31.01 согласован."
+          },
+          {
+            "input": "Предоставленные CSV как actual для scripts/score.py",
+            "method": "Запущен score.py с точными исходными именами, затем с временными копиями, названными turbine_1.csv и turbine_2.csv.",
+            "result": "Команда завершилась без исключения, но by_turbine/by_horizon пусты: прогнозы начинаются с 2026-02-01, а case-data заканчивается 2026-01-31. При точных исходных именах scorer дополнительно извлёк номер 11 из даты в имени файла; после нормализации имён этот дефект исчез, но фактов февраля всё равно нет.",
+            "conclusion": "Полную февральскую accuracy-проверку на предоставленном пакете выполнить нельзя по границе данных; это ограничение входного набора. Наблюдаемая несовместимость имён зафиксирована как D2."
+          },
+          {
+            "input": "outputs/forecasts, outputs/forecast_feb2026.csv, outputs/metrics_jan.json",
+            "method": "Запущен независимый scripts/verify.py --json, который не импортирует код timeline проекта.",
+            "result": "PASS, failed_checks=[]: 29 issues, 4176 CSV rows, 174 weather runs, valid timestamps, quantiles, traces, records, no stub, combined CSV и model nMAE 0.1576 ниже 0.1935/0.2682/0.3645.",
+            "conclusion": "Файловый результат и правило без будущего подтверждены на артефактах проекта."
+          },
+          {
+            "input": "Docker backend image и архивный issue 2026-02-13",
+            "method": "Собран backend image, запущен без OPENAI_API_KEY, выполнены GET /health, GET /api/forecasts/2026-02-13 и POST /api/runs с mode=deterministic.",
+            "result": "Health ok=true, mode=deterministic, issues_ready=29; forecast version=2 и rows=144; run done=true, version=2, event_count=20, последняя запись verdict.",
+            "conclusion": "Основной runtime-сценарий воспроизводится без ключа на зафиксированном срезе."
+          }
+        ],
+        "limitations": [
+          "В case-data нет фактической выработки февраля: оба CSV заканчиваются 2026-01-31, поэтому февральский nMAE на организаторских фактах не вычислялся.",
+          "Визуальный и browser-flow не проверялись; UI оценён по source и Docker build, как требует пользовательская политика визуальной проверки.",
+          "OPENAI_API_KEY намеренно не предоставлен; проверен deterministic fallback и путь интеграции по исходникам, но не фактический ответ внешнего LLM провайдера."
+        ]
+      },
+      "runtime": {
+        "status": "working",
+        "build": "Backend image собран успешно из backend/Dockerfile на Python 3.12; frontend image собран успешно через npm ci и vite build.",
+        "start": "Backend-контейнер стартовал и стал healthy; GET /health вернул ok=true, deterministic mode и 29 готовых выпусков. Frontend nginx отдал статический index.html по HTTP 200.",
+        "scenario": "Архивный forecast endpoint вернул version=2 и 144 строки. POST /api/runs для 2026-02-13 в deterministic mode завершился version=2, 20 событиями и финальным verdict. Визуальный просмотр не выполнялся.",
+        "environment": "Изолированные Docker-образы, backend Python 3.12.15 с pinned requirements, frontend Node 20/nginx; OPENAI_API_KEY не задан. Внешний Open-Meteo/LLM путь оценён статически и через включённый cache/fallback.",
+        "summary": "Основной сценарий работает и воспроизводится без внешнего ключа. Проверка LLM-режима, публичного hosted URL и визуального поведения не является выполненной проверкой.",
+        "checks": [
+          {
+            "command": "docker build -f backend/Dockerfile -t <review-backend-image> .",
+            "result": "Успешно; pinned Python dependencies установлены, слои backend/data/models/outputs скопированы.",
+            "id": "build_backend_docker",
+            "stage": "build",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Backend image собирается из чистого snapshot без секретов."
+          },
+          {
+            "command": "docker build -f frontend/Dockerfile -t <review-frontend-image> frontend",
+            "result": "Успешно; npm ci и vite build завершились, dist собран.",
+            "id": "build_frontend_docker",
+            "stage": "build",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Frontend image собирается и содержит production bundle."
+          },
+          {
+            "command": "GET /health",
+            "result": "HTTP 200; ok=true, mode=deterministic, issues_ready=29, ports доступны.",
+            "id": "http_health",
+            "stage": "start",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Сервис стартует и возвращает health без OPENAI_API_KEY."
+          },
+          {
+            "command": "GET /api/forecasts/2026-02-13",
+            "result": "HTTP 200; version=2, rows=144, weather_runs=3.",
+            "id": "http_archive_forecast",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Готовый архивный пользовательский результат доступен через API."
+          },
+          {
+            "command": "POST /api/runs",
+            "result": "HTTP 200 на запуске issue 2026-02-13 mode=deterministic; run завершился done=true, version=2, 20 events, последний type=verdict.",
+            "id": "http_deterministic_run",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Без ключа выполняется полный цикл выпуска и обновления версии."
+          },
+          {
+            "command": "python -X utf8 scripts/verify.py --json",
+            "result": "PASS; failed_checks=[], все 14 проверок прошли.",
+            "id": "verify_backtest",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "29 выпусков, 4176 строк и no-future contract проходят независимый verifier."
+          },
+          {
+            "command": "python -X utf8 -m pytest",
+            "result": "80 passed, 2 warnings в ml-prognoz-model при PYTHONPATH=src.",
+            "id": "test_ml_pytest",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Тесты отдельного ML-пакета проходят в его корне с его package path."
+          },
+          {
+            "command": "python -X utf8 -m pytest",
+            "result": "165 тестов собрано в backend на локальном Python 3.10; 155 passed и 10 failed. Сбои API используют datetime ISO `Z`, несовместимый с Python 3.10, тогда как backend объявляет Python >=3.12; это средовое ограничение, не дефект проекта.",
+            "id": "test_backend_py310",
+            "stage": "scenario",
+            "status": "blocked",
+            "cause": "review_environment",
+            "expected": "Backend tests запускаются в заявленном Python >=3.12 окружении; локальная версия ниже требования."
+          },
+          {
+            "command": "npm test -- --run",
+            "result": "Не запущено: в локальном checkout отсутствует node_modules, команда vitest не найдена. Production Docker build с npm ci прошёл.",
+            "id": "test_frontend_local",
+            "stage": "scenario",
+            "status": "blocked",
+            "cause": "review_environment",
+            "expected": "Frontend unit tests требуют установленного npm dependency tree."
+          },
+          {
+            "command": "python -X utf8 scripts/score.py --actual <provided-case-data> --forecast outputs/evaluation/february_day_ahead.csv",
+            "result": "Команда завершилась, но matched hours=0: предоставленные CSV содержат историю только до 2026-01-31, а прогноз начинается 2026-02-01. Это не объявлено дефектом runtime.",
+            "id": "score_case_data",
+            "stage": "scenario",
+            "status": "blocked",
+            "cause": "review_environment",
+            "expected": "Для точности февраля нужны фактические SCADA-строки февраля, отсутствующие в case-data."
+          },
+          {
+            "command": "python -X utf8 -c \"проверка normalise_turbine на точном имени case-data\"",
+            "result": "PASS как статическая проверка функции: имя `...11.03.2023-28.02.2026 - turbine 1` нормализовалось в `11`, а не в `1`.",
+            "id": "score_filename_inference",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Номер турбины извлекается из суффикса имени, а не из первой даты в stem."
+          }
+        ],
+        "limitations": [
+          "Отсутствовал OPENAI_API_KEY, поэтому LLM tool-calling и реальный внешний ответ не запускались; deterministic fallback проверен полноценно.",
+          "Публичный hosted endpoint и визуальный browser-flow не проверялись.",
+          "Локальная машина имела Python 3.10 вместо backend requirement >=3.12 и не имела frontend node_modules; эти ограничения не использованы как штрафы."
+        ]
+      },
+      "liveDemo": {
+        "status": "claimed",
+        "url": "https://pushin.codes",
+        "notes": "README заявляет публичное демо без регистрации. Автоматический доступ к hosted URL и визуальная проверка запрещены политикой ревью, поэтому URL не считается подтверждённым; локальный HTTP/API и Docker-сборки подтверждены отдельно."
+      },
+      "fiveHourContext": "Для пятичасового MVP объём реализации высокий и сфокусирован на обязательном сценарии: есть модель, archive replay, no-future audit, агентный цикл с fallback, versioned publication, API/SSE, watcher и три UI-раздела. Production-масштабирование, реальный февральский ground truth и LLM credentials не требовались для полного балла сами по себе. Сдерживание оценки относится только к двум наблюдаемым свойствам исходника: D1 уменьшает фактическое историческое окно обучения, D2 добавляет ручной шаг при использовании точных имён case-data.",
+      "strengths": [
+        "Независимый verify.py подтвердил 14/14 проверок: 29 выпусков, 4176 строк, 174 погодных прогона и отсутствие будущих данных.",
+        "Основной сценарий реально стартует в Docker без ключа: health, архивный forecast и deterministic run с v2 проверены по HTTP/API.",
+        "Agentic-логика отделена от численной модели: LLM выбирает шаг, код проверяет контракты, deterministic driver завершает цикл при отсутствии ключа.",
+        "Архитектура weather/data/model/store/API/frontend и подробный README создают хороший фундамент для расширения."
+      ],
+      "gaps": [
+        "D1: training_frame отбрасывает labels до 2024-06-01, хотя входная история начинается 2023-03-11; влияние — меньшая полнота и переносимость обучения.",
+        "D2: scripts/score.py при прямом входе с точным длинным именем файла case-data извлекает номер турбины из даты и не распознаёт файл как turbine 1/2; нужен ручной filename adapter."
+      ],
+      "futureAdvice": [
+        {
+          "principle": "Сначала измеряйте влияние отбора истории, затем фиксируйте обучающий контракт",
+          "why": "D1: source-фильтр `ts_utc >= 2024-06-01` исключает валидные наблюдения из предоставленного периода 2023-03-11—2024-05-31 без явного требования кейса; это оставляет риск сезонного смещения.",
+          "how": "Для следующего хакатона за один короткий проход построить две версии artifact: со всей валидной историей до cutoff и с текущим фильтром; сравнить nMAE по временным блокам и записать выбранное окно в metadata/README.",
+          "findingIds": [
+            "D1"
+          ],
+          "successCheck": "В artifact metadata есть явные from/to и причина фильтра, а независимое сравнение по раннему и позднему holdout показывает, что выбранное окно не ухудшает целевой сценарий.",
+          "timeboxMinutes": 60
+        },
+        {
+          "principle": "Интерфейс проверки должен принимать имена исходных файлов организатора без ручного переименования",
+          "why": "D2: normalise_turbine ищет первую группу цифр в path.stem, поэтому дата 11.03.2023 превращается в номер 11 до того, как достигается суффикс turbine 1.",
+          "how": "В другом кейсе сначала извлекать номер только из финального шаблона `turbine[_ -]?(1|2)` или поддержать явный `--turbine`; затем прогнать scorer на точных именах организатора и на коротких именах.",
+          "findingIds": [
+            "D2"
+          ],
+          "successCheck": "Команда score.py с двумя точными case-data именами сообщает раздельные turbine 1 и turbine 2, а tidy/renamed режимы дают одинаковые ключи и matched-hour результат.",
+          "timeboxMinutes": 30
+        }
+      ],
+      "uncertainties": [
+        "Реальный LLM tool-calling с OPENAI_API_KEY не наблюдался; по исходникам есть полный путь клиента, tools schema, ограничение восьми вызовов и deterministic recovery.",
+        "Публичный URL pushin.codes не подтверждался HTTP-доступом в рамках этого ревью; наличие ссылки само по себе не использовано как доказательство runtime.",
+        "Точность прогнозов февраля на фактической выработке не измерена, потому что предоставленные организаторами CSV заканчиваются 31 января; январская оценка и файловая проверка подтверждены.",
+        "Визуальная доступность, layout и browser interactions оставлены пользователю согласно заданной политике; подтверждён только статический frontend build и HTTP 200 index."
+      ],
+      "reviewPolicyVersion": 2,
+      "assessmentStatus": "ready",
+      "findings": [
+        {
+          "id": "S1",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Заявленный февральский batch и правило без будущего проходят независимую файловую проверку.",
+          "expected": "29 выпусков, 144 строки на выпуск, без поздних погодных прогонов и без stub.",
+          "actual": "verify.py вернул PASS, failed_checks=[], 29 issues, 4176 CSV rows, 174 weather runs; все 14 checks pass.",
+          "evidence": [
+            "verify_backtest",
+            "scripts/verify.py:1-20",
+            "README.md:659-677"
+          ],
+          "checkIds": [
+            "verify_backtest"
+          ]
+        },
+        {
+          "id": "S2",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Основной backend-сценарий воспроизводится в Docker без внешнего ключа.",
+          "expected": "Health, готовый выпуск и deterministic run должны вернуть успешные ответы.",
+          "actual": "Health ok=true, forecast version=2/144 rows, POST run done=true/version=2/20 events/final verdict.",
+          "evidence": [
+            "http_health",
+            "http_archive_forecast",
+            "http_deterministic_run",
+            "backend/Dockerfile:1-32"
+          ],
+          "checkIds": [
+            "http_health",
+            "http_archive_forecast",
+            "http_deterministic_run"
+          ]
+        },
+        {
+          "id": "S3",
+          "kind": "strength",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Погодные признаки и модельный inference отделены от будущего факта, а квантили нормализуются и проверяются.",
+          "expected": "Inference использует разрешённые weather features, корректные 48 часов и artifact cutoff.",
+          "actual": "model.py строит features из weather, проверяет target/init/cutoff, сортирует и clip-ит P10/P50/P90; verify подтверждает диапазоны.",
+          "evidence": [
+            "backend/windcast/model.py:40-80",
+            "backend/windcast/model.py:259-340",
+            "verify_backtest: quantiles=PASS"
+          ],
+          "checkIds": [
+            "verify_backtest"
+          ]
+        },
+        {
+          "id": "S4",
+          "kind": "strength",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Agentic orchestration содержит инструментальный цикл, decision policy, versioned recalc и deterministic recovery.",
+          "expected": "LLM не должен напрямую придумывать числа и должен оставлять трассу решения.",
+          "actual": "agent.py и tools.py ограничивают действия инструментами, проверяют grounding, запускают v1/v2, записывают trace; без ключа тот же цикл проходит rule driver.",
+          "evidence": [
+            "backend/windcast/agent.py:35-63",
+            "backend/windcast/agent.py:273-385",
+            "backend/windcast/tools.py:939-1000"
+          ],
+          "checkIds": [
+            "http_deterministic_run"
+          ]
+        },
+        {
+          "id": "S5",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Оба production image собираются из snapshot.",
+          "expected": "Backend dependencies and frontend bundle should build successfully.",
+          "actual": "Backend docker build and frontend docker build completed successfully; frontend Vite reported built dist.",
+          "evidence": [
+            "build_backend_docker",
+            "build_frontend_docker",
+            "frontend/Dockerfile:1-18"
+          ],
+          "checkIds": [
+            "build_backend_docker",
+            "build_frontend_docker"
+          ]
+        },
+        {
+          "id": "D1",
+          "kind": "defect",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Обучающий frame отбрасывает все valid labels с timestamp до 2024-06-01.",
+          "expected": "При требовании учиться на доступной истории до 31.01.2026 все валидные наблюдения должны быть использованы либо нижняя граница должна быть явно обоснована и оценена.",
+          "actual": "В model.py labels фильтруются одновременно cutoff и `ts_utc >= pd.Timestamp(2024-06-01T00:00Z)`; предоставленный набор и data/raw начинаются 2023-03-11.",
+          "evidence": [
+            "backend/windcast/model.py:116-145",
+            "testData.checks: input structure",
+            "caseRequirements: partial history"
+          ],
+          "checkIds": [
+            "verify_backtest"
+          ]
+        },
+        {
+          "id": "D2",
+          "kind": "defect",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "scripts/score.py не распознаёт номер турбины из точных длинных имён файлов case-data.",
+          "expected": "Организаторский SCADA CSV с суффиксом `turbine 1.csv` или `turbine 2.csv` должен определяться как соответствующая турбина при прямой передаче в --actual.",
+          "actual": "normalise_turbine применяет первую группу цифр к path.stem; в имени с датой 11.03.2023 результатом становится 11, поэтому by_turbine пуст и требуется временное переименование в turbine_1.csv/turbine_2.csv.",
+          "evidence": [
+            "scripts/score.py:77-78",
+            "scripts/score.py:134-166",
+            "testData.checks: provided_file_score"
+          ],
+          "checkIds": [
+            "score_filename_inference"
+          ]
+        },
+        {
+          "id": "L1",
+          "kind": "limitation",
+          "verification": "unverified",
+          "responsibility": "review_environment",
+          "claim": "Реальный LLM provider path не был выполнен.",
+          "expected": "При наличии ключа OpenAI agent mode должен совершить tool-calling loop.",
+          "actual": "OPENAI_API_KEY намеренно не предоставлен; локально выполнен deterministic fallback, а source прослежен от make_client до _run_llm.",
+          "evidence": [
+            "api_requirements: credentialsProvided=false",
+            "backend/windcast/agent.py:99-105",
+            "backend/windcast/agent.py:437-550"
+          ],
+          "checkIds": [
+            "http_deterministic_run"
+          ]
+        },
+        {
+          "id": "L2",
+          "kind": "limitation",
+          "verification": "observed",
+          "responsibility": "review_environment",
+          "claim": "Фактическая февральская SCADA для прямого scoring отсутствует в предоставленном пакете.",
+          "expected": "Для февральского nMAE нужны actual rows за 2026-02-01—2026-02-28.",
+          "actual": "Оба предоставленных CSV заканчиваются 2026-01-31 23:50; score.py завершился с нулём совпавших часов.",
+          "evidence": [
+            "testData.checks: provided CSV boundaries",
+            "score_case_data",
+            "outputs/evaluation/README.md:1-48"
+          ],
+          "checkIds": [
+            "score_case_data"
+          ]
+        },
+        {
+          "id": "L3",
+          "kind": "limitation",
+          "verification": "unverified",
+          "responsibility": "review_environment",
+          "claim": "Визуальное поведение UI не было проверено.",
+          "expected": "Browser-flow и layout оцениваются отдельным визуальным тестированием пользователя.",
+          "actual": "Проверены только frontend build и статический HTTP 200 index; browser automation и screenshots не использовались.",
+          "evidence": [
+            "frontend-build capture: PASS",
+            "frontend_root_http: 200",
+            "AGENTS.md user-owned visual verification policy"
+          ],
+          "checkIds": [
+            "build_frontend_docker"
+          ]
+        },
+        {
+          "id": "L4",
+          "kind": "limitation",
+          "verification": "observed",
+          "responsibility": "review_environment",
+          "claim": "Локальные полные backend/frontend unit runs не являются чистой проверкой snapshot.",
+          "expected": "Backend tests должны запускаться на Python >=3.12, frontend tests — после npm ci.",
+          "actual": "Локально Python 3.10 дал 155/165 сбоев из-за ISO-Z compatibility в API tests, а npm test остановился на отсутствующем vitest; отдельный ml pytest дал 80/80, production Docker builds прошли.",
+          "evidence": [
+            "backend/pyproject.toml:1-12",
+            "backend requirements/runtime check test_backend_py310",
+            "frontend/package.json:1-25",
+            "runtime check test_frontend_local"
+          ],
+          "checkIds": [
+            "test_backend_py310",
+            "test_frontend_local"
+          ]
+        }
+      ],
+      "gapFindingIds": [
+        "D1",
+        "D2"
+      ]
+    }
+  ],
+  "score": 94.5,
+  "status": "complete",
+  "expectedJudges": 1
+}

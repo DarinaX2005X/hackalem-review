@@ -1,0 +1,1213 @@
+{
+  "methodVersion": 4,
+  "repoId": "hack-ea63b56a-api",
+  "repoUrl": "https://github.com/BAITC-Hacks/hack-ea63b56a-api",
+  "caseId": 6,
+  "snapshot": "94545c33818eb1883ebd21943902d3226b540036",
+  "judges": [
+    {
+      "methodVersion": 4,
+      "repoId": "hack-ea63b56a-api",
+      "caseId": 6,
+      "model": "GPT-5.6 Luna",
+      "snapshot": "94545c33818eb1883ebd21943902d3226b540036",
+      "overallSummary": "Проект представляет цельный MVP подбора event-подрядчиков: принимает город, дату, формат, категорию и бюджет, жёстко фильтрует каталог, исключает занятых, возвращает не более трёх карточек, объясняет нехватку вариантов и различает три исхода. Основной fallback-сценарий воспроизведён через HTTP smoke полностью, production-сборки обоих приложений успешны, frontend-тесты зелёные. Оценку удерживают два подтверждённых дефекта: schema-valid reason от OpenAI без проверки фактов попадает в пользовательское объяснение, а альтернативы допускают цену выше заданного бюджета и конфликтуют с тестом строгой границы. Дополнительно локальная инструкция frontend не фиксирует npm 11.6.2, хотя npm 10 не может выполнить npm ci на текущем lock-файле. Live OpenAI и визуальная проверка не выполнялись по условиям ревью и не трактуются как дефекты проекта.",
+      "global": {
+        "criteria": [
+          {
+            "name": "Ценность решения",
+            "score": 22,
+            "max": 25,
+            "awarded": "Решение адресует понятную операционную боль организатора события: быстро выбрать из ограниченного каталога, а не просматривать десятки профилей вручную.",
+            "deductions": "Снижение связано не с отсутствием интеграций, а с тем, что при включённом AI пользователь может увидеть неподтверждённое обещание услуги, языка или доступности.",
+            "evidence": [
+              "README.md:1-29",
+              "backend/src/matching/matching.service.ts:44-59",
+              "HTTP-SMOKE-001"
+            ],
+            "deductionItems": [
+              {
+                "points": 3,
+                "findingId": "F-AI-GROUNDED-REASON",
+                "reason": "Недостоверная фраза модели может изменить решение заказчика о подрядчике и прямо снижает надёжность главной ценности — объяснения выбора."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Чёткая целевая проблема",
+                "implementation": "README описывает подбор по городу, дате, формату, категории, бюджету и опциональным языку/длительности. Backend получает эти параметры через DTO и работает поверх 66 профилей каталога.",
+                "value": "Сценарий легко соотносится с реальной задачей event-организатора и даёт измеримый результат — короткую выдачу вместо длинного списка.",
+                "verification": "observed",
+                "evidence": [
+                  "README.md:1-8",
+                  "backend/src/recommendations/recommendation.dto.ts:8-29",
+                  "HTTP-SMOKE-001"
+                ]
+              },
+              {
+                "aspect": "Экономия времени поиска",
+                "implementation": "MatchingService применяет город и категорию как популяцию, затем дату занятости, бюджет, формат, язык и длительность; smoke вернул плотный запрос за десятки миллисекунд.",
+                "value": "Пользователь получает готовый shortlist и числа исключений, а не должен вручную сверять каждую строку каталога.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/src/matching/matching.service.ts:44-59",
+                  "scripts/smoke.mjs:10-47",
+                  "HTTP-SMOKE-001"
+                ]
+              },
+              {
+                "aspect": "Честные крайние случаи",
+                "implementation": "Сервис явно кодирует matched, no_category_in_city и no_candidates_after_filters; сообщения перечисляют причины дефицита и предлагают следующий шаг.",
+                "value": "Это уменьшает риск ложного ощущения, что каталог пуст из-за ошибки, и помогает заказчику понять, какое условие стоит изменить.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/src/recommendations/recommendations.service.ts:70-109",
+                  "backend/src/recommendations/recommendations.service.ts:215-259",
+                  "HTTP-SMOKE-001"
+                ]
+              },
+              {
+                "aspect": "Факты происхождения данных",
+                "implementation": "Карточка передаёт synthetic, city_imputed и price_imputed, а frontend отображает эти флаги.",
+                "value": "Для анонимизированного и частично дополненного датасета пользователь видит важный контекст доверия к цене и городу.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/src/recommendations/recommendations.service.ts:146-163",
+                  "frontend/src/components/recommender.tsx:197-203",
+                  "FE-TEST-001"
+                ]
+              }
+            ],
+            "scoreReasoning": "Высокий балл заслужен за точное попадание в повседневную задачу и работающий shortlist с прозрачными причинами. До максимума не хватает полной гарантии достоверности AI-объяснений: три негативных теста показывают, что свободный reason модели может добавить факты, которых нет в профиле. Для пятичасового MVP это существенный, но локализованный риск поверх уже полезного fallback-продукта."
+          },
+          {
+            "name": "Результат и качество решения",
+            "score": 16,
+            "max": 20,
+            "awarded": "Основной пользовательский сценарий целостен и воспроизведён по HTTP: точные карточки, редкая категория, пустой результат, смена даты и повторный запрос дают ожидаемые формы ответа.",
+            "deductions": "Есть подтверждённый дефект достоверности AI-текста и отдельное расхождение в политике бюджетных альтернатив.",
+            "evidence": [
+              "HTTP-SMOKE-001",
+              "backend/test/backend.spec.ts:100-177",
+              "tests/recommendation-scenarios.spec.cjs:152-168"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "F-AI-GROUNDED-REASON",
+                "reason": "При валидном по структуре ответе модели пользовательская карточка может содержать ложное утверждение, что нарушает требование конкретного и достоверного объяснения."
+              },
+              {
+                "points": 2,
+                "findingId": "F-ALT-BUDGET-LEAK",
+                "reason": "Запрос с бюджетом 499999 при цене 500000 получает одну альтернативу; acceptance-тест ожидает пустой результат для превышения бюджетной границы."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Полный fallback-пайплайн",
+                "implementation": "После hard-filtering система строит fallback score, стабильную сортировку, карточки и снимок ответа. При отсутствии ключа analysisMode становится fallback, а запрос не ломается.",
+                "value": "Это делает основной продукт запускаемым без платной внешней зависимости и даёт законченный пользовательский результат.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/src/recommendations/recommendations.service.ts:70-109",
+                  "backend/src/ai/ai.service.ts:35-36",
+                  "START-001",
+                  "HTTP-SMOKE-001"
+                ]
+              },
+              {
+                "aspect": "Проверка сценариев из задания",
+                "implementation": "Smoke проверил плотный Алматы/Ведущий, Астана/Флорист, пустой бюджет, отсутствующую категорию, декабрьскую занятость, свадьбу, той и банкетный зал.",
+                "value": "Проверены не только happy path, но и сценарии, на которых особенно легко скрыть отсутствие кандидатов или занятость.",
+                "verification": "observed",
+                "evidence": [
+                  "scripts/smoke.mjs:49-98",
+                  "HTTP-SMOKE-001"
+                ]
+              },
+              {
+                "aspect": "Повторяемость и порядок",
+                "implementation": "SnapshotService использует ключ запроса, dataset hash, model, prompt и pipeline version; smoke сравнил повторный dense-ответ побайтно на уровне JSON-объекта.",
+                "value": "Один и тот же запрос не скачет между результатами, что важно для объяснимого выбора и демонстрации.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/src/recommendations/snapshot.service.ts:57-90",
+                  "backend/src/recommendations/recommendations.service.ts:20-29",
+                  "HTTP-SMOKE-001"
+                ]
+              },
+              {
+                "aspect": "User-facing структура результата",
+                "implementation": "Карточки содержат имя, категорию, город, цену, explanation, тип exact/alternative, доступную дату, различия и таблицу критериев.",
+                "value": "Формат результата пригоден для принятия решения, а компромиссы видны отдельно от точных совпадений.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/src/recommendations/recommendation.dto.ts:62-92",
+                  "frontend/src/components/recommender.tsx:183-223",
+                  "FE-TEST-001"
+                ]
+              }
+            ],
+            "scoreReasoning": "Рабочий fallback и HTTP smoke подтверждают целостный сценарий, поэтому оценка выше средней. Максимум ограничен тем, что качество пользовательского explanation не защищено от ложного model reason, а поведение альтернативы дороже бюджета не согласовано со строгим acceptance-сценарием."
+          },
+          {
+            "name": "Инновационность",
+            "score": 11,
+            "max": 15,
+            "awarded": "Нестандартная часть решения — сочетание обязательного детерминированного фильтра, AI-ранжирования только допустимых кандидатов и объяснимых альтернатив с явными отличиями.",
+            "deductions": "Инновационный AI-слой не доведён до полной доказательной защиты содержимого reason, а политика альтернатив с мягким бюджетным порогом остаётся спорной для исходной задачи.",
+            "evidence": [
+              "backend/src/ai/ai.service.ts:35-86",
+              "backend/src/matching/matching.service.ts:71-143",
+              "tests/recommendation-scenarios.spec.cjs:93-117"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "F-AI-GROUNDED-REASON",
+                "reason": "Структурированный вывод и запрет нескольких слов не равны проверке утверждений по исходному описанию; негативные фикстуры проходят до карточки."
+              },
+              {
+                "points": 2,
+                "findingId": "F-ALT-BUDGET-LEAK",
+                "reason": "Мягкий лимит MAX_BUDGET_OVERAGE_RATIO превращает строгий бюджетный фильтр в неявное правило альтернатив, что снижает предсказуемость инновационного компромисса."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "AI только после hard filters",
+                "implementation": "RecommendationsService передаёт в AiService только eligible; занятые, дорогие, неподходящие по формату, языку или часам кандидаты не отправляются на ранжирование.",
+                "value": "Это разумная гибридная архитектура: LLM отвечает за смысловой порядок, а критические ограничения остаются обычным проверяемым кодом.",
+                "verification": "source",
+                "evidence": [
+                  "backend/src/recommendations/recommendations.service.ts:70-87",
+                  "backend/src/ai/ai.service.ts:35-50",
+                  "backend/test/backend.spec.ts:177-218"
+                ]
+              },
+              {
+                "aspect": "Прозрачные альтернативы",
+                "implementation": "MatchingService сохраняет город, категорию и event format, а дату, бюджет, язык и длительность представляет как differences с requested/offered/message.",
+                "value": "Вместо молчаливой подмены фильтров карточка показывает, какой именно компромисс предлагается.",
+                "verification": "source",
+                "evidence": [
+                  "backend/src/matching/matching.service.ts:71-143",
+                  "backend/src/recommendations/recommendations.service.ts:119-164",
+                  "tests/matching.spec.cjs:50-84"
+                ]
+              },
+              {
+                "aspect": "Защита идентичности кандидата",
+                "implementation": "AI возвращает candidateIndex, сервис связывает его с исходным профилем, проверяет полноту/уникальность и затем собирает имя, цену и флаги из CSV.",
+                "value": "Это снижает риск перепутать имя, цену и объяснение при перемешанном model output.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/src/ai/ai.service.ts:60-86",
+                  "tests/recommendation-scenarios.spec.cjs:93-117",
+                  "BE-TEST-001"
+                ]
+              },
+              {
+                "aspect": "Snapshot как часть воспроизводимости",
+                "implementation": "JSON-снимки валидируются Zod-схемой, атомарно записываются и повторно сверяются с текущим population/eligible набором.",
+                "value": "Подход полезен для MVP с одним backend-процессом и делает повторную демонстрацию стабильной.",
+                "verification": "source",
+                "evidence": [
+                  "backend/src/recommendations/snapshot.service.ts:17-90",
+                  "tests/recommendation-scenarios.spec.cjs:119-150"
+                ]
+              }
+            ],
+            "scoreReasoning": "Подход заметно продуманнее простого сортировщика: есть граница ответственности между фильтрами и AI, source-grounded evidence, альтернативы и снимки. Однако ключевой инновационный слой объяснений оставляет содержательный текст модели без верификации, а мягкий бюджет альтернатив требует более явной продуктовой политики."
+          },
+          {
+            "name": "Потенциал развития и масштабирования",
+            "score": 16,
+            "max": 20,
+            "awarded": "Архитектура модульная и оставляет понятные точки расширения: источник профилей, matching, AI, snapshots, intake и frontend отделены друг от друга.",
+            "deductions": "Локальная воспроизводимость frontend зависит от версии npm, а проблема доверия к AI-тексту станет более критичной при росте каталога и числа пользователей.",
+            "evidence": [
+              "docs/ARCHITECTURE.md:1-104",
+              "README.md:87-116",
+              "frontend/Dockerfile:1-22"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "F-AI-GROUNDED-REASON",
+                "reason": "При масштабировании число AI-карточек увеличит поверхность риска: без проверки фактов ложные утверждения могут системно попадать к пользователям."
+              },
+              {
+                "points": 2,
+                "findingId": "F-FRONTEND-NPM-LOCK",
+                "reason": "Различие между npm 10 и требуемым npm 11.6.2 создаёт дополнительное препятствие для воспроизведения вне Docker и усложняет передачу проекта новой команде."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Модульный backend",
+                "implementation": "Отдельные модули config, contractors, matching, ai, intake, recommendations и health соединены NestJS DI; каталог и CSV-loader не смешаны с orchestration.",
+                "value": "Новые источники данных, правила фильтрации или провайдеры AI можно заменять локально, не переписывая весь сценарий.",
+                "verification": "source",
+                "evidence": [
+                  "backend/src/app.module.ts:5-22",
+                  "docs/ARCHITECTURE.md:21-49"
+                ]
+              },
+              {
+                "aspect": "Расширяемая модель входа",
+                "implementation": "DTO поддерживает eventType и совместимый eventFormat, опциональные язык/длительность, валидацию календаря и нормализацию.",
+                "value": "Контракт пригоден для постепенного подключения разных клиентов и естественного языка без потери строгой формы API.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/src/recommendations/recommendation.dto.ts:8-29",
+                  "backend/test/backend.spec.ts:315-367",
+                  "HTTP-SMOKE-001"
+                ]
+              },
+              {
+                "aspect": "Безопасное подключение внешнего AI по замыслу",
+                "implementation": "OpenAI вызывается только backend, с Structured Outputs, timeout, maxRetries 0 и fallback; ключ не передаётся frontend.",
+                "value": "Для дальнейшего развития это правильная граница секретов и отказоустойчивости, особенно при добавлении реального провайдера.",
+                "verification": "source",
+                "evidence": [
+                  "backend/src/ai/ai.service.ts:25-33",
+                  "backend/src/ai/ai.service.ts:40-57",
+                  "README.md:39-47"
+                ]
+              },
+              {
+                "aspect": "Понятные ограничения MVP",
+                "implementation": "README прямо фиксирует CSV вместо БД, один backend-процесс, ограниченный календарь и отсутствие бронирований/платежей/уведомлений.",
+                "value": "Команда очертила границы и не маскирует прототип под production-платформу; это облегчает планирование следующего этапа.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:273-294",
+                  "backend/README.md:1-26"
+                ]
+              }
+            ],
+            "scoreReasoning": "Потенциал высокий благодаря разделению модулей и ясному MVP-контракту. Снижение связано с тем, что масштабирование AI без source-grounded проверки увеличит риск, а локальный frontend setup требует версии npm, не закреплённой в основном README."
+          },
+          {
+            "name": "Презентация, демо и ответы на вопросы",
+            "score": 17,
+            "max": 20,
+            "awarded": "Устной презентации не было, поэтому оценены README, документация и воспроизводимое HTTP-демо из репозитория. README подробно описывает запуск, архитектуру, шесть пресетов, API, fallback и ограничения.",
+            "deductions": "Документация уверенно заявляет AI-гарантии, которые не полностью соответствуют фактической проверке reason; локальная frontend-команда установки недостаточно точно фиксирует npm.",
+            "evidence": [
+              "README.md:1-29",
+              "README.md:119-269",
+              "tests/README.md:1-84",
+              "HTTP-SMOKE-001"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "F-AI-GROUNDED-REASON",
+                "reason": "README описывает запрет придумывать поля и гарантии AI, но проверка негативных reason демонстрирует обратное поведение пользовательской карточки."
+              },
+              {
+                "points": 1,
+                "findingId": "F-FRONTEND-NPM-LOCK",
+                "reason": "Основной README предлагает npm ci для frontend без версии npm; при npm 10 команда падает на рассинхроне lock-файла."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Воспроизводимый путь запуска",
+                "implementation": "README содержит локальные команды, Docker Compose, healthcheck, API/Swagger адреса, env-переменные и прямой curl-пример.",
+                "value": "У жюри есть понятный путь от установки до демонстрационного запроса, включая режим без API-ключа.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:119-169",
+                  "README.md:170-245"
+                ]
+              },
+              {
+                "aspect": "Сценарии демо привязаны к данным",
+                "implementation": "Шесть пресетов покрывают плотный, редкий, занятый, длительный и комбинированный сценарии; smoke фиксирует ожидаемые статусы, количества и ID.",
+                "value": "Демо можно повторить на конкретных входах, а не показывать абстрактный экран.",
+                "verification": "observed",
+                "evidence": [
+                  "frontend/src/lib/form.ts:21-46",
+                  "scripts/smoke.mjs:64-87",
+                  "HTTP-SMOKE-001"
+                ]
+              },
+              {
+                "aspect": "Документация архитектуры",
+                "implementation": "README и docs разделяют поток frontend → proxy → Nest → CSV → matching → AI/fallback → snapshot, а backend README описывает контракт и ограничения.",
+                "value": "Технический результат можно объяснить жюри и передать следующему разработчику.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:31-116",
+                  "docs/ARCHITECTURE.md:21-104",
+                  "docs/API-CONTRACT.md:1-35"
+                ]
+              },
+              {
+                "aspect": "Демонстрация проверена без визуального дублирования",
+                "implementation": "HTTP smoke подтвердил backend, frontend server, same-origin proxy и dataset endpoint; визуальные браузерные проверки намеренно не выполнялись по правилам ревью.",
+                "value": "Сетевой сценарий доказан воспроизводимо, а непроверенное визуальное поведение явно отделено от результата.",
+                "verification": "observed",
+                "evidence": [
+                  "scripts/smoke.mjs:91-98",
+                  "HTTP-SMOKE-001"
+                ]
+              }
+            ],
+            "scoreReasoning": "README заметно сильнее минимальной хакатонной документации и вместе с smoke даёт воспроизводимое демо, поэтому оценка высокая. Небольшое снижение отражает несоответствие между заявленными AI-гарантиями и реальной защитой содержимого, а также недостаточно явную версию npm для локального frontend setup. Отсутствие публичной ссылки и устного выступления баллы не уменьшает."
+          }
+        ],
+        "total": 82
+      },
+      "case": {
+        "criteria": [
+          {
+            "name": "Соответствие задаче и работоспособность",
+            "score": 20,
+            "max": 25,
+            "awarded": "Ключевой сценарий кейса воспроизведён: до трёх карточек, фильтры по обязательным полям, исключение занятых, редкая категория, пустой результат, повторяемость и смена даты.",
+            "deductions": "Два дефекта относятся непосредственно к требованиям кейса: explanation может быть недостоверным, а альтернативная карточка может выйти за бюджетную границу.",
+            "evidence": [
+              "C-HTTP-SMOKE-001",
+              "backend/src/recommendations/recommendations.service.ts:215-249",
+              "tests/recommendation-scenarios.spec.cjs:78-90"
+            ],
+            "deductionItems": [
+              {
+                "points": 3,
+                "findingId": "F-AI-GROUNDED-REASON",
+                "reason": "Требование 2 просит конкретное и достоверное объяснение; три предоставленные негативные фикстуры попадают в explanation целиком."
+              },
+              {
+                "points": 2,
+                "findingId": "F-ALT-BUDGET-LEAK",
+                "reason": "Требование входного бюджета и сценарий пустого результата конфликтуют с альтернативой, которая предлагается при цене на один тенге выше бюджета."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Контракт задачи покрыт",
+                "implementation": "DTO и UI принимают город, дату, event type/format, категорию, бюджет, язык и длительность; backend возвращает до трёх структурированных карточек.",
+                "value": "Все обязательные и опциональные поля кейса представлены в реальном пользовательском потоке.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/src/recommendations/recommendation.dto.ts:8-29",
+                  "frontend/src/lib/form.ts:9-17",
+                  "HTTP-SMOKE-001"
+                ]
+              },
+              {
+                "aspect": "Занятость на дату",
+                "implementation": "busy_dates загружаются в Set, matching исключает профиль на request.date, а альтернативы ищут ближайшую свободную дату и показывают различие.",
+                "value": "Главное бизнес-правило кейса проверено не только на уровне текста, но и на декабрьском запросе с восемью занятыми профилями.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/src/contractors/csv-contractors.loader.ts:57-71",
+                  "backend/src/matching/matching.service.ts:47-57",
+                  "HTTP-SMOKE-001"
+                ]
+              },
+              {
+                "aspect": "Различимые исходы",
+                "implementation": "Статусы и UI-заголовки различают подходящие результаты, отсутствие категории в городе и наличие кандидатов с отсеиванием по условиям.",
+                "value": "Пользователь не получает одинаковый пустой экран для разных причин.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/src/recommendations/recommendations.service.ts:70-75",
+                  "frontend/src/components/recommender.tsx:144-180",
+                  "FE-TEST-001"
+                ]
+              },
+              {
+                "aspect": "Детерминизм",
+                "implementation": "Стабильная сортировка score/price/id дополнена snapshot key и повторной валидацией снимка.",
+                "value": "Повторяемый порядок удовлетворяет Definition of Done и облегчает проверку жюри.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/src/recommendations/recommendations.service.ts:82-85",
+                  "backend/src/recommendations/snapshot.service.ts:61-90",
+                  "HTTP-SMOKE-001"
+                ]
+              }
+            ],
+            "scoreReasoning": "Основные требования кейса выполнены на локальном HTTP-сценарии и подтверждены предоставленными smoke-проверками. Снижение существенно, потому что кейс ставит объяснения на первое место, а три проверки показывают недостоверный AI-текст; дополнительное снижение — за неоднозначную выдачу выше бюджета в тесте границы."
+          },
+          {
+            "name": "Техническая реализация",
+            "score": 21,
+            "max": 25,
+            "awarded": "Техническая реализация сильная для пятичасового MVP: NestJS-модули, строгая загрузка CSV, class-validator, детерминированный matching, Structured Outputs, fallback, snapshots и Next proxy собраны в работающую систему.",
+            "deductions": "AI boundary проверяет форму и запрет отдельных паттернов, но не истинность reason; альтернативная логика содержит отдельное несоответствие бюджета.",
+            "evidence": [
+              "BUILD-001",
+              "FE-BUILD-001",
+              "backend/src/app.module.ts:11-23",
+              "backend/src/ai/ai.service.ts:9-14"
+            ],
+            "deductionItems": [
+              {
+                "points": 3,
+                "findingId": "F-AI-GROUNDED-REASON",
+                "reason": "Валидация candidateIndex/score/длины не связывает каждое утверждение reason с описанием профиля, после чего reason без изменений вставляется в explanation."
+              },
+              {
+                "points": 1,
+                "findingId": "F-ALT-BUDGET-LEAK",
+                "reason": "В alternative() разрешён overage до 30 процентов, но это не согласовано с отдельной проверкой строгого бюджетного фильтра и может менять семантику выдачи."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Валидация и целостность датасета",
+                "implementation": "CSV loader проверяет заголовки, уникальность ID, типы bool/чисел, даты календаря, списки и пустой датасет; источник копируется в Docker image.",
+                "value": "Плохие входные данные не превращаются в тихо неверные рекомендации.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/src/contractors/csv-contractors.loader.ts:35-75",
+                  "backend/test/backend.spec.ts:36-91",
+                  "BE-TEST-001"
+                ]
+              },
+              {
+                "aspect": "Разделение правил и AI",
+                "implementation": "Hard filters выполняются до AiService; модель получает только eligible profiles, а server-side response собирает identity, price, availability и flags из CSV.",
+                "value": "Критические ограничения не делегированы LLM, что соответствует безопасной архитектуре кейса.",
+                "verification": "source",
+                "evidence": [
+                  "backend/src/recommendations/recommendations.service.ts:70-87",
+                  "backend/src/ai/ai.service.ts:40-55"
+                ]
+              },
+              {
+                "aspect": "Отказоустойчивый внешний путь",
+                "implementation": "OpenAI timeout ограничен 7000 ms, retries отключены, invalid/refusal/incomplete response переводится в fallback; без ключа сервис сразу работает локально.",
+                "value": "Внешняя интеграция не блокирует MVP и имеет ясную границу ответственности.",
+                "verification": "source",
+                "evidence": [
+                  "backend/src/ai/ai.service.ts:25-33",
+                  "backend/src/ai/ai.service.ts:58-93",
+                  "backend/test/ai.spec.ts:106-121"
+                ]
+              },
+              {
+                "aspect": "Проверяемый HTTP слой",
+                "implementation": "Nest global validation, Helmet, CORS, throttler, health/catalog/recommendations/intake endpoints и server-only Next proxy покрыты тестами и smoke.",
+                "value": "Репозиторий даёт не только доменную функцию, но и минимально целостный deployable API/web контур.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/src/common/configure-app.ts:6-18",
+                  "frontend/src/app/api/v1/[...path]/route.ts:7-43",
+                  "HTTP-SMOKE-001",
+                  "FE-TEST-001"
+                ]
+              }
+            ],
+            "scoreReasoning": "Архитектура и качество кода заметно выше минимального прототипа, а сборки, линтеры и большинство backend-тестов проходят. Ограничение технического балла — не отсутствие реального ключа, а доказанный недостаток самой валидации содержимого model reason и несогласованность мягких альтернатив с бюджетным acceptance-тестом."
+          },
+          {
+            "name": "README и воспроизводимость",
+            "score": 21,
+            "max": 25,
+            "awarded": "Документация подробно объясняет запуск, env, API, архитектуру, демонстрационные входы, ограничения, fallback и проверки; Docker-сборки и HTTP smoke реально воспроизводятся.",
+            "deductions": "Локальная frontend-команда npm ci из README не воспроизводится с npm 10.9.2, который поставляется в проверенном Node 22 окружении; нужен npm 11.6.2 из Dockerfile. Кроме того, документация переоценивает гарантию AI-текста.",
+            "evidence": [
+              "README.md:119-169",
+              "README.md:225-269",
+              "frontend/Dockerfile:1-10",
+              "FE-INSTALL-001",
+              "FE-QUALITY-001"
+            ],
+            "deductionItems": [
+              {
+                "points": 3,
+                "findingId": "F-FRONTEND-NPM-LOCK",
+                "reason": "Команда npm --prefix frontend ci из README падает с npm 10 на отсутствующих в lock-файле @emnapi/runtime и @emnapi/core; воспроизводимость появляется только после явной установки npm 11.6.2."
+              },
+              {
+                "points": 1,
+                "findingId": "F-AI-GROUNDED-REASON",
+                "reason": "README утверждает, что AI не может придумывать поля, но фактический негативный тест показывает, что неподтверждённый свободный reason публикуется рядом с source quote."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Полное описание запуска",
+                "implementation": "Есть команды backend/frontend, Docker Compose, health/API/Swagger адреса, env example, curl и smoke-последовательность.",
+                "value": "Участник или жюри может быстро понять, как поднять систему и какой запрос подать.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:119-169",
+                  "README.md:170-245"
+                ]
+              },
+              {
+                "aspect": "Документированный контракт",
+                "implementation": "backend/README и docs/API-CONTRACT описывают поля, статусы, ограничения календаря, cache semantics и разделение eventType/eventFormat.",
+                "value": "Документация снижает необходимость читать весь исходный код для базовой проверки.",
+                "verification": "source",
+                "evidence": [
+                  "backend/README.md:28-52",
+                  "docs/API-CONTRACT.md:8-35"
+                ]
+              },
+              {
+                "aspect": "Воспроизводимая сборка",
+                "implementation": "Backend Docker build и frontend standalone Next build завершились успешно; backend lint/build и frontend lint/build также прошли с npm 11.6.2.",
+                "value": "Deployment path реально проверен, а не только заявлен в README.",
+                "verification": "observed",
+                "evidence": [
+                  "BUILD-001",
+                  "FE-BUILD-001",
+                  "FE-QUALITY-001"
+                ]
+              },
+              {
+                "aspect": "Проверяемые acceptance-сценарии",
+                "implementation": "scripts/smoke.mjs содержит конкретные ожидания по 66 профилям, статусам, ID, занятости, повтору, validation, frontend и proxy.",
+                "value": "Это хороший executable supplement к текстовой документации и особенно полезно для пятичасового MVP.",
+                "verification": "observed",
+                "evidence": [
+                  "scripts/smoke.mjs:49-98",
+                  "HTTP-SMOKE-001"
+                ]
+              }
+            ],
+            "scoreReasoning": "Документация и исполняемые проверки позволяют воспроизвести основной fallback-сценарий. Четыре балла удержаны не за отсутствие публичного URL и не за отсутствие ключа, а за конкретный npm lock/version mismatch в локальной инструкции и за расхождение заявленной AI-гарантии с поведением кода."
+          },
+          {
+            "name": "Ценность и применимость решения",
+            "score": 13,
+            "max": 15,
+            "awarded": "Продукт применим как внутренний инструмент первичного отбора: организатор задаёт несколько условий, быстро получает shortlist и видит цену, происхождение данных, совпадения и компромиссы.",
+            "deductions": "Недостоверный AI reason может подорвать доверие к рекомендации, а бюджетная альтернатива требует явного согласования с ожиданиями заказчика.",
+            "evidence": [
+              "HTTP-SMOKE-001",
+              "frontend/src/components/recommender.tsx:144-223",
+              "backend/src/recommendations/explainer.service.ts:18-49"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "F-AI-GROUNDED-REASON",
+                "reason": "Ложная услуга, язык или обещание доступности особенно опасны в применимом сервисе, где объяснение влияет на выбор подрядчика."
+              },
+              {
+                "points": 1,
+                "findingId": "F-ALT-BUDGET-LEAK",
+                "reason": "Карточка с ценой выше бюджета может быть полезной только как явный компромисс; текущая политика не согласована с тестом строгого пустого результата."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Практичный shortlist",
+                "implementation": "До трёх карточек упорядочиваются и показывают starting price, город, категорию и краткое объяснение; UI добавляет статусы точного/близкого варианта.",
+                "value": "Результат близок к реальному рабочему решению для организатора, а не к демонстрации модели без действия.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/src/recommendations/recommendation.dto.ts:62-92",
+                  "frontend/src/components/recommender.tsx:183-223",
+                  "HTTP-SMOKE-001"
+                ]
+              },
+              {
+                "aspect": "Объяснение дефицита",
+                "implementation": "В message и блоке исключений показываются busy/budget/format/language/duration counts и следующий шаг.",
+                "value": "Пользователь понимает, почему вариантов мало и как изменить запрос, сохраняя контроль над решением.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/src/recommendations/recommendations.service.ts:239-259",
+                  "frontend/src/components/recommender.tsx:220-223",
+                  "HTTP-SMOKE-001"
+                ]
+              },
+              {
+                "aspect": "Применимость к анонимизированным данным",
+                "implementation": "Флаги synthetic, city_imputed и price_imputed отображаются в карточке, а CSV source сохраняется неизменённым в backend image.",
+                "value": "Решение честно работает с качеством исходного каталога и не скрывает его ограничения.",
+                "verification": "source",
+                "evidence": [
+                  "backend/src/contractors/csv-contractors.loader.ts:61-72",
+                  "backend/Dockerfile:16-17",
+                  "frontend/src/components/recommender.tsx:201-203"
+                ]
+              },
+              {
+                "aspect": "Доступность без OpenAI",
+                "implementation": "Fallback score и source evidence позволяют выдавать результат без OPENAI_API_KEY; HTTP smoke полностью прошёл в этом режиме.",
+                "value": "Для MVP это делает инструмент usable в закрытом контуре и снижает operational dependency.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/src/recommendations/recommendations.service.ts:75-81",
+                  "START-001",
+                  "HTTP-SMOKE-001"
+                ]
+              }
+            ],
+            "scoreReasoning": "Решение уже полезно как фильтр и помощник выбора на небольшом каталоге. Снижение ограничено доверием к AI-generated explanation и неоднозначной выдачей выше бюджета; отсутствие бронирования, платежей и публичного deployment не является недостатком данного кейса."
+          },
+          {
+            "name": "Потенциал развития и оригинальность подхода",
+            "score": 8,
+            "max": 10,
+            "awarded": "Оригинальность проявляется в честных альтернативных карточках, таблице сверки критериев, provenance flags и объединении естественного intake с детерминированным подбором.",
+            "deductions": "Следующий этап должен формализовать защиту смысловых утверждений и воспроизводимый toolchain frontend; иначе рост AI-функции и команды будет усиливать текущие риски.",
+            "evidence": [
+              "frontend/src/components/recommender.tsx:84-111",
+              "backend/src/intake/intake.service.ts:16-35",
+              "F-AI-GROUNDED-REASON",
+              "F-FRONTEND-NPM-LOCK"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "F-AI-GROUNDED-REASON",
+                "reason": "Без привязки каждого model claim к структурированному полю или точной цитате масштабирование смыслового ранжирования не гарантирует качество объяснений."
+              },
+              {
+                "points": 1,
+                "findingId": "F-FRONTEND-NPM-LOCK",
+                "reason": "Для командного развития нужен единый закреплённый npm toolchain, иначе локальные onboarding-проверки будут зависеть от версии npm на машине."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Гибридный естественный intake",
+                "implementation": "IntakeService сначала извлекает безопасные значения fallback-парсером, затем санитизирует AI-значения через каталог и календарь, сообщает missing и assumptions.",
+                "value": "Подход можно расширить на новые формы запроса, сохраняя контроль над допустимыми значениями.",
+                "verification": "source",
+                "evidence": [
+                  "backend/src/intake/intake.service.ts:16-60",
+                  "backend/src/intake/intake.service.ts:63-128",
+                  "BE-TEST-001"
+                ]
+              },
+              {
+                "aspect": "Переиспользуемая модель сравнения",
+                "implementation": "criteria и differences представлены как машинный контракт и рендерятся одинаково для exact и alternative карточек.",
+                "value": "Это хорошая основа для аудита, экспорта результата или будущего кабинета заказчика.",
+                "verification": "source",
+                "evidence": [
+                  "backend/src/recommendations/recommendation.dto.ts:45-79",
+                  "frontend/src/components/recommender.tsx:84-111"
+                ]
+              },
+              {
+                "aspect": "Очевидные направления расширения",
+                "implementation": "README фиксирует pipeline version, prompt version, dataset hash, ограничения одного процесса и отсутствующие production-функции.",
+                "value": "Команда оставила понятную карту для БД/общего cache, календарной синхронизации и новых провайдеров без притворства, что это уже сделано.",
+                "verification": "source",
+                "evidence": [
+                  "backend/src/recommendations/recommendations.service.ts:26-28",
+                  "README.md:273-294",
+                  "backend/README.md:14-26"
+                ]
+              },
+              {
+                "aspect": "Пять часов соблюдены по масштабу",
+                "implementation": "Вместо бронирования и платежей команда сосредоточилась на matching, объяснениях, fallback, редких категориях и демонстрационных сценариях.",
+                "value": "Скоуп соответствует времени хакатона и при этом оставляет расширяемый технический каркас.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:8-29",
+                  "README.md:273-294",
+                  "tests/README.md:1-16"
+                ]
+              }
+            ],
+            "scoreReasoning": "Для пятичасового MVP оригинальность и расширяемость убедительны: естественный intake, source-aware карточки и честные alternatives дают собственный почерк. Два балла удержаны за проблемы, которые нужно решить до масштабирования: доказательная защита AI-текста и закрепление frontend toolchain."
+          }
+        ],
+        "total": 83
+      },
+      "judgeScore": 82.5,
+      "caseRequirements": [
+        {
+          "requirement": "Вход: город, дата, тип мероприятия, категория и бюджет; язык и длительность опциональны",
+          "status": "met",
+          "explanation": "DTO, frontend form и HTTP contract принимают все обязательные поля; language и durationHours проходят только при наличии. Поддержан eventType и совместимый eventFormat.",
+          "evidence": [
+            "backend/src/recommendations/recommendation.dto.ts:8-29",
+            "frontend/src/lib/form.ts:9-17",
+            "backend/test/backend.spec.ts:315-367"
+          ]
+        },
+        {
+          "requirement": "Выход: не более трёх карточек с именем, категорией, городом, ценой и объяснением",
+          "status": "partial",
+          "explanation": "В smoke count всегда не больше трёх, поля и объяснения присутствуют. Однако три негативные проверки доказывают, что AI reason может содержать неподтверждённые услуги, язык или доступность.",
+          "evidence": [
+            "backend/src/recommendations/recommendation.dto.ts:62-79",
+            "scripts/smoke.mjs:18-31",
+            "tests/recommendation-scenarios.spec.cjs:152-168",
+            "BE-TEST-001"
+          ]
+        },
+        {
+          "requirement": "Занятый на выбранную дату подрядчик не попадает в точную выдачу",
+          "status": "met",
+          "explanation": "busy_dates загружаются и проверяются до построения exact items. Smoke проверил плотную дату и декабрьскую дату с изменившейся выдачей и 8 занятыми профилями.",
+          "evidence": [
+            "backend/src/matching/matching.service.ts:47-57",
+            "backend/src/recommendations/recommendations.service.ts:83-87",
+            "HTTP-SMOKE-001"
+          ]
+        },
+        {
+          "requirement": "Подходящих меньше трёх — показать количество и причину",
+          "status": "met",
+          "explanation": "Message явно сообщает число точных/близких карточек, а shortageReason перечисляет причины busy, budget, format, language и duration. Редкий флорист и зимний сценарий прошли smoke.",
+          "evidence": [
+            "backend/src/recommendations/recommendations.service.ts:215-249",
+            "frontend/src/components/recommender.tsx:177-223",
+            "HTTP-SMOKE-001"
+          ]
+        },
+        {
+          "requirement": "Детерминизм: одинаковый запрос даёт одинаковый порядок",
+          "status": "met",
+          "explanation": "Повторный dense-запрос в smoke дал тот же JSON и тот же порядок ID; код дополнительно использует snapshot key и стабильные tie-breakers.",
+          "evidence": [
+            "backend/src/recommendations/recommendations.service.ts:82-85",
+            "backend/src/recommendations/snapshot.service.ts:57-90",
+            "HTTP-SMOKE-001"
+          ]
+        },
+        {
+          "requirement": "Разные даты могут менять результат и объяснять занятость",
+          "status": "met",
+          "explanation": "Одинаковый dense-запрос на 15 октября и 20 декабря дал разные ID, а ответ указал 2 и 8 занятых профилей соответственно; декабрьские карточки помечены alternatives.",
+          "evidence": [
+            "scripts/smoke.mjs:64-78",
+            "HTTP-SMOKE-001"
+          ]
+        },
+        {
+          "requirement": "Явно различать: найдено, категории нет в городе, кандидаты есть, но фильтры не прошли",
+          "status": "met",
+          "explanation": "Backend возвращает три разных статуса, а UI строит разные заголовки и сообщения. Smoke проверил no_category_in_city и no_candidates_after_filters отдельно.",
+          "evidence": [
+            "backend/src/recommendations/recommendations.service.ts:70-75",
+            "frontend/src/components/recommender.tsx:144-180",
+            "HTTP-SMOKE-001"
+          ]
+        },
+        {
+          "requirement": "Проверить редкую категорию, пустой результат и повторный одинаковый запрос",
+          "status": "met",
+          "explanation": "Предоставленный smoke-тест выполнен: Астана/Флорист вернул одну карточку HK-90002, бюджет 1 вернул 0 exact/alternative items, повтор dense совпал.",
+          "evidence": [
+            "scripts/smoke.mjs:64-78",
+            "HTTP-SMOKE-001"
+          ]
+        },
+        {
+          "requirement": "Разумная скорость и локально воспроизводимое демо",
+          "status": "met",
+          "explanation": "HTTP smoke прошёл без OpenAI ключа; локальные ответы заняли десятки миллисекунд, backend и frontend реально стартовали. Визуальное поведение отдельно не проверялось по политике ревью.",
+          "evidence": [
+            "scripts/smoke.mjs:10-15",
+            "HTTP-SMOKE-001",
+            "START-001"
+          ]
+        }
+      ],
+      "testData": {
+        "provided": [
+          "cases/6/task.txt",
+          "cases/6/case-data/HackAlem AI_ Хакатон-задача_ умный подбор подрядчиков.md",
+          "cases/6/case-data/hackathon dataset anonymized .csv",
+          "hackathon dataset preview.html"
+        ],
+        "used": [
+          "cases/6/task.txt",
+          "cases/6/case-data/HackAlem AI_ Хакатон-задача_ умный подбор подрядчиков.md",
+          "cases/6/case-data/hackathon dataset anonymized .csv",
+          "hackathon dataset anonymized.csv",
+          "hackathon dataset preview.html",
+          "scripts/smoke.mjs",
+          "tests/matching.spec.cjs",
+          "tests/recommendation-scenarios.spec.cjs"
+        ],
+        "checks": [
+          {
+            "input": "CSV проекта и предоставленный CSV кейса: 66 профилей, 13 полей; отдельно проверены dense, rare, December, no-category и budget=1.",
+            "method": "Загрузчик CSV и HTTP smoke; сравнение количества профилей и сценариев с ожиданиями скрипта.",
+            "result": "CSV загрузился; health сообщил 66; dense вернул 3, rare HK-90002 вернул 1, budget=1 вернул 0 exact, отсутствующая категория вернула no_category_in_city; декабрь дал 8 busy и 3 alternatives.",
+            "conclusion": "Тестовый датасет применён к работающему проекту; основные данные кейса согласованы с поведением сервиса."
+          },
+          {
+            "input": "Плотный запрос Алматы, 2026-10-15, корпоратив, Ведущий, 900000, русский; повтор того же JSON.",
+            "method": "POST /api/v1/recommendations дважды через scripts/smoke.mjs.",
+            "result": "Оба ответа status=matched, count=3, IDs HK-44923/HK-29829/HK-35215 и message совпали; mode=fallback.",
+            "conclusion": "Порядок и результат детерминированы в fallback режиме."
+          },
+          {
+            "input": "Астана, 2026-11-14, корпоратив, Флорист, 900000, русский; Алматы, Инструменталист; бюджет 1.",
+            "method": "Три HTTP scenario checks из scripts/smoke.mjs.",
+            "result": "Флорист: matched, count=1, HK-90002, synthetic=true; Инструменталист: no_category_in_city, count=0; budget=1: no_candidates_after_filters, count=0 и объяснение причин.",
+            "conclusion": "Редкая категория, отсутствие категории и полное отсеивание различаются и объяснены."
+          },
+          {
+            "input": "Один и тот же профиль с ценой 500000, бюджетом 499999 и затем длительностью 6.01; model reason с тремя неподтверждёнными фразами.",
+            "method": "Предоставленный backend Jest spec с реальными MatchingService/RecommendationsService и SDK mock только на границе AI.",
+            "result": "Backend suite: 77 passed, 4 failed. Один failure — count=1 вместо 0 из-за budget alternative; три failure — invented service, unsupported language и availability promise опубликованы в explanation.",
+            "conclusion": "Подтверждены два дефекта проекта; это не отсутствие внешнего ключа и не ошибка тестового стенда."
+          },
+          {
+            "input": "Frontend unit/component suite: API normalization, form, recommender, dataset explorer; frontend production build.",
+            "method": "npm 11.6.2 в изолированном Node 22 контейнере.",
+            "result": "5 Vitest files, 19 tests passed; lint passed; Next standalone build passed.",
+            "conclusion": "Frontend контракт и тестируемые состояния зелёные; визуальная браузерная проверка не выполнялась."
+          },
+          {
+            "input": "Локальная установка frontend согласно README с npm 10.9.2 и затем с npm 11.6.2 из Dockerfile.",
+            "method": "npm ci без изменения lock-файла, затем повтор с закреплённой проектом версией npm.",
+            "result": "npm 10 завершился EUSAGE: missing @emnapi/runtime@1.11.3 и @emnapi/core@1.11.3; npm 11.6.2 успешно установил зависимости и все frontend checks.",
+            "conclusion": "Есть документационный/toolchain дефект локальной воспроизводимости, но Docker-путь с npm 11.6.2 работает."
+          }
+        ],
+        "limitations": [
+          "Живой OpenAI не вызывался: credentials намеренно не предоставлены; AI boundary оценён по коду и offline SDK mocks.",
+          "HTML preview использован как статический источник структуры/данных, визуальная проверка приложения не выполнялась.",
+          "Полные строки CSV и персональные данные в отчёт не включены; приведены только необходимые агрегаты и ID тестового результата."
+        ]
+      },
+      "runtime": {
+        "status": "working",
+        "build": "Backend production image build и frontend Next standalone image build прошли. Backend lint/build и frontend lint/build прошли; frontend build подтвердил compilation, type checking и route generation.",
+        "start": "Backend стартовал без OPENAI_API_KEY и ответил GET /api/v1/health: HTTP 200, {status: ok, contractors: 66}. Frontend стартовал и был проверен HTTP smoke вместе с server-side proxy.",
+        "scenario": "Основной fallback-сценарий воспроизведён через API и proxy: smoke завершился PASS для health, catalog, intake, dense, repeat, rare, empty, no-category, date-shift, invalid date, frontend и dataset. Backend полный Jest не зелёный из-за четырёх подтверждённых failures, описанных findings.",
+        "environment": "Изолированные Docker-контейнеры на Node.js 22; сборка frontend выполнялась с npm 11.6.2, backend — с npm lock-файлом; OpenAI credentials не предоставлены, поэтому runtime использовал fallback.",
+        "summary": "Приложение реально deployable и работает в заявленном offline/fallback режиме. Статус working означает воспроизведённый основной сценарий, а не подтверждение live AI режима или визуального качества.",
+        "checks": [
+          {
+            "command": "npm run build",
+            "result": "Nest production build завершился успешно в backend image; затем image стартовал командой node dist/main.js.",
+            "id": "BUILD-001",
+            "stage": "build",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Backend TypeScript/Nest build без ошибок."
+          },
+          {
+            "command": "npm run lint",
+            "result": "ESLint backend завершился с кодом 0; frontend ESLint также завершился с кодом 0 в FE-QUALITY-001.",
+            "id": "LINT-001",
+            "stage": "build",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Линтеры проекта проходят без ошибок."
+          },
+          {
+            "command": "node dist/main.js; GET /api/v1/health",
+            "result": "Backend запустился; HTTP 200, status=ok, contractors=66.",
+            "id": "START-001",
+            "stage": "start",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Процесс стартует без OpenAI ключа и health возвращает ok с 66 профилями."
+          },
+          {
+            "command": "node scripts/smoke.mjs",
+            "result": "PASS: API, intent parsing, alternatives, deterministic repeat, dataset, validation, frontend and proxy; dense=3, rare=1, budget-empty=0, no-category=0, December=8 busy.",
+            "id": "HTTP-SMOKE-001",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Все предоставленные API и HTTP сценарии из smoke проходят и возвращают ожидаемые статусы/количества."
+          },
+          {
+            "command": "npm test",
+            "result": "77 тестов прошли, 4 упали в tests/recommendation-scenarios.spec.cjs: один budget alternative failure и три failures на неподтверждённый AI reason.",
+            "id": "BE-TEST-001",
+            "stage": "scenario",
+            "status": "fail",
+            "cause": "project",
+            "expected": "Все 81 backend unit/integration/domain tests проходят."
+          },
+          {
+            "command": "npm run lint; npm test; npm run build",
+            "result": "Frontend lint passed, Vitest: 5 files/19 tests passed, Next build passed. npm 11.6.2 использован согласно frontend Dockerfile.",
+            "id": "FE-QUALITY-001",
+            "stage": "build",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Frontend lint, tests и production build проходят."
+          },
+          {
+            "command": "npm ci",
+            "result": "С npm 10.9.2 локальная frontend установка завершилась EUSAGE из-за отсутствующих в lock-файле @emnapi/runtime и @emnapi/core; с npm 11.6.2 установка успешна.",
+            "id": "FE-INSTALL-001",
+            "stage": "build",
+            "status": "fail",
+            "cause": "project",
+            "expected": "Команда npm ci из README воспроизводит frontend зависимости в обычном Node 22/npm окружении."
+          },
+          {
+            "command": "POST /api/v1/recommendations",
+            "result": "Live OpenAI ветка не запускалась: OPENAI_API_KEY отсутствует. Доступны source inspection и offline SDK mock tests; fallback ветка проверена HTTP smoke.",
+            "id": "AI-LIVE-001",
+            "stage": "scenario",
+            "status": "not_run",
+            "cause": "external_service",
+            "expected": "При предоставленном ключе analysisMode=ai и model ranking проходят на реальном провайдере."
+          }
+        ],
+        "limitations": [
+          "Live OpenAI provider, quota, latency и semantic ranking не проверены без credentials; это ограничение проверки, не штраф само по себе.",
+          "Визуальная и браузерная проверка запрещена пользовательскими инструкциями; HTTP и component tests выполнены, визуальное поведение остаётся непроверенным.",
+          "Нагрузочный тест и multi-replica behavior не проверялись; README сам ограничивает MVP одним backend-процессом.",
+          "Публичная live demo ссылка отсутствует по README; локальный HTTP demo воспроизведён, отсутствие URL не использовано как deduction."
+        ]
+      },
+      "liveDemo": {
+        "status": "none",
+        "url": null,
+        "notes": "README прямо сообщает, что публичной deployed-версии нет. Локальная HTTP-связка backend/frontend/proxy была запущена и проверена; визуальная проверка не выполнялась по политике ревью."
+      },
+      "fiveHourContext": "Для пятичасового MVP объём выбран разумно: команда сосредоточилась на самом ценном для кейса matching, объяснениях, крайних исходах, fallback без ключа, повторяемости и воспроизводимом smoke, а бронирование, платежи и уведомления явно оставила за пределами. Состояние working и высокая оценка не требуют production-БД или обязательного live AI. При этом два найденных дефекта затрагивают сам приоритет кейса — достоверность объяснений и честность бюджетного компромисса, поэтому полностью максимальный балл был бы неоправдан.",
+      "strengths": [
+        "S-CORE-SCENARIOS: HTTP smoke воспроизвёл dense, rare, empty, no-category, date-shift и repeat с ожидаемыми статусами и количествами.",
+        "S-MATCHING: город, категория, занятость, бюджет, формат, язык и длительность применяются к одному профилю; compound CSV fields поддержаны.",
+        "S-EXPLANATIONS: fallback-карточки содержат конкретные значения запроса, source evidence, критерии и различия alternatives.",
+        "S-DETERMINISM: snapshot key, atomic persistence и стабильные score/price/id tie-breakers дают повторяемый порядок.",
+        "S-ARCHITECTURE: Nest modules, DTO validation, strict CSV loader, AI boundary, fallback и Next proxy разделены по ответственности.",
+        "S-RESILIENCE: без OpenAI ключа backend стартует и выдаёт детерминированный результат; timeout/refusal/invalid output предусмотрены.",
+        "S-DOCUMENTATION: README, backend README, docs и executable smoke описывают запуск и демонстрационный сценарий.",
+        "S-FRONTEND-QUALITY: frontend lint/build и 19 component/API/form tests прошли; состояния редкой категории, ошибки и alternatives покрыты тестами."
+      ],
+      "gaps": [
+        "F-AI-GROUNDED-REASON: schema-valid model reason не сверяется с профилем и публикуется в explanation; три негативных сценария воспроизвели ложные услугу, язык и доступность.",
+        "F-ALT-BUDGET-LEAK: MatchingService разрешает budget overage до 30 процентов для alternatives; при цене 500000 и бюджете 499999 ответ содержит одну карточку, тогда как acceptance test ожидает count=0.",
+        "F-FRONTEND-NPM-LOCK: npm ci frontend с npm 10.9.2, подразумеваемым обычным Node 22 окружением README, падает на отсутствующих @emnapi пакетах; npm 11.6.2 из Dockerfile исправляет только воспроизведение, не lock mismatch."
+      ],
+      "futureAdvice": [
+        {
+          "principle": "Публикуйте только проверенные пользовательские факты",
+          "why": "F-AI-GROUNDED-REASON показывает, что Structured Outputs и запрет нескольких слов пропускают содержательно ложный reason, который затем дословно оказывается в карточке.",
+          "how": "Для следующего AI-сценария оставьте модели только score и ссылку на допустимые факты/индексы; собирайте claims из структурированных полей и точных фрагментов профиля, а негативные фикстуры на услугу, язык и доступность держите в acceptance suite.",
+          "findingIds": [
+            "F-AI-GROUNDED-REASON"
+          ],
+          "successCheck": "Три текущие негативные фикстуры и аналогичные фразы проходят через pipeline без публикации неподтверждённого текста, при этом exact карточка сохраняет уникальную source evidence.",
+          "timeboxMinutes": 45
+        },
+        {
+          "principle": "Явно разделяйте exact budget и допустимый компромисс",
+          "why": "F-ALT-BUDGET-LEAK показывает, что внутреннее правило 30 процентов меняет пустой строгий результат на карточку дороже бюджета.",
+          "how": "Перед следующим кейсом зафиксируйте в контракте один из двух режимов: alternatives никогда не превышают бюджет или alternative допускает overage только при отдельном opt-in и заметном статусе; затем добавьте boundary checks на 1 тенге и на 30 процентов.",
+          "findingIds": [
+            "F-ALT-BUDGET-LEAK"
+          ],
+          "successCheck": "Для бюджета 499999 и цены 500000 поведение совпадает с принятой спецификацией, а smoke и Jest проверяют exactCount, alternativeCount, status и differences.",
+          "timeboxMinutes": 25
+        },
+        {
+          "principle": "Закрепляйте toolchain там, где lock-файл чувствителен к версии npm",
+          "why": "F-FRONTEND-NPM-LOCK воспроизводится как EUSAGE на npm 10, хотя Dockerfile использует npm 11.6.2 и с ним все проверки проходят.",
+          "how": "Укажите npm 11.6.2 в основном README/engines или обновите lock-файл совместимым способом; добавьте отдельный clean-install check в CI и не меняйте lock во время ревью.",
+          "findingIds": [
+            "F-FRONTEND-NPM-LOCK"
+          ],
+          "successCheck": "Чистый npm ci проходит одной и той же командой в README и CI на заявленной версии Node/npm, без ручной установки скрытой версии.",
+          "timeboxMinutes": 20
+        }
+      ],
+      "uncertainties": [
+        "Не проверен реальный OpenAI Responses API: нет credentials, поэтому analysisMode=ai, provider latency и живое семантическое ранжирование остаются непроверенными.",
+        "Визуальное отображение, responsive layout и фактическое взаимодействие в браузере не оценивались по обязательной политике user-owned visual verification; component tests и HTTP proxy проверены.",
+        "Не проводилась нагрузочная проверка, проверка нескольких replicas и длительное накопление snapshot cache.",
+        "Публичной live demo нет; локальная deployable связка и API smoke подтверждены."
+      ],
+      "reviewPolicyVersion": 2,
+      "assessmentStatus": "ready",
+      "findings": [
+        {
+          "id": "F-AI-GROUNDED-REASON",
+          "kind": "defect",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Содержательно неподтверждённый reason от schema-valid AI response попадает в пользовательскую карточку.",
+          "expected": "Explanation должен содержать только факты из структурированных полей и/или подтверждённые фрагменты description; нельзя обещать услугу, язык или доступность, которых нет в профиле.",
+          "actual": "В тестовой фикстуре с единственным профилем description «Интерактивные программы для команды.» три reason — про лазерное шоу, французский язык и свободную дату — прошли проверку AiService и были вставлены ExplainerService в explanation.",
+          "evidence": [
+            "backend/src/ai/ai.service.ts:65-85",
+            "backend/src/recommendations/explainer.service.ts:44-49",
+            "tests/recommendation-scenarios.spec.cjs:152-168",
+            "BE-TEST-001"
+          ],
+          "checkIds": [
+            "BE-TEST-001"
+          ]
+        },
+        {
+          "id": "F-ALT-BUDGET-LEAK",
+          "kind": "defect",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Alternative matching может вернуть подрядчика с ценой выше бюджета даже при минимальном превышении.",
+          "expected": "Для строгого бюджетного запроса результат должен оставаться пустым при превышении; если продукт допускает компромисс, это должно быть явно согласовано отдельным режимом и acceptance ожиданием.",
+          "actual": "При fixture priceFromKzt=500000 и budgetKzt=499999 matching исключает профиль из eligible, но alternatives разрешает overage ratio 0.000002 и RecommendationsService возвращает count=1.",
+          "evidence": [
+            "backend/src/matching/matching.service.ts:29-31",
+            "backend/src/matching/matching.service.ts:106-116",
+            "tests/recommendation-scenarios.spec.cjs:78-90",
+            "BE-TEST-001"
+          ],
+          "checkIds": [
+            "BE-TEST-001"
+          ]
+        },
+        {
+          "id": "F-FRONTEND-NPM-LOCK",
+          "kind": "defect",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Обычная frontend-инструкция npm ci не воспроизводится с npm 10.9.2, хотя README не закрепляет требуемый npm.",
+          "expected": "README-команда локальной установки должна проходить на явно заявленной версии Node/npm либо lock-файл должен быть совместим с базовой версией npm проекта.",
+          "actual": "npm 10.9.2 завершил npm ci ошибкой EUSAGE и сообщил Missing @emnapi/runtime@1.11.3 и @emnapi/core@1.11.3; после npm install -g npm@11.6.2 установка, lint, tests и build прошли.",
+          "evidence": [
+            "README.md:127-136",
+            "frontend/Dockerfile:1-10",
+            "FE-INSTALL-001",
+            "FE-QUALITY-001"
+          ],
+          "checkIds": [
+            "FE-INSTALL-001"
+          ]
+        },
+        {
+          "id": "S-CORE-SCENARIOS",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Основные кейсовые HTTP сценарии работают без OpenAI ключа и возвращают ожидаемые статусы, количества и объяснения.",
+          "expected": "Fallback должен поддерживать плотный, редкий, пустой, no-category, date-shift и repeat сценарии.",
+          "actual": "scripts/smoke.mjs завершился PASS; dense=3, rare=1, budget-empty=0, no-category=0, December=3 alternatives с 8 busy, повтор dense совпал.",
+          "evidence": [
+            "scripts/smoke.mjs:49-98",
+            "HTTP-SMOKE-001"
+          ],
+          "checkIds": [
+            "HTTP-SMOKE-001"
+          ]
+        },
+        {
+          "id": "S-ARCHITECTURE",
+          "kind": "strength",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Критические ограничения отделены от AI, данные валидируются, а результат собирается из исходного профиля.",
+          "expected": "AI не должен решать занятость, идентичность, цену и обязательные filters; эти правила должны быть детерминированными.",
+          "actual": "Matching выполняется до AiService, в AI передаются только eligible кандидаты, candidateIndex проверяется, identity/price/flags и criteria собираются server-side.",
+          "evidence": [
+            "backend/src/recommendations/recommendations.service.ts:70-87",
+            "backend/src/ai/ai.service.ts:60-86",
+            "backend/src/contractors/csv-contractors.loader.ts:35-75"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "S-DETERMINISM",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Снимки и стабильные tie-breakers обеспечивают повторяемый порядок и восстановление после повреждённого snapshot.",
+          "expected": "Одинаковый normalized request должен возвращать тот же JSON/order, а некорректный snapshot не должен менять контракт.",
+          "actual": "Smoke repeat дал одинаковый результат; backend tests покрывают concurrent requests, restart и recompute corrupted snapshots.",
+          "evidence": [
+            "backend/src/recommendations/snapshot.service.ts:61-90",
+            "backend/src/recommendations/recommendations.service.ts:82-85",
+            "HTTP-SMOKE-001",
+            "backend/test/backend.spec.ts:226-313"
+          ],
+          "checkIds": [
+            "HTTP-SMOKE-001",
+            "BE-TEST-001"
+          ]
+        },
+        {
+          "id": "S-DOCUMENTATION",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "README и executable checks дают воспроизводимый путь от установки до демонстрационного результата.",
+          "expected": "Документация должна раскрыть запуск, API, данные, сценарии и ограничения, а команды должны быть проверяемыми.",
+          "actual": "README содержит локальный и Docker запуск, env, curl, шесть сценариев и ограничения; Docker build, smoke и frontend quality прошли.",
+          "evidence": [
+            "README.md:119-269",
+            "BUILD-001",
+            "FE-BUILD-001",
+            "HTTP-SMOKE-001"
+          ],
+          "checkIds": [
+            "BUILD-001",
+            "FE-QUALITY-001",
+            "HTTP-SMOKE-001"
+          ]
+        },
+        {
+          "id": "L-AI-LIVE-UNVERIFIED",
+          "kind": "limitation",
+          "verification": "unverified",
+          "responsibility": "external_service",
+          "claim": "Живой AI режим и семантическое качество реального провайдера не подтверждены.",
+          "expected": "Для live AI проверки нужен предоставленный credentials и внешний сервис; без этого fallback должен продолжать работать.",
+          "actual": "Credentials намеренно отсутствуют; live call не выполнялся, но fallback HTTP smoke и offline SDK mocks работают.",
+          "evidence": [
+            "backend/src/ai/ai.service.ts:25-36",
+            "AI-LIVE-001",
+            "HTTP-SMOKE-001"
+          ],
+          "checkIds": [
+            "AI-LIVE-001"
+          ]
+        },
+        {
+          "id": "L-VISUAL-UNVERIFIED",
+          "kind": "limitation",
+          "verification": "unverified",
+          "responsibility": "review_environment",
+          "claim": "Визуальное и responsive поведение приложения не установлены этим ревью.",
+          "expected": "Визуальную проверку должен выполнить пользователь согласно user-owned visual verification policy.",
+          "actual": "Проверены HTTP frontend/proxy и component tests, но браузер, screenshot и UI automation не использовались.",
+          "evidence": [
+            "HTTP-SMOKE-001",
+            "FE-TEST-001"
+          ],
+          "checkIds": [
+            "HTTP-SMOKE-001",
+            "FE-QUALITY-001"
+          ]
+        },
+        {
+          "id": "L-SCALE-UNVERIFIED",
+          "kind": "limitation",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Текущая архитектура явно рассчитана на один backend-процесс и CSV/cache MVP, а multi-replica масштабирование не проверено.",
+          "expected": "Для пятичасового MVP достаточно задокументировать границу, не выдавая её за production-ready coordination.",
+          "actual": "README/backend README фиксируют один процесс, CSV и необходимость shared coordination для нескольких replicas; нагрузка не измерялась.",
+          "evidence": [
+            "README.md:273-294",
+            "backend/README.md:14-26",
+            "docs/ARCHITECTURE.md:87-104"
+          ],
+          "checkIds": []
+        }
+      ],
+      "gapFindingIds": [
+        "F-AI-GROUNDED-REASON",
+        "F-ALT-BUDGET-LEAK",
+        "F-FRONTEND-NPM-LOCK"
+      ]
+    }
+  ],
+  "score": 82.5,
+  "status": "complete",
+  "expectedJudges": 1
+}

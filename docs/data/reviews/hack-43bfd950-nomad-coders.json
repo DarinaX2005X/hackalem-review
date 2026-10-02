@@ -1,0 +1,883 @@
+{
+  "methodVersion": 4,
+  "repoId": "hack-43bfd950-nomad-coders",
+  "repoUrl": "https://github.com/BAITC-Hacks/hack-43bfd950-nomad-coders",
+  "caseId": 5,
+  "snapshot": "c3e4b0e09ec4dd6884811a659a308c7953aa065a",
+  "judges": [
+    {
+      "methodVersion": 4,
+      "repoId": "hack-43bfd950-nomad-coders",
+      "caseId": 5,
+      "model": "GPT-5.6 Luna",
+      "snapshot": "c3e4b0e09ec4dd6884811a659a308c7953aa065a",
+      "overallSummary": "Nomad Coders — сильный, воспроизводимый прототип планирования закупок: сборка и HTTP-запуск работают, синтетический сквозной сценарий от расчёта до согласованного CSV воспроизведён, а оба предоставленных комплекта XLSX реально импортированы и рассчитаны. Движок аккуратно различает ноль, неизвестное значение и блокирующие проблемы, учитывает сезонность, рост, датированные приходы, подтверждённый stockout и выбросы. Главные ограничения — ручные overrides остались API-only, у решения нет доказанного преимущества над стандартной статистикой и отсутствует слой аутентификации/мультитенантности для масштабирования. Итоговая оценка: 90/100.",
+      "global": {
+        "criteria": [
+          {
+            "name": "Ценность решения",
+            "score": 24,
+            "max": 25,
+            "awarded": "Решение почти полностью закрывает понятную операционную боль менеджера закупа: превращает разрозненные Excel в объяснимую рекомендацию и оставляет решение человеку.",
+            "deductions": "Снят 1 балл: в наиболее проблемном реальном наборе IEK текущий остаток намеренно блокирует рекомендацию, а пользовательская форма не даёт ввести подтверждённый остаток для продолжения расчёта.",
+            "evidence": [
+              "README.md:5",
+              "README.md:46",
+              "README.md:52",
+              "captures/20261002T064708396690-scenario-workflow.stdout.log",
+              "captures/20261002T064542641666-calc-iek-summary.stdout.log",
+              "captures/20261002T064637099131-calc-systeme-summary.stdout.log"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "F1",
+                "reason": "Для ценности именно рабочего места закупщика воспроизводимый реальный IEK-вход заканчивается блокировкой всех 3185 строк, а ручное уточнение остатка не доступно в UI; это оставляет наиболее практичный путь использования только через API."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Прямая связь с болью закупок",
+                "implementation": "README формулирует три действия менеджера — что, сколько и почему заказать — и строит путь от истории продаж, остатков и поставок до черновика заказа.",
+                "value": "Это адресует именно описанную в task.txt проблему редких Excel-заказов и разовых всплесков, а не абстрактную демонстрацию аналитики.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:5",
+                  "README.md:46",
+                  "cases/5/task.txt:3"
+                ]
+              },
+              {
+                "aspect": "Безопасное различение результата и нехватки данных",
+                "implementation": "Контракт запрещает смешивать quantity=null с обычным статусом, а UI показывает отдельные состояния «Заказывать не нужно» и «Нужны данные»; блокирующие issues запрещают включение строки в заказ.",
+                "value": "Менеджер не получает ложный нулевой заказ из-за пропуска остатка или истории, что имеет прямую финансовую ценность для закупки.",
+                "verification": "source",
+                "evidence": [
+                  "backend/app/contracts/models.py:215",
+                  "backend/app/contracts/models.py:226",
+                  "frontend/src/components/common.tsx:9",
+                  "frontend/src/components/common.tsx:24"
+                ]
+              },
+              {
+                "aspect": "Проверяемая полезность на реальных книгах",
+                "implementation": "Через API импортированы все шесть книг IEK и все шесть книг Systeme Electric. Расчёт Systeme вернул 8 order_now, 13 expedite, 420 covered и 283 needs_input из 724 SKU.",
+                "value": "Прототип не ограничен только заранее зашитым демо: он читает предоставленные организаторами структуры, сохраняет предупреждения и выдаёт полезное распределение статусов.",
+                "verification": "observed",
+                "evidence": [
+                  "captures/20261002T064601569957-dataset-systeme.stdout.log",
+                  "captures/20261002T064637099131-calc-systeme-summary.stdout.log"
+                ]
+              },
+              {
+                "aspect": "Человеческий контроль над закупкой",
+                "implementation": "Сервис создаёт draft, принимает quantity и обязательную причину правки, хранит recommended_quantity отдельно, требует approve перед экспортом и автоматически снимает согласование после новой правки.",
+                "value": "Решение помогает менеджеру, но не отправляет ошибочное решение поставщику автоматически; это соответствует обязательному ручному подтверждению кейса.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/app/service.py:121",
+                  "backend/app/service.py:162",
+                  "backend/app/service.py:183",
+                  "captures/20261002T064708396690-scenario-workflow.stdout.log"
+                ]
+              }
+            ],
+            "scoreReasoning": "24/25 заслужены за точное попадание в операционную задачу, объяснимую модель принятия решения и подтверждённый путь на обоих реальных наборах. Один балл удержан только за F1: для IEK, где исходный месячный остаток корректно распознан как несвежий, приложение не предлагает менеджеру в интерфейсе ввести актуальное значение и продолжить расчёт. Это заметно снижает непосредственную ценность на части входов, но не превращает корректную блокировку в ложный заказ."
+          },
+          {
+            "name": "Результат и качество решения",
+            "score": 18,
+            "max": 20,
+            "awarded": "Основной сценарий целостен и наблюдаем: расчёт, объяснение, выбор строк, версия заказа, ручная правка, согласование и экспорт работают через API; реальные XLSX также проходят импорт и расчёт.",
+            "deductions": "Сняты 2 балла за F1: пользовательский путь не может сам разблокировать расчёт по данным, для которых требуется свежий остаток; overrides существуют только в контракте/API.",
+            "evidence": [
+              "captures/20261002T063851927686-build.stderr.log",
+              "captures/20261002T064157141882-start.stdout.log",
+              "captures/20261002T064204868063-scenario.stdout.log",
+              "captures/20261002T064708396690-scenario-workflow.stdout.log",
+              "captures/20261002T064742627299-export-check.stdout.log",
+              "backend/tests/test_workflow.py:44"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "F1",
+                "reason": "Качество пользовательского результата неполно для реальных входов: backend поддерживает available_stock override, но DataPage не содержит поля для него, поэтому IEK с устаревшим месячным остатком остаётся полностью needs_input в доступном UI-сценарии."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Детерминированная математика заказа",
+                "implementation": "Движок строит дневной спрос, горизонт lead_time+review, буфер, кумулятивную потребность, вычитает остаток и только подходящие датированные приходы, затем применяет minimum и multiple.",
+                "value": "Результат не является только таблицей прогнозов: количество заказа и пик дефицита вычисляются по дням, поэтому поздний приход не маскирует ранний дефицит.",
+                "verification": "source",
+                "evidence": [
+                  "backend/app/engine/planning.py:103",
+                  "backend/app/engine/planning.py:122",
+                  "backend/app/engine/planning.py:130",
+                  "backend/app/engine/planning.py:145"
+                ]
+              },
+              {
+                "aspect": "Сквозной API-результат",
+                "implementation": "Контейнер собран и запущен; /api/health вернул 200. На synthetic-statistical-v1 расчёт дал SYN-1=144, SYN-2=0, SYN-3=needs_input; затем были созданы draft, revision 2 после правки и approved revision 3.",
+                "value": "Ключевой результат можно воспроизвести без внешнего ключа и без подмены расчёта mock-ответом.",
+                "verification": "observed",
+                "evidence": [
+                  "captures/20261002T064204868063-scenario.stdout.log",
+                  "captures/20261002T064708396690-scenario-workflow.stdout.log"
+                ]
+              },
+              {
+                "aspect": "Контроль версий и экспорт",
+                "implementation": "Repository использует compare-and-swap по expected_revision; approve фиксирует revision, export разрешён только для актуальной согласованной версии. CSV содержит рекомендованное и согласованное количество.",
+                "value": "Сохранённый результат защищён от тихого перезаписывания и от выгрузки неподтверждённого заказа.",
+                "verification": "source",
+                "evidence": [
+                  "backend/app/service.py:147",
+                  "backend/app/service.py:190",
+                  "backend/app/export/csv_export.py:13",
+                  "backend/tests/test_workflow.py:55"
+                ]
+              },
+              {
+                "aspect": "Результат импорта реальных книг",
+                "implementation": "IEK импортировал шесть ролей книг и создал 3185 рекомендаций; Systeme импортировал шесть ролей и создал 724 рекомендации. Диагностики исходных данных сохранены, а не скрыты.",
+                "value": "Качество результата учитывает область покрытия и не делает вид, что неполный остаток является текущим; для Systeme видны реальные пригодные и заблокированные строки.",
+                "verification": "observed",
+                "evidence": [
+                  "captures/20261002T064310117532-dataset-iek.stdout.log",
+                  "captures/20261002T064542641666-calc-iek-summary.stdout.log",
+                  "captures/20261002T064601569957-dataset-systeme.stdout.log",
+                  "captures/20261002T064637099131-calc-systeme-summary.stdout.log"
+                ]
+              }
+            ],
+            "scoreReasoning": "18/20: целостность прототипа подтверждена сборкой, стартом, 51 backend-тестом и живым HTTP-сценарием с CSV. Снижение относится не к отсутствию браузерной проверки, а к реальной границе продукта F1: для значимой части данных менеджер не может в пользовательском интерфейсе предоставить актуальный остаток, хотя доменная модель умеет принимать такой override."
+          },
+          {
+            "name": "Инновационность",
+            "score": 12,
+            "max": 15,
+            "awarded": "Сильная сторона — не генерация текста, а аккуратная объяснимая статистическая обработка выбросов, сезонности, роста и stockout с трассировкой причин; при этом доказанное отличие от стандартных методов ограничено.",
+            "deductions": "Сняты 3 балла за F2: в репозитории нет сравнительного бенчмарка или отложенной проверки, которая показала бы преимущество выбранного метода над обычной базовой статистикой.",
+            "evidence": [
+              "backend/app/engine/demand.py:31",
+              "backend/app/engine/demand.py:144",
+              "backend/app/engine/demand.py:157",
+              "backend/tests/test_engine.py:74",
+              "backend/tests/test_engine.py:99",
+              "README.md:316"
+            ],
+            "deductionItems": [
+              {
+                "points": 3,
+                "findingId": "F2",
+                "reason": "Для критерия инновационности собственное преимущество не доказано измерением: код использует понятный порог выбросов, нормированную сезонность, медианы и коэффициент роста, но README прямо признаёт отсутствие оценки точности на отложенном периоде и сравнения с базовыми методами."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Аномалии не сводятся к простому удалению крупных продаж",
+                "implementation": "clean_documents агрегирует документы, вычисляет устойчивый порог, различает excluded, recurring и review, учитывает повторяемость по неделям и customer_id при его наличии.",
+                "value": "Это нестандартно аккуратнее наивного правила «всё большое — выброс»: регулярные крупные закупки сохраняются, а одиночная покупка 10000 в synthetic demo исключается с объяснением.",
+                "verification": "source",
+                "evidence": [
+                  "backend/app/engine/demand.py:31",
+                  "backend/app/engine/demand.py:47",
+                  "backend/app/engine/demand.py:55",
+                  "backend/tests/test_engine.py:74",
+                  "backend/tests/test_engine.py:169"
+                ]
+              },
+              {
+                "aspect": "Stockout моделируется как скрытый спрос, а не долг",
+                "implementation": "Подтверждённые интервалы исключаются из доступных дней, скорость оценивается по оставшимся дням, а lost demand попадает в explanation и не добавляется второй раз к будущему заказу.",
+                "value": "Это отвечает сложной части кейса и снижает риск как недозаказа, так и двойного компенсационного заказа.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/app/engine/demand.py:137",
+                  "backend/app/engine/demand.py:142",
+                  "backend/app/engine/demand.py:146",
+                  "backend/tests/test_engine.py:99",
+                  "backend/tests/test_engine_demo.py:9"
+                ]
+              },
+              {
+                "aspect": "Сезонность применяется в правильном месте",
+                "implementation": "Профиль из 12 коэффициентов нормируется к среднему, история очищается от seasonal factor, а прогноз получает коэффициент каждого будущего календарного дня один раз.",
+                "value": "Подход прозрачен и предотвращает двойное применение сезонности, что лучше простого умножения месячной суммы на коэффициент после прогноза.",
+                "verification": "source",
+                "evidence": [
+                  "backend/app/engine/planning.py:34",
+                  "backend/app/engine/demand.py:144",
+                  "backend/app/engine/demand.py:179",
+                  "backend/tests/test_engine.py:117"
+                ]
+              },
+              {
+                "aspect": "Объяснимость встроена в контракт",
+                "implementation": "Recommendation содержит components, issues и explanation, а ItemExplanation дополнительно отдаёт history, inbound, anomalies и assumptions.",
+                "value": "Нестандартность подхода проявляется в проверяемости чисел: менеджер видит не только ответ, но и вклад прихода, буфера, остатков, выброса и stockout.",
+                "verification": "source",
+                "evidence": [
+                  "backend/app/contracts/models.py:201",
+                  "backend/app/contracts/models.py:235",
+                  "frontend/src/components/ExplanationPanel.tsx:30",
+                  "README.md:38"
+                ]
+              }
+            ],
+            "scoreReasoning": "12/15: решение заметно сильнее простого суммирования Excel и хорошо сочетает устойчивую статистику с объяснением. Однако инновационное преимущество остаётся аргументом по конструкции, а не результатом сравнения прогнозной ошибки или бизнес-метрики на отложенном периоде. Это ограничивает верхнюю часть критерия, не обесценивая работу движка для MVP."
+          },
+          {
+            "name": "Потенциал развития и масштабирования",
+            "score": 16,
+            "max": 20,
+            "awarded": "Архитектура хорошо подготовлена к расширению: нормализованный контракт, отдельные адаптеры, чистый engine, SQLite/PostgreSQL, Docker, версии данных и заказов. До мультипользовательского продукта остаются существенные границы.",
+            "deductions": "Сняты 4 балла: 1 за F1 (часть настроек доступна только API) и 3 за F3 (нет аутентификации, разделения пользователей и изоляции публичных заказов).",
+            "evidence": [
+              "README.md:190",
+              "README.md:205",
+              "README.md:302",
+              "README.md:319",
+              "README.md:320",
+              "Dockerfile:8",
+              "backend/app/config.py:8"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "F1",
+                "reason": "Расширение на реальные склады потребует ручных значений остатка или роста, но UI не предоставляет описанные в CalculationSettings overrides; интегратору приходится обходить пользовательский слой и обращаться к API."
+              },
+              {
+                "points": 3,
+                "findingId": "F3",
+                "reason": "Для масштабирования на несколько организаций и пользователей проект прямо не имеет auth/tenant isolation: в public demo синтетические заказы общие, а доступ к данным определяется режимом процесса, не учётной записью."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Нормализованный слой между Excel и расчётом",
+                "implementation": "Ingestion распознаёт известные роли книг, приводит их к NormalizedDataset, сохраняет SourceRef и issues; engine не читает файлы, БД или сеть.",
+                "value": "Новый поставщик может получить отдельный адаптер без переписывания математического ядра, а происхождение строки сохраняется для аудита.",
+                "verification": "source",
+                "evidence": [
+                  "backend/app/ingestion/excel.py:120",
+                  "backend/app/ingestion/excel.py:350",
+                  "docs/BACKEND_PLAN.md:19",
+                  "README.md:205"
+                ]
+              },
+              {
+                "aspect": "Готовность к локальному и облачному запуску",
+                "implementation": "Dockerfile собирает frontend и runtime отдельно, конфигурация поддерживает SQLite по умолчанию и DATABASE_URL для PostgreSQL, приложение запускается обычным HTTP API.",
+                "value": "Это разумная база для миграции от хакатонного локального прототипа к отдельному сервису без внешнего AI-ключа.",
+                "verification": "observed",
+                "evidence": [
+                  "Dockerfile:1",
+                  "Dockerfile:8",
+                  "backend/app/config.py:20",
+                  "captures/20261002T063851927686-build.stderr.log",
+                  "captures/20261002T064204868063-scenario.stdout.log"
+                ]
+              },
+              {
+                "aspect": "Версионирование и конкурентные изменения",
+                "implementation": "Dataset получает content-based version, расчёты сохраняют dataset_version, заказ хранит revision и order_versions, а устаревшая правка получает 409.",
+                "value": "Модель пригодна для нескольких операторов и аудита изменений после добавления настоящей идентификации пользователей.",
+                "verification": "source",
+                "evidence": [
+                  "backend/app/ingestion/excel.py:128",
+                  "backend/app/service.py:147",
+                  "backend/tests/test_workflow.py:100",
+                  "README.md:235"
+                ]
+              },
+              {
+                "aspect": "Явно описанные границы следующего этапа",
+                "implementation": "README не маскирует отсутствие auth, XLSX/1C-экспорта, истории всех заказов и оценки точности; также отделяет публичную синтетику от локального импорта реальных книг.",
+                "value": "Честные ограничения облегчают последующее планирование продукта и снижают риск ошибочного восприятия MVP как готовой ERP-интеграции.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:316",
+                  "README.md:317",
+                  "README.md:320",
+                  "README.md:321"
+                ]
+              }
+            ],
+            "scoreReasoning": "16/20: технический фундамент масштабирования хорошо собран и подтверждён сборкой, но продуктовый масштаб ограничен F3 — нет идентичности и изоляции организаций — и F1 — часть важной настройки доступна только через API. Это реальные проектные ограничения, а не требование production-функций вне пятичасового MVP."
+          },
+          {
+            "name": "Презентация, демо и ответы на вопросы",
+            "score": 20,
+            "max": 20,
+            "awarded": "README даёт ясный воспроизводимый сценарий, ожидаемые числа, архитектуру, ограничения и команды запуска; локальное HTTP-демо подтверждено. Устная презентация и визуальная проверка в этом разборе не имитировались.",
+            "deductions": "Нет снятия баллов: отсутствие публичной ссылки и запрещённая визуальная проверка не считаются недостатками по правилам данного разбора.",
+            "evidence": [
+              "README.md:9",
+              "README.md:22",
+              "README.md:64",
+              "README.md:239",
+              "docs/TEST_DRIVE.md:5",
+              "captures/20261002T064204868063-scenario.stdout.log",
+              "captures/20261002T064708396690-scenario-workflow.stdout.log"
+            ],
+            "deductionItems": [],
+            "awardedDetails": [
+              {
+                "aspect": "Сценарий проверки за 3–5 минут",
+                "implementation": "README задаёт конкретные настройки, ожидаемые SYN-1=144, SYN-2=0, SYN-3=нужны данные, шаги правки 144→0, approve, CSV и повторного расчёта с буфером 14.",
+                "value": "Проверяющий может быстро сопоставить пользовательский результат с числами, а не угадывать, что считать успешной демонстрацией.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:22",
+                  "README.md:26",
+                  "README.md:38",
+                  "docs/TEST_DRIVE.md:7"
+                ]
+              },
+              {
+                "aspect": "Документация отделяет демо от реальных данных",
+                "implementation": "README прямо сообщает, что публичный набор синтетический, оригиналы партнёра не входят в репозиторий, а локальные адаптеры поддерживают известные формы IEK/Systeme Electric с диагностикой пропусков.",
+                "value": "Это предотвращает презентационное смешение hand-authored fixture и реального прогноза.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:20",
+                  "README.md:132",
+                  "README.md:147",
+                  "README.md:317"
+                ]
+              },
+              {
+                "aspect": "Репозиторий объясняет архитектуру и проверяемость",
+                "implementation": "README перечисляет маршруты API, слои ingestion/engine/storage/export и фактически выполненные проверки; docs/TEST_DRIVE добавляет сценарий конфликтов версий и восстановления.",
+                "value": "Для асинхронного судейства это заменяет отсутствующую устную защиту конкретной инструкцией воспроизведения.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:190",
+                  "README.md:225",
+                  "README.md:239",
+                  "docs/TEST_DRIVE.md:16"
+                ]
+              },
+              {
+                "aspect": "Демо подтверждено HTTP, а не только README",
+                "implementation": "Проверены health, список синтетических наборов, расчёт, создание заказа, ручная правка, согласование и экспорт CSV; последняя выдача содержит согласованное нулевое количество.",
+                "value": "Ключевые числа из инструкции связаны с реальным ответом запущенного приложения.",
+                "verification": "observed",
+                "evidence": [
+                  "captures/20261002T064204868063-scenario.stdout.log",
+                  "captures/20261002T064219640859-scenario.stdout.log",
+                  "captures/20261002T064708396690-scenario-workflow.stdout.log",
+                  "captures/20261002T064742627299-export-check.stdout.log"
+                ]
+              }
+            ],
+            "scoreReasoning": "20/20: по правилам оценки здесь учитываются ясность README, объяснение решения и воспроизводимое демо, а не отсутствовавшая устная презентация. Все три части хорошо покрыты документацией и HTTP-проверкой; визуальное поведение намеренно оставлено непроверенным без штрафа."
+          }
+        ],
+        "total": 90
+      },
+      "case": null,
+      "judgeScore": 90,
+      "caseRequirements": [
+        {
+          "requirement": "Расчёт заказа по истории продаж, текущему остатку, товарам в пути, сроку, пересмотру, буферу, категории и ограничениям поставщика",
+          "status": "partial",
+          "explanation": "Расчётный путь реализован и на Systeme Electric дал 8 order_now и 13 expedite. IEK импортирован, но его месячные остатки помечены как неcurrent, поэтому при дате 22.09.2026 все 3185 строк корректно заблокированы; путь ручного ввода свежего остатка есть в API, но не в UI.",
+          "evidence": [
+            "backend/app/engine/planning.py:53",
+            "backend/app/engine/planning.py:103",
+            "backend/app/engine/planning.py:105",
+            "backend/app/contracts/models.py:166",
+            "captures/20261002T064542641666-calc-iek-summary.stdout.log",
+            "captures/20261002T064637099131-calc-systeme-summary.stdout.log"
+          ]
+        },
+        {
+          "requirement": "Сезонность и устойчивый рост",
+          "status": "met",
+          "explanation": "Профиль 12 месяцев нормируется, рост вычисляется по нескольким полным месяцам очищенной истории, ручной коэффициент поддержан контрактом, а сезонный коэффициент применяется к каждому будущему дню.",
+          "evidence": [
+            "backend/app/engine/planning.py:34",
+            "backend/app/engine/demand.py:157",
+            "backend/app/engine/demand.py:175",
+            "backend/tests/test_engine.py:117",
+            "backend/tests/test_engine.py:133"
+          ]
+        },
+        {
+          "requirement": "Компенсация потерянного спроса при подтверждённом stockout без двойного учёта",
+          "status": "met",
+          "explanation": "Движок принимает явные интервалы stockout, объединяет эффект пересечений через множество дней, восстанавливает скорость спроса и показывает lost demand; synthetic engine demo наблюдаемо вернул 60 потерянных единиц.",
+          "evidence": [
+            "backend/app/engine/demand.py:137",
+            "backend/app/engine/demand.py:146",
+            "backend/tests/test_engine.py:99",
+            "backend/tests/test_engine_demo.py:9"
+          ]
+        },
+        {
+          "requirement": "Удаление разовых крупных покупок с сохранением регулярных, включая сценарий одного клиента",
+          "status": "met",
+          "explanation": "Документы агрегируются до анализа выброса; повторяющиеся крупные покупки сохраняются, одиночный гигантский документ исключается, а customer_id используется только если он реально есть. Это проверено synthetic тестами; в предоставленных книгах customer_id отсутствует.",
+          "evidence": [
+            "backend/app/engine/demand.py:31",
+            "backend/app/engine/demand.py:47",
+            "backend/app/engine/demand.py:52",
+            "backend/tests/test_engine.py:74",
+            "backend/tests/test_engine.py:87",
+            "docs/DATA_NOTES.md:7"
+          ]
+        },
+        {
+          "requirement": "Количество с объяснением, историей, источниками и группировкой по поставщику",
+          "status": "met",
+          "explanation": "Recommendation и ItemExplanation содержат components, историю, приходы, аномалии, assumptions и SourceRef; заказ ограничен одним поставщиком, а UI и API фильтруют по supplier.",
+          "evidence": [
+            "backend/app/contracts/models.py:201",
+            "backend/app/contracts/models.py:235",
+            "backend/app/engine/planning.py:166",
+            "backend/app/service.py:129",
+            "frontend/src/pages/RecommendationsPage.tsx:36"
+          ]
+        },
+        {
+          "requirement": "Ручное подтверждение перед отправкой поставщику",
+          "status": "met",
+          "explanation": "Создаётся только draft, approve обязателен для export, а автоматической отправки поставщику нет; API-сценарий подтвердил запрет неподтверждённого экспорта и успешный экспорт revision 3 после approve.",
+          "evidence": [
+            "backend/app/service.py:190",
+            "backend/app/main.py:98",
+            "backend/tests/test_workflow.py:55",
+            "captures/20261002T064708396690-scenario-workflow.stdout.log",
+            "captures/20261002T064742627299-export-check.stdout.log"
+          ]
+        },
+        {
+          "requirement": "Обезличенность клиентских данных",
+          "status": "partial",
+          "explanation": "Модель поддерживает optional customer_id и не требует персональных данных; в реальных XLSX таких идентификаторов нет. Это достаточная безопасная граница для MVP, но полноценная customer-level атрибуция на фактическом комплекте не доказана.",
+          "evidence": [
+            "backend/app/contracts/models.py:71",
+            "backend/app/ingestion/excel.py:194",
+            "backend/app/engine/planning.py:44",
+            "docs/DATA_NOTES.md:7",
+            "backend/tests/test_ingestion.py:135"
+          ]
+        },
+        {
+          "requirement": "Чувствительность к товарам в пути, сезонности, stockout и выбросу",
+          "status": "met",
+          "explanation": "Покрыты unit/domain тестами поздние приходы, сезонность, рост, пересекающиеся stockout и выбросы; в движке demo изменение buffer_days с 7 на 14 увеличивает заказ. Для реальных наборов датированные приходы импортированы, но IEK строки не доходят до количества из-за stale stock.",
+          "evidence": [
+            "backend/tests/test_engine.py:46",
+            "backend/tests/test_engine.py:99",
+            "backend/tests/test_engine.py:117",
+            "backend/tests/test_engine_demo.py:11",
+            "backend/app/engine/planning.py:113",
+            "captures/20261002T064310117532-dataset-iek.stdout.log"
+          ]
+        }
+      ],
+      "testData": {
+        "provided": [
+          "cases/5/case-data/HackAlem AI_ Автоматизация формирования заказов поставщикам.docx.md",
+          "cases/5/case-data/IEK/MOQ  ИЭК.xlsx",
+          "cases/5/case-data/IEK/Динамика продаж_2025-2026.xlsx",
+          "cases/5/case-data/IEK/Ежемесячные остатки продукции за последние 2 года  ИЭК.xlsx",
+          "cases/5/case-data/IEK/Ежемесячные продажи в количественном выражении за последние 2 года.xlsx",
+          "cases/5/case-data/IEK/Путь ИЭК 22.09.2026.xlsx",
+          "cases/5/case-data/IEK/Сезонность ИЭК.xlsx",
+          "cases/5/case-data/Systeme electric/MOQ SystemElectric.xlsx",
+          "cases/5/case-data/Systeme electric/Динамика продаж_Syseme Electric_2025-2026.xlsx",
+          "cases/5/case-data/Systeme electric/Ежемесячные остатки SystemElectric 2024-2026.xlsx",
+          "cases/5/case-data/Systeme electric/Ежемесячные продажи в кол-м выражении SystemElectric 2024-2026.xlsx",
+          "cases/5/case-data/Systeme electric/Сезонность SystemElectric 2024-2026.xlsx",
+          "cases/5/case-data/Systeme electric/Товар в пути_SystemElectric на 22.09.2026.xlsx"
+        ],
+        "used": [
+          "cases/5/case-data/IEK/MOQ  ИЭК.xlsx",
+          "cases/5/case-data/IEK/Динамика продаж_2025-2026.xlsx",
+          "cases/5/case-data/IEK/Ежемесячные остатки продукции за последние 2 года  ИЭК.xlsx",
+          "cases/5/case-data/IEK/Ежемесячные продажи в количественном выражении за последние 2 года.xlsx",
+          "cases/5/case-data/IEK/Путь ИЭК 22.09.2026.xlsx",
+          "cases/5/case-data/IEK/Сезонность ИЭК.xlsx",
+          "cases/5/case-data/Systeme electric/MOQ SystemElectric.xlsx",
+          "cases/5/case-data/Systeme electric/Динамика продаж_Syseme Electric_2025-2026.xlsx",
+          "cases/5/case-data/Systeme electric/Ежемесячные остатки SystemElectric 2024-2026.xlsx",
+          "cases/5/case-data/Systeme electric/Ежемесячные продажи в кол-м выражении SystemElectric 2024-2026.xlsx",
+          "cases/5/case-data/Systeme electric/Сезонность SystemElectric 2024-2026.xlsx",
+          "cases/5/case-data/Systeme electric/Товар в пути_SystemElectric на 22.09.2026.xlsx"
+        ],
+        "checks": [
+          {
+            "input": "Все 12 XLSX: шесть IEK и шесть Systeme Electric.",
+            "method": "Статически открыты openpyxl в read-only режиме; сопоставлены видимые листы, заголовки и размеры таблиц.",
+            "result": "Распознаны ожидаемые роли: IEK transactions 171604 строк, monthly stock 2856, monthly sales 2465, MOQ 1938, inbound 2641, seasonality 41; Systeme transactions 77313, monthly stock 703, monthly sales 556+35 на служебном листе, MOQ 557, seasonality 35, snapshot TDSheet 498.",
+            "conclusion": "Структура фактических входов соответствует адаптерам проекта; служебные листы не выдавались за основной набор."
+          },
+          {
+            "input": "Шесть книг IEK, supplier=iek, дата расчёта 2026-09-22.",
+            "method": "HTTP multipart POST /api/datasets через запущенное приложение.",
+            "result": "HTTP 201; создан non-synthetic dataset iek-326f75fecb7055218b40, распознаны все шесть ролей, 610 issue, из них 71 blocking.",
+            "conclusion": "Импорт предоставленного IEK-комплекта работает и не скрывает отсутствующие количества, дубли, единицы и несвежие остатки."
+          },
+          {
+            "input": "Расчёт IEK dataset iek-326f75fecb7055218b40, transactions, lead=14/review=7/buffer=7.",
+            "method": "HTTP POST /api/calculations и последующая агрегация ответа.",
+            "result": "HTTP 201; 3185 recommendations, все 3185 needs_input, 4860 blocking recommendation issues; причиной являются данные/ограничения, включая stale stock и no history для части SKU.",
+            "conclusion": "Система безопасно блокирует необоснованный заказ на месячном остатке IEK; полноценный IEK quantity-path на этих входах не подтверждён."
+          },
+          {
+            "input": "Шесть книг Systeme Electric, supplier=systeme, дата расчёта 2026-09-22.",
+            "method": "HTTP multipart POST /api/datasets, затем POST /api/calculations.",
+            "result": "Импорт HTTP 201, dataset systeme-f108d256a8953b40973e с 156 issue и 13 blocking; расчёт HTTP 201, 724 recommendations: 8 order_now, 13 expedite, 420 covered, 283 needs_input.",
+            "conclusion": "Реальный комплект проходит полный ingestion→engine путь и выдаёт смешанный полезный результат с явными блокировками."
+          },
+          {
+            "input": "Synthetic statistical dataset a-engine-demo-v1, settings 22.09.2026 / 14 / 7 / 7 / transactions.",
+            "method": "HTTP GET /api/health, GET /api/datasets, POST /api/calculations, POST /api/orders, PATCH /api/orders/{id}, POST /approve, GET /export.",
+            "result": "Health 200; calculation 201 с SYN-1=144, SYN-2=0, SYN-3 needs_input; draft revision 1, patch revision 2 с quantity=0 и recommended=144, approve revision 3, export 200 с нулём.",
+            "conclusion": "Основной пользовательский результат воспроизведён без внешнего API-ключа и без mock-подмены."
+          }
+        ],
+        "limitations": [
+          "Точные интервалы stockout и customer_id отсутствуют в предоставленных реальных книгах; эти свойства проверены только на синтетических данных, как и предусмотрено документацией проекта.",
+          "IEK содержит месячный остаток, который адаптер сознательно помечает is_current=false; поэтому расчёт на 22.09.2026 блокирует количество до уточнения текущего остатка.",
+          "Визуальный браузерный сценарий намеренно не запускался по правилам проверки пользователя; это не является выводом о качестве UI.",
+          "Файл задания/описания кейса использован как спецификация, а runtime-проверки применяли 12 XLSX; полные датасеты не включены в JSON."
+        ]
+      },
+      "runtime": {
+        "status": "working",
+        "build": "Docker production build passed: frontend npm build/typecheck and Python runtime image were assembled successfully.",
+        "start": "Container started successfully with NOMAD_DEMO=1; GET /api/health returned HTTP 200 and status=ok.",
+        "scenario": "Synthetic statistical dataset completed calculation, order draft, manual edit, approval and CSV export. Both supplied real-data sets also completed import and calculation; IEK quantities were intentionally blocked by input diagnostics.",
+        "environment": "Linux Docker runtime based on Python 3.12 and Node 24 build stage, without external API credentials; resource-limited named review container.",
+        "summary": "Основной сценарий воспроизведён. Backend pytest: 51 passed, 2 skipped; сборка и HTTP-проверки прошли. Визуальное поведение не проверялось.",
+        "checks": [
+          {
+            "command": "docker build -t <review-image> .",
+            "result": "Exit 0; frontend and runtime image exported successfully.",
+            "id": "build-1",
+            "stage": "build",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Production image builds from the repository and contains compiled frontend plus backend."
+          },
+          {
+            "command": "python -m pytest -c backend/pytest.ini backend/tests",
+            "result": "53 collected; 51 passed, 2 skipped, 1 warning in 6.52s. Skips are PostgreSQL tests requiring an unavailable test database.",
+            "id": "build-2",
+            "stage": "build",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Backend unit, domain, ingestion, contract and workflow tests pass; external PostgreSQL-only checks may be skipped without marking the app failed."
+          },
+          {
+            "command": "python -m app.cloud",
+            "result": "Process started and served /api/health with HTTP 200, JSON status=ok, demo_enabled=true, public_demo=false.",
+            "id": "start-1",
+            "stage": "start",
+            "status": "pass",
+            "cause": "none",
+            "expected": "HTTP server starts and exposes the health endpoint without API keys."
+          },
+          {
+            "command": "GET /api/health",
+            "result": "HTTP 200; {status: ok, demo_enabled: true, public_demo: false}.",
+            "id": "scenario-1",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Health endpoint returns a valid successful response."
+          },
+          {
+            "command": "POST /api/calculations; POST /api/orders; PATCH /api/orders/{id}; POST /api/orders/{id}/approve; GET /api/orders/{id}/export",
+            "result": "Calculation 201 returned 144/0/needs_input; order revision sequence 1→2→3 worked; export returned HTTP 200 and contained the edited zero quantity.",
+            "id": "scenario-2",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Primary demo proceeds from explainable recommendation to manually edited, approved and exportable order."
+          },
+          {
+            "command": "POST /api/datasets (IEK six XLSX) and POST /api/calculations",
+            "result": "Import 201 and calculation 201; 3185 recommendations, all needs_input because the supplied IEK current-stock evidence is not confirmed.",
+            "id": "scenario-3",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Provided IEK data is accepted, diagnosed and never converted into unsupported quantities."
+          },
+          {
+            "command": "POST /api/datasets (Systeme six XLSX) and POST /api/calculations",
+            "result": "Import 201 and calculation 201; 724 recommendations split into 8 order_now, 13 expedite, 420 covered and 283 needs_input.",
+            "id": "scenario-4",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Provided Systeme data completes the real adapter and calculation path with differentiated statuses."
+          }
+        ],
+        "limitations": [
+          "Two PostgreSQL tests were skipped because no test database credentials/resource were provided; SQLite path and all non-PostgreSQL tests passed.",
+          "No browser, screenshot, Playwright, Selenium, Puppeteer or equivalent UI automation was used; visual layout and download UX remain unverified.",
+          "No live public URL was supplied or verified; local HTTP execution is the verified demo boundary.",
+          "Real IEK calculation is intentionally blocked by the supplied stale monthly stock evidence rather than treated as a current balance."
+        ]
+      },
+      "liveDemo": {
+        "status": "none",
+        "url": null,
+        "notes": "Публичная live-ссылка в материалах не предоставлена. Локальный Docker/HTTP-сценарий подтверждён; отсутствие URL не использовано как штраф."
+      },
+      "fiveHourContext": "Для пятичасового MVP объём выглядит реалистично и хорошо сфокусирован: команда собрала адаптеры для двух поставщиков, чистое расчётное ядро, объяснения, версионирование заказа, CSV, Docker и подробный README. Не требую production auth, полноценную ERP-отправку или точность прогноза как обязательные функции этого времени; отмечаю их только как границы развития. Важный плюс — неизвестные и несвежие входы блокируются, а не превращаются в придуманный заказ.",
+      "strengths": [
+        "Чистое разделение ingestion, engine, storage, API и export; расчёт не зависит от файлов, базы или сети.",
+        "Сильная защита от ложной точности: null, ноль, stale stock, неизвестная единица, неполное покрытие и конфликт складов представлены отдельно.",
+        "Подтверждённый синтетический сценарий показывает реальный engine, а не только hand-authored fixture: 144, stockout lost demand 60 и реакция на изменение buffer_days.",
+        "Оба комплекта организаторских XLSX реально импортированы; предупреждения и источники сохраняются в результатах.",
+        "README и TEST_DRIVE дают редкий для хакатона уровень воспроизводимости: конкретные входы, ожидаемые числа, версии заказа и ограничения."
+      ],
+      "gaps": [
+        "F1: ручные значения доступного остатка и роста поддержаны доменным контрактом, но не выведены в пользовательскую форму; IEK с неподтверждённым текущим остатком нельзя довести до количества через UI.",
+        "F2: инновационное преимущество статистического метода не подтверждено сравнением с baseline или отложенной оценкой точности; README фиксирует это как незавершённую часть.",
+        "F3: отсутствуют аутентификация, разделение организаций и tenant-level изоляция; публичные синтетические заказы описаны как общие."
+      ],
+      "futureAdvice": [
+        {
+          "principle": "Критический вход должен быть исправим в том же пользовательском сценарии, который его диагностирует.",
+          "why": "F1 наблюдается потому, что движок умеет PlanningOverride.available_stock, но DataPage предлагает только дату, lead time, review, buffer и demand source. На реальном IEK входе это оставляет все 3185 строк needs_input.",
+          "how": "В следующем хакатоне добавьте рядом с блокирующей строкой форму подтверждения актуального остатка и причины; отправляйте override в новый CalculationSettings и сохраняйте его в assumptions. Начните с одного SKU и затем примените к отфильтрованной выборке.",
+          "findingIds": [
+            "F1"
+          ],
+          "successCheck": "Для одного IEK SKU пользователь вводит свежий остаток с причиной, повторный расчёт меняет needs_input на quantity/объяснение, а исходный расчёт остаётся неизменным.",
+          "timeboxMinutes": 45
+        },
+        {
+          "principle": "Нестандартность модели следует подтверждать малым измеримым сравнением, а не только сложностью формулы.",
+          "why": "F2: движок содержит хорошие правила выбросов, сезонности, роста и stockout, но README признаёт отсутствие holdout-оценки и сравнения с базовым методом.",
+          "how": "Для другого кейса заранее выделите последний полный месяц, посчитайте naive seasonal baseline и текущий engine на одинаковых SKU, затем сохраните MAE/WAPE и число безопасно заблокированных строк как отдельный fixture-отчёт.",
+          "findingIds": [
+            "F2"
+          ],
+          "successCheck": "В репозитории есть воспроизводимый benchmark на фиксированном периоде с одинаковым входом для baseline и engine и с явным результатом по ошибке, stockout и outlier-сценариям.",
+          "timeboxMinutes": 40
+        },
+        {
+          "principle": "Масштабирование многопользовательского продукта начинается с границы владения данными.",
+          "why": "F3: режим public demo скрывает реальные данные, но синтетические заказы общие и не привязаны к пользователю или организации.",
+          "how": "В следующем проекте добавьте минимальный tenant_id в dataset/calculation/order, middleware с тестовым identity и проверку доступа в repository; только затем включайте общий публичный deployment.",
+          "findingIds": [
+            "F3"
+          ],
+          "successCheck": "Два тестовых identity видят разные наборы и заказы, а запрос к чужому ID возвращает 404/403; текущие optimistic revision tests продолжают проходить.",
+          "timeboxMinutes": 60
+        }
+      ],
+      "uncertainties": [
+        "Визуальное поведение, адаптивная вёрстка, график и реальное browser download UX не оценивались по обязательному запрету на UI automation; наличие frontend e2e-тестов в репозитории само по себе не заменяет наблюдение.",
+        "Два PostgreSQL теста не запускались без предоставленной тестовой базы; SQLite и код Postgres-репозитория изучены, но поведение реального драйвера в этой сессии не подтверждено.",
+        "Публичный live deployment не предоставлен, поэтому cloud persistence, HTTPS и внешний health endpoint не проверялись.",
+        "Точные реальные customer_id и stockout intervals отсутствуют в организаторских XLSX; customer-level и stockout sensitivity подтверждены synthetic fixtures и исходным кодом, не реальными бизнес-строками."
+      ],
+      "reviewPolicyVersion": 2,
+      "assessmentStatus": "ready",
+      "findings": [
+        {
+          "id": "S1",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Production-сборка проекта и запуск HTTP runtime воспроизводятся без API-ключей.",
+          "expected": "Образ собирается, сервер стартует и отдаёт health.",
+          "actual": "docker build завершился с exit 0; /api/health вернул HTTP 200 и status=ok.",
+          "evidence": [
+            "captures/20261002T063851927686-build.stderr.log",
+            "captures/20261002T064204868063-scenario.stdout.log",
+            "Dockerfile:1"
+          ],
+          "checkIds": [
+            "build-1",
+            "start-1",
+            "scenario-1"
+          ]
+        },
+        {
+          "id": "S2",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Backend domain, ingestion, contract и workflow тесты проходят на snapshot.",
+          "expected": "Локальные проверки проекта подтверждают основные расчётные и API-инварианты.",
+          "actual": "53 теста собраны; 51 passed, 2 skipped только в PostgreSQL-зависимом модуле.",
+          "evidence": [
+            "captures/20261002T064237585903-test.stdout.log",
+            "backend/tests/test_engine.py:34",
+            "backend/tests/test_workflow.py:44"
+          ],
+          "checkIds": [
+            "build-2"
+          ]
+        },
+        {
+          "id": "S3",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Основной сценарий от расчёта до согласованного CSV работает через HTTP.",
+          "expected": "Рекомендация содержит 144/0/needs_input, правка создаёт новую версию, approve разрешает экспорт.",
+          "actual": "Получены calculation 201, revision 1→2→3, approved и export 200 с согласованным нулём.",
+          "evidence": [
+            "captures/20261002T064708396690-scenario-workflow.stdout.log",
+            "captures/20261002T064742627299-export-check.stdout.log"
+          ],
+          "checkIds": [
+            "scenario-2"
+          ]
+        },
+        {
+          "id": "S4",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Проект применён к обоим фактическим комплектам из кейса, а не только к синтетике.",
+          "expected": "Известные XLSX импортируются, их роли и проблемы сохраняются, расчёт создаётся.",
+          "actual": "IEK: HTTP 201 и 3185 recommendations; Systeme: HTTP 201 и 724 recommendations с четырьмя статусами urgency.",
+          "evidence": [
+            "captures/20261002T064310117532-dataset-iek.stdout.log",
+            "captures/20261002T064542641666-calc-iek-summary.stdout.log",
+            "captures/20261002T064601569957-dataset-systeme.stdout.log",
+            "captures/20261002T064637099131-calc-systeme-summary.stdout.log"
+          ],
+          "checkIds": [
+            "scenario-3",
+            "scenario-4"
+          ]
+        },
+        {
+          "id": "S5",
+          "kind": "strength",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Статистический engine прозрачно обрабатывает сезонность, рост, stockout, выбросы, остатки и приходы.",
+          "expected": "Каждый существенный компонент заказа доступен в коде и объяснении, а неизвестные входы не превращаются в ноль.",
+          "actual": "Код содержит отдельные функции estimate/clean_documents, дневной planning loop, issues и ItemExplanation; тесты покрывают эти сценарии.",
+          "evidence": [
+            "backend/app/engine/demand.py:31",
+            "backend/app/engine/demand.py:70",
+            "backend/app/engine/planning.py:103",
+            "backend/app/contracts/models.py:235",
+            "backend/tests/test_engine.py:99"
+          ],
+          "checkIds": [
+            "build-2",
+            "scenario-2"
+          ]
+        },
+        {
+          "id": "F1",
+          "kind": "defect",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Важные ручные overrides доступны в доменном API, но не доступны менеджеру через пользовательский интерфейс.",
+          "expected": "После диагностики stale/missing stock менеджер может в том же UI ввести подтверждённый остаток с причиной и получить новый расчёт.",
+          "actual": "CalculationSettings/PlanningOverride поддерживают available_stock и growth_factor, но DataPage отображает только дату, сроки, буфер и demand_source. В применённом IEK наборе все 3185 рекомендаций остались needs_input.",
+          "evidence": [
+            "backend/app/contracts/models.py:166",
+            "backend/app/contracts/models.py:173",
+            "frontend/src/pages/DataPage.tsx:24",
+            "frontend/src/pages/DataPage.tsx:26",
+            "captures/20261002T064542641666-calc-iek-summary.stdout.log",
+            "README.md:319"
+          ],
+          "checkIds": [
+            "scenario-3"
+          ]
+        },
+        {
+          "id": "F2",
+          "kind": "defect",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Для заявленного статистического подхода не показано измеренное преимущество над базовым прогнозом.",
+          "expected": "Есть хотя бы небольшой воспроизводимый holdout/benchmark, показывающий, когда сезонность, рост и очистка выбросов улучшают результат.",
+          "actual": "README прямо говорит, что оценки точности на отложенном периоде нет; тесты проверяют инварианты и заранее известные synthetic expected values, но не forecast error against baseline.",
+          "evidence": [
+            "README.md:316",
+            "backend/app/engine/demand.py:157",
+            "backend/tests/test_engine.py:117",
+            "backend/tests/test_engine_demo.py:6"
+          ],
+          "checkIds": [
+            "build-2"
+          ]
+        },
+        {
+          "id": "F3",
+          "kind": "defect",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Публичный режим не изолирует пользователей и организации.",
+          "expected": "При развитии в общий сервис наборы и заказы принадлежат tenant/user, а чужие IDs недоступны.",
+          "actual": "Доступ контролируется только флагами demo/public_demo; README признаёт отсутствие авторизации и разделения пользователей, а синтетические заказы в public demo общие.",
+          "evidence": [
+            "backend/app/config.py:8",
+            "backend/app/service.py:28",
+            "README.md:320",
+            "README.md:351"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "L1",
+          "kind": "limitation",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "IEK-комплект не даёт безопасных количеств на дату расчёта из-за источника остатков.",
+          "expected": "Текущий остаток должен быть подтверждён на дату расчёта либо строка должна быть явно заблокирована.",
+          "actual": "Адаптер создаёт is_current=false для месячного IEK-снимка; все 3185 IEK rows получили needs_input вместо выдуманного количества.",
+          "evidence": [
+            "backend/app/ingestion/excel.py:333",
+            "backend/app/engine/planning.py:61",
+            "captures/20261002T064542641666-calc-iek-summary.stdout.log"
+          ],
+          "checkIds": [
+            "scenario-3"
+          ]
+        },
+        {
+          "id": "L2",
+          "kind": "limitation",
+          "verification": "source",
+          "responsibility": "review_environment",
+          "claim": "Visual UI behavior and PostgreSQL runtime were not independently observed in this review.",
+          "expected": "Отдельная визуальная и PostgreSQL-проверка дала бы дополнительные наблюдения.",
+          "actual": "UI automation запрещена пользовательскими инструкциями, а тестовая PostgreSQL credential/resource не предоставлена; это граница проверки, не ошибка проекта.",
+          "evidence": [
+            "captures/20261002T064237585903-test.stdout.log",
+            "frontend/tests/workflow.spec.ts:4",
+            "README.md:268"
+          ],
+          "checkIds": [
+            "build-2"
+          ]
+        }
+      ],
+      "gapFindingIds": [
+        "F1",
+        "F2",
+        "F3"
+      ]
+    }
+  ],
+  "score": 90.0,
+  "status": "complete",
+  "expectedJudges": 1
+}

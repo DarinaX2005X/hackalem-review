@@ -1,0 +1,805 @@
+{
+  "methodVersion": 4,
+  "repoId": "hack-37ae610f-kaz-ai",
+  "repoUrl": "https://github.com/BAITC-Hacks/hack-37ae610f-kaz-ai",
+  "caseId": 5,
+  "snapshot": "4fb942ac3a2a4f1cf7058f3f166a51143ad745be",
+  "judges": [
+    {
+      "methodVersion": 4,
+      "repoId": "hack-37ae610f-kaz-ai",
+      "caseId": 5,
+      "model": "GPT-5.6 Luna",
+      "snapshot": "4fb942ac3a2a4f1cf7058f3f166a51143ad745be",
+      "overallSummary": "Проект представляет собой хорошо собранный объяснимый MVP: синтетический сценарий полностью проходит через расчёт, ручное подтверждение, аудит и CSV-выгрузку, а отдельный импортёр умеет прочитать все 12 предоставленных XLSX и явно блокирует заказ при неполных закупочных параметрах. Сильнее всего сделаны детерминированное ядро, обработка сезонности, роста, stockout, разовых заказов и товаров в пути, а также безопасное разделение синтетической публичной демонстрации и партнёрских данных. Главный подтверждённый недостаток находится на реальном partner-сценарии: после загрузки 3017 SKU запрос рекомендаций завершается необработанным KeyError для строк с недостаточной историей. Дополнительно checked-in synthetic.json не совпадает с результатом текущего ядра, из-за чего интеграционный тест supply_control не проходит. Поэтому это сильный демонстрационный прототип, но полный путь от реальных XLSX до рабочего списка рекомендаций ещё не целостен.",
+      "global": {
+        "criteria": [
+          {
+            "name": "Ценность решения",
+            "score": 22,
+            "max": 25,
+            "awarded": "Решение адресует конкретную операционную проблему закупщика и показывает понятную экономическую ценность: меньше ручной сверки, меньше ложных заказов из-за единичных продаж и меньше риска дефицита.",
+            "deductions": "Снято 3 балла за то, что на полном партнёрском наборе конечный экран рекомендаций не формируется из-за F-001; ценность реального сценария доказана только до точки импорта и метаданных.",
+            "evidence": [
+              "README.md:3",
+              "README.md:78",
+              "kaz_ai/engine.py:91",
+              "kaz_ai/engine.py:285",
+              "R-004",
+              "R-005",
+              "R-006"
+            ],
+            "deductionItems": [
+              {
+                "points": 3,
+                "findingId": "F-001",
+                "reason": "Падение partner endpoint на строке с недостаточной историей не даёт закупщику получить полный список рекомендаций по реальным данным, поэтому практическая ценность для основного рабочего набора пока ниже максимальной."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Проблема ручного пополнения",
+                "implementation": "README описывает ручную консолидацию Excel, редкие заказы, избыточные запасы и искажение регулярного спроса разовыми крупными продажами. Ядро превращает эту задачу в расчёт по SKU с остатком, горизонтом покрытия и объяснением.",
+                "value": "Это непосредственно соответствует аудитории менеджера закупок и даёт понятный эффект: решение поддерживает регулярное пополнение вместо ручного пересмотра множества таблиц.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:3",
+                  "README.md:78",
+                  "kaz_ai/engine.py:245"
+                ]
+              },
+              {
+                "aspect": "Управление дефицитом и излишками",
+                "implementation": "clean_demand восстанавливает спрос при явном числе дней stockout и отдельно выявляет крупный всплеск; recommend вычитает свободный остаток и своевременный inbound из прогноза целевого горизонта.",
+                "value": "Один и тот же расчёт учитывает две дорогие для закупок ошибки: недозаказ при дефиците и перезаказ из-за одноразового события.",
+                "verification": "observed",
+                "evidence": [
+                  "kaz_ai/engine.py:91",
+                  "kaz_ai/engine.py:146",
+                  "kaz_ai/engine.py:281",
+                  "R-001",
+                  "R-004"
+                ]
+              },
+              {
+                "aspect": "Понятный результат для закупщика",
+                "implementation": "Ответ содержит количество, MOQ, остаток, inbound, риск до поставки, рост, сезонный фактор, флаги и текстовую причину; сервер группирует строки по поставщикам и сохраняет утверждённые позиции.",
+                "value": "Пользователь получает не только число, но и материал для ручной проверки перед заказом, что делает пользу решения проверяемой в рабочем процессе.",
+                "verification": "observed",
+                "evidence": [
+                  "kaz_ai/engine.py:303",
+                  "kaz_ai/engine.py:330",
+                  "kaz_ai/server.py:128",
+                  "R-004"
+                ]
+              },
+              {
+                "aspect": "Граница применимости честно обозначена",
+                "implementation": "README прямо отделяет синтетическое демо от партнёрского режима и сообщает, что без подтверждённых сроков, страхового запаса и MOQ реальные строки нельзя утвердить или выгрузить.",
+                "value": "Это снижает риск ложного обещания автоматического закупа и делает ценность прототипа реалистичной для пятичасового MVP.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:87",
+                  "README.md:117",
+                  "supply_control/src/replenishment/reorder.py:61"
+                ]
+              }
+            ],
+            "scoreReasoning": "22 балла заслужены за очень ясную связь с задачей закупок, наличие объяснимого результата и доказанную синтетическим сценарием пользу от фильтрации всплесков, восстановления спроса и учёта inbound. До максимума не хватает только устойчивого завершения того же сценария на предоставленном партнёрском наборе: F-001 блокирует выдачу рекомендаций для части реальных SKU, хотя импорт и контроль качества данных уже реализованы."
+          },
+          {
+            "name": "Результат и качество решения",
+            "score": 15,
+            "max": 20,
+            "awarded": "Синтетический продуктовый путь целостен и реально работает, включая HTTP API, ручное утверждение, аудит и экспорт; партнёрский путь качественно подготовлен на входе, но ломается на выдаче рекомендаций.",
+            "deductions": "Снято 3 балла за F-001 и 2 балла за F-002: production-like partner endpoint падает, а один из checked-in результатов не воспроизводится текущим кодом.",
+            "evidence": [
+              "tests/test_engine.py:1",
+              "kaz_ai/server.py:207",
+              "kaz_ai/server.py:288",
+              "supply_control/tests/test_integrated_site.py:29",
+              "R-001",
+              "R-002",
+              "R-004",
+              "R-006"
+            ],
+            "deductionItems": [
+              {
+                "points": 3,
+                "findingId": "F-001",
+                "reason": "На реальном наборе строка недостаточной истории возвращается из engine без terms_readiness, а server без проверки обращается к этому ключу; HTTP-клиент получает разрыв соединения вместо результата."
+              },
+              {
+                "points": 2,
+                "findingId": "F-002",
+                "reason": "Интеграционный тест проверяет равенство опубликованного synthetic payload текущему ядру, но это равенство не выполняется; воспроизводимость checked-in демо нарушена."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Рабочий синтетический end-to-end",
+                "implementation": "Корневой пакет строит 12 товаров, 1537 операций и клиентские ID, рассчитывает рекомендации через HTTP и отдаёт страницы/API. В проверке /api/meta вернул 12 товаров, /api/recommendations — 8 строк с заказом.",
+                "value": "Это не только набор функций: закупщик может пройти от входных данных до списка, выбрать позицию, утвердить её и получить выгрузку.",
+                "verification": "observed",
+                "evidence": [
+                  "kaz_ai/demo.py:11",
+                  "kaz_ai/__main__.py:32",
+                  "R-004"
+                ]
+              },
+              {
+                "aspect": "Контроль ручного утверждения",
+                "implementation": "До approval /api/export.csv отвечает 400 с отсутствием утверждённых позиций; после POST /api/approve для DEMO-A202 экспорт отвечает 200. Сервер также валидирует целое положительное количество и кратность MOQ.",
+                "value": "Критическое ограничение кейса выполнено в поведении, а не только в описании: автоматической отправки поставщику нет, а экспорт появляется после явного действия пользователя.",
+                "verification": "observed",
+                "evidence": [
+                  "kaz_ai/server.py:69",
+                  "kaz_ai/server.py:175",
+                  "kaz_ai/server.py:274",
+                  "R-001",
+                  "R-004"
+                ]
+              },
+              {
+                "aspect": "Проверяемая корректность ядра",
+                "implementation": "Корневой unittest-набор из 19 тестов прошёл полностью; он отдельно проверяет влияние каждого базового входа, сезонность и рост, stockout, одноразовую клиентскую покупку, inbound, MOQ и аудит.",
+                "value": "Для пятичасового прототипа это сильная защита от регрессий в числовом сценарии и подтверждение целостности основной ветки расчёта.",
+                "verification": "observed",
+                "evidence": [
+                  "tests/test_engine.py:1",
+                  "R-001"
+                ]
+              },
+              {
+                "aspect": "Партнёрский импорт доведён до структурированного состояния",
+                "implementation": "CLI прочитал архивы из предоставленных 12 XLSX: 3017 SKU, 469 строк с актуальным остатком и отдельные counts для продаж, остатков, MOQ, detail_sales, inbound и seasonality reference.",
+                "value": "Входной слой не подменён фиктивным ответом: реальные таблицы распознаны, а отсутствие параметров вынесено в warnings.",
+                "verification": "observed",
+                "evidence": [
+                  "kaz_ai/source.py:223",
+                  "R-005"
+                ]
+              }
+            ],
+            "scoreReasoning": "15 баллов отражают сильное качество синтетической демонстрации и числового ядра, подтверждённые 19/19 тестами и HTTP-потоком approval/export. Существенная потеря — не за отсутствие production-инфраструктуры, а за конкретный дефект F-001, который проявился на фактическом полном входе, плюс F-002, показывающий рассинхрон артефакта с кодом."
+          },
+          {
+            "name": "Инновационность",
+            "score": 13,
+            "max": 15,
+            "awarded": "Для задачи закупок выбран обоснованный нестандартный для быстрого MVP подход: детерминированное объяснимое ядро с коррекцией аномалий и потерянного спроса вместо непрозрачной LLM-магии.",
+            "deductions": "Снято 2 балла за F-001: преимущество подхода убедительно показано на synthetic-пути, но не доведено до работоспособной выдачи на неоднородном партнёрском наборе.",
+            "evidence": [
+              "README.md:22",
+              "README.md:78",
+              "kaz_ai/engine.py:101",
+              "kaz_ai/engine.py:167",
+              "reports/backtest.json",
+              "R-001",
+              "R-006"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "F-001",
+                "reason": "Инновационный слой обработки неполной истории не имеет безопасного общего контракта результата: одна из нормальных категорий SKU ломает partner API до отображения результата."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Объяснимый расчёт вместо непрозрачной модели",
+                "implementation": "README фиксирует отсутствие внешнего LLM/API в числовом расчёте. Формула строится из базового спроса, сезонного индекса, тренда, целевого горизонта, остатка и inbound, а результат содержит trace параметров.",
+                "value": "Для закупщика это более полезный и аудируемый нестандартный подход, чем число без причины: каждую поправку можно связать с исходом и параметром.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:22",
+                  "kaz_ai/engine.py:245",
+                  "kaz_ai/engine.py:271",
+                  "kaz_ai/engine.py:343"
+                ]
+              },
+              {
+                "aspect": "Коррекция разовых событий на уровне клиента",
+                "implementation": "clean_demand агрегирует операции по обезличенному customer_id либо документу, сравнивает крупную группу с локальной базой и сохраняет excluded_customers. В демо продажа DEMO-C017 на 900 единиц исключается.",
+                "value": "Это адресует именно опасный для replenishment паттерн «одна крупная сделка исказила регулярную потребность», а не просто применяет среднее по истории.",
+                "verification": "observed",
+                "evidence": [
+                  "kaz_ai/engine.py:101",
+                  "kaz_ai/engine.py:107",
+                  "kaz_ai/demo.py:83",
+                  "R-001"
+                ]
+              },
+              {
+                "aspect": "Восстановление спроса при stockout",
+                "implementation": "Для явных stockout_days метод оценивает спрос по соседней базе и увеличивает adjusted series, отдельно показывая imputed_stockouts и флаг неопределённости для нулевого начального остатка.",
+                "value": "Такой контур защищает прогноз от систематического занижения именно в периоды, когда продажи ограничены наличием товара.",
+                "verification": "observed",
+                "evidence": [
+                  "kaz_ai/engine.py:146",
+                  "kaz_ai/engine.py:328",
+                  "R-001"
+                ]
+              },
+              {
+                "aspect": "Измерение прогноза относительно базовой линии",
+                "implementation": "В reports/backtest.json сохранён rolling-origin backtest на 240 наблюдениях: model WAPE 0.0906 против baseline WAPE 0.1994 на синтетическом наборе.",
+                "value": "Команда не ограничилась красивым интерфейсом, а добавила численную проверку того, что seasonal/trend-подход улучшает простой baseline в заявленном сценарии.",
+                "verification": "source",
+                "evidence": [
+                  "reports/backtest.json",
+                  "README.md:143",
+                  "README.md:149"
+                ]
+              }
+            ],
+            "scoreReasoning": "13 баллов заслужены за сочетание explainability, клиентского outlier-контекста, stockout-компенсации и воспроизводимого backtest. Это заметно сильнее наивного среднего и соответствует предметной специфике. Два балла удержаны из-за F-001: на полном входе нестандартная обработка неполной истории не сведена к единому безопасному контракту."
+          },
+          {
+            "name": "Потенциал развития и масштабирования",
+            "score": 16,
+            "max": 20,
+            "awarded": "Архитектура разделяет расчёт, источник данных, HTTP-сервер, аналитический supply_control и публичный synthetic bundle; это хороший фундамент для следующего этапа.",
+            "deductions": "Снято 3 балла за F-001 и 1 балл за F-002: масштабирование на неоднородные SKU и поддержание производных артефактов пока требуют ручного контроля.",
+            "evidence": [
+              "kaz_ai/source.py:223",
+              "kaz_ai/server.py:28",
+              "supply_control/src/replenishment",
+              "supply_control/tests/test_integrated_site.py:29",
+              "R-002",
+              "R-005",
+              "R-006"
+            ],
+            "deductionItems": [
+              {
+                "points": 3,
+                "findingId": "F-001",
+                "reason": "На наборе в 3017 SKU рост масштаба вскрыл необработанный вариант результата insufficient_history; без нормализации схемы строк такой сбой будет повторяться при расширении каталога."
+              },
+              {
+                "points": 1,
+                "findingId": "F-002",
+                "reason": "Stale checked-in payload показывает, что генерация и проверка производных данных пока не гарантируют синхронность при изменении ядра."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Разделение контуров данных",
+                "implementation": "kaz_ai/source.py изолирует чтение партнёрских архивов, engine содержит доменную модель и расчёт, server — валидацию и состояние approval, а supply_control — отдельный аналитический пакет с loader/forecast/reorder.",
+                "value": "Такую структуру можно расширять новым поставщиком или адаптером 1С без смешивания UI, формул и чтения конкретного Excel.",
+                "verification": "source",
+                "evidence": [
+                  "kaz_ai/source.py:223",
+                  "kaz_ai/engine.py:34",
+                  "kaz_ai/server.py:28",
+                  "supply_control/src/replenishment/loaders.py:92"
+                ]
+              },
+              {
+                "aspect": "Масштаб входа проверен на реальных книгах",
+                "implementation": "Импорт обработал книги с десятками тысяч строк detail_sales и сотнями/тысячами SKU, сохранив отчёт по counts, warnings и готовности остатков.",
+                "value": "Для MVP это полезное доказательство, что решение проектировалось не только вокруг 12 демонстрационных товаров.",
+                "verification": "observed",
+                "evidence": [
+                  "kaz_ai/source.py:249",
+                  "R-005"
+                ]
+              },
+              {
+                "aspect": "Безопасное публичное разделение",
+                "implementation": "Основной public bundle содержит только DEMO-SKU и DEMO customer IDs; partner payload очищает unit cost, order value и customer_id, а README отделяет приватный режим.",
+                "value": "Это создаёт путь к публичной демонстрации без утечки исходных коммерческих данных и оставляет место для отдельного защищённого интеграционного контура.",
+                "verification": "observed",
+                "evidence": [
+                  "scripts/check_public_bundle.py:17",
+                  "supply_control/tests/test_integrated_site.py:55",
+                  "R-003"
+                ]
+              },
+              {
+                "aspect": "Заложены точки интеграции и аудита",
+                "implementation": "Сервер хранит approval и stock adjustments, пишет audit events, экспортирует CSV, а документация описывает будущую интеграцию с 1С, роли и Telegram как следующий слой.",
+                "value": "Проект не замыкается на одноразовой демонстрации: следующий шаг для организации понятен и технически локализован.",
+                "verification": "source",
+                "evidence": [
+                  "kaz_ai/server.py:99",
+                  "kaz_ai/server.py:117",
+                  "docs/1c-integration.md:1",
+                  "docs/employee-portal.md:20"
+                ]
+              }
+            ],
+            "scoreReasoning": "16 баллов — за удачное разбиение на доменное ядро, адаптеры данных, API и безопасные public/private артефакты, а также за проверку на тысячах реальных SKU. F-001 показывает, что масштабирование пока обнаруживает незакрытые варианты строк, а F-002 — что generated data не защищены от рассинхронизации; это важные, но локализуемые препятствия следующего этапа."
+          },
+          {
+            "name": "Презентация, демо и ответы на вопросы",
+            "score": 17,
+            "max": 20,
+            "awarded": "Устной презентации не было, поэтому оценивается репозиторная демонстрация: README, локальный запуск, видео, формула, сценарии и public bundle достаточно ясно ведут к результату.",
+            "deductions": "Снято 3 балла за F-002: описанный supply_control integrated-site сценарий не воспроизводит checked-in synthetic payload без рассинхрона.",
+            "evidence": [
+              "README.md:5",
+              "README.md:17",
+              "README.md:20",
+              "README.md:78",
+              "README.md:151",
+              "R-003",
+              "R-004"
+            ],
+            "deductionItems": [
+              {
+                "points": 3,
+                "findingId": "F-002",
+                "reason": "Проверка интеграционного демо завершается несовпадением текущего расчёта и опубликованного JSON; это снижает воспроизводимость части репозиторной демонстрации."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Быстрый путь к локальному демо",
+                "implementation": "README даёт python3 -m kaz_ai, адрес локального сервиса, unittest-команду и ссылку на видео; без аргументов запускается безопасный синтетический набор.",
+                "value": "Жюри или другой разработчик может быстро понять, что запускать и какой результат искать, без необходимости сначала разбирать всю архитектуру.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:5",
+                  "README.md:17",
+                  "README.md:20"
+                ]
+              },
+              {
+                "aspect": "Сценарий демонстрации покрывает требования кейса",
+                "implementation": "README перечисляет DEMO-A202 с разовой покупкой 900, DEMO-B310 со stockout, изменение горизонта 30/45 дней, supplier view, approval и CSV.",
+                "value": "Это связывает экранный сценарий с конкретными проверяемыми событиями, а не с абстрактным рассказом о продукте.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:7",
+                  "README.md:61",
+                  "README.md:117"
+                ]
+              },
+              {
+                "aspect": "Ограничения и допущения раскрыты",
+                "implementation": "README отдельно отмечает синтетические сроки и safety stock, отсутствие отправки поставщику, ограничения partner mode и то, что backtest выполнен только на сконструированных сценариях.",
+                "value": "Такое описание помогает правильно интерпретировать демо и не выдаёт эвристику за подтверждённую production-модель.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:87",
+                  "README.md:117",
+                  "README.md:149"
+                ]
+              },
+              {
+                "aspect": "Публичный bundle прошёл статическую проверку безопасности",
+                "implementation": "check_public_bundle подтвердил 12 synthetic products и 1537 synthetic sales, отсутствие non-demo идентификаторов и отсутствие partner recommendations в public data.",
+                "value": "Это сильное репозиторное доказательство того, что материал для публичной демонстрации собран осознанно.",
+                "verification": "observed",
+                "evidence": [
+                  "scripts/check_public_bundle.py:1",
+                  "R-003"
+                ]
+              }
+            ],
+            "scoreReasoning": "17 баллов выставлены за ясный README, конкретный walkthrough, локально работающий основной demo-path и отдельную проверку public bundle. Полный балл удержан только из-за F-002: часть аналитической демонстрации supply_control не воспроизводит checked-in результат, хотя основной public bundle и корневой HTTP-сценарий работают."
+          }
+        ],
+        "total": 83
+      },
+      "case": null,
+      "judgeScore": 83,
+      "caseRequirements": [
+        {
+          "requirement": "Расчёт базовой потребности по артикулу с учётом истории продаж, текущего остатка, товара в пути, категории, MOQ и прогноза роста",
+          "status": "partial",
+          "explanation": "Синтетический набор и ядро учитывают все перечисленные факторы, а importer читает соответствующие поля из XLSX. На реальном partner-наборе часть строк блокируется корректно из-за отсутствующих подтверждённых условий, а общий endpoint дополнительно падает на insufficient_history.",
+          "evidence": [
+            "kaz_ai/engine.py:245",
+            "kaz_ai/engine.py:281",
+            "kaz_ai/source.py:186",
+            "tests/test_engine.py:1",
+            "R-001",
+            "R-005",
+            "R-006"
+          ]
+        },
+        {
+          "requirement": "Учитывать сезонность и устойчивый рост спроса",
+          "status": "met",
+          "explanation": "Ядро вычисляет сезонные индексы по месяцам и ограниченный тренд по последним 12 месяцам; отдельные тесты подтверждают изменение результата, а backtest сравнивает модель с baseline на 240 синтетических наблюдениях.",
+          "evidence": [
+            "kaz_ai/engine.py:167",
+            "kaz_ai/engine.py:194",
+            "tests/test_engine.py:1",
+            "reports/backtest.json"
+          ]
+        },
+        {
+          "requirement": "Компенсировать потерянный спрос при stockout",
+          "status": "met",
+          "explanation": "Явные stockout_days увеличивают adjusted demand, величина восстановленного спроса попадает в reason и imputed_stockouts; synthetic HTTP payload содержит отдельный proof stockout.",
+          "evidence": [
+            "kaz_ai/engine.py:146",
+            "kaz_ai/engine.py:328",
+            "supply_control/scripts/build_integrated_site.py:111",
+            "R-001",
+            "R-004"
+          ]
+        },
+        {
+          "requirement": "Удалять разовые крупные покупки, включая покупку одного клиента, из регулярного спроса",
+          "status": "met",
+          "explanation": "Детальные операции агрегируются по anonymized customer_id либо документу, а DEMO-C017 на 900 единиц исключается из регулярного спроса; это покрыто тестом.",
+          "evidence": [
+            "kaz_ai/engine.py:101",
+            "kaz_ai/engine.py:107",
+            "kaz_ai/demo.py:95",
+            "tests/test_engine.py:1",
+            "R-001"
+          ]
+        },
+        {
+          "requirement": "Формировать список с количеством, объяснением и группировкой по поставщикам",
+          "status": "met",
+          "explanation": "Результат содержит quantity, supplier, MOQ, inbound, risk, flags и reason; supplier_summary и UI/API отдают агрегаты по поставщикам.",
+          "evidence": [
+            "kaz_ai/engine.py:330",
+            "kaz_ai/engine.py:353",
+            "kaz_ai/server.py:128",
+            "R-004"
+          ]
+        },
+        {
+          "requirement": "Не отправлять заказ поставщику без ручного подтверждения",
+          "status": "met",
+          "explanation": "До approval экспорт отвечает 400, после явного POST approval экспортируется CSV; в коде отсутствует dispatch-интеграция, а README это прямо фиксирует.",
+          "evidence": [
+            "kaz_ai/server.py:69",
+            "kaz_ai/server.py:274",
+            "README.md:117",
+            "R-001",
+            "R-004"
+          ]
+        },
+        {
+          "requirement": "Не публиковать клиентские данные и использовать обезличивание",
+          "status": "met",
+          "explanation": "Публичный bundle содержит только DEMO identifiers; проверка bundle и тест public_partner_payload исключают реальные customer_id и клиентские поля. В предоставленных partner XLSX клиентского ID не было, что importer отдельно предупреждает.",
+          "evidence": [
+            "scripts/check_public_bundle.py:17",
+            "supply_control/tests/test_integrated_site.py:55",
+            "kaz_ai/source.py:268",
+            "R-003",
+            "R-005"
+          ]
+        },
+        {
+          "requirement": "Проверить чувствительность к товару в пути, сезонности, stockout и выбросу",
+          "status": "met",
+          "explanation": "В корневых тестах отдельно проверено влияние inbound, seasonality/growth, stockout и one-off customer order; HTTP-проверка также показала изменение DEMO-A202 с 145 до 200 при горизонте 30 против 45 дней.",
+          "evidence": [
+            "tests/test_engine.py:1",
+            "kaz_ai/engine.py:285",
+            "R-001",
+            "R-004"
+          ]
+        },
+        {
+          "requirement": "Применять предоставленные XLSX к проекту, а не только описывать импорт",
+          "status": "partial",
+          "explanation": "Все 12 книг были открыты для сверки структуры, собраны в ожидаемые архивы и реально загружены CLI: получено 3017 SKU и отчёт по каждому из шести типов файлов для обоих поставщиков. Полный расчёт рекомендаций на этом входе недоступен из-за F-001.",
+          "evidence": [
+            "kaz_ai/source.py:223",
+            "R-005",
+            "R-006"
+          ]
+        }
+      ],
+      "testData": {
+        "provided": [
+          "IEK/MOQ  ИЭК.xlsx",
+          "IEK/Динамика продаж_2025-2026.xlsx",
+          "IEK/Ежемесячные остатки продукции за последние 2 года  ИЭК.xlsx",
+          "IEK/Ежемесячные продажи в количественном выражении за последние 2 года.xlsx",
+          "IEK/Путь ИЭК 22.09.2026.xlsx",
+          "IEK/Сезонность ИЭК.xlsx",
+          "Systeme electric/MOQ SystemElectric.xlsx",
+          "Systeme electric/Динамика продаж_Syseme Electric_2025-2026.xlsx",
+          "Systeme electric/Ежемесячные остатки SystemElectric 2024-2026.xlsx",
+          "Systeme electric/Ежемесячные продажи в кол-м выражении SystemElectric 2024-2026.xlsx",
+          "Systeme electric/Сезонность SystemElectric 2024-2026.xlsx",
+          "Systeme electric/Товар в пути_SystemElectric на 22.09.2026.xlsx"
+        ],
+        "used": [
+          "IEK/MOQ  ИЭК.xlsx",
+          "IEK/Динамика продаж_2025-2026.xlsx",
+          "IEK/Ежемесячные остатки продукции за последние 2 года  ИЭК.xlsx",
+          "IEK/Ежемесячные продажи в количественном выражении за последние 2 года.xlsx",
+          "IEK/Путь ИЭК 22.09.2026.xlsx",
+          "IEK/Сезонность ИЭК.xlsx",
+          "Systeme electric/MOQ SystemElectric.xlsx",
+          "Systeme electric/Динамика продаж_Syseme Electric_2025-2026.xlsx",
+          "Systeme electric/Ежемесячные остатки SystemElectric 2024-2026.xlsx",
+          "Systeme electric/Ежемесячные продажи в кол-м выражении SystemElectric 2024-2026.xlsx",
+          "Systeme electric/Сезонность SystemElectric 2024-2026.xlsx",
+          "Systeme electric/Товар в пути_SystemElectric на 22.09.2026.xlsx"
+        ],
+        "checks": [
+          {
+            "input": "12 XLSX из IEK и Systeme electric; проверены листы, заголовки и размеры таблиц.",
+            "method": "Открытие read-only через openpyxl и сверка фактических заголовков с ожидаемыми полями импортёра.",
+            "result": "Все 12 книг открылись. Найдены monthly sales, monthly stock, MOQ, detail sales, inbound и seasonality reference для обоих поставщиков; detail exports содержат отрицательные строки возврата/реверса и неполные поля клиента.",
+            "conclusion": "Входной пакет структурно совместим с предусмотренным архивным импортом, но источник не содержит всех подтверждающих закупочных параметров."
+          },
+          {
+            "input": "Оба поставщика, архивы из соответствующих шести XLSX, as_of=2026-09-22.",
+            "method": "CLI `python -X utf8 -m kaz_ai --iek <IEK.zip> --systeme <Systeme-electric.zip> --as-of 2026-09-22`; затем GET /api/meta.",
+            "result": "Импорт завершился запуском partner-сервиса, meta вернул mode=partner, products=3017, ready_stock=469 и counts для всех 12 файлов. Предупреждения явно сообщают об отсутствии подтверждённого остатка IEK, customer ID, точных stockout-периодов и справочника сроков.",
+            "conclusion": "Реальные входы применены к коду, но результат остаётся предварительным и требует подтверждения параметров."
+          },
+          {
+            "input": "Синтетические 12 товаров, сезонность, growth, 22 дня stockout, inbound и DEMO-C017=900.",
+            "method": "Корневой unittest и HTTP API с days=30/45.",
+            "result": "19 корневых тестов прошли; synthetic API вернул рекомендации, approval и export. Для DEMO-A202 количество изменилось с 145 на 200 при горизонте 30/45 дней.",
+            "conclusion": "Синтетические обязательные сценарии и чувствительность расчёта подтверждены."
+          },
+          {
+            "input": "Partner recommendations для загруженного полного набора.",
+            "method": "GET /api/recommendations?days=30&orders=1 после успешного старта и GET /api/meta.",
+            "result": "Запрос закрывается без HTTP-ответа; traceback показывает KeyError: terms_readiness в kaz_ai/server.py:60, когда engine возвращает insufficient_history без этого поля.",
+            "conclusion": "Полный partner-сценарий не воспроизводится; это подтверждённый дефект проекта F-001, а не ограничение отсутствующих credentials."
+          }
+        ],
+        "limitations": [
+          "Исходные книги не содержат production credentials и не предоставляют подтверждённые сроки поставки/страховой запас для всех SKU; проект корректно отражает это как блокирующие warnings.",
+          "Визуальная проверка страниц не выполнялась по заданной политике; проверены только статические файлы, HTTP/API и серверная логика."
+        ]
+      },
+      "runtime": {
+        "status": "partial",
+        "build": "Корневой пакет запускается в Python 3.11; supply_control устанавливается как editable-пакет. Статическая проверка public bundle прошла.",
+        "start": "Синтетический сервер стартует и отвечает; partner-сервер стартует и успешно загружает оба архива, но его endpoint рекомендаций падает на полном наборе.",
+        "scenario": "Синтетический API-сценарий approval/export пройден. Партнёрский сценарий проверен до meta и затем завершился проектной ошибкой F-001.",
+        "environment": "Проверки выполнены в именованных Docker-окружениях с Python 3.11, лимитами 3 GiB памяти и 2 CPU; браузерная/UI-автоматизация не использовалась.",
+        "summary": "Основной демонстрационный контур рабочий, импорт реальных данных рабочий, полный расчёт партнёрских рекомендаций частично нерабочий из-за необработанного варианта insufficient_history.",
+        "checks": [
+          {
+            "command": "python -X utf8 -m unittest discover -s tests -v",
+            "result": "19 тестов, все OK: отдельно подтверждены inputs, MOQ, inbound, seasonality/growth, stockout, one-off customer, approval, audit и API validation.",
+            "id": "R-001",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Корневые acceptance-тесты проходят полностью."
+          },
+          {
+            "command": "PYTHONPATH=src:. python -X utf8 -m unittest discover -s tests -t . -v",
+            "result": "24 теста: 22 OK, 1 skipped из-за отсутствия source workbooks в checkout, 1 FAIL. `test_checked_in_synthetic_payload_matches_current_core` обнаружил несовпадение checked-in JSON и текущего payload; diff указан тестом как 48901 символ.",
+            "id": "R-002",
+            "stage": "scenario",
+            "status": "fail",
+            "cause": "project",
+            "expected": "Тесты supply_control и checked-in synthetic payload согласованы с текущим ядром."
+          },
+          {
+            "command": "python -X utf8 scripts/check_public_bundle.py",
+            "result": "Public bundle verified: 12 synthetic products, 1537 synthetic sales; non-demo products/customer IDs и partner recommendations не обнаружены.",
+            "id": "R-003",
+            "stage": "build",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Публичный bundle содержит только безопасные synthetic данные и все требуемые страницы."
+          },
+          {
+            "command": "GET /api/meta; GET /api/recommendations?days=30&orders=1; POST /api/approve; GET /api/export.csv",
+            "result": "Synthetic meta: 12 products. Recommendations: 8 order rows. До approval export=400; после approval одной строки DEMO-A202 export=200 и approved_count=1. Изменение horizon 30→45 изменило quantity 145→200.",
+            "id": "R-004",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "HTTP-сценарий выдаёт объяснимые рекомендации, требует approval и экспортирует только утверждённые строки."
+          },
+          {
+            "command": "python -X utf8 -m kaz_ai --iek <IEK.zip> --systeme <Systeme-electric.zip> --as-of 2026-09-22",
+            "result": "Partner start completed; GET /api/meta returned mode=partner, products=3017, ready_stock=469 and 12 file-level import counts. Command uses placeholders for the temporary input archives.",
+            "id": "R-005",
+            "stage": "start",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Проект принимает архивы с предоставленными книгами и строит partner dataset report."
+          },
+          {
+            "command": "GET /api/recommendations?days=30&orders=1",
+            "result": "HTTP response не сформирован. Traceback: `kaz_ai/server.py:60` обращается к row[\"terms_readiness\"], но `kaz_ai/engine.py:248-250` для insufficient_history возвращает строку без этого ключа; соединение закрывается обработчиком.",
+            "id": "R-006",
+            "stage": "scenario",
+            "status": "fail",
+            "cause": "project",
+            "expected": "Для каждого SKU, включая недостаточную историю, должен возвращаться корректный blocked/review row с единым контрактом JSON."
+          }
+        ],
+        "limitations": [
+          "Partner рекомендации не удалось проверить дальше точки ошибки, потому что это подтверждённый дефект проекта, а не отсутствие ключа или внешнего API.",
+          "Визуальная работа HTML/JS не проверялась браузером согласно инструкции; статические и HTTP/API проверки выполнены."
+        ]
+      },
+      "liveDemo": {
+        "status": "claimed",
+        "url": "https://kaz-ai-hackalem.vercel.app/",
+        "notes": "URL заявлен в README как основное публичное демо, но в рамках этой проверки не открывался; отсутствие независимой визуальной проверки не использовано как снятие баллов."
+      },
+      "fiveHourContext": "Для пятичасового хакатона объём результата высокий: есть доменное ядро, синтетический доказательный набор, импортёр двух поставщиков, API, approval/audit/export, документация и аналитический стенд. Оценка не требует production-авторизации, полноценной 1С-интеграции или подтверждённых бизнес-параметров, которых нет в предоставленных данных. Сняты только баллы за наблюдаемые дефекты самого репозитория: падение partner endpoint и рассинхрон checked-in артефакта.",
+      "strengths": [
+        "Синтетический end-to-end сценарий действительно работает: расчёт, объяснение, ручное утверждение, аудит и CSV.",
+        "19 корневых тестов покрывают основные риски формулы, включая inbound, stockout, outlier, сезонность, рост и MOQ.",
+        "Публичные данные разделены с партнёрскими: проверка bundle подтверждает 12 synthetic products и 1537 synthetic sales без реальных customer IDs.",
+        "Импортёр реально применён к 12 предоставленным XLSX и выдаёт структурированный отчёт о покрытии и пропусках.",
+        "README честно фиксирует синтетические допущения, отсутствие автоматической отправки и ограниченность backtest.",
+        "F-001 и F-002 — единственные подтверждённые проектные дефекты, использованные для снятия баллов."
+      ],
+      "gaps": [
+        "Полный partner endpoint падает на SKU с недостаточной историей: сервер ожидает terms_readiness, которого ранний результат engine не содержит.",
+        "Checked-in supply_control/site/dist/data/synthetic.json не совпадает с payload, который строит текущий core; интеграционный тест падает."
+      ],
+      "futureAdvice": [
+        {
+          "principle": "Единый контракт результата для всех классов SKU",
+          "why": "F-001 показывает, что нормальная для реального каталога ветка insufficient_history возвращает другую схему и роняет HTTP-обработчик вместо понятного blocked/review результата.",
+          "how": "В другом хакатоне сначала опишите минимальную схему строки рекомендации, затем пропустите через неё ready, insufficient_history и missing-parameter ветки; добавьте API-тест на смесь короткой и полной истории до подключения UI.",
+          "findingIds": [
+            "F-001"
+          ],
+          "successCheck": "GET /api/recommendations на partner fixture с короткой историей отвечает 200, каждая строка имеет одинаковые обязательные поля, а недостаточная история отображается как blocked/review без traceback.",
+          "timeboxMinutes": 45
+        },
+        {
+          "principle": "Генерируемые демо-артефакты должны проверяться как release output",
+          "why": "F-002: текущий core и checked-in synthetic.json расходятся, поэтому supply_control интеграционный тест не подтверждает воспроизводимость опубликованного результата.",
+          "how": "Для следующего проекта запускайте генератор перед тестом и сравнивайте JSON после нормализации; либо не коммитьте derived payload, а собирайте его в CI из зафиксированного кода и fixture.",
+          "findingIds": [
+            "F-002"
+          ],
+          "successCheck": "test_checked_in_synthetic_payload_matches_current_core и весь supply_control suite проходят после чистой сборки, а bundle-check подтверждает тот же набор данных.",
+          "timeboxMinutes": 30
+        }
+      ],
+      "uncertainties": [
+        "Внешние live URL и визуальное поведение страниц не проверялись; это ограничение метода, не дефект и не основание для штрафа.",
+        "Credentials для внешних сервисов и production 1С не предоставлялись; проектный расчёт не зависит от LLM/API, поэтому статического и локального покрытия достаточно для готовой оценки.",
+        "Полная производительность partner recommendation не измерялась после F-001: runtime доходит до импорта, но endpoint не завершает сценарий.",
+        "В предоставленных partner данных отсутствуют подтверждённые сроки поставки, safety stock, точные stockout-периоды и anonymized customer IDs; проект отражает это warnings и блокировкой, поэтому эти ограничения не оформлены как deductions."
+      ],
+      "reviewPolicyVersion": 2,
+      "assessmentStatus": "ready",
+      "findings": [
+        {
+          "id": "F-001",
+          "kind": "defect",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Partner GET /api/recommendations не обрабатывает SKU с недостаточной историей.",
+          "expected": "Каждый SKU должен вернуть корректную строку blocked/review либо рекомендацию с единым JSON-контрактом.",
+          "actual": "При полном partner-наборе соединение закрывается без ответа; traceback показывает KeyError terms_readiness в server.py:60, потому что early return engine.py:248-250 не содержит это поле.",
+          "evidence": [
+            "kaz_ai/server.py:53",
+            "kaz_ai/server.py:60",
+            "kaz_ai/engine.py:248",
+            "R-005",
+            "R-006"
+          ],
+          "checkIds": [
+            "R-005",
+            "R-006"
+          ]
+        },
+        {
+          "id": "F-002",
+          "kind": "defect",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Checked-in synthetic payload supply_control не соответствует payload текущего core.",
+          "expected": "Генерируемый и сохранённый synthetic.json должны быть идентичны, чтобы локальное демо и тесты воспроизводились.",
+          "actual": "test_checked_in_synthetic_payload_matches_current_core завершился FAIL; unittest сообщил diff размером 48901 символ.",
+          "evidence": [
+            "supply_control/tests/test_integrated_site.py:29",
+            "supply_control/tests/test_integrated_site.py:32",
+            "supply_control/site/dist/data/synthetic.json",
+            "R-002"
+          ],
+          "checkIds": [
+            "R-002"
+          ]
+        },
+        {
+          "id": "S-001",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Синтетический расчётный контур покрыт тестами и проходит HTTP approval/export сценарий.",
+          "expected": "Основные обязательные сценарии должны быть воспроизводимы локально.",
+          "actual": "19/19 корневых тестов прошли; HTTP вернул рекомендации, approval и CSV после подтверждения.",
+          "evidence": [
+            "tests/test_engine.py:1",
+            "R-001",
+            "R-004"
+          ],
+          "checkIds": [
+            "R-001",
+            "R-004"
+          ]
+        },
+        {
+          "id": "S-002",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Импортёр реально читает предоставленные книги двух поставщиков и строит отчёт покрытия.",
+          "expected": "Партнёрский режим должен принимать предусмотренный формат архивов и не подменять его синтетикой.",
+          "actual": "Загружены все 12 файлов, найдено 3017 SKU, 469 строк с актуальным остатком и warnings по отсутствующим параметрам.",
+          "evidence": [
+            "kaz_ai/source.py:223",
+            "kaz_ai/source.py:249",
+            "R-005"
+          ],
+          "checkIds": [
+            "R-005"
+          ]
+        },
+        {
+          "id": "S-003",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Публичный bundle не содержит partner/customer данные и проходит статическую проверку.",
+          "expected": "Публичный набор должен состоять только из синтетических SKU и customer IDs.",
+          "actual": "check_public_bundle подтвердил 12 synthetic products и 1537 synthetic sales.",
+          "evidence": [
+            "scripts/check_public_bundle.py:17",
+            "R-003"
+          ],
+          "checkIds": [
+            "R-003"
+          ]
+        },
+        {
+          "id": "L-001",
+          "kind": "limitation",
+          "verification": "observed",
+          "responsibility": "review_environment",
+          "claim": "Предоставленные partner-файлы не содержат полного набора подтверждённых закупочных параметров и anonymized customer IDs.",
+          "expected": "Для order-ready расчёта нужны подтверждённые lead time, safety stock, MOQ и при необходимости точные stockout/customer признаки.",
+          "actual": "Импортёр сообщил warnings об отсутствии подтверждённого остатка IEK, customer ID, точных stockout-периодов и справочника сроков; такие строки блокируются или требуют ручной проверки.",
+          "evidence": [
+            "kaz_ai/source.py:264",
+            "kaz_ai/source.py:268",
+            "R-005"
+          ],
+          "checkIds": [
+            "R-005"
+          ]
+        },
+        {
+          "id": "L-002",
+          "kind": "limitation",
+          "verification": "unverified",
+          "responsibility": "review_environment",
+          "claim": "Визуальное поведение HTML/JS не установлено этим разбором.",
+          "expected": "Визуальная проверка выполняется пользователем отдельно.",
+          "actual": "Проверены статические файлы, API и серверная логика без браузерной автоматизации; визуальный результат оставлен пользователю.",
+          "evidence": [
+            "runtime.checks:R-003",
+            "runtime.checks:R-004"
+          ],
+          "checkIds": [
+            "R-003",
+            "R-004"
+          ]
+        }
+      ],
+      "gapFindingIds": [
+        "F-001",
+        "F-002"
+      ]
+    }
+  ],
+  "score": 83.0,
+  "status": "complete",
+  "expectedJudges": 1
+}

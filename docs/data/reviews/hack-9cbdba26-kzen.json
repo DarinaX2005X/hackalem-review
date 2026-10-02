@@ -1,0 +1,746 @@
+{
+  "methodVersion": 4,
+  "repoId": "hack-9cbdba26-kzen",
+  "repoUrl": "https://github.com/BAITC-Hacks/hack-9cbdba26-kzen",
+  "caseId": 5,
+  "snapshot": "5d94e573254b0ed34b4d6cfa4bf8170ba2a93755",
+  "judges": [
+    {
+      "methodVersion": 4,
+      "repoId": "hack-9cbdba26-kzen",
+      "caseId": 5,
+      "model": "GPT-5.6 Luna",
+      "snapshot": "5d94e573254b0ed34b4d6cfa4bf8170ba2a93755",
+      "overallSummary": "KZen — сильный воспроизводимый MVP для пополнения склада. На 12 предоставленных XLSX он нормализовал 3909 SKU двух поставщиков, поднял API, рассчитал реальные рекомендации с группировкой и объяснениями, прошёл 5/5 встроенных проверок и полный workflow черновик → согласование → XLSX. Расчёт учитывает историю, тренд, сезонность, stockout, разовые продажи, остаток, товар в пути и MOQ. Единственный существенный подтверждённый недостаток — версии и журнал хранятся только в памяти процесса, что ограничивает дальнейшее масштабирование.",
+      "global": {
+        "criteria": [
+          {
+            "name": "Ценность решения",
+            "score": 25,
+            "max": 25,
+            "awarded": "Закрыта понятная операционная проблема закупщика: из разнородных выгрузок получается проверяемый список пополнения, а отправка остаётся под контролем человека.",
+            "deductions": "Подтверждённых дефектов, уменьшающих прикладную ценность сценария, нет.",
+            "evidence": [
+              "README.md:1",
+              "backend/app/application/use_cases/replenishment.py:1",
+              "r-data-load",
+              "r-http-calculate"
+            ],
+            "deductionItems": [],
+            "awardedDetails": [
+              {
+                "aspect": "Проблема и аудитория",
+                "implementation": "README и доменный сценарий ориентированы на менеджера закупок, который вручную сводит Excel; результатом является заказ по поставщику, а не только прогноз.",
+                "value": "Пользователь получает конкретное действие и причины, поэтому решение непосредственно экономит ручную работу и снижает риск дефицита/излишка.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:1",
+                  "backend/app/application/use_cases/replenishment.py:70"
+                ]
+              },
+              {
+                "aspect": "Работа на реальных входах",
+                "implementation": "Excel-нормализатор связывает шесть типов книг IEK и Systeme Electric по коду 1С и артикулу и формирует единый репозиторий.",
+                "value": "Ценность подтверждена фактическими файлами кейса, а не только демо-массивом: загрузилось 3909 SKU.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/app/infrastructure/storage/excel_normalizer.py:86",
+                  "r-data-load"
+                ]
+              },
+              {
+                "aspect": "Контролируемое решение",
+                "implementation": "Workflow разделяет draft, submit, approve и export; автоматической отправки поставщику нет.",
+                "value": "Финансово значимое решение остаётся у менеджера и руководителя, что соответствует ограничению кейса.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/app/domain/workflow.py:1",
+                  "r-http-approval",
+                  "r-http-export"
+                ]
+              }
+            ],
+            "scoreReasoning": "Максимальный балл заслужен за адресность проблемы, реальный входной контур и пригодный для закупщика результат. Отсутствие цен в исходных таблицах и необязательной LLM не является дефектом этой ценности: цены не выдумываются, а численный расчёт от LLM не зависит."
+          },
+          {
+            "name": "Результат и качество решения",
+            "score": 20,
+            "max": 20,
+            "awarded": "Основной сценарий от загрузки данных до утверждённого XLSX реально воспроизведён.",
+            "deductions": "Подтверждённых дефектов основного сценария нет.",
+            "evidence": [
+              "r-build-api",
+              "r-build-frontend",
+              "r-test-pytest",
+              "r-http-health",
+              "r-http-selfcheck",
+              "r-http-calculate",
+              "r-http-approval",
+              "r-http-export"
+            ],
+            "deductionItems": [],
+            "awardedDetails": [
+              {
+                "aspect": "Нормализация данных",
+                "implementation": "Прочитаны 12 XLSX; получены IEK 3185 SKU, Systeme Electric 724 SKU, 33 месяца истории и 56 подтверждённых bulk events.",
+                "value": "Сервис работает на фактической структуре кейса и корректно отделяет неполные позиции от рассчитанных.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/app/infrastructure/storage/excel_normalizer.py:138",
+                  "r-data-load"
+                ]
+              },
+              {
+                "aspect": "Расчёт и объяснение",
+                "implementation": "calculate_order_line очищает историю, строит forecast, считает горизонт, вычитает доступность и inbound и округляет вверх до MOQ; reasons собираются из тех же чисел.",
+                "value": "Количество прозрачно для ручной сверки, а не является непрослеживаемым числом.",
+                "verification": "source",
+                "evidence": [
+                  "backend/app/application/use_cases/replenishment.py:95",
+                  "backend/app/application/use_cases/replenishment.py:121",
+                  "backend/app/application/use_cases/replenishment.py:223",
+                  "r-http-calculate"
+                ]
+              },
+              {
+                "aspect": "Проверки",
+                "implementation": "RunSelfChecks содержит сценарии inbound, seasonality, stockout, bulk и explanation; полный pytest также прошёл.",
+                "value": "90/90 тестов и 5/5 runtime-проверок дают независимое подтверждение расчётного и API-контуров.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/app/application/use_cases/selfcheck.py:45",
+                  "r-http-selfcheck",
+                  "r-test-pytest"
+                ]
+              },
+              {
+                "aspect": "Пользовательский результат",
+                "implementation": "Полный расчёт создал v1 с 781 позицией к заказу; до approve экспорт вернул 409, после submit/approve XLSX вернулся HTTP 200.",
+                "value": "Сценарий завершён реальным артефактом, а не только JSON расчёта.",
+                "verification": "observed",
+                "evidence": [
+                  "r-http-draft",
+                  "r-http-approval",
+                  "r-http-export"
+                ]
+              }
+            ],
+            "scoreReasoning": "Максимальный балл обоснован сборкой backend/frontend, 90 проходящими тестами, стартом на полном наборе, 5/5 self-check и рабочим approval/export HTTP-сценарием. Визуальная часть не проверялась по обязательной политике и за это баллы не снимались."
+          },
+          {
+            "name": "Инновационность",
+            "score": 15,
+            "max": 15,
+            "awarded": "Сочетание детерминированного прогноза, seasonality-aware удаления выбросов, stockout-компенсации, транзакционного подтверждения bulk и объяснения вклада каждого фактора — содержательный нестандартный подход для MVP.",
+            "deductions": "Подтверждённых дефектов, обнуляющих преимущество подхода, нет.",
+            "evidence": [
+              "backend/app/domain/demand.py:36",
+              "backend/app/domain/demand.py:86",
+              "backend/app/infrastructure/forecasting/smoothed.py:23",
+              "r-http-selfcheck"
+            ],
+            "deductionItems": [],
+            "awardedDetails": [
+              {
+                "aspect": "Сезонный пик не режется как выброс",
+                "implementation": "remove_bulk_orders сравнивает тот же календарный месяц других лет и использует медиану/fallback, чтобы отличать сезон от разовой сделки.",
+                "value": "Это напрямую разрешает конфликт требований кейса: устойчивость к крупной продаже без потери сезонности.",
+                "verification": "source",
+                "evidence": [
+                  "backend/app/domain/demand.py:41",
+                  "backend/app/domain/demand.py:125"
+                ]
+              },
+              {
+                "aspect": "Два сигнала для bulk",
+                "implementation": "Транзакционный слой ищет крупные invoice totals по медиане, порогу 10x и доле 50%, а домен имеет независимую статистическую очистку месячных продаж.",
+                "value": "Доступный обезличенный proxy накладной используется проверяемо, без притворства, что известен ID клиента.",
+                "verification": "source",
+                "evidence": [
+                  "backend/app/infrastructure/storage/excel_normalizer.py:470",
+                  "backend/app/domain/entities.py:42"
+                ]
+              },
+              {
+                "aspect": "AI не принимает численное решение",
+                "implementation": "ReasonPart формируется из расчёта, template narrator работает без сети, OpenAI-compatible слой получает только факты и компоненты.",
+                "value": "Генеративное объяснение добавляется к аудируемому ядру, а не заменяет формулу.",
+                "verification": "source",
+                "evidence": [
+                  "backend/app/domain/entities.py:97",
+                  "backend/app/infrastructure/llm/openai_compat.py:126"
+                ]
+              }
+            ],
+            "scoreReasoning": "Максимальный балл дан за конкретную комбинацию устойчивых эвристик, которая проверена контролируемыми сценариями и не заявляет неподтверждённую ML-точность."
+          },
+          {
+            "name": "Потенциал развития и масштабирования",
+            "score": 16,
+            "max": 20,
+            "awarded": "Код уже разделяет domain, application, API, инфраструктурные адаптеры и frontend-контракт; есть два forecast-метода, Redis/memory cache, narrator adapters, what-if, версии, diff и экспорт.",
+            "deductions": "Четыре балла сняты за подтверждённую эфемерность состояния согласования.",
+            "evidence": [
+              "backend/app/core/container.py:23",
+              "backend/app/core/container.py:31",
+              "backend/app/core/container.py:98",
+              "backend/app/main.py:46",
+              "D1-INMEMORY-VERSIONS"
+            ],
+            "deductionItems": [
+              {
+                "points": 4,
+                "findingId": "D1-INMEMORY-VERSIONS",
+                "reason": "Container по умолчанию создаёт MemoryDraftStore; версии, ручные правки и audit-log живут только пока работает процесс. После рестарта или при нескольких экземплярах нельзя гарантировать сохранность утверждённого заказа и единый журнал, что существенно ограничивает масштабирование."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Чистое доменное ядро",
+                "implementation": "CalculateOrders принимает repository и forecaster через порты; домен не зависит от FastAPI/pandas.",
+                "value": "Новый метод прогноза или источник данных можно подключить без переписывания HTTP-сценария.",
+                "verification": "source",
+                "evidence": [
+                  "backend/app/application/use_cases/replenishment.py:70",
+                  "backend/app/domain/ports.py:1"
+                ]
+              },
+              {
+                "aspect": "Адаптеры",
+                "implementation": "Excel, memory/Redis cache, template/OpenAI narrator и export вынесены в infrastructure, выбор сделан в composition root.",
+                "value": "Сервис имеет понятный путь от файлового MVP к БД, другому кэшу или провайдеру.",
+                "verification": "source",
+                "evidence": [
+                  "backend/app/core/container.py:106",
+                  "backend/app/core/container.py:124",
+                  "backend/app/core/container.py:141"
+                ]
+              },
+              {
+                "aspect": "Следующие продуктовые шаги",
+                "implementation": "UI/API поддерживают фильтры, пагинацию, what-if, ручные правки с причиной, версии, diff и audit-log.",
+                "value": "Расширение на совместное согласование и анализ изменений уже предусмотрено контрактами.",
+                "verification": "source",
+                "evidence": [
+                  "backend/app/application/use_cases/ui.py:325",
+                  "backend/app/application/use_cases/ui.py:570",
+                  "backend/app/api/routes/ui.py:128"
+                ]
+              }
+            ],
+            "scoreReasoning": "Архитектурный фундамент сильный и реалистичен для пяти часов. До максимума удерживает только MemoryDraftStore: это не мешает локальному MVP, но является реальным барьером для сохранности и горизонтального развёртывания."
+          },
+          {
+            "name": "Презентация, демо и ответы на вопросы",
+            "score": 20,
+            "max": 20,
+            "awarded": "README, сборка и локально воспроизводимое HTTP-демо дают ясный путь показа результата; устная часть не проводилась и не подменялась предположениями.",
+            "deductions": "Публичная ссылка, видео и устное выступление отсутствуют, но это не является основанием для снижения по заданной политике.",
+            "evidence": [
+              "README.md:1",
+              "r-build-api",
+              "r-build-frontend",
+              "r-test-frontend-lint",
+              "r-http-selfcheck",
+              "r-http-approval"
+            ],
+            "deductionItems": [],
+            "awardedDetails": [
+              {
+                "aspect": "README",
+                "implementation": "Документ описывает возможности, архитектуру, Docker-запуск, загрузку файлов, шаги по экранам, согласование и self-check.",
+                "value": "Проверяющий понимает, как получить содержательный результат из репозитория.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:1",
+                  "README.md:39"
+                ]
+              },
+              {
+                "aspect": "Воспроизводимость",
+                "implementation": "Backend и frontend собраны; API поднялся без ключа на реальных данных, template narrator является штатным fallback.",
+                "value": "Демо не блокируется необязательной внешней интеграцией.",
+                "verification": "observed",
+                "evidence": [
+                  "r-build-api",
+                  "r-build-frontend",
+                  "r-start-real",
+                  "r-http-health"
+                ]
+              },
+              {
+                "aspect": "Демонстрация требований",
+                "implementation": "selfcheck и UI validation используют RunSelfChecks и показывают пять controlled-сценариев.",
+                "value": "Можно показать не только таблицу, но и конкретные свидетельства чувствительности алгоритма.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/app/application/use_cases/selfcheck.py:52",
+                  "r-http-selfcheck"
+                ]
+              }
+            ],
+            "scoreReasoning": "Полный балл дан за ясный README, успешные production build/lint и воспроизводимый сценарий с конкретным результатом. Визуальная проверка оставлена пользователю и не превращена в штраф."
+          }
+        ],
+        "total": 96
+      },
+      "case": null,
+      "judgeScore": 96,
+      "caseRequirements": [
+        {
+          "requirement": "Расчёт по артикулам с историей продаж, остатками, товарами в пути, категориями и прогнозом роста",
+          "status": "met",
+          "explanation": "12 книг нормализованы в 3909 SKU. Расчёт использует историю, free stock, inbound, MOQ, lead time, coverage, safety factor и категорию Systeme Electric.",
+          "evidence": [
+            "backend/app/infrastructure/storage/excel_normalizer.py:601",
+            "backend/app/application/use_cases/replenishment.py:109",
+            "r-data-load",
+            "r-http-calculate"
+          ]
+        },
+        {
+          "requirement": "Учёт сезонности и устойчивого роста",
+          "status": "met",
+          "explanation": "Сезонность считается по календарному месяцу истории SKU, рост — последние шесть месяцев против предыдущих шести; self-check дал 353 против 41 шт/мес для ноября и мая.",
+          "evidence": [
+            "backend/app/domain/demand.py:187",
+            "backend/app/domain/demand.py:210",
+            "r-http-selfcheck"
+          ]
+        },
+        {
+          "requirement": "Компенсация потерянного спроса при stockout",
+          "status": "met",
+          "explanation": "Нулевой известный начальный остаток помечает stockout, а продажи замещаются нормальным спросом при доступных наблюдениях. Самопроверка дала рост 33→120 шт.",
+          "evidence": [
+            "backend/app/domain/entities.py:36",
+            "backend/app/domain/demand.py:148",
+            "r-http-selfcheck"
+          ]
+        },
+        {
+          "requirement": "Удаление разовых крупных покупок, включая одного клиента",
+          "status": "met",
+          "explanation": "Используются invoice totals с медианным baseline и порогами 10x/50%, плюс месячная seasonality-aware очистка. В реальном наборе найдено 56 bulk events; выброс 1500 шт не увеличил контрольный заказ 90 шт.",
+          "evidence": [
+            "backend/app/infrastructure/storage/excel_normalizer.py:515",
+            "backend/app/domain/demand.py:36",
+            "r-data-load",
+            "r-http-selfcheck"
+          ]
+        },
+        {
+          "requirement": "Группировка по поставщикам, количество и объяснение каждой позиции",
+          "status": "met",
+          "explanation": "calculate_recommendations группирует строки по supplier; реальный ответ Systeme Electric содержит 201 позицию с quantity, urgency, MOQ, reasons и explanation.",
+          "evidence": [
+            "backend/app/application/use_cases/replenishment.py:155",
+            "backend/app/domain/entities.py:126",
+            "r-http-calculate"
+          ]
+        },
+        {
+          "requirement": "Нет отправки без ручного подтверждения",
+          "status": "met",
+          "explanation": "Submit менеджером и approve руководителем разделены. Экспорт до approve получил 409 ORDER_NOT_APPROVED, после approve — HTTP 200 XLSX.",
+          "evidence": [
+            "backend/app/domain/workflow.py:23",
+            "backend/app/application/use_cases/ui.py:620",
+            "r-http-approval",
+            "r-http-export"
+          ]
+        },
+        {
+          "requirement": "Данные клиентов обезличены",
+          "status": "met",
+          "explanation": "ID клиента в данных нет; номер накладной используется только как проверяемый proxy bulk-события, regular_clients пуст, LLM prompt содержит только SKU/поставщика/расчёт.",
+          "evidence": [
+            "backend/app/domain/entities.py:42",
+            "backend/app/application/use_cases/ui.py:506",
+            "backend/app/infrastructure/llm/openai_compat.py:126"
+          ]
+        },
+        {
+          "requirement": "Чувствительность к inbound, сезонности, stockout и выбросу",
+          "status": "met",
+          "explanation": "RunSelfChecks меняет факторы по одному и сравнивает до/после; HTTP-ответ сообщил 5/5 passed.",
+          "evidence": [
+            "backend/app/application/use_cases/selfcheck.py:52",
+            "backend/app/application/use_cases/selfcheck.py:64",
+            "r-http-selfcheck"
+          ]
+        }
+      ],
+      "testData": {
+        "provided": [
+          "IEK/MOQ  ИЭК.xlsx",
+          "IEK/Динамика продаж_2025-2026.xlsx",
+          "IEK/Ежемесячные остатки продукции за последние 2 года  ИЭК.xlsx",
+          "IEK/Ежемесячные продажи в количественном выражении за последние 2 года.xlsx",
+          "IEK/Путь ИЭК 22.09.2026.xlsx",
+          "IEK/Сезонность ИЭК.xlsx",
+          "Systeme electric/MOQ SystemElectric.xlsx",
+          "Systeme electric/Динамика продаж_Syseme Electric_2025-2026.xlsx",
+          "Systeme electric/Ежемесячные остатки SystemElectric 2024-2026.xlsx",
+          "Systeme electric/Ежемесячные продажи в кол-м выражении SystemElectric 2024-2026.xlsx",
+          "Systeme electric/Сезонность SystemElectric 2024-2026.xlsx",
+          "Systeme electric/Товар в пути_SystemElectric на 22.09.2026.xlsx"
+        ],
+        "used": [
+          "Все 12 XLSX прочитаны через production load_dataset; обе книги сезонности дополнительно открыты для проверки структуры.",
+          "Продажи, остатки, MOQ, транзакции и путь реально использованы при загрузке и расчёте.",
+          "Книги сезонности содержат агрегаты компании по месяцам, не SKU-колонки; per-SKU seasonality взята из детальной истории продаж."
+        ],
+        "checks": [
+          {
+            "input": "Все 12 XLSX",
+            "method": "load_dataset через production Excel normalizer",
+            "result": "12 файлов, 3909 SKU, IEK 3185, Systeme Electric 724, 33 месяца, 56 bulk events, 892 SKU без продаж, 42 quality issues.",
+            "conclusion": "Фактические форматы кейса совместимы, неполные позиции не подменяются нулевым спросом."
+          },
+          {
+            "input": "Systeme Electric, smoothed, lead time 45 дней, coverage 1 месяц, safety 0.2",
+            "method": "POST /api/v1/orders/calculate",
+            "result": "HTTP 200, 201 позиции, строки с quantity/urgency/MOQ/reasons/explanation.",
+            "conclusion": "Основной расчёт воспроизводится на реальных данных."
+          },
+          {
+            "input": "Пять controlled synthetic сценариев RunSelfChecks",
+            "method": "GET /api/v1/selfcheck",
+            "result": "HTTP 200, 5/5: inbound 150→0, seasonality 353→41, stockout 33→120, bulk 90→90, explanation присутствует.",
+            "conclusion": "Чувствительность заявленных факторов проверена отдельно."
+          },
+          {
+            "input": "Полный расчёт, submit/approve/export",
+            "method": "HTTP workflow с manager и head",
+            "result": "v1, 781 поз. к заказу из 3909; export до approve 409, после approve XLSX HTTP 200 и 100596 байт.",
+            "conclusion": "Результат проходит полный жизненный цикл."
+          }
+        ],
+        "limitations": [
+          "Сезонность в отдельных книгах дана агрегатами компании, не SKU.",
+          "У IEK нет отдельного текущего snapshot; используется последний доступный месячный начальный остаток, что показано как assumption.",
+          "892 SKU без истории продаж получают needs_data/insufficient_history и не экспортируются автоматически; это ограничение входных данных."
+        ]
+      },
+      "runtime": {
+        "status": "working",
+        "build": "Backend и frontend Docker images собраны; frontend production build прошёл TypeScript и Vite.",
+        "start": "API стартовал на 12 предоставленных XLSX, завершил инициализацию с 3909 SKU и ответил HTTP 200 на /health.",
+        "scenario": "Загрузка, расчёт, 5/5 self-check, draft, submit, approve и XLSX export воспроизведены.",
+        "environment": "Изолированные Docker-запуски Python 3.11/Node 22; книги подключались read-only; секреты не использовались.",
+        "summary": "Основной сценарий working. Внешняя LLM не вызывалась без credentials; штатный template fallback подтверждён и численный расчёт от LLM не зависит.",
+        "checks": [
+          {
+            "command": "docker build -t api -f backend/Dockerfile .",
+            "result": "Успешная сборка backend image, exit code 0.",
+            "id": "r-build-api",
+            "stage": "build",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Backend image собирается без ошибок."
+          },
+          {
+            "command": "npm run build",
+            "result": "TypeScript/Vite pass; dist создан, 26 modules transformed.",
+            "id": "r-build-frontend",
+            "stage": "build",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Frontend production bundle собирается."
+          },
+          {
+            "command": "python -m pytest",
+            "result": "90 passed, 2 warnings, 17.48s.",
+            "id": "r-test-pytest",
+            "stage": "build",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Репозиторные unit/domain/API тесты проходят."
+          },
+          {
+            "command": "npm run lint",
+            "result": "oxlint: 0 warnings, 0 errors на 14 файлах.",
+            "id": "r-test-frontend-lint",
+            "stage": "build",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Frontend lint проходит."
+          },
+          {
+            "command": "python -c load_dataset(data_dir)",
+            "result": "12 XLSX, 3909 SKU, два поставщика, 33 месяца, 56 bulk events.",
+            "id": "r-data-load",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Файлы кейса нормализуются без ошибки формата."
+          },
+          {
+            "command": "uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 1",
+            "result": "Startup complete; repo=memory, skus=3909, forecasters=baseline/smoothed, narrator=template.",
+            "id": "r-start-real",
+            "stage": "start",
+            "status": "pass",
+            "cause": "none",
+            "expected": "API стартует без обязательного OpenAI ключа."
+          },
+          {
+            "command": "GET /health",
+            "result": "HTTP 200, status=ok, warnings=[]; components показывают 3909 SKU.",
+            "id": "r-http-health",
+            "stage": "start",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Сервис отвечает после загрузки данных."
+          },
+          {
+            "command": "GET /api/v1/stats",
+            "result": "HTTP 200: 3909 SKU, два поставщика, 33 месяца, stockout_share 0.2334.",
+            "id": "r-http-stats",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Сводка отражает реальные данные."
+          },
+          {
+            "command": "GET /api/v1/selfcheck",
+            "result": "HTTP 200, passed=5, total=5.",
+            "id": "r-http-selfcheck",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Пять sensitivity checks проходят."
+          },
+          {
+            "command": "POST /api/v1/orders/calculate",
+            "result": "HTTP 200 для Systeme Electric/smoothed; 201 позиций с объяснениями.",
+            "id": "r-http-calculate",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "API выдаёт реальный сгруппированный заказ."
+          },
+          {
+            "command": "POST /api/v1/calculations",
+            "result": "HTTP 200; v1, 781 поз. к заказу из 3909, trace 16 событий.",
+            "id": "r-http-draft",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Создаётся черновик с трассировкой."
+          },
+          {
+            "command": "POST /api/v1/orders/current/actions; PUT /api/v1/session/role; POST /api/v1/orders/export",
+            "result": "Submit успешен; export до approve 409 ORDER_NOT_APPROVED; approve успешен; после него XLSX HTTP 200.",
+            "id": "r-http-approval",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Экспорт блокируется до ручного утверждения."
+          },
+          {
+            "command": "POST /api/v1/orders/export",
+            "result": "После approve HTTP 200, XLSX 100596 байт.",
+            "id": "r-http-export",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Утверждённый заказ выгружается."
+          }
+        ],
+        "limitations": [
+          "Визуальные экраны в браузере не проверялись по политике.",
+          "OpenAI credentials отсутствуют; проверен template fallback, не внешний ответ.",
+          "Drafts/audit в памяти процесса — подтверждённый барьер масштабирования D1-INMEMORY-VERSIONS."
+        ]
+      },
+      "liveDemo": {
+        "status": "none",
+        "url": null,
+        "notes": "Публичная live-ссылка не заявлена. Локальное HTTP-демо подтверждено; отсутствие URL не использовано как штраф."
+      },
+      "fiveHourContext": "Для пятичасового хакатона объём выше минимального MVP: реальные форматы двух поставщиков, отдельное ядро, два прогноза, controlled self-check, объяснения, роли, ревизии, audit-log, what-if и экспорт. Персистентность оставлена за пределами MVP; её влияние отражено только в scalability.",
+      "strengths": [
+        "Реальные 12 XLSX дают 3909 SKU, а не только синтетический demo набор.",
+        "Объяснение строится из тех же чисел, что и формула.",
+        "Stockout, сезонность, рост, выбросы и inbound имеют отдельные проверки 5/5.",
+        "Approval workflow реально блокирует экспорт до ручного утверждения.",
+        "90 pytest, production build и frontend lint проходят."
+      ],
+      "gaps": [
+        "Версии заказов, правки и audit-log хранятся в MemoryDraftStore и теряются при перезапуске; это ограничивает масштабирование."
+      ],
+      "futureAdvice": [
+        {
+          "principle": "До масштабирования согласования нужен durable source of truth.",
+          "why": "D1-INMEMORY-VERSIONS подтверждает, что MemoryDraftStore теряет approved versions и audit trail при рестарте.",
+          "how": "Заменить store на SQLite/PostgreSQL через существующий порт, сохранить OrderDraft/DraftEvent и optimistic-lock по version/revision; затем проверить восстановление и конфликт двух ревизий.",
+          "findingIds": [
+            "D1-INMEMORY-VERSIONS"
+          ],
+          "successCheck": "После перезапуска GET /orders/current возвращает тот же approved version, audit-log сохраняет submit/approve, устаревшая revision получает VERSION_CONFLICT.",
+          "timeboxMinutes": 45
+        }
+      ],
+      "uncertainties": [
+        "Реальный OpenAI-compatible endpoint не вызывался без credentials; путь подтверждён исходниками, fallback проверен.",
+        "Визуальное качество экранов оставлено пользователю; build/lint проверены.",
+        "Для IEK нет текущего snapshot, только месячные остатки; приложение показывает это как assumption.",
+        "Публичной live-ссылки нет, локальный API-сценарий воспроизведён."
+      ],
+      "reviewPolicyVersion": 2,
+      "assessmentStatus": "ready",
+      "findings": [
+        {
+          "id": "STR-REAL-DATA",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Полный набор кейса прочитан и нормализован в 3909 SKU двух поставщиков.",
+          "expected": "Фактические книги должны быть совместимы с loader.",
+          "actual": "12 файлов, IEK 3185, Systeme Electric 724, 33 месяца, 56 bulk events.",
+          "evidence": [
+            "backend/app/infrastructure/storage/excel_normalizer.py:86",
+            "r-data-load",
+            "captures/20261002T074640506645-scenario-data.stdout.log"
+          ],
+          "checkIds": [
+            "r-data-load"
+          ]
+        },
+        {
+          "id": "STR-CORE-PIPELINE",
+          "kind": "strength",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Расчёт объединяет очистку спроса, forecast, доступность и MOQ с объяснением.",
+          "expected": "Заявленные источники должны влиять на объяснённый итог.",
+          "actual": "Реализовано в calculate_order_line; self-check 5/5 и реальный calculation pass.",
+          "evidence": [
+            "backend/app/application/use_cases/replenishment.py:102",
+            "backend/app/application/use_cases/replenishment.py:125",
+            "r-http-selfcheck",
+            "r-http-calculate"
+          ],
+          "checkIds": [
+            "r-http-selfcheck",
+            "r-http-calculate"
+          ]
+        },
+        {
+          "id": "STR-SAFETY-WORKFLOW",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Экспорт защищён submit/approve workflow.",
+          "expected": "До ручного утверждения экспорт должен быть заблокирован.",
+          "actual": "До approve 409 ORDER_NOT_APPROVED, после approve XLSX HTTP 200.",
+          "evidence": [
+            "backend/app/application/use_cases/ui.py:620",
+            "r-http-approval",
+            "r-http-export"
+          ],
+          "checkIds": [
+            "r-http-approval",
+            "r-http-export"
+          ]
+        },
+        {
+          "id": "STR-TESTED",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Сборочный и тестовый контуры воспроизводимы.",
+          "expected": "Backend tests, frontend build и lint проходят.",
+          "actual": "90 passed; оба build и lint pass.",
+          "evidence": [
+            "r-test-pytest",
+            "r-build-api",
+            "r-build-frontend",
+            "r-test-frontend-lint"
+          ],
+          "checkIds": [
+            "r-test-pytest",
+            "r-build-api",
+            "r-build-frontend",
+            "r-test-frontend-lint"
+          ]
+        },
+        {
+          "id": "LIM-OPTIONAL-LLM",
+          "kind": "limitation",
+          "verification": "unverified",
+          "responsibility": "external_service",
+          "claim": "Реальный внешний narrator не проверен без credentials.",
+          "expected": "При ключе endpoint возвращает текст; без ключа численный сценарий продолжает работать.",
+          "actual": "В runtime использован template fallback; API стартовал без ключа.",
+          "evidence": [
+            ".env.example:20",
+            "backend/app/core/container.py:141",
+            "backend/app/infrastructure/llm/openai_compat.py:95"
+          ],
+          "checkIds": [
+            "r-start-real"
+          ]
+        },
+        {
+          "id": "LIM-VISUAL-REVIEW",
+          "kind": "limitation",
+          "verification": "unverified",
+          "responsibility": "review_environment",
+          "claim": "Визуальные экраны не проверялись.",
+          "expected": "Браузерная проверка должна подтвердить UI.",
+          "actual": "Проверены source wiring, build и lint, но браузер не использовался по политике.",
+          "evidence": [
+            "frontend/src/App.tsx:71",
+            "r-build-frontend",
+            "r-test-frontend-lint"
+          ],
+          "checkIds": [
+            "r-build-frontend",
+            "r-test-frontend-lint"
+          ]
+        },
+        {
+          "id": "D1-INMEMORY-VERSIONS",
+          "kind": "defect",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Drafts, правки и audit-log не имеют durable persistence.",
+          "expected": "Approved order и журнал должны переживать рестарт и быть единым источником истины для масштабирования.",
+          "actual": "Container создаёт MemoryDraftStore, живущий столько же, сколько процесс.",
+          "evidence": [
+            "backend/app/core/container.py:31",
+            "backend/app/core/container.py:33",
+            "backend/app/application/use_cases/ui.py:156"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "LIM-INPUT-CURRENT-STOCK",
+          "kind": "limitation",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Для IEK текущий free stock выводится из последнего доступного месячного остатка.",
+          "expected": "При наличии current snapshot должен использоваться он.",
+          "actual": "Normalizer берёт latest month; UI provenance показывает assumption.",
+          "evidence": [
+            "backend/app/infrastructure/storage/excel_normalizer.py:287",
+            "backend/app/application/use_cases/ui.py:539",
+            "r-data-load"
+          ],
+          "checkIds": [
+            "r-data-load"
+          ]
+        }
+      ],
+      "gapFindingIds": [
+        "D1-INMEMORY-VERSIONS"
+      ]
+    }
+  ],
+  "score": 96.0,
+  "status": "complete",
+  "expectedJudges": 1
+}

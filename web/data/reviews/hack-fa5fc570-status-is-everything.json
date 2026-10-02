@@ -1,0 +1,1297 @@
+{
+  "methodVersion": 4,
+  "repoId": "hack-fa5fc570-status-is-everything",
+  "repoUrl": "https://github.com/BAITC-Hacks/hack-fa5fc570-status-is-everything",
+  "caseId": 1,
+  "snapshot": "4f328197692324c16d204df609d964ef4f71c5b0",
+  "judges": [
+    {
+      "methodVersion": 4,
+      "repoId": "hack-fa5fc570-status-is-everything",
+      "caseId": 1,
+      "model": "GPT-5.6 Luna",
+      "snapshot": "4f328197692324c16d204df609d964ef4f71c5b0",
+      "overallSummary": "WindMind AI — содержательный и аккуратно документированный прототип прогноза нормализованной мощности двух турбин. Обработка SCADA, почасовая агрегация, point-in-time обучение, валидация входной погоды, кэширование версий и исследовательский replay реализованы убедительно; сборка и все 33 автоматических теста прошли. При этом главный обязательный operational-сценарий кейса не воспроизводится на зафиксированном checkout: в проекте отсутствуют data/weather/forecasts.csv и data/weather/source.json, поэтому строгий replay за 29 origins завершается 0/29. Доступный Previous Runs является честно помеченным exploratory fixed-lead срезом без доказанных issued_at/available_at, а его январское сравнение показывает небольшое отставание модели от baseline на всех четырёх срезах. Итог отражает сильную инженерную основу, но не выдаёт исследовательский режим за выполненный исторический прогноз.",
+      "global": {
+        "criteria": [
+          {
+            "name": "Ценность решения",
+            "score": 19,
+            "max": 25,
+            "awarded": "Решение адресует понятную задачу диспетчеризации ветропарка и выдаёт почасовые оценки по двум турбинам, но практическая ценность пока ограничена нормализованной шкалой и отсутствием подтверждённого operational weather replay.",
+            "deductions": "6 баллов сняты за отсутствие в поставленном проекте архива прогнозных выпусков, необходимого для фактической as-of пользы, и за то, что доступная fixed-lead проверка не показывает преимущества над простым baseline.",
+            "evidence": [
+              "README.md:1-4",
+              "README.md:43-60",
+              "reports/january_fixed_lead.json:1-30",
+              "CHK-TRAIN-DATA",
+              "CHK-EXPLORATORY"
+            ],
+            "deductionItems": [
+              {
+                "points": 3,
+                "findingId": "D-STRICT-ARCHIVE",
+                "reason": "Без документированных выпусков с issued_at/available_at проект не может доказать доступность прогноза в момент принятия решения и не формирует требуемый исторический operational результат; это напрямую уменьшает прикладную пользу для диспетчера."
+              },
+              {
+                "points": 3,
+                "findingId": "D-FORECAST-BASELINE",
+                "reason": "В реально сохранённой fixed-lead оценке MAE модели выше baseline для turbine_1 и turbine_2 на горизонтах 24 и 48 часов; практическое улучшение относительно простой альтернативы не подтверждено."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Адресат и операционная задача",
+                "implementation": "README описывает систему как почасовой прогноз мощности двух ВЭС на 24 или 48 часов, с отдельным результатом по каждой турбине и суммарным расчётом в интерфейсе. В коде итоговая таблица строится из двух рядов турбин для каждого valid_time, а `reporting.py` содержит отдельный plant aggregation path.",
+                "value": "Это конкретный сценарий для планирования генерации, а не абстрактная демонстрация ML: результат привязан к часам, горизонту и двум реальным источникам SCADA.",
+                "verification": "observed",
+                "evidence": [
+                  "README.md:1-4",
+                  "src/reporting.py:16-29",
+                  "src/previous_runs.py:151-173",
+                  "CHK-EXPLORATORY"
+                ]
+              },
+              {
+                "aspect": "Пользовательский результат",
+                "implementation": "Exploratory replay формирует 48 строк на турбину для каждого из 29 origins и сохраняет predicted_power, baseline_prediction, wind/temperature, nominal_lead_time_hours и сведения о модели. Интерфейс суммирует две турбины и формирует почасовую выгрузку.",
+                "value": "Даже при отсутствии строгого источника пользователь получает структурированный прогнозный артефакт с метаданными, который можно анализировать по часам и турбинам.",
+                "verification": "observed",
+                "evidence": [
+                  "reports/february_exploratory.json:1-15",
+                  "app.py:565-577",
+                  "app.py:638-660",
+                  "captures/20261002T221144729043-exploratory.stdout.log"
+                ]
+              },
+              {
+                "aspect": "Ограничения, влияющие на ценность",
+                "implementation": "Система намеренно оставляет `normalization_to_mw` равным null, не придумывает шкалу мощности и отдельно предупреждает об отсутствии telemetry curtailment/outage. Это делает численный результат честнее, но оставляет его в о.е. и не закрывает полный operational контур.",
+                "value": "Для пятичасового MVP это разумная граница доверия: лучше не выдавать неподтверждённые MW и статусы остановки за факт. Одновременно отсутствие physical scale и февральских фактов ограничивает непосредственное применение в диспетчерском расчёте.",
+                "verification": "source",
+                "evidence": [
+                  "config/settings.json:13-18",
+                  "src/reporting.py:6-29",
+                  "src/reporting.py:41-44",
+                  "reports/IMPLEMENTATION_REVIEW.md:37-40"
+                ]
+              },
+              {
+                "aspect": "Проверенная модельная полезность",
+                "implementation": "На observed weather за январь модель снижает MAE против bin baseline: 0.024855 против 0.035322 для turbine_1 и 0.027006 против 0.039181 для turbine_2. На fixed-lead погоде января 24/48h MAE модели, напротив, составляет 0.3162/0.3477 и 0.3111/0.3423 против немного меньших baseline.",
+                "value": "Проект показывает полезное weather-to-power преобразование на контролируемой проверке и одновременно раскрывает, что ошибка внешнего weather forecast меняет практический результат. Это даёт понятную основу для дальнейшего улучшения, но не основание заявлять высокую точность operational прогноза.",
+                "verification": "observed",
+                "evidence": [
+                  "reports/metrics.json:1-36",
+                  "reports/january_fixed_lead.json:1-30",
+                  "captures/20261002T221131883784-data-train.stdout.log"
+                ]
+              }
+            ],
+            "scoreReasoning": "19/25 заслужены ясной реальной задачей, двумя турбинами, почасовой выдачей, сохранёнными артефактами и честным разграничением нормализованного результата и неподтверждённых MW. До максимума не хватает именно доказанной пользы в условиях кейса: строгого архива погоды нет, февральские фактические цели отсутствуют, а единственная проверка на прогнозной погоде показывает небольшое отставание от baseline."
+          },
+          {
+            "name": "Результат и качество решения",
+            "score": 13,
+            "max": 20,
+            "awarded": "Локальный exploratory сценарий целостен и стабилен, но обязательный строгий пользовательский результат не создаётся из-за отсутствующего погодного входа; дополнительно интервалы неопределённости не выведены из измеренной ошибки.",
+            "deductions": "7 баллов сняты за 0/29 строгих origins, отсутствие доказанной точности на прогнозной погоде и неподтверждённую hardcoded uncertainty формулу.",
+            "evidence": [
+              "src/weather_service.py:13-17",
+              "src/agent.py:29-74",
+              "reports/february_replay.json:1-12",
+              "app.py:580-584",
+              "CHK-STRICT-REPLAY"
+            ],
+            "deductionItems": [
+              {
+                "points": 4,
+                "findingId": "D-STRICT-ARCHIVE",
+                "reason": "При запуске основного agent cycle на origin 2026-02-01 проект завершается FileNotFoundError до прогноза; полный backtest подтвердил 0 успешных и 29 неуспешных origins. Это не просто отсутствие live URL, а отсутствие входного артефакта, необходимого заявленному сценарию."
+              },
+              {
+                "points": 2,
+                "findingId": "D-FORECAST-BASELINE",
+                "reason": "В сохранённом fixed-lead результате пользовательский прогноз не превосходит baseline ни на одном из четырёх turbine/horizon сравнений, поэтому качество результата для целевого weather-driven сценария ограничено."
+              },
+              {
+                "points": 1,
+                "findingId": "D-UNCERTAINTY",
+                "reason": "Интервалы p10/p90 рассчитываются из фиксированного 0.15, хотя сохранённые fixed-lead MAE находятся примерно в диапазоне 0.311–0.348; результат может создавать видимость эмпирической калибровки без соответствующей формулы."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Целостный pipeline подготовки SCADA",
+                "implementation": "`src.data` определяет кодировку и разделитель, проверяет обязательные поля, преобразует значения и агрегирует 10-минутные записи в hourly rows. Неполные и конфликтные интервалы маркируются, а цели не заполняются вымышленными значениями.",
+                "value": "Это уменьшает риск получить красивый, но неверный прогноз из-за пропусков и дубликатов и формирует понятный вход для модели.",
+                "verification": "observed",
+                "evidence": [
+                  "src/data.py:19-46",
+                  "src/data.py:49-82",
+                  "reports/data_quality.json:1-118",
+                  "captures/20261002T221131883784-data-train.stdout.log"
+                ]
+              },
+              {
+                "aspect": "Почасовая выдача на двух горизонтах",
+                "implementation": "`exploratory_power` принимает только 24 или 48 часов, проверяет полный набор configured turbines и точную hourly сетку, затем выдаёт предсказание по каждому valid_time. Тесты дополнительно проверяют 24 и 48 часов и обе турбины.",
+                "value": "В доступном исследовательском режиме результат не является единичным примером: 29 origins последовательно дали 2784 строки, а контракт длины окна проверяется кодом и тестами.",
+                "verification": "observed",
+                "evidence": [
+                  "src/previous_runs.py:130-173",
+                  "tests/test_previous_runs.py:72-83",
+                  "reports/REMEDIATION.md:17-23",
+                  "captures/20261002T221144729043-exploratory.stdout.log"
+                ]
+              },
+              {
+                "aspect": "Версионирование и повторный расчёт",
+                "implementation": "`WindFarmAgent` строит revision из погодного входа, конфигурации, модели и исходников, сохраняет forecast CSV/state JSON и возвращает `changed=false` для неизменного входа. При изменении weather revision создаётся заново, а событие пишется в JSONL.",
+                "value": "Это хорошая основа для воспроизводимого пользовательского результата: можно различать повторное использование и реальный перерасчёт, а аудит не теряется.",
+                "verification": "observed",
+                "evidence": [
+                  "src/agent.py:21-71",
+                  "tests/test_pipeline.py:179-203",
+                  "captures/20261002T221017925423-test.stderr.log"
+                ]
+              },
+              {
+                "aspect": "Граница качества результата",
+                "implementation": "Основной `WeatherService` принципиально не читает diagnostic cache и требует forecasts.csv/source.json; exploratory модуль явно добавляет `forecast_contract_compatible=False`. Это предотвращает выдачу Previous Runs за строгий backtest, но оставляет пользовательский operational результат недоступным на snapshot.",
+                "value": "Такое поведение лучше молчаливого fallback на фактическую погоду, однако с точки зрения качества готового решения пользователь не получает требуемый forecast на февральском сценарии.",
+                "verification": "observed",
+                "evidence": [
+                  "src/weather_service.py:13-17",
+                  "src/previous_runs.py:1-5",
+                  "src/previous_runs.py:170-171",
+                  "captures/20261002T221159948247-strict-replay.stdout.log"
+                ]
+              }
+            ],
+            "scoreReasoning": "13/20 — это результат работающего локального исследовательского продукта с проверенной hourly выдачей, аудитом и повторным расчётом. Ключевой недобор существенен для качества именно кейса: без строгой погоды агентский путь падает до прогноза на каждом из 29 origins. Небольшие дополнительные снятия относятся к худшему fixed-lead MAE и невыведенной из данных uncertainty, а не к отсутствию пользовательской визуальной проверки."
+          },
+          {
+            "name": "Инновационность",
+            "score": 9,
+            "max": 15,
+            "awarded": "Наиболее нестандартная часть — строгая provenance/as-of дисциплина и общий point-in-time ModelStore с версионированием, но ML-подход остаётся стандартным, а agentic-логика — детерминированной оркестрацией.",
+            "deductions": "6 баллов сняты за отсутствие operational archive, отсутствие подтверждённого выигрыша над baseline и несоответствие заявленного demo-update пути фактической реализации.",
+            "evidence": [
+              "src/model_store.py:19-80",
+              "src/weather_service.py:18-70",
+              "src/agent.py:29-70",
+              "reports/REMEDIATION.md:14-15",
+              "tests/test_point_in_time.py:25-68"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "D-STRICT-ARCHIVE",
+                "reason": "Provenance-контракт хорошо спроектирован, но в самом проекте нет реальных выпусков, на которых этот отличительный as-of подход можно было бы показать как завершённую инновацию."
+              },
+              {
+                "points": 2,
+                "findingId": "D-FORECAST-BASELINE",
+                "reason": "Собственная модель HistGradientBoosting не даёт преимущества в fixed-lead сравнении, поэтому нестандартность подхода не превращается в измеримое преимущество над простым bin baseline."
+              },
+              {
+                "points": 2,
+                "findingId": "D-DEMO-UPDATE",
+                "reason": "Документированный сценарий предлагает симуляцию обновления погоды, но production-код намеренно отклоняет synthetic update; agentic демонстрация обновления не совпадает с тем, что реально можно запустить по guide."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Point-in-time ModelStore",
+                "implementation": "Модель выбирается по origin с учётом timezone, SCADA delay и history_cutoff; identity включает hash исходника, конфигурацию и безопасный cutoff. Тест отдельно меняет будущие target values и проверяет, что выбранное обучение не меняется.",
+                "value": "Для weather-to-power replay это важнее обычного случайного train/test split: система делает явным, какие завершённые часы были доступны в момент прогноза.",
+                "verification": "observed",
+                "evidence": [
+                  "src/model_store.py:19-30",
+                  "src/model_store.py:43-75",
+                  "tests/test_point_in_time.py:25-34",
+                  "CHK-TEST-33"
+                ]
+              },
+              {
+                "aspect": "Контракт происхождения прогноза",
+                "implementation": "WeatherService требует provider, source_url, availability_evidence, units, wind height, compatibility и checksum; duplicate release, неверные единицы и неполный горизонт отклоняются. Previous Runs вынесен в отдельный модуль и помечен как incompatible.",
+                "value": "Это зрелая для хакатонного прототипа попытка не смешивать reanalysis/fixed-lead данные с реальным историческим выпуском, то есть защищать смысл оценки, а не только её запуск.",
+                "verification": "source",
+                "evidence": [
+                  "src/weather_service.py:13-41",
+                  "src/weather_service.py:43-67",
+                  "src/previous_runs.py:54-98",
+                  "tests/test_pipeline.py:113-164"
+                ]
+              },
+              {
+                "aspect": "Детерминированный агентский цикл",
+                "implementation": "`WindFarmAgent` объединяет загрузку выбранного выпуска, point-in-time модели, prediction, audit, physical conversion при наличии подтверждённой шкалы и durable event log. Revision учитывает код постобработки и аудита.",
+                "value": "Вместо декоративного вызова LLM здесь есть повторяемая оркестрация с состоянием и проверяемыми переходами, что является разумной интерпретацией Agentic AI для MVP.",
+                "verification": "source",
+                "evidence": [
+                  "src/agent.py:16-27",
+                  "src/agent.py:29-74",
+                  "reports/REMEDIATION.md:14-15"
+                ]
+              },
+              {
+                "aspect": "Ограниченная оригинальность модели",
+                "implementation": "Предсказатель использует HistGradientBoostingRegressor только с wind_speed и temperature, а baseline — средние по 0.5 m/s bin. Отдельные physics_features не входят в фактический `FEATURES` набор обучения.",
+                "value": "Подход прост и объясним, но сам по себе не отличается от обычного табличного weather-to-power MVP; оригинальность лежит в контроле времени и provenance, а не в алгоритме.",
+                "verification": "source",
+                "evidence": [
+                  "src/train.py:11-30",
+                  "src/model_store.py:66-75",
+                  "reports/january_fixed_lead.json:1-30"
+                ]
+              }
+            ],
+            "scoreReasoning": "9/15 — сильная инженерная идея заключается в разделении строгого контракта и exploratory данных, point-in-time обучении и versioned agent state. Балл не выше среднего из-за стандартной модели, детерминированной вместо действительно автономной логики и отсутствия operational archive, где заявленная provenance-инновация могла бы быть продемонстрирована end-to-end."
+          },
+          {
+            "name": "Потенциал развития и масштабирования",
+            "score": 13,
+            "max": 20,
+            "awarded": "Архитектура хорошо подготовлена к подключению реального провайдера, новых турбин и выпусков; масштабирование ограничено отсутствием подтверждённых погодных данных, physical calibration и operational telemetry.",
+            "deductions": "7 баллов сняты за то, что основной входной контракт не поставлен в проект, а текущая модель и документированный update workflow не дают готовой платформы для надёжного production expansion.",
+            "evidence": [
+              "config/WEATHER_INPUT.md:1-64",
+              "src/weather_service.py:43-70",
+              "src/agent.py:76-97",
+              "README.md:185-207",
+              "reports/REMEDIATION.md:25-30"
+            ],
+            "deductionItems": [
+              {
+                "points": 3,
+                "findingId": "D-STRICT-ARCHIVE",
+                "reason": "Без хотя бы одного реального, provenance-полного архива нельзя проверить, что adapter contract работает не только на synthetic fixtures; это существенная граница масштабирования к другим датам и площадкам."
+              },
+              {
+                "points": 2,
+                "findingId": "D-FORECAST-BASELINE",
+                "reason": "Текущий fixed-lead результат не показывает модельного преимущества, поэтому перенос на новые площадки пока требует сначала доказать качество и калибровку, а не только подключить новый источник."
+              },
+              {
+                "points": 2,
+                "findingId": "D-DEMO-UPDATE",
+                "reason": "Документация обещает обновление через симуляцию, которую код запрещает; для масштабирования нужна согласованная процедура публикации реального выпуска и автоматического перерасчёта, а не демонстрационный stub."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Расширяемый weather adapter",
+                "implementation": "Формат forecasts.csv не привязан к конкретному API: он требует turbine_id, issued_at, available_at, valid_time, wind_speed и temperature, а source.json хранит provider, units, height, compatibility и checksum. Отдельный fetch_gfs_archive.py формирует этот формат из NOAA GFS.",
+                "value": "При наличии подтверждённого провайдера тот же путь можно применить к другим моделям, точкам и периодам без изменения ML-слоя.",
+                "verification": "source",
+                "evidence": [
+                  "config/WEATHER_INPUT.md:1-36",
+                  "fetch_gfs_archive.py:105-180",
+                  "src/weather_service.py:13-41"
+                ]
+              },
+              {
+                "aspect": "Масштабирование по турбинам",
+                "implementation": "Конфигурация хранит turbines как mapping с отдельными файлами, координатами и будущими normalization scales; обучение и forecast группируются по turbine_id, а plant total требует полного набора configured turbines.",
+                "value": "Добавление второй площадки или дополнительных агрегатов концептуально локализовано в конфигурации и данных, а не зашито в один длинный сценарий.",
+                "verification": "source",
+                "evidence": [
+                  "config/settings.json:13-23",
+                  "src/train.py:43-68",
+                  "src/reporting.py:16-29"
+                ]
+              },
+              {
+                "aspect": "Auditability и идемпотентность",
+                "implementation": "Agent revision включает входные байты, config, модели и исходники; state сохраняет предыдущую revision, filename, audit и physical status. Watcher допускает периодический запуск с минимальным interval.",
+                "value": "Это полезный фундамент для batch orchestration: повторный запуск можно сделать идемпотентным, а изменение входа — связать с новой версией результата.",
+                "verification": "source",
+                "evidence": [
+                  "src/agent.py:34-70",
+                  "src/agent.py:76-97",
+                  "tests/test_pipeline.py:179-203"
+                ]
+              },
+              {
+                "aspect": "Что потребуется для реального роста",
+                "implementation": "README и remediation явно перечисляют настройку MW scale, подтверждение wind height/SCADA semantics, февральскую actual power, outage/curtailment labels и calibrated intervals как следующие задачи.",
+                "value": "Дорожная карта привязана к реальным ограничениям проекта и показывает, какие данные нужны для перехода от прототипа к использованию оператором.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:185-207",
+                  "reports/REMEDIATION.md:25-30"
+                ]
+              }
+            ],
+            "scoreReasoning": "13/20 — интерфейсы, конфигурация, checksum/provenance и versioned outputs дают хороший путь к расширению. Ограничение существенное, но конкретное: без реальных strict releases и подтверждённых физических/операционных метаданных масштабирование пока остаётся подготовленной архитектурой, а не проверенной переносимостью."
+          },
+          {
+            "name": "Презентация, демо и ответы на вопросы",
+            "score": 16,
+            "max": 20,
+            "awarded": "README, Demo Guide и интерфейс подробно описывают сценарий, команды, ограничения и trace; локальный старт и health endpoint подтверждены. Устных презентации и вопросов не было, поэтому оценивается только репозиторная воспроизводимость. При этом guide содержит неисполняемое обещание симуляции weather update, а строгий режим явно недоступен.",
+            "deductions": "4 балла сняты за несоответствие demo guide фактическому synthetic update API, неподтверждённые uncertainty значения и ограниченную воспроизводимость strict-сценария.",
+            "evidence": [
+              "README.md:75-177",
+              "DEMO_GUIDE.md:5-60",
+              "src/weather_service.py:69-70",
+              "app.py:522-547",
+              "CHK-START-HTTP",
+              "CHK-TEST-33"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "D-DEMO-UPDATE",
+                "reason": "DEMO_GUIDE предлагает изменить weather input через функцию симуляции и увидеть новый forecast, но `simulate_weather_update` в коде всегда бросает ValueError; демонстрационный шаг нельзя воспроизвести в описанном виде."
+              },
+              {
+                "points": 1,
+                "findingId": "D-UNCERTAINTY",
+                "reason": "README/guide обещают диапазон неопределённости, а app.py использует фиксированный 0.15 без калибровки из сохранённых ошибок; это снижает точность объяснения результата пользователю."
+              },
+              {
+                "points": 1,
+                "findingId": "D-STRICT-ARCHIVE",
+                "reason": "Команды установки и запуска ясны, но основной строгий запуск из README завершается отсутствием двух входных файлов; локально воспроизводим только exploratory экран."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "README как инструкция воспроизведения",
+                "implementation": "README содержит назначение, форматы входа, установку Python 3.12, команды train/Streamlit/replay, описание weather contract, структуру проекта, тесты и список ограничений. Команды соответствуют фактическим модулям src.train, src.evaluation, src.agent и src.backtest.",
+                "value": "Участнику или ревьюеру легко понять, где находится pipeline и как запускать отдельные этапы, включая различие exploratory и strict режимов.",
+                "verification": "observed",
+                "evidence": [
+                  "README.md:75-177",
+                  "README.md:208-241",
+                  "CHK-BUILD",
+                  "CHK-TEST-33"
+                ]
+              },
+              {
+                "aspect": "Честное обозначение режимов",
+                "implementation": "Интерфейс показывает diagnostic Previous Runs при отсутствии strict archive, а исходники и reports сохраняют `forecast_contract_compatible=false` и прямо пишут, что fixed-lead данные не доказывают issued/available times.",
+                "value": "Это снижает риск того, что зритель примет research illustration за требуемую историческую проверку; для хакатонного README такая оговорка является сильной стороной.",
+                "verification": "source",
+                "evidence": [
+                  "app.py:533-547",
+                  "app.py:680-687",
+                  "src/previous_runs.py:1-5",
+                  "reports/february_exploratory.json:1-10"
+                ]
+              },
+              {
+                "aspect": "Воспроизводимая локальная демонстрация",
+                "implementation": "Streamlit стартует без API credentials и отвечает 200 на `/_stcore/health`; AppTest входит в полный набор 33 тестов и проверяет 31 января, 10 февраля и оба горизонта. Отдельный train запуск на raw data также завершился с метриками и сохранением артефактов.",
+                "value": "Локальный результат можно показать из репозитория без устной презентации и без платного ключа, что соответствует правилам этой оценки.",
+                "verification": "observed",
+                "evidence": [
+                  "tests/test_app.py:8-26",
+                  "captures/20261002T221017925423-test.stderr.log",
+                  "CHK-START-HTTP",
+                  "captures/20261002T221131883784-data-train.stdout.log"
+                ]
+              },
+              {
+                "aspect": "Понятный execution trace",
+                "implementation": "Страница ИИ-Агент перечисляет проверку источника, погодный модуль, валидацию сетки, PointInTimeModelStore, risk audit и пакет расписания; события агента сохраняются в JSONL.",
+                "value": "Компоненты основного сценария видны пользователю, а не спрятаны только в коде, поэтому объяснить путь данных на демо относительно просто.",
+                "verification": "source",
+                "evidence": [
+                  "app.py:1040-1065",
+                  "src/agent.py:21-27",
+                  "DEMO_GUIDE.md:33-39"
+                ]
+              }
+            ],
+            "scoreReasoning": "16/20 — документация существенно выше минимальной, команды и ограничения конкретны, а локальный старт и 33 теста подтверждены. Снятие не связано с отсутствием публичной ссылки или устного выступления: оно связано с тем, что описанный шаг synthetic weather update не исполняется, uncertainty показана без доказанной калибровки, а strict README-сценарий упирается в отсутствующий архив."
+          }
+        ],
+        "total": 70
+      },
+      "case": {
+        "criteria": [
+          {
+            "name": "Соответствие задаче и работоспособность",
+            "score": 14,
+            "max": 25,
+            "awarded": "Исследовательская ветка реализует hourly 24/48h forecast для обеих турбин и point-in-time обучение, но строгий февральский сценарий с доступными на каждый origin архивными выпусками фактически не работает.",
+            "deductions": "11 баллов сняты за 0/29 strict origins, отсутствие доказанных as-of weather releases, слабейший fixed-lead результат и неполное соответствие описанному update demo.",
+            "evidence": [
+              "src/previous_runs.py:130-173",
+              "src/backtest.py:6-21",
+              "reports/february_replay.json:1-12",
+              "captures/20261002T221159948247-strict-replay.stdout.log"
+            ],
+            "deductionItems": [
+              {
+                "points": 7,
+                "findingId": "D-STRICT-ARCHIVE",
+                "reason": "Ключевое требование кейса — архивный forecast, доступный на момент каждого расчёта — не покрыто поставленным operational input. `backtest` проверен на 29 origins, но получил 0 successes из-за отсутствия forecasts.csv/source.json."
+              },
+              {
+                "points": 3,
+                "findingId": "D-FORECAST-BASELINE",
+                "reason": "На доступной fixed-lead проверке модель не обошла baseline для обеих турбин и обоих номинальных lead times; это удерживает оценку соответствия качества от максимума."
+              },
+              {
+                "points": 1,
+                "findingId": "D-DEMO-UPDATE",
+                "reason": "Требуемый цикл предусматривает повторный расчёт при обновлении входа, но демонстрационный путь из guide вызывает запрещённую synthetic update функцию; остаётся только общий watcher/real-file механизм."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "История и граница обучения",
+                "implementation": "`history_cutoff` установлен на 2026-02-01, train pipeline использует строки до cutoff, а point-in-time selection дополнительно ограничивает часы по origin и задержке SCADA. Train запуск дал final_train_max 2026-01-31 23:00 и 23666/24784 строк.",
+                "value": "Требование не подмешивать февральскую target power в обучение соблюдено на уровне кода и фактического запуска подготовки данных.",
+                "verification": "observed",
+                "evidence": [
+                  "config/settings.json:8-12",
+                  "src/train.py:43-68",
+                  "src/model_store.py:19-30",
+                  "captures/20261002T221131883784-data-train.stdout.log"
+                ]
+              },
+              {
+                "aspect": "Почасовой прогноз обеих ВЭС",
+                "implementation": "Exploratory code требует horizon 24/48, строит точную последовательность valid_time от origin+1 и проверяет, что присутствуют обе configured turbines. Unit/AppTest и replay покрывают оба размера окна.",
+                "value": "Минимальный формат выдачи задачи реализован и проверен на реальных проектных архивах, хотя это именно exploratory, а не строгий as-of результат.",
+                "verification": "observed",
+                "evidence": [
+                  "src/previous_runs.py:135-155",
+                  "tests/test_previous_runs.py:72-83",
+                  "tests/test_app.py:19-26",
+                  "captures/20261002T221144729043-exploratory.stdout.log"
+                ]
+              },
+              {
+                "aspect": "Защита от lookahead",
+                "implementation": "`validate_weather` отклоняет issued/available после origin и valid_time не после origin; `model_for_origin` использует только доступные завершённые часы; Previous Runs deliberately не добавляет выдуманные issued_at/available_at.",
+                "value": "Основная временная опасность кейса — использование будущих данных — адресована корректно и проверена отдельными тестами, даже если внешний архив не поставлен.",
+                "verification": "observed",
+                "evidence": [
+                  "src/predict.py:18-47",
+                  "src/model_store.py:26-30",
+                  "tests/test_pipeline.py:91-111",
+                  "tests/test_point_in_time.py:25-41"
+                ]
+              },
+              {
+                "aspect": "Агентская последовательность",
+                "implementation": "Agent cycle последовательно вызывает weather service, модель, prediction, forecast audit, physical conversion и event log; при отсутствии strict source он не маскирует сбой fallback-фактической погодой.",
+                "value": "Логика полного сценария предусмотрена архитектурно и безопасно отказывает, но воспроизведение заканчивается до конечного прогноза при текущем snapshot.",
+                "verification": "source",
+                "evidence": [
+                  "src/agent.py:29-74",
+                  "src/weather_service.py:13-17",
+                  "src/reporting.py:32-53"
+                ]
+              }
+            ],
+            "scoreReasoning": "14/25: значительная часть временной и hourly логики подтверждена кодом, тестами и 29/29 exploratory origins. Но условие кейса про archived forecast available at each origin — центральное, а не второстепенное: strict replay проверен и дал 0/29. Поэтому исследовательский режим не может получить близкий к максимуму балл работоспособности."
+          },
+          {
+            "name": "Техническая реализация",
+            "score": 18,
+            "max": 25,
+            "awarded": "Техническая реализация сильная для MVP: модульный pipeline, валидация, checksum, point-in-time модели и versioned agent state. Недостатки — отсутствие входных strict releases, произвольная uncertainty и неисполняемый synthetic update шаг.",
+            "deductions": "7 баллов сняты за незавершённый operational input, неподтверждённые интервалы и техническое расхождение guide с update API.",
+            "evidence": [
+              "src/data.py:19-112",
+              "src/model_store.py:32-80",
+              "src/weather_service.py:13-70",
+              "tests/test_pipeline.py:23-203",
+              "CHK-BUILD",
+              "CHK-TEST-33"
+            ],
+            "deductionItems": [
+              {
+                "points": 3,
+                "findingId": "D-STRICT-ARCHIVE",
+                "reason": "Adapter реализован, но его обязательные реальные данные и manifest отсутствуют; фактическая техническая интеграция до источника не доведена, что видно по 29 одинаковым FileNotFoundError."
+              },
+              {
+                "points": 2,
+                "findingId": "D-UNCERTAINTY",
+                "reason": "В app.py p10/p90 строятся из hardcoded 0.15 с clip, без использования распределения сохранённых residuals; это технически не калиброванный uncertainty output."
+              },
+              {
+                "points": 2,
+                "findingId": "D-DEMO-UPDATE",
+                "reason": "`simulate_weather_update` является явным stub-отказом, тогда как demo guide объявляет функцию частью основного цикла; взаимодействие компонентов для обновления входа не согласовано на уровне runnable demo."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Надёжная подготовка данных",
+                "implementation": "CSV reader поддерживает UTF-8/CP1251/UTF-16 и comma/semicolon/tab, нормализует русские заголовки, считает hash и пропуски. Aggregator удаляет exact duplicates, помечает conflicting timestamps, проверяет grid и сохраняет coverage/eligibility.",
+                "value": "Для исходных SCADA с большими разрывами это технически правильнее, чем silently resample/fill; данные для обучения не становятся искусственно полными.",
+                "verification": "observed",
+                "evidence": [
+                  "src/data.py:19-46",
+                  "src/data.py:49-82",
+                  "tests/test_pipeline.py:28-82",
+                  "reports/data_quality.json:1-118"
+                ]
+              },
+              {
+                "aspect": "Strict weather contract",
+                "implementation": "Weather service проверяет manifest provenance, units, hash CSV, release uniqueness, availability ordering, explicit timezone offsets, complete hourly horizon и выбирает latest release, доступный не позже origin.",
+                "value": "Контракт точно отражает техническое ядро задачи и предотвращает подмену прошлого фактическими или поздними данными.",
+                "verification": "source",
+                "evidence": [
+                  "src/weather_service.py:13-41",
+                  "src/weather_service.py:43-67",
+                  "tests/test_pipeline.py:113-164",
+                  "config/WEATHER_INPUT.md:3-32"
+                ]
+              },
+              {
+                "aspect": "Point-in-time обучение и output bounds",
+                "implementation": "Каждая модель создаётся для конкретного origin, сохраняет training_rows, training_max, training_available_at, feature ranges и power bounds. Предсказание хранит raw_predicted_power, bounded output и out-of-training-range flag.",
+                "value": "Сохраняются как прогноз, так и диагностические сведения о границах применимости; это облегчает инженерный аудит вместо безусловного clipping без объяснения.",
+                "verification": "observed",
+                "evidence": [
+                  "src/model_store.py:32-80",
+                  "src/model_store.py:83-96",
+                  "tests/test_point_in_time.py:50-68"
+                ]
+              },
+              {
+                "aspect": "Тестируемая интеграция",
+                "implementation": "Набор 33 unittest покрывает data edge cases, release validation, checksum, model integration, point-in-time cutoff, archive download fixture, physical units и agent revision behavior. Сборка в Python 3.12.15 установила requirements и compileall завершился успешно.",
+                "value": "Для хакатонного проекта это необычно хорошее покрытие доменных инвариантов; многие важные свойства проверены не только README, но и исполняемыми тестами.",
+                "verification": "observed",
+                "evidence": [
+                  "tests/test_pipeline.py:23-206",
+                  "tests/test_point_in_time.py:17-125",
+                  "tests/test_previous_runs.py:26-85",
+                  "tests/test_app.py:8-27",
+                  "captures/20261002T221017925423-test.stderr.log"
+                ]
+              }
+            ],
+            "scoreReasoning": "18/25 — кодовая база аккуратная, доменные инварианты хорошо оформлены и 33 теста проходят. Недостающие 7 баллов относятся не к стилю, а к эксплуатационной полноте: реальный strict input отсутствует, uncertainty не калибрована, а заявленный synthetic update не является runnable path."
+          },
+          {
+            "name": "README и воспроизводимость",
+            "score": 21,
+            "max": 25,
+            "awarded": "Документация подробная и в основном соответствует исходникам; локальная установка, тесты и exploratory demo воспроизводимы. Полная воспроизводимость кейса ограничена отсутствием строгого weather archive и небольшим расхождением guide с кодом.",
+            "deductions": "4 балла сняты за то, что README-команда строгого запуска не может дать forecast на snapshot, demo update шаг не исполняется, а uncertainty описана сильнее, чем подтверждено реализацией.",
+            "evidence": [
+              "README.md:75-177",
+              "README.md:208-241",
+              "DEMO_GUIDE.md:41-45",
+              "src/weather_service.py:69-70",
+              "CHK-START-HTTP",
+              "CHK-TEST-33"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "D-STRICT-ARCHIVE",
+                "reason": "README объясняет требуемый strict input, но snapshot не содержит forecasts.csv/source.json; воспроизводимость именно основного кейсового результата невозможна без внешнего шага подготовки, который не является частью поставленного архива."
+              },
+              {
+                "points": 2,
+                "findingId": "D-DEMO-UPDATE",
+                "reason": "DEMO_GUIDE:41-45 описывает симуляцию обновления погоды, а фактический метод `simulate_weather_update` запрещает synthetic updates; читатель не сможет пройти guide буквально."
+              },
+              {
+                "points": 1,
+                "findingId": "D-UNCERTAINTY",
+                "reason": "Документация и UI подают interval как эмпирическую оценку, хотя формула использует фиксированный 0.15 и не связывает его с сохранёнными fixed-lead остатками."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Полнота README",
+                "implementation": "README раскрывает цель, режимы погоды, поля CSV, обработку временных зон, модель, метрики, команды train/Streamlit/evaluation/agent/backtest, strict contract и структуру каталогов.",
+                "value": "Это позволяет воспроизвести архитектурное понимание проекта без чтения всей кодовой базы и правильно отличить реальные от исследовательских результаты.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:1-74",
+                  "README.md:75-177",
+                  "README.md:208-241"
+                ]
+              },
+              {
+                "aspect": "Репродуцируемая установка",
+                "implementation": "requirements.txt закрепляет версии, README задаёт Python 3.12 и команды установки; в изолированном Python 3.12 контейнере requirements установились, compileall прошёл, а unittest обнаружил 33 теста.",
+                "value": "Воспроизводимость базовой инженерной части подтверждена фактическим запуском, а не только наличием requirements файла.",
+                "verification": "observed",
+                "evidence": [
+                  "requirements.txt:1-11",
+                  "requirements-lock.txt:1-70",
+                  "captures/20261002T220613941962-build.stdout.log",
+                  "captures/20261002T221017925423-test.stderr.log"
+                ]
+              },
+              {
+                "aspect": "Документированное разграничение evidence",
+                "implementation": "README и WEATHER_INPUT отдельно предупреждают, что Previous Runs не содержит exact issued_at/available_at, не является strict contract и не должен публиковаться как operational forecast.",
+                "value": "Такое предупреждение делает ограничения понятными и снижает риск неправильной интерпретации сохранённых 29/29 exploratory runs.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:43-60",
+                  "config/WEATHER_INPUT.md:38-64",
+                  "reports/REMEDIATION.md:32-33"
+                ]
+              },
+              {
+                "aspect": "Практический demo flow",
+                "implementation": "DEMO_GUIDE перечисляет запуск, выбор даты/горизонта, таблицы/графики, execution trace и экспорт; Streamlit health и AppTest подтверждают, что приложение стартует без ключей.",
+                "value": "Для локального показа исследовательского прототипа инструкции достаточно подробны, а отсутствие live URL не мешает воспроизвести базовый экран.",
+                "verification": "observed",
+                "evidence": [
+                  "DEMO_GUIDE.md:5-39",
+                  "DEMO_GUIDE.md:47-60",
+                  "CHK-START-HTTP",
+                  "tests/test_app.py:8-26"
+                ]
+              }
+            ],
+            "scoreReasoning": "21/25 — README и тестовая документация действительно помогают разобраться и запустить проект, что подтверждено build/start/test. Четыре балла удерживают строгие границы: отсутствующий archive требует незаявленного внешнего шага, update guide содержит неисполняемую симуляцию, а uncertainty нельзя назвать полностью воспроизводимой калибровкой."
+          },
+          {
+            "name": "Ценность и применимость решения",
+            "score": 10,
+            "max": 15,
+            "awarded": "Проблема и целевая аудитория выбраны удачно, а нормализованный hourly forecast пригоден как исследовательский инструмент. Применимость к реальной диспетчеризации пока ограничена отсутствием strict weather provenance, MW scale, actual February validation и outage labels.",
+            "deductions": "5 баллов сняты за незавершённый operational input, отсутствие преимущества над baseline и непрозрачный uncertainty output.",
+            "evidence": [
+              "cases/1/task.txt",
+              "README.md:1-4",
+              "reports/REMEDIATION.md:25-30",
+              "reports/january_fixed_lead.json:1-30",
+              "config/settings.json:13-18"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "D-STRICT-ARCHIVE",
+                "reason": "Без as-of погодных выпусков нельзя использовать февральский прогноз как доказательство операционной применимости; проект показывает pipeline readiness, но не фактическую работу в заявленном прошлом."
+              },
+              {
+                "points": 2,
+                "findingId": "D-FORECAST-BASELINE",
+                "reason": "Fixed-lead metrics показывают небольшое отставание от простого baseline на всех четырёх сравнениях; практическое преимущество для владельца задачи не подтверждено."
+              },
+              {
+                "points": 1,
+                "findingId": "D-UNCERTAINTY",
+                "reason": "Диапазон с hardcoded 0.15 может создавать неверное ощущение надёжности и потому снижает применимость результата для решений с риском."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Понятная промышленная проблема",
+                "implementation": "Кейс требует прогнозировать почасовую выработку ВЭС, а README оформляет результат как dispatch-oriented hourly schedule для двух турбин и суммарного кластера.",
+                "value": "Планирование ветровой генерации — прикладная задача с понятным пользователем и измеримым результатом; выбор не выглядит искусственным для хакатона.",
+                "verification": "source",
+                "evidence": [
+                  "cases/1/task.txt",
+                  "README.md:1-4",
+                  "DEMO_GUIDE.md:22-31"
+                ]
+              },
+              {
+                "aspect": "Полезность нормализованного результата",
+                "implementation": "Модель выдаёт normalized hourly mean power отдельно по turbine_id, сохраняет суммарный normalized result и не скрывает, что MW coefficient не подтверждён.",
+                "value": "Даже без physical MW этот результат пригоден для сравнительного анализа поведения турбин и проверки weather-to-power pipeline; честная маркировка позволяет не перепутать его с коммерческим dispatch volume.",
+                "verification": "source",
+                "evidence": [
+                  "src/agent.py:61-66",
+                  "src/reporting.py:22-29",
+                  "config/settings.json:14-15",
+                  "app.py:629-631"
+                ]
+              },
+              {
+                "aspect": "Практические диагностические сигналы",
+                "implementation": "`forecast_audit` считает диапазон power, max wind, min temperature, max hourly change, bounded hours и предупреждает об отсутствии availability/curtailment telemetry; отдельные отчёты сохраняют largest errors и possible-stop candidates.",
+                "value": "Это даёт оператору не только число прогноза, но и простые флаги для инженерной проверки рисков, не выдавая их за доказанные outages.",
+                "verification": "source",
+                "evidence": [
+                  "src/reporting.py:32-53",
+                  "src/evaluation.py:51-66",
+                  "README.md:115-145"
+                ]
+              },
+              {
+                "aspect": "Предел применимости",
+                "implementation": "Проект сам фиксирует, что weather-height compatibility, MW normalization, February actual power и outage/curtailment labels ещё требуют подтверждения; January fixed-lead weather error составляет примерно 3.24–3.56 m/s по README.",
+                "value": "Ограничения сформулированы предметно и указывают, какие данные нужны для реального внедрения, но пока не позволяют считать результат готовым к operational decision support.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:43-60",
+                  "reports/IMPLEMENTATION_REVIEW.md:37-40",
+                  "reports/REMEDIATION.md:25-30"
+                ]
+              }
+            ],
+            "scoreReasoning": "10/15 — ценность домена и полезный диагностический normalized output подтверждены. До верхнего уровня не хватает верифицированного weather availability, физической шкалы и February target validation; при этом фактическое fixed-lead сравнение не показывает выигрыша над baseline."
+          },
+          {
+            "name": "Потенциал развития и оригинальность подхода",
+            "score": 8,
+            "max": 10,
+            "awarded": "Потенциал высокий благодаря строгому контракту данных, configurable turbines, PIT models, audit trail и отдельному fetch adapter; оригинальность находится в инженерной дисциплине времени и provenance, а не в новом ML-алгоритме.",
+            "deductions": "2 балла сняты за отсутствие реального strict archive и за расхождение документированного update demo с runnable реализацией.",
+            "evidence": [
+              "config/WEATHER_INPUT.md:1-64",
+              "src/model_store.py:32-80",
+              "src/agent.py:34-70",
+              "README.md:185-207"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "D-STRICT-ARCHIVE",
+                "reason": "Переносимость adapter contract не подтверждена реальными archived releases; сейчас доказана только на тестовых fixtures и diagnostic slices."
+              },
+              {
+                "points": 1,
+                "findingId": "D-DEMO-UPDATE",
+                "reason": "Для развития в сторону автономного цикла нужен согласованный путь публикации/обнаружения реального обновления; описанная synthetic simulation запрещена фактическим кодом."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Переносимый контракт источника",
+                "implementation": "WEATHER_INPUT задаёт независимую от провайдера схему выпуска, timestamp semantics, availability evidence и checksum; fetch_gfs_archive оформлен как отдельный ingestion слой.",
+                "value": "После подстановки подтверждённого источника можно расширять период, модель погоды и число точек без переписывания core prediction contract.",
+                "verification": "source",
+                "evidence": [
+                  "config/WEATHER_INPUT.md:1-36",
+                  "fetch_gfs_archive.py:105-180"
+                ]
+              },
+              {
+                "aspect": "Развитие модели без утечки",
+                "implementation": "ModelStore кэширует artifacts по hash/config/cutoff, сохраняет ranges и training metadata; это создаёт место для будущих моделей, features и per-site retraining с тем же temporal contract.",
+                "value": "Система может усложняться, не отказываясь от главного требования кейса — сравнивать только то, что было доступно в прошлом.",
+                "verification": "source",
+                "evidence": [
+                  "src/model_store.py:32-80",
+                  "tests/test_point_in_time.py:61-68"
+                ]
+              },
+              {
+                "aspect": "Конкретная дорожная карта",
+                "implementation": "README перечисляет calibration MW, wind-height transform, February actuals, outage/curtailment, probabilistic interval и fixed-lead improvement; remediation разделяет research и strict milestones.",
+                "value": "Дальнейшее развитие сформулировано как набор проверяемых доменных шагов, а не как общее обещание масштабирования.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:185-207",
+                  "reports/REMEDIATION.md:25-33"
+                ]
+              },
+              {
+                "aspect": "Оригинальность относительно типового MVP",
+                "implementation": "Отдельный audit of provenance, отказ от synthetic fallback, explicit `forecast_contract_compatible`, revision hashing и durable events делают проект более инженерно строгим, чем обычный notebook с одной моделью.",
+                "value": "Это полезная и переносимая идея для других time-sensitive кейсов: сначала доказать доступность данных, затем считать и сохранять версию результата.",
+                "verification": "source",
+                "evidence": [
+                  "src/previous_runs.py:1-5",
+                  "src/agent.py:34-70",
+                  "src/weather_service.py:69-70"
+                ]
+              }
+            ],
+            "scoreReasoning": "8/10 — у проекта хороший фундамент для следующей итерации и ясно выделенные milestones. Небольшой недобор отражает отсутствие реального strict archive и несогласованный update demo; алгоритмическая оригинальность сама по себе умеренная, но это не мешает высокому потенциалу инженерного развития."
+          }
+        ],
+        "total": 71
+      },
+      "judgeScore": 70.5,
+      "caseRequirements": [
+        {
+          "requirement": "Обучение на истории до 31.01.2026 без включения февральских target values",
+          "status": "met",
+          "explanation": "Конфигурация задаёт history_cutoff 2026-02-01, train pipeline фильтрует историю до cutoff, а point-in-time ModelStore дополнительно ограничивает доступные завершённые часы по origin и SCADA delay. Фактический train запуск дал final_train_max 2026-01-31 23:00.",
+          "evidence": [
+            "config/settings.json:8-12",
+            "src/train.py:43-68",
+            "src/model_store.py:19-30",
+            "captures/20261002T221131883784-data-train.stdout.log"
+          ]
+        },
+        {
+          "requirement": "Почасовой прогноз двух турбин на горизонте 24–48 часов",
+          "status": "partial",
+          "explanation": "Exploratory режим проверен на 24 и 48 часах, обеих турбинах и 29 origins; однако strict operational режим не выдаёт ни одного результата, потому что его погодный источник отсутствует.",
+          "evidence": [
+            "src/previous_runs.py:135-173",
+            "tests/test_previous_runs.py:72-83",
+            "tests/test_app.py:19-26",
+            "captures/20261002T221144729043-exploratory.stdout.log",
+            "captures/20261002T221159948247-strict-replay.stdout.log"
+          ]
+        },
+        {
+          "requirement": "Получение архивного прогноза по координатам, доступного на момент каждого расчёта",
+          "status": "missing",
+          "explanation": "Рабочий WeatherService требует data/weather/forecasts.csv и data/weather/source.json с issued_at/available_at, но оба файла отсутствуют в checkout. Previous Runs получает fixed-lead slices и прямо помечает их как несовместимые со строгим контрактом; доказанного as-of архива в проекте нет.",
+          "evidence": [
+            "config/settings.json:13-23",
+            "src/weather_service.py:13-17",
+            "src/previous_runs.py:54-98",
+            "config/WEATHER_INPUT.md:38-50",
+            "CHK-STRICT-REPLAY"
+          ]
+        },
+        {
+          "requirement": "Запрет использования будущей фактической погоды и февральской целевой выработки во входе прогноза",
+          "status": "met",
+          "explanation": "Weather validator отклоняет issued/available после origin и valid_time не позже origin; model training использует только доступные строки до cutoff. Diagnostic Previous Runs не изобретает issued_at/available_at и не передаётся в WeatherService как strict input.",
+          "evidence": [
+            "src/predict.py:18-47",
+            "src/model_store.py:26-30",
+            "src/previous_runs.py:101-105",
+            "tests/test_pipeline.py:91-111",
+            "tests/test_point_in_time.py:25-41"
+          ]
+        },
+        {
+          "requirement": "Ежедневный replay с 31 января через 28 февраля 2026",
+          "status": "partial",
+          "explanation": "Диапазон из 29 origins реализован в backtest и exploratory evaluation. Exploratory replay прошёл 29/29, но strict backtest прошёл 0/29 из-за одного и того же отсутствующего strict weather input; поэтому требуемая последовательность не выполнена end-to-end.",
+          "evidence": [
+            "src/backtest.py:6-21",
+            "src/evaluation.py:18-41",
+            "captures/20261002T221144729043-exploratory.stdout.log",
+            "captures/20261002T221159948247-strict-replay.stdout.log"
+          ]
+        },
+        {
+          "requirement": "Agentic цикл: weather, подготовка, модель, прогноз, анализ и сохранение результата",
+          "status": "partial",
+          "explanation": "WindFarmAgent фактически связывает эти этапы, считает audit, пишет event log и versioned forecast; при реальном строгом input путь готов. В текущем snapshot он останавливается на weather loading, а UI и guide также содержат exploratory trace вместо полноценного strict cycle.",
+          "evidence": [
+            "src/agent.py:16-74",
+            "src/reporting.py:32-53",
+            "app.py:1040-1065",
+            "CHK-AGENT-STRICT"
+          ]
+        },
+        {
+          "requirement": "Повторный расчёт при обновлении входной погоды",
+          "status": "partial",
+          "explanation": "Для реального изменения release-файла предусмотрены revision hashing и watcher, а unit test проверяет новый revision при изменении weather rows. Но описанная в DEMO_GUIDE synthetic update функция фактически запрещена и выбрасывает ValueError; runnable демонстрация именно этого шага отсутствует.",
+          "evidence": [
+            "src/agent.py:34-70",
+            "src/agent.py:76-97",
+            "src/weather_service.py:69-70",
+            "tests/test_pipeline.py:189-203",
+            "DEMO_GUIDE.md:41-45"
+          ]
+        },
+        {
+          "requirement": "Отчётность о результате и проверяемая воспроизводимость",
+          "status": "partial",
+          "explanation": "README, requirements, reports, модели и 33 теста позволяют воспроизвести подготовку данных, обучение и exploratory demo. Strict февральский result и его accuracy не воспроизводятся, поскольку февральские actuals отсутствуют, а strict archive не включён.",
+          "evidence": [
+            "README.md:75-177",
+            "requirements.txt:1-11",
+            "tests/test_app.py:8-26",
+            "reports/IMPLEMENTATION_REVIEW.md:31-40",
+            "CHK-BUILD",
+            "CHK-TEST-33"
+          ]
+        }
+      ],
+      "testData": {
+        "provided": [
+          "cases/1/case-data/Dataset HackAlemAI для участников 11.03.2023-28.02.2026 - turbine 1.csv",
+          "cases/1/case-data/Dataset HackAlemAI для участников 11.03.2023-28.02.2026 - turbine 2.csv",
+          "cases/1/case-data/HackAlem AI_ Agentic AI для прогнозирования выработки ВЭС.md"
+        ],
+        "used": [
+          "cases/1/case-data/Dataset HackAlemAI для участников 11.03.2023-28.02.2026 - turbine 1.csv — сверено с ВЭС/data/raw и использовано pipeline train",
+          "cases/1/case-data/Dataset HackAlemAI для участников 11.03.2023-28.02.2026 - turbine 2.csv — сверено с ВЭС/data/raw и использовано pipeline train",
+          "cases/1/case-data/HackAlem AI_ Agentic AI для прогнозирования выработки ВЭС.md — прочитано и применено как спецификация требований к проверкам",
+          "ВЭС/data/raw/Dataset HackAlemAI для участников 11.03.2023-28.02.2026 - turbine 1.csv",
+          "ВЭС/data/raw/Dataset HackAlemAI для участников 11.03.2023-28.02.2026 - turbine 2.csv"
+        ],
+        "checks": [
+          {
+            "input": "Два предоставленных CSV кейса и их копии в ВЭС/data/raw",
+            "method": "Сверены UTF-8-SIG заголовки, первые строки, SHA-256 и запуск `python -m src.train` на checkout, который читает configured raw files.",
+            "result": "Оба файла имеют ожидаемые поля ID/Статистическое время/скорость ветра/нормализованная мощность/температура; копии совпадают по SHA-256. Train обработал 142360 строк turbine_1 и 149499 строк turbine_2, до 2026-01-31 23:50.",
+            "conclusion": "Структура и содержимое предоставленных входов совместимы с parser; raw SCADA реально прошёл проектный data/train pipeline."
+          },
+          {
+            "input": "Подготовленные hourly SCADA из предоставленных CSV",
+            "method": "Наблюдённый вывод `src.train`, data_quality.json и unit tests для duplicate/conflict/missing/off-grid/timezone cases.",
+            "result": "Сформировано по 25392 hourly rows; complete/training-eligible hours: 23666 для turbine_1 и 24784 для turbine_2. Январская validation содержит по 744 часа.",
+            "conclusion": "Почасовая агрегация и фильтр качества работают; известные большие пропуски не заполняются вымышленными значениями."
+          },
+          {
+            "input": "Обучение и observed-weather январская проверка на данных кейса",
+            "method": "Фактический `python -m src.train` в контейнере; сохранённые metrics.json и stdout.",
+            "result": "Turbine_1: model MAE 0.024855 против baseline 0.035322; turbine_2: 0.027006 против 0.039181. В обоих случаях validation_rows=744, February исключён.",
+            "conclusion": "Преобразование observed weather в power проверено и превосходит baseline на этой отдельной проверке; это не заменяет 24–48h forecast accuracy."
+          },
+          {
+            "input": "Архив Previous Runs из репозитория для origins 2026-01-31—2026-02-28",
+            "method": "Фактический `python -m src.evaluation` с сохранённым diagnostic archive без обращения к UI.",
+            "result": "29/29 origins успешно, horizon 48, 2784 строки; отчёт выставляет forecast_contract_compatible=false и сохраняет ограничение отсутствия exact issued_at/available_at.",
+            "conclusion": "Это воспроизводимый exploratory fixed-lead результат, не доказательство исторически доступных выпусков."
+          },
+          {
+            "input": "Strict replay с теми же 29 origins",
+            "method": "Фактический `python -m src.backtest` и отдельный agent run для 2026-02-01T00:00:00+05:00.",
+            "result": "0/29 origins succeeded; каждый отказ: `Проверенные выпуски погоды отсутствуют. Нужны data/weather/forecasts.csv и source.json; старый кэш не используется.` Agent run завершился exit 1 до forecast output.",
+            "conclusion": "Основной required as-of scenario на snapshot не воспроизводится; exploratory cache не подменяет его."
+          }
+        ],
+        "limitations": [
+          "В case package нет фактической мощности за февраль, поэтому полная February accuracy не может быть посчитана из предоставленных файлов.",
+          "Strict forecast archive с доказанными issued_at/available_at отсутствует в repository snapshot; внешнюю загрузку не подменял mock-ответом.",
+          "Визуальное поведение Streamlit не проверялось: по инструкции пользователя UI review выполняется пользователем; проверены только старт и HTTP health."
+        ]
+      },
+      "runtime": {
+        "status": "partial",
+        "build": "Сборка успешна: в изолированном Python 3.12.15 контейнере requirements.txt установился, `python -m compileall -q src app.py fetch_gfs_archive.py` завершился с exit code 0.",
+        "start": "Streamlit реально стартовал без credentials; HTTP GET на /_stcore/health вернул 200 и `ok`.",
+        "scenario": "Exploratory 48h evaluation прошёл 29/29 origins; strict agent cycle на origin 2026-02-01 и strict backtest за 29 origins завершились отсутствием data/weather/forecasts.csv и source.json.",
+        "environment": "Проверка выполнена в изолированном Python 3.12 окружении с зависимостями проекта; API credentials не требовались для локальных тестов и не предоставлялись.",
+        "summary": "Приложение стартует, доменные тесты и exploratory pipeline работают. Основной operational сценарий доступен только архитектурно и блокируется отсутствующим проектным weather archive, поэтому runtime имеет partial, а не working.",
+        "checks": [
+          {
+            "command": "python -m pip install -r requirements.txt && python -m compileall -q src app.py fetch_gfs_archive.py",
+            "result": "Python 3.12.15; установка завершилась успешно; compileall exit code 0.",
+            "id": "CHK-BUILD",
+            "stage": "build",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Зависимости устанавливаются, исходники компилируются без ошибок."
+          },
+          {
+            "command": "streamlit run app.py --server.headless true --server.port 8501",
+            "result": "Процесс стартовал; HTTP GET /_stcore/health вернул status 200, body `ok`.",
+            "id": "CHK-START-HTTP",
+            "stage": "start",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Приложение запускается и отвечает на health endpoint."
+          },
+          {
+            "command": "python -m unittest discover -s tests -v",
+            "result": "Ran 33 tests in 6.241s; OK. Включены AppTest, data pipeline, weather contract, point-in-time и agent revision checks.",
+            "id": "CHK-TEST-33",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Все заявленные локальные unit/domain/UI-contract тесты проходят без исключений."
+          },
+          {
+            "command": "python -m src.train",
+            "result": "Exit code 0; обе турбины обработаны, сформированы hourly data/model/report artifacts; January validation по 744 часа на турбину напечатана.",
+            "id": "CHK-TRAIN-DATA",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Предоставленные SCADA CSV проходят подготовку и обучение до February cutoff."
+          },
+          {
+            "command": "python -m src.evaluation",
+            "result": "Exit code 0; 29/29 exploratory origins succeeded, horizon 48, report marks forecast_contract_compatible=false.",
+            "id": "CHK-EXPLORATORY",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Diagnostic fixed-lead archive даёт полные 48h окна по двум турбинам и явно остаётся exploratory."
+          },
+          {
+            "command": "python -m src.agent --origin 2026-02-01T00:00:00+05:00 --horizon 48",
+            "result": "Exit code 1: `Проверенные выпуски погоды отсутствуют. Нужны data/weather/forecasts.csv и source.json; старый кэш не используется.`",
+            "id": "CHK-AGENT-STRICT",
+            "stage": "scenario",
+            "status": "fail",
+            "cause": "project",
+            "expected": "Agent выбирает доступный as-of release и сохраняет 48 hourly predictions по двум турбинам."
+          },
+          {
+            "command": "python -m src.backtest",
+            "result": "Exit code 1; report содержит origins_total=29, origins_succeeded=0, origins_failed=29. Все ошибки — отсутствие forecasts.csv/source.json.",
+            "id": "CHK-STRICT-REPLAY",
+            "stage": "scenario",
+            "status": "fail",
+            "cause": "project",
+            "expected": "Последовательный strict replay выполняется на origin 31 Jan и каждом дне Feb 2026 с hour-level outputs."
+          }
+        ],
+        "limitations": [
+          "Локальный health/start подтверждён HTTP, но визуальный интерфейс и графики не инспектировались по установленному запрету UI automation.",
+          "Внешний provider forecast не вызывался: в snapshot нет strict archive, а credentials намеренно не предоставлены; это не заменялось mock-проверкой.",
+          "Runtime partial вызван конкретным отсутствующим входным артефактом проекта, а не отсутствием публичной live-ссылки."
+        ]
+      },
+      "liveDemo": {
+        "status": "none",
+        "url": null,
+        "notes": "Публичная live demo ссылка в проверенных материалах не заявлена. Локальный Streamlit health endpoint подтверждён HTTP 200; визуальное поведение и пользовательские графики не проверялись, поскольку визуальную проверку выполняет пользователь."
+      },
+      "fiveHourContext": "Для пятичасового MVP разумно высоко оценить готовность data/ML ядра, temporal safeguards, тесты и честное разделение diagnostic/strict режимов. Не требуется production-инфраструктура, платные ключи или устная презентация. Но отсутствие самого strict weather archive — это не косметическая недоделка, а незавершённая часть центрального требования кейса; поэтому exploratory 29/29 не засчитывается как полный February replay. Снятия ограничены подтверждёнными проблемами проекта и не применяются за отсутствие live URL, визуальной проверки или внешних credentials.",
+      "strengths": [
+        "33 автоматических теста проходят, включая AppTest, temporal leakage, duplicate/conflict handling, weather contract, checksum, physical units и agent revision.",
+        "Point-in-time ModelStore учитывает origin, SCADA delay, cutoff, hash исходных данных и сохраняет training metadata.",
+        "Проект принципиально не подменяет strict archive diagnostic Previous Runs и явно выставляет forecast_contract_compatible=false.",
+        "Data pipeline сохраняет нулевые значения, не заполняет пропуски вымышленными целями и формирует подробный data_quality отчёт.",
+        "README, WEATHER_INPUT и remediation конкретно описывают команды, формат источника и оставшиеся доменные зависимости."
+      ],
+      "gaps": [
+        "В checkout отсутствуют data/weather/forecasts.csv и data/weather/source.json; из-за этого strict agent и все 29 strict replay origins не создают прогноз.",
+        "Сохранённая fixed-lead оценка показывает MAE модели немного хуже baseline на 24 и 48 часах для обеих турбин.",
+        "Интервалы неопределённости в app.py используют фиксированный 0.15 и не подтверждены residual calibration из отчётов.",
+        "DEMO_GUIDE обещает synthetic weather update, но src.weather_service.simulate_weather_update намеренно выбрасывает ValueError; guide нельзя пройти буквально."
+      ],
+      "futureAdvice": [
+        {
+          "principle": "Сначала зафиксировать один полный provenance-пакет входных выпусков, затем оценивать модель",
+          "why": "Наблюдение D-STRICT-ARCHIVE: adapter и backtest-код есть, но отсутствие forecasts.csv/source.json приводит к 0/29 strict origins и не позволяет доказать as-of availability.",
+          "how": "В другом хакатоне выделить ранний короткий vertical slice: один origin, две турбины, полный hourly horizon, CSV выпуска и manifest с provider, issued_at, available_at, units, coordinate/height evidence и checksum. Сначала прогнать WeatherService и получить один сохранённый forecast, затем расширять период до всех дней.",
+          "findingIds": [
+            "D-STRICT-ARCHIVE"
+          ],
+          "successCheck": "Один smoke origin и затем весь дневной диапазон проходят с `forecast_contract_compatible=true`, а для каждой строки можно показать valid_time, issued_at и available_at не позже origin.",
+          "timeboxMinutes": 75
+        },
+        {
+          "principle": "Сравнивать сложную модель с baseline на том же fixed-lead входе до оформления преимуществ",
+          "why": "Наблюдение D-FORECAST-BASELINE: fixed-lead отчёт показывает, что модель уступает bin baseline во всех четырёх сравнениях, хотя на observed weather она выигрывает.",
+          "how": "Для другого кейса сразу строить per-lead/per-site таблицу model, baseline и naive persistence на одинаковом наборе строк; затем проверить, какие признаки или калибровка улучшают именно forecast-weather error, а не только weather-to-power mapping.",
+          "findingIds": [
+            "D-FORECAST-BASELINE"
+          ],
+          "successCheck": "В отчёте для каждого horizon есть число строк, MAE/RMSE всех baselines и заранее заданное правило принятия; новая модель стабильно лучше выбранного baseline на holdout fixed-lead периоде.",
+          "timeboxMinutes": 50
+        },
+        {
+          "principle": "Не показывать uncertainty как эмпирическую, пока она не привязана к residuals",
+          "why": "Наблюдение D-UNCERTAINTY: app.py задаёт 0.15 вручную, тогда как сохранённые forecast-weather MAE находятся около 0.31–0.35; текущий диапазон может быть слишком узким и вводить пользователя в заблуждение.",
+          "how": "В другом проекте сохранить out-of-sample residuals по lead и turbine, построить quantile/conformal interval на отдельном calibration split и явно показать coverage вместе с горизонтом и источником погоды.",
+          "findingIds": [
+            "D-UNCERTAINTY"
+          ],
+          "successCheck": "Каждый interval имеет источник параметров, coverage измерен на отложенном наборе, а UI/CSV помечают диапазон как calibrated или heuristic.",
+          "timeboxMinutes": 40
+        },
+        {
+          "principle": "Синхронизировать demo guide с единственным реально исполняемым update path",
+          "why": "Наблюдение D-DEMO-UPDATE: guide требует synthetic update, но проект специально его запрещает; пользователь не может воспроизвести заявленный шаг, хотя real-file revision path существует.",
+          "how": "Для другого MVP выбрать один путь: либо описать watcher на новый provenance-полный release и дать маленький fixture, либо явно назвать симуляцию неподдерживаемой и демонстрировать изменение тестового CSV через безопасный fixture. Проверить guide командой/тестом до публикации.",
+          "findingIds": [
+            "D-DEMO-UPDATE"
+          ],
+          "successCheck": "Чистый checkout проходит шаг update из guide, создаёт новую revision, сохраняет previous_revision и показывает измеримое отличие output без ручного редактирования исходников.",
+          "timeboxMinutes": 25
+        }
+      ],
+      "uncertainties": [
+        "Февральская фактическая power в предоставленном case package отсутствует, поэтому February accuracy невозможно подтвердить; сохранённые reports сами это отмечают.",
+        "Высота и сопоставимость ветра с SCADA, SCADA delivery delay и normalization_to_mw требуют подтверждения оператора; код оставляет эти поля явными, но не может доказать их из CSV.",
+        "Внешний provider API и live endpoint не проверялись без предоставленных credentials; статический кодовый путь и локальные fixtures проверены отдельно.",
+        "Визуальное оформление Streamlit, графики и клики пользователя не проверялись по пользовательской политике визуальной верификации; подтверждены только AppTest из набора проекта и HTTP start/health.",
+        "Отсутствие публичной live-ссылки само по себе не использовалось как причина снятия баллов."
+      ],
+      "reviewPolicyVersion": 2,
+      "assessmentStatus": "ready",
+      "findings": [
+        {
+          "id": "D-STRICT-ARCHIVE",
+          "kind": "defect",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Главный strict forecast path не может загрузить архив выпусков, требуемый для as-of расчёта.",
+          "expected": "В checkout есть data/weather/forecasts.csv и data/weather/source.json с полными выпусками, issued_at/available_at не позже origin, чтобы каждый февральский daily replay дал 24/48 hourly predictions.",
+          "actual": "Файлы отсутствуют; `WeatherService.load_releases` поднимает FileNotFoundError. Фактический backtest дал 0 successes и 29 failures, а единичный agent run завершился exit 1 до вызова модели.",
+          "evidence": [
+            "config/settings.json:17-18",
+            "src/weather_service.py:13-17",
+            "reports/february_replay.json:1-12",
+            "captures/20261002T221113681955-scenario.stdout.log",
+            "captures/20261002T221159948247-strict-replay.stdout.log"
+          ],
+          "checkIds": [
+            "CHK-AGENT-STRICT",
+            "CHK-STRICT-REPLAY"
+          ]
+        },
+        {
+          "id": "D-FORECAST-BASELINE",
+          "kind": "defect",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "В доступной fixed-lead forecast-weather оценке сложная модель не показывает преимущества над baseline.",
+          "expected": "Для weather-driven проверки модель должна хотя бы быть сопоставима с выбранным baseline; иначе operational value не подтверждена.",
+          "actual": "В reports/january_fixed_lead.json model MAE выше baseline для turbine_1 lead 24/48 и turbine_2 lead 24/48: 0.3162>0.3090, 0.3477>0.3388, 0.3111>0.3109, 0.3423>0.3411.",
+          "evidence": [
+            "reports/january_fixed_lead.json:1-30",
+            "src/evaluation.py:51-66",
+            "captures/20261002T221144729043-exploratory.stdout.log"
+          ],
+          "checkIds": [
+            "CHK-EXPLORATORY"
+          ]
+        },
+        {
+          "id": "D-UNCERTAINTY",
+          "kind": "defect",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "UI uncertainty interval рассчитывается фиксированной константой и не подтверждён сохранённой forecast-weather calibration.",
+          "expected": "Диапазон должен быть рассчитан из явного calibration/residual источника или маркирован как heuristic с соответствующим ограничением.",
+          "actual": "`app.py` задаёт `mae_uncertainty = 0.15` и строит p10/p90 как ±1.645*0.15; сохранённый fixed-lead MAE находится примерно 0.311–0.348, а отдельной coverage/calibration проверки нет.",
+          "evidence": [
+            "app.py:580-584",
+            "reports/january_fixed_lead.json:1-30",
+            "DEMO_GUIDE.md:22-31"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "D-DEMO-UPDATE",
+          "kind": "defect",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Документированный synthetic weather update шаг не соответствует фактическому API обновления.",
+          "expected": "Шаг из DEMO_GUIDE должен запускать разрешённый update/recalculation path и показывать новую revision.",
+          "actual": "DEMO_GUIDE предлагает изменить вход через функцию симуляции, но `WeatherService.simulate_weather_update` всегда выбрасывает `ValueError`; unit test отдельно подтверждает отказ simulate_update в agent.",
+          "evidence": [
+            "DEMO_GUIDE.md:41-45",
+            "src/weather_service.py:69-70",
+            "src/agent.py:29-33",
+            "tests/test_pipeline.py:201-203"
+          ],
+          "checkIds": [
+            "CHK-TEST-33"
+          ]
+        },
+        {
+          "id": "S-DATA-PIPELINE",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "SCADA parser и hourly aggregation устойчиво обрабатывают реальные CSV кейса и типовые data quality edge cases.",
+          "expected": "Входные CSV читаются с корректными полями, пропуски/конфликты не превращаются в тихие вымышленные targets, а valid hours выделяются явно.",
+          "actual": "Два CSV прошли train; data_quality зафиксировал 142360/149499 строк, нулевые parse missing values, 23666/24784 complete hours; доменные unit tests прошли.",
+          "evidence": [
+            "src/data.py:19-112",
+            "reports/data_quality.json:1-118",
+            "captures/20261002T221131883784-data-train.stdout.log"
+          ],
+          "checkIds": [
+            "CHK-TRAIN-DATA",
+            "CHK-TEST-33"
+          ]
+        },
+        {
+          "id": "S-POINT-IN-TIME",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Temporal cutoff и point-in-time model selection реализованы и тестируются на конкретном origin.",
+          "expected": "Будущие target rows и недоступные по SCADA delay часы не влияют на модель для данного origin.",
+          "actual": "Tests подтвердили max training timestamp 2026-01-30 22:00 для origin 2026-01-31 00:00, отсутствие February targets даже для более позднего origin и стабильность при изменении будущих values.",
+          "evidence": [
+            "src/model_store.py:19-30",
+            "src/model_store.py:43-75",
+            "tests/test_point_in_time.py:25-41",
+            "tests/test_point_in_time.py:61-68"
+          ],
+          "checkIds": [
+            "CHK-TEST-33"
+          ]
+        },
+        {
+          "id": "S-STRICT-CONTRACT",
+          "kind": "strength",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Strict weather contract защищает от неявной подмены архивного выпуска фактической погодой или неподтверждённым кэшем.",
+          "expected": "Проверяются provenance, units, checksum, release availability, duplicate rows и complete horizon; incompatible source не считается operational.",
+          "actual": "WeatherService и tests реализуют эти проверки, а Previous Runs явно сохраняется как diagnostic и выставляет forecast_contract_compatible=false.",
+          "evidence": [
+            "src/weather_service.py:13-67",
+            "src/previous_runs.py:1-5",
+            "src/previous_runs.py:195-205",
+            "tests/test_pipeline.py:113-164"
+          ],
+          "checkIds": [
+            "CHK-TEST-33"
+          ]
+        },
+        {
+          "id": "S-REPRODUCIBLE-AGENT",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Agent сохраняет воспроизводимые версии forecast и умеет отличать неизменный повторный запуск от реального перерасчёта.",
+          "expected": "Одинаковый input reuse-ится, изменение weather меняет revision, previous_revision сохраняется и audit пересчитывается.",
+          "actual": "Pipeline test проверил first changed=true, second changed=false, новую revision после изменения wind и сохранение previous_revision; event log также фиксирует failure update.",
+          "evidence": [
+            "src/agent.py:34-71",
+            "tests/test_pipeline.py:179-203"
+          ],
+          "checkIds": [
+            "CHK-TEST-33"
+          ]
+        },
+        {
+          "id": "L-VISUAL-REVIEW",
+          "kind": "limitation",
+          "verification": "unverified",
+          "responsibility": "review_environment",
+          "claim": "Визуальное поведение Streamlit не входило в эту проверку.",
+          "expected": "Визуальная проверка выполняется пользователем отдельно; статическая и HTTP проверка не доказывает качество графиков и кликов.",
+          "actual": "AppTest и HTTP health/start прошли, но браузер, скриншоты и UI automation не использовались.",
+          "evidence": [
+            "tests/test_app.py:8-26",
+            "CHK-START-HTTP",
+            "CHK-TEST-33"
+          ],
+          "checkIds": [
+            "CHK-START-HTTP",
+            "CHK-TEST-33"
+          ]
+        },
+        {
+          "id": "L-FEBRUARY-ACTUALS",
+          "kind": "limitation",
+          "verification": "source",
+          "responsibility": "external_service",
+          "claim": "Февральская фактическая мощность отсутствует в предоставленных данных, поэтому February accuracy не рассчитана.",
+          "expected": "Для полной оценки каждого daily forecast нужны фактические target rows за тестовый период.",
+          "actual": "Reports и README отмечают отсутствие February observed power; strict replay отчёт сохраняет только ошибки отсутствующих weather releases и не создаёт метрик.",
+          "evidence": [
+            "reports/february_replay.json:1-12",
+            "reports/REMEDIATION.md:21-23",
+            "README.md:185-207"
+          ],
+          "checkIds": [
+            "CHK-STRICT-REPLAY"
+          ]
+        }
+      ],
+      "gapFindingIds": [
+        "D-STRICT-ARCHIVE",
+        "D-FORECAST-BASELINE",
+        "D-UNCERTAINTY",
+        "D-DEMO-UPDATE"
+      ]
+    }
+  ],
+  "score": 70.5,
+  "status": "complete",
+  "expectedJudges": 1
+}

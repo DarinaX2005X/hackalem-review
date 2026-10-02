@@ -1,0 +1,778 @@
+{
+  "methodVersion": 4,
+  "repoId": "hack-34b30c3c-ozlteam",
+  "repoUrl": "https://github.com/BAITC-Hacks/hack-34b30c3c-ozlteam",
+  "caseId": 5,
+  "snapshot": "8ee15f9637341f3d618341bc3a6e0508953298a1",
+  "judges": [
+    {
+      "methodVersion": 4,
+      "repoId": "hack-34b30c3c-ozlteam",
+      "caseId": 5,
+      "model": "GPT-5.6 Luna",
+      "snapshot": "8ee15f9637341f3d618341bc3a6e0508953298a1",
+      "overallSummary": "Сильный локально воспроизводимый MVP для менеджера закупок. Реализованы детерминированный объяснимый расчёт robust-daily-v2, адаптер 12 XLSX-отчётов, контроль качества данных, фоновые jobs, группировка по поставщику и складу, ручная корректировка, утверждение и экспорт. Основной сценарий подтверждён через PostgreSQL/Redis и HTTP: run done, четыре рекомендации, два supplier draft, два approve и два CSV export с HTTP 200. Полный backend pytest дал 360 passed и 38 skipped. Реальные XLSX были приняты адаптером и дошли до 228000 из 252385 строк при 1300 контролях, но poller достиг 900-секундного лимита; это ограничение глубины проверки, а не доказанный дефект разбора. Максимум удерживают отсутствие измеренной точности/экономического эффекта на данных партнёра, отсутствие промышленной 1С и непроверенный внешний AI без ключа.",
+      "global": {
+        "criteria": [
+          {
+            "name": "Ценность решения",
+            "score": 23,
+            "max": 25,
+            "awarded": "Да. Решение адресует конкретную операционную боль менеджера закупок: ручное сведение Excel, дефицит, избыточный запас и искажение регулярного спроса разовыми отгрузками.",
+            "deductions": "Снято 2 балла за отсутствие количественной проверки экономического эффекта и точности на исторических данных партнёра.",
+            "evidence": [
+              "README.md:3-9",
+              "README.md:443-450",
+              "D-ACCURACY",
+              "RT-SCENARIO"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "D-ACCURACY",
+                "reason": "Есть полноценная методика и синтетические проверки, но нет backtest, сравнения с текущим Excel или измеренного снижения дефицита/запаса; README оставляет это следующим этапом."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Понятный пользователь и задача",
+                "implementation": "README называет менеджера закупок и описывает путь склад/категория → расчёт → объяснённые рекомендации → проверка → утверждение → экспорт. Backend хранит расчёт по складу и snapshot входов.",
+                "value": "Процесс заменяет повторяющееся ручное сведение одной проверяемой операцией с сохранённым результатом и прямо соответствует проблеме кейса.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:3-9",
+                  "README.md:123-168"
+                ]
+              },
+              {
+                "aspect": "Снижение риска ошибочного заказа",
+                "implementation": "Количество вычисляется как прогноз плюс страховой запас минус доступный остаток и inbound, затем округляется по MOQ/кратности; неподтверждённые обязательные условия блокируют позицию, а draft требует отдельного approve.",
+                "value": "Менеджер получает не только число, но и защиту от скрытых ошибок в резерве, inbound и неполных источниках, сохраняя контроль над финансовым действием.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:225-246",
+                  "backend/app/Domains/Replenishment/services/engine.py:253-364",
+                  "backend/app/Domains/Procurement/controllers/http.py:139-147"
+                ]
+              },
+              {
+                "aspect": "Устойчивость к всплескам",
+                "implementation": "Продажи группируются по товару, дню и обезличенному клиенту; порог max(5×медиана, медиана+8×MAD), исключённые продажи сохраняются с причиной, повторяющиеся крупные покупки оставляются.",
+                "value": "Это адресует именно описанное искажение регулярной потребности единичной крупной отгрузкой.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/app/Domains/Replenishment/services/engine.py:55-121",
+                  "backend/tests/test_replenishment_engine.py:137-165",
+                  "RT-TEST-FOCUSED"
+                ]
+              },
+              {
+                "aspect": "Честная граница на реальных книгах",
+                "implementation": "Адаптер не придумывает client ID, stockout, lead time или MOQ semantics, сохраняет quality reasons и блокирует расчёт при неизвестных условиях.",
+                "value": "Отказ от фиктивной точности повышает доверие к закупочному результату, хотя ограничивает немедленную ценность исходных книг.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:287-307",
+                  "backend/app/Domains/DataImports/adapters/partner_workbooks.py:571-628",
+                  "docs/hackathon/tracklogic.md:87-110"
+                ]
+              }
+            ],
+            "scoreReasoning": "23/25 заслужены за точное попадание в задачу закупщика, объяснимое число, контроль человека и устойчивость к главным искажениям спроса. Два балла удержаны только за отсутствие бизнес-метрик и исторического backtest."
+          },
+          {
+            "name": "Результат и качество решения",
+            "score": 20,
+            "max": 20,
+            "awarded": "Да. Целостный серверный сценарий от snapshot до утверждённого экспортируемого заказа реально запускается и проверен через API.",
+            "deductions": "Подтверждённых project-дефектов основного синтетического сценария не установлено; неполный финальный статус реального XLSX вынесен в limitation проверки без штрафа.",
+            "evidence": [
+              "RT-MIGRATE",
+              "RT-READY",
+              "RT-SCENARIO",
+              "RT-TEST-ALL",
+              "RT-EXCEL"
+            ],
+            "deductionItems": [],
+            "awardedDetails": [
+              {
+                "aspect": "Детерминированный движок",
+                "implementation": "calculate индексирует входные таблицы, ограничивает факты датой среза, восстанавливает lost demand, строит сезонность и тренд, учитывает growth, horizon, reserve, inbound и rounding; результат содержит breakdown, forecast, history, excluded_sales и warnings.",
+                "value": "Критическое количество можно повторить и объяснить по входным числам без внешней модели.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/app/Domains/Replenishment/services/engine.py:182-392",
+                  "backend/tests/test_replenishment_engine.py:55-91",
+                  "RT-TEST-FOCUSED"
+                ]
+              },
+              {
+                "aspect": "Runtime-путь рекомендация → заказ",
+                "implementation": "После миграций и seed worker довёл run до done. API вернул 4 ready-рекомендации; POST создал 2 draft по поставщикам, approve перевёл оба в approved, CSV export обоих вернул 200.",
+                "value": "Проверена связность БД, очереди, авторизации, группировки, version control и генерации пользовательского результата.",
+                "verification": "observed",
+                "evidence": [
+                  "RT-MIGRATE",
+                  "RT-READY",
+                  "RT-SCENARIO"
+                ]
+              },
+              {
+                "aspect": "Контроль входа и повторов",
+                "implementation": "Есть idempotency для run и создания заказа, version checks, source completeness, data_quality, provenance и durable jobs; импортёр проверяет состав и SHA-256 книг до фоновой обработки.",
+                "value": "Повтор операции не должен незаметно удвоить заказ или применить незавершённый источник.",
+                "verification": "source",
+                "evidence": [
+                  "backend/app/seed/partner_workbooks.py:30-54",
+                  "backend/app/Domains/Replenishment/services/replenishment_service.py:40-93",
+                  "backend/app/Domains/Procurement/services/order_service.py:49-124"
+                ]
+              },
+              {
+                "aspect": "Инженерная проверка",
+                "implementation": "Frontend production build прошёл TypeScript/Vite, backend собрался, миграции применились, health/live и health/ready ответили 200, полный pytest завершился 360 passed, 38 skipped.",
+                "value": "Результат имеет наблюдаемую основу, а не только декларацию README.",
+                "verification": "observed",
+                "evidence": [
+                  "RT-FE-BUILD",
+                  "RT-BE-BUILD",
+                  "RT-MIGRATE",
+                  "RT-READY",
+                  "RT-TEST-ALL"
+                ]
+              }
+            ],
+            "scoreReasoning": "20/20: synthetic сценарий реально прошёл через БД, worker, API, двух поставщиков, approve и CSV. Неполное наблюдение полного реального Excel-пакета относится к лимиту review environment и не уменьшает балл по policy."
+          },
+          {
+            "name": "Инновационность",
+            "score": 13,
+            "max": 15,
+            "awarded": "Да. Собственное преимущество — сочетание устойчивого детерминированного прогноза, объяснения, контроля качества и безопасного procurement workflow.",
+            "deductions": "Снято 2 балла: применённые статистические приёмы практичны, но сравнительного эксперимента с альтернативной моделью или baseline команды нет.",
+            "evidence": [
+              "backend/app/Domains/Replenishment/services/engine.py:124-179",
+              "README.md:198-244",
+              "D-BASELINE"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "D-BASELINE",
+                "reason": "Исходники не показывают сравнения robust-daily-v2 с moving average, текущим Excel-методом или другой моделью на одинаковом наборе; нестандартность доказана сочетанием механизмов, но не измеренным преимуществом."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Устойчивый прогноз вместо простого среднего",
+                "implementation": "После очистки строится месячный профиль при истории от 540 дней, базовый уровень берётся за последние 56 дней после удаления сезонности, а sustained trend требует трёх растущих 28-дневных блоков.",
+                "value": "Сезонный пик не маскирует тренд, а последняя вспышка не превращается в постоянный рост.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/app/Domains/Replenishment/services/engine.py:124-155",
+                  "backend/tests/test_replenishment_engine.py:167-209"
+                ]
+              },
+              {
+                "aspect": "Объяснение как часть модели",
+                "implementation": "Details сохраняет forecast по дням, seasonal_factor, trend_increment, growth_mode, raw/corrected history, excluded sales, inbound и breakdown; explanation строится из тех же чисел.",
+                "value": "Аудитор может восстановить, почему получилось конкретное количество, а не доверять непрозрачному тексту.",
+                "verification": "source",
+                "evidence": [
+                  "backend/app/Domains/Replenishment/resources/calculation.py:45-105",
+                  "backend/app/Domains/Replenishment/services/engine.py:333-390",
+                  "backend/tests/test_recommendation_explanation.py:43-60"
+                ]
+              },
+              {
+                "aspect": "Quality gate вместо фиктивного успеха",
+                "implementation": "Профильный адаптер сохраняет provenance и control records, а продукт получает status/reasons/blocking_reasons; неизвестные unit, lead time, terms или stock не превращаются в тихие defaults.",
+                "value": "Для закупки важна способность остановиться при плохом источнике, а не только посчитать число.",
+                "verification": "source",
+                "evidence": [
+                  "backend/app/Domains/DataImports/adapters/partner_workbooks.py:544-628",
+                  "backend/tests/test_partner_workbooks.py:37-63"
+                ]
+              },
+              {
+                "aspect": "Безопасная роль AI",
+                "implementation": "AI не вычисляет закупочное количество и не может approve/send order; действия проходят через permission checks и отдельное подтверждение.",
+                "value": "Модель помогает пользоваться результатом, но не получает скрытый контроль над необратимым финансовым действием.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:250-273",
+                  "backend/app/Domains/Ai/services/agent_engine.py:203-328",
+                  "backend/tests/test_agent_engine.py:1-220"
+                ]
+              }
+            ],
+            "scoreReasoning": "13/15: сильная комбинация robust-статистики, provenance, explainability и human approval выделяет прототип среди простого Excel-калькулятора. Два балла удержаны за отсутствие сравнительного эксперимента."
+          },
+          {
+            "name": "Потенциал развития и масштабирования",
+            "score": 18,
+            "max": 20,
+            "awarded": "Да. Архитектура разделяет нормализованный импорт, партнёрские профили, расчёт, фоновые jobs, заказы, экспорт и 1С handoff.",
+            "deductions": "Снято 2 балла за отсутствие подтверждённого промышленного подключения к 1С, автоматического расписания REST-обмена и измеренного backtest на новых организациях/складах.",
+            "evidence": [
+              "README.md:277-347",
+              "README.md:443-452",
+              "D-1C-SCOPE"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "D-1C-SCOPE",
+                "reason": "Есть локальный handoff-контракт, но README прямо сообщает, что реальная база партнёра не подключена, расписание REST-отчётов и обход страниц не реализованы."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Новые источники",
+                "implementation": "Нормализованный обмен охватывает 9 типов данных, а отдельный пакетный адаптер поддерживает 12 профилированных книг IEK/Systeme Electric и сохраняет происхождение.",
+                "value": "Новый поставщик может подключаться через профиль/пакет, не меняя ядро прогноза.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:277-307",
+                  "backend/app/Domains/DataImports/adapters/partner_workbooks.py:85-145"
+                ]
+              },
+              {
+                "aspect": "Фоновые jobs и snapshot",
+                "implementation": "Расчёты и импорты идут через Redis/arq worker, job status хранится в БД, входы фиксируются snapshot-ом, UI не блокируется долгим HTTP-запросом.",
+                "value": "Это создаёт практический путь к большему числу SKU и долгим импортам.",
+                "verification": "observed",
+                "evidence": [
+                  "compose.yaml:47-117",
+                  "backend/app/Domains/DataImports/services/package_service.py:95-143",
+                  "RT-SCENARIO"
+                ]
+              },
+              {
+                "aspect": "Контракт для 1С",
+                "implementation": "Order controller отдаёт handoff с idempotency_key, decimal strings и внешними ссылками; внешние ID отделены от внутренних UUIDv7.",
+                "value": "Такой слой позволяет развивать несколько складов, поставщиков и версий документов без переписывания заказа.",
+                "verification": "source",
+                "evidence": [
+                  "backend/app/Domains/Procurement/controllers/http.py:226-247",
+                  "backend/app/Domains/Procurement/resources/order.py:28-87",
+                  "README.md:309-315"
+                ]
+              },
+              {
+                "aspect": "Ясная карта следующего этапа",
+                "implementation": "README перечисляет необходимость согласовать единицы, знаки, lead time, MOQ и формат документа, а также отдельно отмечает отсутствие измеренной точности и реальной базы.",
+                "value": "Ограничения не маскируются под готовую промышленную интеграцию.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:303-315",
+                  "README.md:443-452"
+                ]
+              }
+            ],
+            "scoreReasoning": "18/20: есть хорошая предметная декомпозиция и путь к новым источникам, складам и поставщикам. Два балла удержаны за реально отсутствующий промышленный транспорт/расписание 1С и не измеренное качество."
+          },
+          {
+            "name": "Презентация, демо и ответы на вопросы",
+            "score": 20,
+            "max": 20,
+            "awarded": "Да. Устной презентации не было, поэтому оценены README, методика, проверки и воспроизводимый API-результат.",
+            "deductions": "Подтверждённых project-дефектов презентации и демо не установлено; визуальная проверка вынесена в unverified limitation по пользовательской политике без штрафа.",
+            "evidence": [
+              "README.md:45-188",
+              "README.md:351-383",
+              "RT-FE-BUILD",
+              "RT-SCENARIO",
+              "L-VISUAL"
+            ],
+            "deductionItems": [],
+            "awardedDetails": [
+              {
+                "aspect": "README как инструкция демо",
+                "implementation": "Документ содержит запуск, Windows/PowerShell вариант, seed, логин, фиксированную дату, пошаговые /data, /recommendations и /orders, ручной approve и export.",
+                "value": "Сценарий можно восстановить без устного объяснения.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:45-188"
+                ]
+              },
+              {
+                "aspect": "Прозрачная методика",
+                "implementation": "README приводит формулу горизонта, прогноза, safety stock, available stock, inbound и округления, а также правила выбросов, stockout, сезонности и роста.",
+                "value": "Демо можно обсуждать по конкретным входным числам, а не по общим обещаниям.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:190-248"
+                ]
+              },
+              {
+                "aspect": "Воспроизводимое техническое демо",
+                "implementation": "Build, migrations, health checks и HTTP сценарий авторизации, run, recommendations, orders, approve и export дали конкретные результаты.",
+                "value": "Основной результат реально получен из зафиксированного среза без AI-ключа.",
+                "verification": "observed",
+                "evidence": [
+                  "RT-FE-BUILD",
+                  "RT-READY",
+                  "RT-SCENARIO"
+                ]
+              },
+              {
+                "aspect": "Корректная граница synthetic/real",
+                "implementation": "README отделяет полный synthetic demo от partner package и объясняет, почему реальные товары без client, stockout и lead time остаются ограниченными.",
+                "value": "Презентация не выдаёт локальный экспорт за полноценную промышленную 1С.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:287-315",
+                  "README.md:438-450"
+                ]
+              }
+            ],
+            "scoreReasoning": "20/20: README и API-демо раскрывают сценарий, формулу, ограничения и конкретный результат. Непроверенное визуальное поведение не штрафуется по пользовательской политике."
+          }
+        ],
+        "total": 94
+      },
+      "case": null,
+      "judgeScore": 94,
+      "caseRequirements": [
+        {
+          "requirement": "Расчёт потребности по истории, остаткам, inbound, категориям, сроку поставки и росту; изменение входа меняет результат.",
+          "status": "met",
+          "explanation": "Engine индексирует sales/stocks/stockouts/inbound, применяет category policy, horizon и growth. Фокусные тесты получили 280 baseline, 260 при остатке 20, 240 при inbound 40 и 336 при росте 20%; runtime seed также вернул рекомендации.",
+          "evidence": [
+            "backend/app/Domains/Replenishment/services/engine.py:182-311",
+            "backend/tests/test_replenishment_engine.py:55-91",
+            "RT-TEST-FOCUSED",
+            "RT-SCENARIO"
+          ]
+        },
+        {
+          "requirement": "Сезонность и устойчивый рост влияют на прогноз, а не заменяются средним.",
+          "status": "met",
+          "explanation": "При 540+ днях строится product_monthly профиль, при короткой истории category_monthly fallback; sustained trend требует трёх растущих 28-дневных блоков. Тесты проверяют сезонность, fallback и replace_trend без double count.",
+          "evidence": [
+            "backend/app/Domains/Replenishment/services/engine.py:124-155",
+            "backend/tests/test_replenishment_engine.py:167-209",
+            "README.md:217-223"
+          ]
+        },
+        {
+          "requirement": "Компенсация потерянного спроса в подтверждённые периоды stockout.",
+          "status": "met",
+          "explanation": "Для отсутствующих дней подбираются сопоставимые month/weekday наблюдения с fallback; corrected demand не уменьшает продажи. Контролируемый тест получил lost_demand=140 и заказ выше варианта без stockout.",
+          "evidence": [
+            "backend/app/Domains/Replenishment/services/engine.py:92-120",
+            "backend/tests/test_replenishment_engine.py:125-135",
+            "backend/tests/test_replenishment.py:92-100"
+          ]
+        },
+        {
+          "requirement": "Разовая крупная продажа, включая одного клиента, не раздувает регулярный заказ; повторяющаяся крупная покупка сохраняется.",
+          "status": "met",
+          "explanation": "Добавление десяти продаж по 1000 одному anonymized customer не изменило baseline и дало excluded_quantity=10000; три крупные покупки на интервале 28 дней не исключаются. Без client ID добавляется day-level warning.",
+          "evidence": [
+            "backend/app/Domains/Replenishment/services/engine.py:55-121",
+            "backend/tests/test_replenishment_engine.py:137-165",
+            "backend/tests/test_replenishment_engine.py:299-310"
+          ]
+        },
+        {
+          "requirement": "Итоговый список сгруппирован по поставщикам и содержит количество с объяснением.",
+          "status": "met",
+          "explanation": "API отдаёт supplier_groups, detail содержит breakdown/explanation, а OrderService группирует по supplier_id и warehouse_id. Runtime создал два draft из четырёх рекомендаций.",
+          "evidence": [
+            "backend/app/Domains/Replenishment/resources/calculation.py:141-149",
+            "backend/app/Domains/Procurement/services/order_service.py:65-122",
+            "RT-SCENARIO"
+          ]
+        },
+        {
+          "requirement": "Заказ не отправляется автоматически: нужна ручная проверка, правка с причиной и явное утверждение; нужен экспорт.",
+          "status": "met",
+          "explanation": "Создание возвращает draft, approve защищён permission и expected_version, edit_line требует reason, export разрешён только approved. Runtime подтвердил два draft, два approved и два CSV HTTP 200.",
+          "evidence": [
+            "backend/app/Domains/Procurement/controllers/http.py:49-74",
+            "backend/app/Domains/Procurement/controllers/http.py:117-221",
+            "RT-SCENARIO"
+          ]
+        },
+        {
+          "requirement": "Приватность клиентов и совместимость с переданными коммерческими книгами.",
+          "status": "partial",
+          "explanation": "Синтетический контракт использует обезличенный client_id, AI не получает сырые книги/строки, а 12 XLSX приняты адаптером с provenance и controls. Финальный applied статус не наблюдён до timeout; сами книги не содержат client ID, точных stockout и подтверждённого lead time, поэтому товары корректно ограничены/заблокированы.",
+          "evidence": [
+            "backend/app/Domains/DataImports/adapters/partner_workbooks.py:367-392",
+            "backend/app/Domains/DataImports/adapters/partner_workbooks.py:571-628",
+            "docs/hackathon/tracklogic.md:87-110",
+            "RT-EXCEL"
+          ]
+        }
+      ],
+      "testData": {
+        "provided": [
+          "IEK/MOQ  ИЭК.xlsx",
+          "IEK/Динамика продаж_2025-2026.xlsx",
+          "IEK/Ежемесячные остатки продукции за последние 2 года  ИЭК.xlsx",
+          "IEK/Ежемесячные продажи в количественном выражении за последние 2 года.xlsx",
+          "IEK/Путь ИЭК 22.09.2026.xlsx",
+          "IEK/Сезонность ИЭК.xlsx",
+          "Systeme electric/MOQ SystemElectric.xlsx",
+          "Systeme electric/Динамика продаж_Syseme Electric_2025-2026.xlsx",
+          "Systeme electric/Ежемесячные остатки SystemElectric 2024-2026.xlsx",
+          "Systeme electric/Ежемесячные продажи в кол-м выражении SystemElectric 2024-2026.xlsx",
+          "Systeme electric/Сезонность SystemElectric 2024-2026.xlsx",
+          "Systeme electric/Товар в пути_SystemElectric на 22.09.2026.xlsx"
+        ],
+        "used": [
+          "Все 12 книг были переданы штатному app.seed.partner_workbooks; локальная SHA-256 сверка показала байт-в-байт совпадение с закреплёнными TrackLogic-копиями.",
+          "IEK: MOQ, динамика продаж, месячные остатки, месячные продажи, путь и сезонность.",
+          "Systeme electric: MOQ, динамика продаж, месячные остатки, месячные продажи, сезонность и TDSheet товара в пути."
+        ],
+        "checks": [
+          {
+            "input": "12 XLSX и размеры/sha256 из манифеста partner_workbooks.json.",
+            "method": "Проверка всех книг и запуск python -m app.seed.partner_workbooks --directory /seed-input --timeout 900.",
+            "result": "Все 12 прошли проверку состава/хешей; пакет получил row_count=252385 и issue_count=1300, наблюдался прогресс до 228000.",
+            "conclusion": "Профильный адаптер действительно принимает предоставленный набор; финальный applied статус не наблюдён из-за лимита ожидания."
+          },
+          {
+            "input": "Широкие динамики, месячные остатки/продажи, сезонность и путь IEK/Systeme.",
+            "method": "Сопоставление структуры с parse_partner_files и чтение профилей/provenance/control в коде; наблюдение фонового пакета.",
+            "result": "Адаптер отдельно разворачивает inbound, сохраняет monthly stock snapshots, проверяет MOQ/остатки и не превращает месячные остатки в stockout.",
+            "conclusion": "Структура таблиц учтена глубже обычного CSV-конвертера; семантические ограничения остаются видимыми."
+          },
+          {
+            "input": "Динамики без client ID, price, точных stockout и подтверждённого lead time.",
+            "method": "Проверка полей и quality rules в docs/hackathon/tracklogic.md и partner_workbooks.py.",
+            "result": "Добавлены client_history_unavailable и stockout_unavailable, требуется lead_time/terms/current stock, продукты блокируются или ограничиваются.",
+            "conclusion": "Приватность и безопасная обработка неполных данных соблюдены; customer-level и stockout-sensitive расчёт на исходных книгах без дополнительных данных не доказан."
+          },
+          {
+            "input": "demo_input и unit fixtures.",
+            "method": "pytest engine, calculation API, XLSX roundtrip, recommendation explanation и partner adapter.",
+            "result": "45 focused tests и полный backend набор 360 passed, 38 skipped.",
+            "conclusion": "Ключевое case-specific поведение доказано на контролируемых синтетических данных."
+          }
+        ],
+        "limitations": [
+          "Пакет не дошёл до финального applied в наблюдаемом окне: poller достиг 900 секунд при продолжающемся worker apply.",
+          "Исходные динамики не содержат client ID, price, точных stockout-интервалов и подтверждённого lead time; проект корректно блокирует или ограничивает такие товары.",
+          "Полные XLSX не публикуются в отчёте; перечислены имена и результаты проверки."
+        ]
+      },
+      "runtime": {
+        "status": "working",
+        "build": "Frontend production build прошёл tsc -b && vite build; backend image с зафиксированным Python 3.13 окружением собрался.",
+        "start": "После Alembic миграций API и worker стартовали; health/live и health/ready вернули 200, ready подтвердил pgvector 0.8.6.",
+        "scenario": "Основной сценарий воспроизведён через API: seed → worker calculation done → 4 recommendations → 2 supplier drafts → 2 approvals → 2 CSV exports HTTP 200.",
+        "environment": "Изолированное Docker-окружение с PostgreSQL/pgvector, Redis, backend API и worker; внешние AI credentials не использовались. Визуальная проверка не заявляется.",
+        "summary": "Приложение deployable и рабочее для основного локального сценария. Реальный XLSX пакет принят адаптером и продолжил фоновой apply, но полная финализация не была наблюдена в лимите проверки; это отдельное ограничение.",
+        "checks": [
+          {
+            "command": "npm run build",
+            "result": "tsc прошёл; Vite transformed 2241 modules, создал dist и PWA service worker; exit 0.",
+            "id": "RT-FE-BUILD",
+            "stage": "build",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Production frontend build завершается без TypeScript/Vite ошибки."
+          },
+          {
+            "command": "uv sync --frozen --no-install-project",
+            "result": "Backend image собран на Python 3.13, lock dependencies установлены; exit 0.",
+            "id": "RT-BE-BUILD",
+            "stage": "build",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Зафиксированные backend dependencies устанавливаются и приложение импортируется."
+          },
+          {
+            "command": "alembic upgrade head",
+            "result": "Все миграции применились к PostgreSQL без ошибки.",
+            "id": "RT-MIGRATE",
+            "stage": "start",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Схема БД готова для API, jobs, импортов, расчётов и заказов."
+          },
+          {
+            "command": "GET /api/health/live",
+            "result": "HTTP 200, status ok.",
+            "id": "RT-LIVE",
+            "stage": "start",
+            "status": "pass",
+            "cause": "none",
+            "expected": "API принимает запросы после старта."
+          },
+          {
+            "command": "GET /api/health/ready",
+            "result": "HTTP 200, status ok, pgvector 0.8.6.",
+            "id": "RT-READY",
+            "stage": "start",
+            "status": "pass",
+            "cause": "none",
+            "expected": "API видит PostgreSQL и vector extension."
+          },
+          {
+            "command": "pytest -q",
+            "result": "360 passed, 38 skipped in 59.75s; stderr пуст.",
+            "id": "RT-TEST-ALL",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Доступный backend test suite проходит; условные DB tests штатно skipped без RUN_DB_TESTS=1."
+          },
+          {
+            "command": "pytest -q tests/test_replenishment_engine.py tests/test_replenishment.py tests/test_replenishment_api.py tests/test_recommendation_explanation.py",
+            "result": "45 passed; подтверждены входы, сезонность, рост, stockout, выбросы, XLSX, permissions и explanation.",
+            "id": "RT-TEST-FOCUSED",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Ключевая предметная логика кейса проходит на контролируемых fixtures."
+          },
+          {
+            "command": "POST /api/v1/auth/login; GET /api/v1/replenishment/runs; GET /api/v1/replenishment/runs/{id}/recommendations; POST /api/v1/orders/from-recommendations; POST /api/v1/orders/{id}/approve; GET /api/v1/orders/{id}/export?format=csv&layout=document",
+            "result": "Login успешен; run done; 4 recommendations; 2 drafts; 2 approved; exports HTTP 200 с 728 и 711 bytes.",
+            "id": "RT-SCENARIO",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Менеджер получает рекомендации, группирует их в draft, явно утверждает и скачивает результат."
+          },
+          {
+            "command": "python -m app.seed.partner_workbooks --directory /seed-input --timeout 900",
+            "result": "12 книг и sha256 проверены; row_count=252385, issue_count=1300, applying достиг 228000 строк; poller timeout 900s, project error не зафиксирован.",
+            "id": "RT-EXCEL",
+            "stage": "scenario",
+            "status": "blocked",
+            "cause": "review_environment",
+            "expected": "Все 12 книг нормализуются и применяются с итоговыми counts манифеста."
+          }
+        ],
+        "limitations": [
+          "AI provider не запускался: ключи намеренно не предоставлены; provider/error/permission путь проверен по исходникам и отсутствие ключа не считается дефектом.",
+          "Visual UI review не выполнялся по пользовательскому запрету на browser/CUA/screenshot.",
+          "Первый Excel запуск получил FileContentMissing из-за раздельного review storage и worker; после запуска worker в общем storage повторный apply продвигался штатно. Этот стендовый сбой не включён в deductions."
+        ]
+      },
+      "liveDemo": {
+        "status": "none",
+        "url": null,
+        "notes": "Публичная live-ссылка не подтверждена. Это не снижает оценку: локальный API/worker сценарий воспроизведён; отсутствие URL отдельно от функциональности."
+      },
+      "fiveHourContext": "Для пятичасового прототипа объём реализации необычно широк: кроме формулы есть импорт профилированных коммерческих книг, quality gates, durable jobs, snapshot/versioning, роли, permissions, заказной workflow, audit, экспорт и 1С handoff. Оценка не требует production scheduler, реальной базы партнёра, измеренной экономии или полного промышленного обмена. Проверенный результат не сводится к README: frontend/backend собраны, PostgreSQL/Redis запущены, run и worker отработали, draft→approve→export подтверждены HTTP.",
+      "strengths": [
+        "Детерминированный robust-daily-v2 с breakdown, дневным forecast и точным Decimal-округлением.",
+        "Проверенная устойчивость к stockout, сезонности, росту, inbound и customer-day выбросам.",
+        "Полный workflow с human approve, optimistic versioning, audit и экспортом только утверждённого заказа.",
+        "Профильный импорт 12 XLSX с хеш-проверкой, provenance, controls и блокировкой неподтверждённых условий.",
+        "Сильный README с synthetic demo, формулой, границами реальных данных и командами тестирования.",
+        "AI отделён от критического расчёта и не получает сырые книги или client ID."
+      ],
+      "gaps": [
+        "D-ACCURACY: отсутствует измеренный backtest и количественный бизнес-эффект на исторических данных партнёра.",
+        "D-BASELINE: нет экспериментального сравнения robust-daily-v2 с простым baseline или текущим Excel-методом.",
+        "D-1C-SCOPE: промышленная база 1С, расписание REST-отчётов и обход страниц пока не подключены/не реализованы; присутствует локальный handoff-контракт."
+      ],
+      "futureAdvice": [
+        {
+          "principle": "Сначала закрепить измеримый offline baseline на тех же входах.",
+          "why": "D-ACCURACY и D-BASELINE: точность и экономический эффект ещё не измерены, поэтому преимущество robust-daily-v2 пока доказано контролируемыми тестами, а не историческим KPI.",
+          "how": "Взять согласованный период партнёра, зафиксировать текущую Excel-формулу и две простые альтернативы, прогнать одинаковый backtest по SKU с метриками stockout, excess и error и сохранить таблицу сравнения.",
+          "findingIds": [
+            "D-ACCURACY",
+            "D-BASELINE"
+          ],
+          "successCheck": "Для каждого SKU опубликованы одинаковые входы, baseline, robust-daily-v2 и error/stockout/excess metrics.",
+          "timeboxMinutes": 90
+        },
+        {
+          "principle": "Сначала согласовать семантику источника, затем разрешать расчёт.",
+          "why": "D-1C-SCOPE: адаптер блокирует неполные книги, но финальный путь к реальному обмену и end-to-end данным не закрыт.",
+          "how": "Зафиксировать contract pack по внешнему ID строки 1С, знаку операции, unit conversion, lead time, MOQ, stockout и формату заказа; затем добавить replayable REST fixture для import → calculate → handoff → ack.",
+          "findingIds": [
+            "D-1C-SCOPE"
+          ],
+          "successCheck": "Один обезличенный fixture проходит через quality-ready source и расчёт до идемпотентного handoff/ack без ручного редактирования таблиц.",
+          "timeboxMinutes": 120
+        },
+        {
+          "principle": "Держать критическую ценность в узком воспроизводимом demo path.",
+          "why": "Команда уже отделила synthetic full demo от ограниченного partner package, что позволило доказать основной результат при неполных реальных полях.",
+          "how": "Подготовить один фиксированный snapshot с контрастными товарами, а для реального пакета показывать отдельный quality/readiness отчёт, не смешивая его с synthetic output.",
+          "findingIds": [
+            "S-WORKFLOW",
+            "S-README"
+          ],
+          "successCheck": "Новый проверяющий получает предсказуемый основной результат одной командой и отдельно видит ready/limited/blocked источники.",
+          "timeboxMinutes": 45
+        }
+      ],
+      "uncertainties": [
+        "Визуальный layout, адаптивность и реальное поведение страниц не проверялись по пользовательской политике; это не свидетельствует о дефекте UI.",
+        "AI assistant provider не вызывался без ключа; статически проверены adapters, error path, permission checks и confirmation flow.",
+        "Полная обработка 252385 строк продолжалась после timeout poller; финальный applied summary этого запуска не наблюдался.",
+        "Совместимость экспорта с конкретной конфигурацией 1С требует приёмки партнёром; локальный CSV/XLSX и JSON handoff подтверждены."
+      ],
+      "reviewPolicyVersion": 2,
+      "assessmentStatus": "ready",
+      "findings": [
+        {
+          "id": "S-WORKFLOW",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Основной synthetic сценарий проходит от завершённого расчёта через рекомендации и два supplier draft до approve и CSV export.",
+          "expected": "Результат должен быть рассчитан и подготовлен к контролируемому заказу поставщика.",
+          "actual": "Run done, 4 recommendations, 2 drafts, 2 approved orders, 2 exports HTTP 200.",
+          "evidence": [
+            "RT-SCENARIO",
+            "backend/app/Domains/Procurement/controllers/http.py:49-221"
+          ],
+          "checkIds": [
+            "RT-SCENARIO"
+          ]
+        },
+        {
+          "id": "S-ENGINE",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Ключевые case logic проверки движка проходят и сохраняют объясняемые детали.",
+          "expected": "Stock, inbound, growth, seasonality, stockout, outlier и rounding должны влиять предсказуемо.",
+          "actual": "45 focused tests и полный набор 360 tests прошли; details валидируются Pydantic-моделями.",
+          "evidence": [
+            "RT-TEST-FOCUSED",
+            "RT-TEST-ALL",
+            "backend/tests/test_replenishment_engine.py:55-328"
+          ],
+          "checkIds": [
+            "RT-TEST-FOCUSED",
+            "RT-TEST-ALL"
+          ]
+        },
+        {
+          "id": "S-IMPORT-QUALITY",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Профильный адаптер принимает все 12 книг и не скрывает неполноту семантики.",
+          "expected": "Реальные XLSX должны быть обработаны по профилю, а неподтверждённые поля не должны стать фиктивными входами.",
+          "actual": "Пакет row_count=252385, issue_count=1300; worker применил строки до 228000 с quality controls.",
+          "evidence": [
+            "RT-EXCEL",
+            "backend/app/seed/partner_workbooks.py:30-54",
+            "backend/app/Domains/DataImports/adapters/partner_workbooks.py:571-628"
+          ],
+          "checkIds": [
+            "RT-EXCEL"
+          ]
+        },
+        {
+          "id": "S-README",
+          "kind": "strength",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "README содержит воспроизводимый локальный сценарий, формулу, ограничения и команды проверки.",
+          "expected": "Без устной презентации должно быть понятно, как запустить и интерпретировать результат.",
+          "actual": "Описаны launch, fixed as_of, synthetic seed, workflow, partner limitations и test commands.",
+          "evidence": [
+            "README.md:45-188",
+            "README.md:190-248",
+            "README.md:351-383"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "D-ACCURACY",
+          "kind": "defect",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "В срезе нет backtest и измеренного бизнес-эффекта на фактических данных партнёра.",
+          "expected": "Для уверенного бизнес-решения желательны сравнение с историей/Excel и метрики error, stockout или excess.",
+          "actual": "README сообщает, что точность и денежный эффект пока не измерены; evidence ограничены synthetic fixtures.",
+          "evidence": [
+            "README.md:7",
+            "README.md:443-450",
+            "backend/tests/test_replenishment_engine.py:1-328"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "D-BASELINE",
+          "kind": "defect",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Нет сравнения robust-daily-v2 с простым baseline или исходным Excel-расчётом.",
+          "expected": "Инновационное преимущество должно быть показано на одинаковом входе.",
+          "actual": "Тесты проверяют внутренние инварианты и чувствительность, но не сравнивают качество с альтернативой.",
+          "evidence": [
+            "backend/app/Domains/Replenishment/services/engine.py:124-155",
+            "README.md:443-450",
+            "backend/tests/test_replenishment_engine.py:167-209"
+          ],
+          "checkIds": [
+            "RT-TEST-FOCUSED"
+          ]
+        },
+        {
+          "id": "D-1C-SCOPE",
+          "kind": "defect",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Промышленный сетевой обмен с конкретной 1С и автоматическое расписание REST-отчётов не входят в реализованный срез.",
+          "expected": "Для промышленного масштабирования нужны проверенные transport, schedule, ID/units/signs и приёмка формата заказа.",
+          "actual": "Есть локальный handoff/ack контракт, но README сообщает, что база не подключена, scheduler и pagination не реализованы.",
+          "evidence": [
+            "README.md:309-315",
+            "README.md:443-450",
+            "backend/app/Domains/Procurement/controllers/http.py:226-247"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "L-PARTNER-TIMEOUT",
+          "kind": "limitation",
+          "verification": "observed",
+          "responsibility": "review_environment",
+          "claim": "Полный финальный статус применения partner XLSX не был получен в текущем ревью.",
+          "expected": "Poll должен дождаться row_count=252385 и итогового applied/validated состояния.",
+          "actual": "Пакет достиг 228000/252385, poller получил 900-second timeout, worker продолжал apply без project error.",
+          "evidence": [
+            "RT-EXCEL",
+            "captures/20261002T065133863275-excel-import-retry.stdout.log",
+            "captures/20261002T065133863275-excel-import-retry.stderr.log"
+          ],
+          "checkIds": [
+            "RT-EXCEL"
+          ]
+        },
+        {
+          "id": "L-VISUAL",
+          "kind": "limitation",
+          "verification": "unverified",
+          "responsibility": "review_environment",
+          "claim": "Визуальное поведение frontend не проверялось.",
+          "expected": "Пользователь должен отдельно проверить layout, адаптивность и взаимодействия страниц.",
+          "actual": "Проверены только TypeScript/Vite build и backend/API; browser/CUA/screenshot инструменты запрещены.",
+          "evidence": [
+            "RT-FE-BUILD",
+            "README.md:351-383"
+          ],
+          "checkIds": [
+            "RT-FE-BUILD"
+          ]
+        }
+      ],
+      "gapFindingIds": [
+        "D-ACCURACY",
+        "D-BASELINE",
+        "D-1C-SCOPE"
+      ]
+    }
+  ],
+  "score": 94.0,
+  "status": "complete",
+  "expectedJudges": 1
+}

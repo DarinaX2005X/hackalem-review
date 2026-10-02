@@ -1,0 +1,943 @@
+{
+  "methodVersion": 4,
+  "repoId": "hack-395e4fb2-ai4edu",
+  "repoUrl": "https://github.com/BAITC-Hacks/hack-395e4fb2-ai4edu",
+  "caseId": 12,
+  "snapshot": "c415e3731552edc1e00f618ef90ab53c1d3dc78e",
+  "judges": [
+    {
+      "methodVersion": 4,
+      "repoId": "hack-395e4fb2-ai4edu",
+      "caseId": 12,
+      "model": "GPT-5.6 Luna",
+      "snapshot": "c415e3731552edc1e00f618ef90ab53c1d3dc78e",
+      "overallSummary": "Проект представляет цельный локально воспроизводимый симулятор: сервер отдаёт единый сценарий, принимает ровно пять решений, валидирует бюджет и ограничения, детерминированно считает показатели и Score, а затем формирует объяснение через LLM либо содержательный fallback. Основной сценарий подтверждён HTTP-проверками и независимым Python-пересчётом: golden-план даёт 56.54307, полный перебор 694395 допустимых планов — 57.236735. Подтверждённый недостаток относится к воспроизводимости документации: Go-тесты HTTP-пакета не могут разобрать примеры из docs/demo.md и docs/api.md из-за CRLF-файлов при поиске LF-маркеров; сам движок и production frontend build при этом проходят.",
+      "global": {
+        "criteria": [
+          {
+            "name": "Ценность решения",
+            "score": 25,
+            "max": 25,
+            "awarded": "Решение убедительно показывает пользу для управленца или аналитика, которому нужно сравнивать городские приоритеты при ограниченном бюджете.",
+            "deductions": "Снятий нет.",
+            "evidence": [
+              "README.md:16-28",
+              "docs/task.md:1-32",
+              "POST /api/simulate: golden 56.54307, cost 95, critical_after 0"
+            ],
+            "deductionItems": [],
+            "awardedDetails": [
+              {
+                "aspect": "Понятная управленческая задача",
+                "implementation": "В README описаны фиксированный бюджет 100, пять районов, 14 мер и необходимость ровно выбрать пять решений; сценарий связывает расходы с показателями районов и городским Score.",
+                "value": "Это превращает абстрактную тему AI в конкретный учебный инструмент для обсуждения компромиссов между транспортом, экологией, социальной сферой, безопасностью и сервисами.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:5-22",
+                  "docs/task.md:1-18"
+                ]
+              },
+              {
+                "aspect": "Измеримый результат для пользователя",
+                "implementation": "Ответ Result содержит стоимость, остаток бюджета, базовый и итоговый Score, delta, critical_before/after, изменения по районам и применённые эффекты.",
+                "value": "Пользователь получает проверяемое последствие решения, а не только текстовое мнение модели.",
+                "verification": "observed",
+                "evidence": [
+                  "internal/simulation/models.go:115-132",
+                  "runtime check scenario-golden"
+                ]
+              },
+              {
+                "aspect": "Ориентация на слабые районы",
+                "implementation": "Формула использует 70% средневзвешенного результата, 30% минимального районного Score и штрафует критические пары ниже 40.",
+                "value": "Модель не позволяет максимизировать только благополучный район и делает социально значимым устранение провалов в Нуре.",
+                "verification": "source",
+                "evidence": [
+                  "internal/simulation/engine.go:94-110",
+                  "docs/scoring.md:145-165",
+                  "runtime check verify-scores"
+                ]
+              }
+            ],
+            "scoreReasoning": "Максимальный балл заслужен тем, что задача, аудитория и практический результат согласованы и проверены численно. Ограничение синтетической учебной модели относится к исходному кейсу и не является дефектом прототипа."
+          },
+          {
+            "name": "Результат и качество решения",
+            "score": 20,
+            "max": 20,
+            "awarded": "Основной пользовательский сценарий работает от каталога до результата и объяснения; качество числового результата подтверждено независимым оракулом.",
+            "deductions": "Снятий нет.",
+            "evidence": [
+              "runtime check scenario-golden",
+              "runtime check scenario-alternate",
+              "runtime check scenario-explain",
+              "scripts/verify_scores.py:92-126"
+            ],
+            "deductionItems": [],
+            "awardedDetails": [
+              {
+                "aspect": "Целостный путь сценария",
+                "implementation": "GET /api/scenario возвращает каталог, POST /api/simulate рассчитывает валидный план, POST /api/explain возвращает тот же Result и объяснение.",
+                "value": "Сценарий не распадается на несвязанные демонстрационные заглушки: вход, расчёт и интерпретация соединены одним контрактом.",
+                "verification": "observed",
+                "evidence": [
+                  "internal/httpapi/handler.go:41-56,76-95",
+                  "runtime check scenario-golden",
+                  "runtime check scenario-explain"
+                ]
+              },
+              {
+                "aspect": "Изменение решений меняет результат",
+                "implementation": "Golden-план M7/M8/M10/M12/M5 дал 56.54307, альтернативный допустимый план M9/M11/M10/M12/M4 — 52.74611375 при иной стоимости и числе критических показателей.",
+                "value": "Это непосредственно выполняет ключевой критерий кейса, а не только демонстрирует статический экран.",
+                "verification": "observed",
+                "evidence": [
+                  "runtime check scenario-golden",
+                  "runtime check scenario-alternate",
+                  "internal/simulation/engine_test.go:44-64"
+                ]
+              },
+              {
+                "aspect": "Результат не доверяет числам от клиента или LLM",
+                "implementation": "HTTP декодирует только Request, движок сам вызывает Simulate, невалидный набор возвращается без score; объяснение получает уже проверенный Result и не может заменить его поля.",
+                "value": "Это сохраняет целостность пользовательского результата при внешнем AI-вызове и при ошибках ввода.",
+                "verification": "source",
+                "evidence": [
+                  "internal/httpapi/handler.go:83-119",
+                  "internal/explanation/service.go:42-73",
+                  "internal/simulation/engine.go:8-21"
+                ]
+              }
+            ],
+            "scoreReasoning": "Функциональный сценарий, смена Score и fallback были реально проверены. Полный балл оправдан тем, что ограничения внешнего AI не блокируют числовой результат и не требуют оплачиваемого ключа."
+          },
+          {
+            "name": "Инновационность",
+            "score": 15,
+            "max": 15,
+            "awarded": "Нестандартность выражена в сочетании детерминированной городской модели, синергий и лагов с AI-объяснением и проверяемым оптимизатором.",
+            "deductions": "Снятий нет.",
+            "evidence": [
+              "internal/simulation/engine.go:29-81",
+              "internal/advisor/service.go:51-175",
+              "internal/optimizer/optimizer.go:34-61"
+            ],
+            "deductionItems": [],
+            "awardedDetails": [
+              {
+                "aspect": "AI отделён от арифметики",
+                "implementation": "LLM получает сериализованный Result, список выбранных мер, названия показателей и горизонты; числовые поля считает только Go-движок.",
+                "value": "Такой boundary делает AI полезным для интерпретации, но не позволяет языковой модели незаметно подменить Score.",
+                "verification": "source",
+                "evidence": [
+                  "internal/explanation/service.go:33-73",
+                  "internal/explanation/openai.go:20-28"
+                ]
+              },
+              {
+                "aspect": "Нелинейные последствия решений",
+                "implementation": "Движок учитывает лаг `(Horizon-Lag)/Horizon`, clipping после накопления эффектов, три синергии и несовместимости с разной областью действия.",
+                "value": "Пользователь сравнивает стратегию с временными и пространственными компромиссами, а не просто складывает пять независимых бонусов.",
+                "verification": "source",
+                "evidence": [
+                  "internal/simulation/engine.go:31-64",
+                  "internal/simulation/dataset.go:48-57",
+                  "internal/simulation/engine_test.go:112-169"
+                ]
+              },
+              {
+                "aspect": "Проверяемый поиск лучшего плана",
+                "implementation": "Optimizer перебирает допустимые комбинации через тот же Simulate, выбирает лучший результат и отдаёт его через `/api/recommend`.",
+                "value": "Рекомендация является воспроизводимым вычислительным результатом, а не субъективным ответом LLM.",
+                "verification": "observed",
+                "evidence": [
+                  "internal/optimizer/optimizer.go:101-183",
+                  "runtime check recommend-best",
+                  "runtime check verify-scores"
+                ]
+              }
+            ],
+            "scoreReasoning": "Подход заметно отличается от простого чат-бота: AI объясняет, а детерминированный движок и полный перебор дают контроль чисел. Все существенные элементы подтверждены исходниками и тестовыми векторами."
+          },
+          {
+            "name": "Потенциал развития и масштабирования",
+            "score": 20,
+            "max": 20,
+            "awarded": "Архитектура хорошо подготовлена к расширению набора данных, целей оптимизации, AI-провайдеров и пользовательских сценариев.",
+            "deductions": "Снятий нет.",
+            "evidence": [
+              "internal/simulation/models.go:3-68",
+              "internal/optimizer/goal.go:14-33",
+              "internal/autopilot/service.go:26-73",
+              "web/README.md:126-166"
+            ],
+            "deductionItems": [],
+            "awardedDetails": [
+              {
+                "aspect": "Расширяемая модель данных",
+                "implementation": "Scenario отделяет районы, показатели, меры, синергии, несовместимости, веса и scoring rules; `DefaultScenario` возвращает свежие структуры.",
+                "value": "Другой город или новый каталог можно подключить через данные и правила без переписывания HTTP-контракта.",
+                "verification": "source",
+                "evidence": [
+                  "internal/simulation/models.go:47-68",
+                  "internal/simulation/dataset.go:3-7"
+                ]
+              },
+              {
+                "aspect": "Несколько целей оптимизации",
+                "implementation": "Goal поддерживает score, weakest_district, focus_district и critical_first, бюджет, максимум критических показателей и защищаемые районы.",
+                "value": "Один движок применим к разным управленческим целям, а не только к единственному рейтингу.",
+                "verification": "source",
+                "evidence": [
+                  "internal/optimizer/goal.go:50-131",
+                  "internal/autopilot/openai.go:27-46"
+                ]
+              },
+              {
+                "aspect": "Безопасное развитие AI-пайплайна",
+                "implementation": "Автопилот ограничивает роли, итерации, стоимость, размер запроса, concurrency и валидирует результат через Go перед применением.",
+                "value": "Это создаёт понятный путь от MVP к более сложным агентным сценариям без отказа от детерминированного контроля.",
+                "verification": "source",
+                "evidence": [
+                  "internal/autopilot/config.go:11-39",
+                  "internal/autopilot/service.go:210-250,317-360",
+                  "internal/autopilot/openai.go:138-169"
+                ]
+              }
+            ],
+            "scoreReasoning": "Проект уже содержит точки расширения для целей, AI-провайдеров, истории, рекомендаций и автопилота. Для пятичасового MVP это сильная база масштабирования, поэтому ограничений по этому критерию не установлено."
+          },
+          {
+            "name": "Презентация, демо и ответы на вопросы",
+            "score": 19,
+            "max": 20,
+            "awarded": "README, docs/demo.md и docs/api.md дают воспроизводимый сценарий, таблицы чисел и команды HTTP; визуальное поведение не проверялось по установленному запрету.",
+            "deductions": "Один балл снят за подтверждённую несогласованность машинно проверяемых примеров документации.",
+            "evidence": [
+              "README.md:53-127",
+              "docs/demo.md:60-119",
+              "docs/api.md:105-123",
+              "check-go failure: internal/httpapi documentation tests"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "F-DOC-CRLF",
+                "reason": "При запуске включённых HTTP-тестов exact-маркеры примеров не находятся в docs/demo.md и docs/api.md: тесты ожидают LF-строки, а оба файла фактически содержат CRLF. Человеческий текст читаем, но автоматическая воспроизводимость документированных ответов ломается."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "README объясняет запуск и границы",
+                "implementation": "Описаны Docker и локальный запуск, переменные AI, fallback без ключа, ручной golden-сценарий, проверки и структура пакетов.",
+                "value": "Жюри или разработчик может быстро понять, что именно демонстрировать и какие числа считать эталонными.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:76-137",
+                  "web/README.md:7-38"
+                ]
+              },
+              {
+                "aspect": "Демо содержит числовые ориентиры",
+                "implementation": "docs/demo.md перечисляет base, golden, optimal, skew и trap, их стоимость, Score, критические значения, а также curl-запросы и ответы.",
+                "value": "Демонстрация объясняет не только happy path, но и компромисс, где инвестиции в один район оставляют другие без изменений.",
+                "verification": "source",
+                "evidence": [
+                  "docs/demo.md:60-119",
+                  "docs/demo.md:232-371"
+                ]
+              },
+              {
+                "aspect": "Документация связана с тестами",
+                "implementation": "HTTP-тесты читают curl и JSON-примеры из docs, сверяют их с обработчиком и проверяют таблицы результатов.",
+                "value": "Это сильная практика защиты демонстрации от устаревания, хотя текущая проблема окончания строк не даёт тестам пройти.",
+                "verification": "source",
+                "evidence": [
+                  "internal/httpapi/demo_test.go:16-34,76-160",
+                  "internal/httpapi/docs_test.go:62-120",
+                  "F-DOC-CRLF"
+                ]
+              }
+            ],
+            "scoreReasoning": "Документация содержательно сильная и основной локальный demo flow подтверждён напрямую через HTTP. Снятие ограничено одним реальным дефектом формата строк, который ломает именно автоматическую сверку docs-примеров, а не сам API."
+          }
+        ],
+        "total": 99
+      },
+      "case": {
+        "criteria": [
+          {
+            "name": "Соответствие задаче и работоспособность",
+            "score": 25,
+            "max": 25,
+            "awarded": "Все обязательные элементы кейса реализованы в основном локальном сценарии и подтверждены результатами API/движка.",
+            "deductions": "Снятий нет.",
+            "evidence": [
+              "internal/simulation/dataset.go:4-57",
+              "internal/simulation/validator.go:5-70",
+              "runtime check scenario-golden"
+            ],
+            "deductionItems": [],
+            "awardedDetails": [
+              {
+                "aspect": "Единый бюджет и стартовые данные",
+                "implementation": "Сценарий фиксирует budget 100, пять районов, 10 индикаторов и 14 мер; каждый вызов DefaultScenario создаёт свежий набор.",
+                "value": "Все пользователи и запросы сравниваются на одной модели, без накопления состояния между симуляциями.",
+                "verification": "source",
+                "evidence": [
+                  "internal/simulation/dataset.go:3-30",
+                  "internal/httpapi/handler.go:41-43"
+                ]
+              },
+              {
+                "aspect": "Ровно пять управленческих решений",
+                "implementation": "validate проверяет `len(decisions) == RequiredDecisions`, уникальность мер, район для районных мер и отсутствие district_id у городских.",
+                "value": "Основное условие задания enforced сервером, а не оставлено только интерфейсу.",
+                "verification": "source",
+                "evidence": [
+                  "internal/simulation/validator.go:10-43",
+                  "internal/simulation/engine_test.go:68-109"
+                ]
+              },
+              {
+                "aspect": "Бюджет, эффекты и Score",
+                "implementation": "Сумма стоимости сравнивается с 100; валидный набор применяет лаги, синергии и clipping, затем считает районные и городской Score.",
+                "value": "Golden-план дал ожидаемые 95 единиц и 56.54307 при нуле критических пар.",
+                "verification": "observed",
+                "evidence": [
+                  "internal/simulation/engine.go:13-82",
+                  "runtime check scenario-golden",
+                  "runtime check verify-scores"
+                ]
+              },
+              {
+                "aspect": "Понятное объяснение",
+                "implementation": "Explanation.Service отправляет расчётный Result провайдеру, а при отсутствии ключа строит fallback с сильными сторонами, рисками и компромиссами.",
+                "value": "Обязательный результат не исчезает при недоступной интеграции AI.",
+                "verification": "observed",
+                "evidence": [
+                  "internal/explanation/service.go:42-73",
+                  "internal/explanation/fallback.go:13-94",
+                  "runtime check scenario-explain"
+                ]
+              }
+            ],
+            "scoreReasoning": "Все обязательные требования задания закрыты серверным сценарием. Внешний ключ не был предоставлен, но fallback и статический provider path позволяют подтвердить поведение без подмены интеграции mock-ответом."
+          },
+          {
+            "name": "Техническая реализация",
+            "score": 25,
+            "max": 25,
+            "awarded": "Архитектура разделяет модель, валидатор, расчёт, HTTP, объяснение, рекомендации и автопилот; числовая логика хорошо покрыта тестами.",
+            "deductions": "Снятий нет.",
+            "evidence": [
+              "internal/simulation/engine.go:8-156",
+              "internal/httpapi/handler.go:18-138",
+              "internal/explanation/service.go:14-73",
+              "runtime check verify-scores"
+            ],
+            "deductionItems": [],
+            "awardedDetails": [
+              {
+                "aspect": "Детерминированный движок",
+                "implementation": "Simulate — единая точка исполнения; валидный Result содержит applied effects, indicator deltas, before/after, breakdown и critical counts.",
+                "value": "Все потребители получают один источник истины и могут повторно проверить результат.",
+                "verification": "source",
+                "evidence": [
+                  "internal/simulation/engine.go:8-82",
+                  "internal/simulation/models.go:86-132"
+                ]
+              },
+              {
+                "aspect": "Строгий HTTP-контракт",
+                "implementation": "JSON декодируется с DisallowUnknownFields, ограничивается по размеру и принимает ровно один объект; ошибки отделены от валидного Result.",
+                "value": "Контракт устойчив к мусорным полям, повторным объектам и некорректным сценариям.",
+                "verification": "source",
+                "evidence": [
+                  "internal/httpapi/handler.go:97-132",
+                  "internal/simulation/decision_json.go:8-23"
+                ]
+              },
+              {
+                "aspect": "Проверенный оптимизатор",
+                "implementation": "Optimizer перебирает только допустимые комбинации и повторно вызывает simulation.Simulate; `/api/recommend` возвращает best и варианты улучшения.",
+                "value": "Рекомендации согласованы с тем же движком, что используется ручным сценарием.",
+                "verification": "observed",
+                "evidence": [
+                  "internal/optimizer/optimizer.go:64-98,101-183",
+                  "runtime check recommend-best",
+                  "runtime check recommend-improve"
+                ]
+              },
+              {
+                "aspect": "Покрытие расчётных инвариантов",
+                "implementation": "Go-тесты проверяют baseline/golden, валидацию, синергии, clipping, строгий порог 40, лаги, порядок решений и изоляцию данных.",
+                "value": "Это снижает риск незаметной арифметической регрессии в ядре кейса.",
+                "verification": "source",
+                "evidence": [
+                  "internal/simulation/engine_test.go:29-238",
+                  "internal/simulation/regression_test.go:9-83",
+                  "check-go partial: simulation package PASS"
+                ]
+              }
+            ],
+            "scoreReasoning": "Сильная модульная реализация и PASS ключевых domain-пакетов позволяют дать максимум. Сбой HTTP-тестов связан с форматом docs-файлов и отдельно учитывается в критерии воспроизводимости, а не в арифметике или архитектуре."
+          },
+          {
+            "name": "README и воспроизводимость",
+            "score": 23,
+            "max": 25,
+            "awarded": "Документация подробно описывает структуру, команды, API, числовые эталоны и резервный запуск без ключа.",
+            "deductions": "Два балла сняты за то, что включённый набор проверок документационных примеров не проходит на данном snapshot.",
+            "evidence": [
+              "README.md:76-127",
+              "docs/api.md:13-20,105-123,302-367",
+              "docs/demo.md:60-119",
+              "check-go failure: HTTP documentation tests"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "F-DOC-CRLF",
+                "reason": "docs/demo.md и docs/api.md содержат CRLF, тогда как demo_test.go:20 и docs_test.go:65 ищут маркеры с LF. Из-за этого тесты получают Count=0 и не выполняют сверку curl/JSON-примеров, хотя маркеры визуально присутствуют."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Команды запуска и проверки",
+                "implementation": "README даёт Docker, Go, npm, make check и независимый make verify; web/README разделяет backend, Vite, mock и integration сценарии.",
+                "value": "Репозиторий содержит достаточную навигацию для воспроизведения MVP.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:86-127",
+                  "web/README.md:7-38,168-180"
+                ]
+              },
+              {
+                "aspect": "Полный API-контракт",
+                "implementation": "docs/api.md документирует методы, поля Scenario/Result, формулу, ошибки 400/422/503, recommend и ограничения входа.",
+                "value": "Проверяющий может составить запросы без чтения всего Go-кода.",
+                "verification": "source",
+                "evidence": [
+                  "docs/api.md:13-20,64-103,145-190,255-367"
+                ]
+              },
+              {
+                "aspect": "Независимая числовая сверка",
+                "implementation": "scripts/verify_scores.py повторяет формулу точными Fraction и перебирает все допустимые планы; запуск с --optimum прошёл.",
+                "value": "Воспроизводимость арифметики подтверждается независимой реализацией, а не только тестами самого движка.",
+                "verification": "observed",
+                "evidence": [
+                  "scripts/verify_scores.py:1-126",
+                  "runtime check verify-scores"
+                ]
+              }
+            ],
+            "scoreReasoning": "README и docs существенно выше обычного хакатонного минимума, но автоматическая проверка документированных примеров полностью ломается из-за окончания строк. Это реальный, локализованный дефект воспроизводимости, поэтому оставлено 23/25."
+          },
+          {
+            "name": "Ценность и применимость решения",
+            "score": 15,
+            "max": 15,
+            "awarded": "Для учебного и демонстрационного сценария решение практически применимо: оно позволяет безопасно сравнивать распределение ограниченных ресурсов и объяснять последствия.",
+            "deductions": "Снятий нет.",
+            "evidence": [
+              "docs/task.md:1-18",
+              "README.md:16-28,53-73",
+              "internal/explanation/fallback.go:45-93"
+            ],
+            "deductionItems": [],
+            "awardedDetails": [
+              {
+                "aspect": "Ориентация на городского управленца",
+                "implementation": "Каталог и показатели названы в терминах транспорта, зелени, школ, безопасности, ЖКХ и обращений жителей.",
+                "value": "Результат легко обсуждать с целевой аудиторией кейса, не переводя его из технических метрик в предметную область.",
+                "verification": "source",
+                "evidence": [
+                  "docs/task.md:3-15",
+                  "internal/simulation/dataset.go:8-22"
+                ]
+              },
+              {
+                "aspect": "Видимые компромиссы",
+                "implementation": "Fallback явно выводит сильнейшие улучшения, слабейший район, критические значения, отрицательные дельты, неизрасходованный бюджет и неохваченные направления.",
+                "value": "Пользователь видит не только рейтинг победителя, но и цену выбора.",
+                "verification": "source",
+                "evidence": [
+                  "internal/explanation/fallback.go:18-93"
+                ]
+              },
+              {
+                "aspect": "Безопасное учебное применение",
+                "implementation": "README прямо отмечает синтетические данные и отсутствие реальных действий в городе; система работает как симулятор с локальными запросами.",
+                "value": "Это корректно ограничивает обещания и делает прототип пригодным для обучения и демонстрации решений.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:11-12",
+                  "docs/demo.md:55-58"
+                ]
+              }
+            ],
+            "scoreReasoning": "Кейс требует учебный AI-симулятор, а не production-городскую систему. В рамках этого масштаба ценность хорошо раскрыта и подтверждена работающим сценарием."
+          },
+          {
+            "name": "Потенциал развития и оригинальность подхода",
+            "score": 10,
+            "max": 10,
+            "awarded": "Проект сочетает оригинальную формулу с инженерно зрелым путём развития к многоролевому автопилоту и расширяемым целям.",
+            "deductions": "Снятий нет.",
+            "evidence": [
+              "internal/optimizer/goal.go:14-33,134-185",
+              "internal/autopilot/service.go:269-360",
+              "web/README.md:40-71"
+            ],
+            "deductionItems": [],
+            "awardedDetails": [
+              {
+                "aspect": "Расширение от ручного плана к цели",
+                "implementation": "Автопилот принимает естественно-языковую цель, формализует её ролями master/auditor/planner/reviewer и сохраняет проверенный результат.",
+                "value": "Это естественная следующая ступень после ручной симуляции без отказа от серверного контроля.",
+                "verification": "source",
+                "evidence": [
+                  "internal/autopilot/service.go:269-360",
+                  "web/README.md:40-71"
+                ]
+              },
+              {
+                "aspect": "Обобщаемые цели",
+                "implementation": "Goal отделяет objective, budget_limit, max_critical, focus_district и protect_districts; оптимизатор имеет кэш и bounded search.",
+                "value": "Новые типы управленческих запросов можно добавлять на уровне формализации цели.",
+                "verification": "source",
+                "evidence": [
+                  "internal/optimizer/goal.go:14-24,50-85,134-185"
+                ]
+              },
+              {
+                "aspect": "Готовность к интерфейсному развитию",
+                "implementation": "Frontend получает геометрию и данные отдельно, поддерживает историю, сравнение, рекомендации и mock-режим без backend.",
+                "value": "Развитие к новым визуальным представлениям или районам не требует смешивать UI с формулой Score.",
+                "verification": "source",
+                "evidence": [
+                  "web/README.md:73-105,126-166"
+                ]
+              }
+            ],
+            "scoreReasoning": "Оригинальность и дальнейший путь развития явно видны в коде, документации и API, поэтому максимум по кейсовой шкале заслужен."
+          }
+        ],
+        "total": 98
+      },
+      "judgeScore": 98.5,
+      "caseRequirements": [
+        {
+          "requirement": "Единый виртуальный бюджет и одинаковые исходные данные",
+          "status": "met",
+          "explanation": "DefaultScenario фиксирует бюджет 100, пять районов, показатели и каталог мер; HTTP-проверка получила budget=100 и 14 measures.",
+          "evidence": [
+            "internal/simulation/dataset.go:4-46",
+            "runtime check scenario-catalog"
+          ]
+        },
+        {
+          "requirement": "Ровно пять решений по транспорту, озеленению, соцсфере, безопасности и сервисам",
+          "status": "met",
+          "explanation": "Серверная валидация требует ровно пять уникальных мер и ограничивает максимум двумя мерами одной категории.",
+          "evidence": [
+            "internal/simulation/validator.go:10-50",
+            "internal/simulation/engine_test.go:68-109"
+          ]
+        },
+        {
+          "requirement": "Автоматический контроль бюджета и правил набора",
+          "status": "met",
+          "explanation": "Превышение стоимости, дубли, отсутствие района, лишний район у городской меры, category limit и несовместимости возвращают validation_errors без Score.",
+          "evidence": [
+            "internal/simulation/validator.go:18-70",
+            "internal/simulation/engine_test.go:68-109",
+            "runtime check invalid-budget"
+          ]
+        },
+        {
+          "requirement": "Решения меняют показатели районов",
+          "status": "met",
+          "explanation": "Result содержит before/after и indicator_deltas; golden и альтернативный допустимый наборы дали разные дельты и Score.",
+          "evidence": [
+            "internal/simulation/engine.go:62-74",
+            "runtime check scenario-golden",
+            "runtime check scenario-alternate"
+          ]
+        },
+        {
+          "requirement": "Расчёт Astana Quality of Life Score",
+          "status": "met",
+          "explanation": "Формула реализована с population-weighted average, weakest district и critical penalty; значения совпали с независимым Fraction-пересчётом.",
+          "evidence": [
+            "internal/simulation/engine.go:85-110",
+            "docs/scoring.md:137-165",
+            "runtime check verify-scores"
+          ]
+        },
+        {
+          "requirement": "AI объясняет сильные стороны, риски и компромиссы",
+          "status": "partial",
+          "explanation": "При отсутствии намеренно не предоставленного ключа реально отработал fallback с этими разделами; OpenAI/NVIDIA путь статически прослежен, но живой внешний ответ не проверялся.",
+          "evidence": [
+            "internal/explanation/service.go:42-73",
+            "internal/explanation/fallback.go:45-93",
+            "internal/explanation/openai.go:36-115",
+            "internal/explanation/nvidia.go:30-95",
+            "runtime check scenario-explain"
+          ]
+        },
+        {
+          "requirement": "Изменение набора решений меняет Score",
+          "status": "met",
+          "explanation": "Golden дал 56.54307, альтернативный допустимый набор — 52.74611375; независимый oracle также проверил trap/skew и базовый сценарий.",
+          "evidence": [
+            "runtime check scenario-golden",
+            "runtime check scenario-alternate",
+            "runtime check verify-scores"
+          ]
+        },
+        {
+          "requirement": "Опциональные рекомендации и оптимизация",
+          "status": "met",
+          "explanation": "`/api/recommend` best подтвердил полный перебор с 57.236735 и cost 98; improve вернул три проверенных варианта одной замены.",
+          "evidence": [
+            "internal/httpapi/recommend.go:17-59",
+            "runtime check recommend-best",
+            "runtime check recommend-improve"
+          ]
+        }
+      ],
+      "testData": {
+        "provided": [
+          "cases/12/case-data/HackAlem AI_ «Аким на 5 часов» - AI-симулятор управления городом.md",
+          "cases/12/case-data/Датасет районов (1).md"
+        ],
+        "used": [
+          "cases/12/case-data/HackAlem AI_ «Аким на 5 часов» - AI-симулятор управления городом.md",
+          "cases/12/case-data/Датасет районов (1).md",
+          "internal/simulation/dataset.go",
+          "scripts/verify_scores.py"
+        ],
+        "checks": [
+          {
+            "input": "Исходные значения пяти районов, бюджет 100, горизонт 8 кварталов, 14 мер, веса и правила из датасета кейса",
+            "method": "Сопоставил предоставленный датасет с DefaultScenario и прогнал GET /api/scenario",
+            "result": "Получены 5 районов, 14 мер, budget=100, required_decisions=5; значения и правила совпадают с кейсом.",
+            "conclusion": "Структура входа и единый старт подтверждены."
+          },
+          {
+            "input": "Golden: M7→nura, M8→nura, M10→nura, M12→город, M5→saryarka",
+            "method": "POST /api/simulate и независимый scripts/verify_scores.py --optimum",
+            "result": "HTTP 200, cost=95, remaining=5, final_score=56.54306999999999, critical_after=0; Python PASS golden=56.5430700.",
+            "conclusion": "Пример из кейса воспроизводится с ожидаемым Score и устранением двух критических пар."
+          },
+          {
+            "input": "Альтернативный валидный набор M9→esil, M11→almaty, M10→esil, M12→город, M4→esil",
+            "method": "POST /api/simulate",
+            "result": "HTTP 200, valid=true, cost=61, remaining=39, final_score=52.74611375, critical_after=3.",
+            "conclusion": "Изменение набора действительно меняет Score и критические показатели."
+          },
+          {
+            "input": "Набор выше бюджета M3+M7+M8+M5+M12",
+            "method": "POST /api/simulate; дополнительно покрытие internal/simulation/engine_test.go",
+            "result": "HTTP 422; source/unit checks require budget_exceeded and no score for invalid input.",
+            "conclusion": "Контроль лимита бюджета подтверждён."
+          },
+          {
+            "input": "Все допустимые комбинации каталога",
+            "method": "python scripts/verify_scores.py --optimum",
+            "result": "PASS base, golden, optimum, skew, trap; PASS optimum valid=694395 best=57.2367350.",
+            "conclusion": "И независимый расчёт, и максимум по фиксированной модели совпадают с ожидаемыми эталонами."
+          }
+        ],
+        "limitations": [
+          "Тестовый датасет был сопоставлен с встроенным Scenario и использован для входных сценариев; API принимает решения, а не markdown-файл напрямую.",
+          "Внешние LLM-ключи намеренно не предоставлялись, поэтому живой provider response не проверялся."
+        ]
+      },
+      "runtime": {
+        "status": "working",
+        "build": "Frontend production build PASS: tsc -b и vite build, 1607 modules transformed. Go test/build command compiled all Go packages; test command завершился только на документационных HTTP-тестах.",
+        "start": "PASS: go run ./cmd/server стартовал и принял HTTP-запросы без API-ключей.",
+        "scenario": "PASS: catalog, golden, alternate, fallback explain, optimizer best и improve проверены через HTTP API.",
+        "environment": "Изолированные контейнеры Go 1.22 Alpine, Node 22 и Python 3.12; без секретов и без браузерной автоматизации.",
+        "summary": "Основной сценарий реально работает. Числовой движок и frontend build проходят; полный Go-набор выявил только рассогласование окончания строк в документационных примерах HTTP-пакета.",
+        "checks": [
+          {
+            "command": "GET /api/scenario",
+            "result": "HTTP 200; budget=100, required_decisions=5, measures=14, districts=5.",
+            "id": "scenario-catalog",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Каталог с единым бюджетом, пятью районами и 14 мерами."
+          },
+          {
+            "command": "POST /api/simulate",
+            "result": "Golden response HTTP 200; valid=true, cost=95, remaining=5, final_score=56.54307, critical_after=0.",
+            "id": "scenario-golden",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Валидный пример кейса даёт расчётный Result и ожидаемый Score."
+          },
+          {
+            "command": "POST /api/simulate",
+            "result": "Альтернативный response HTTP 200; valid=true, cost=61, final_score=52.74611375, critical_after=3.",
+            "id": "scenario-alternate",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Другой допустимый набор меняет Score и показатели."
+          },
+          {
+            "command": "POST /api/simulate",
+            "result": "Response HTTP 422 для набора стоимостью 127; source/unit tests подтверждают budget_exceeded и отсутствие score.",
+            "id": "invalid-budget",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Невалидный набор не получает Score и сообщает причину превышения бюджета."
+          },
+          {
+            "command": "POST /api/explain",
+            "result": "HTTP 200; source=fallback, text length 686, текст содержит сильные стороны, риски и компромиссы.",
+            "id": "scenario-explain",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Валидный Result получает объяснение даже без внешнего ключа через fallback."
+          },
+          {
+            "command": "POST /api/recommend с mode=best",
+            "result": "HTTP 200 после фонового поиска; best.final_score=57.236735, cost=98, critical_after=0, решения M2/M3/M8/M9/M14.",
+            "id": "recommend-best",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Рекомендация совпадает с максимумом независимого перебора."
+          },
+          {
+            "command": "POST /api/recommend с mode=improve",
+            "result": "HTTP 200; current_score=56.54307, возвращено 3 улучшения, лучший final_score=57.20556, delta=0.66249.",
+            "id": "recommend-improve",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Возвращаются только проверенные улучшения одной заменой."
+          },
+          {
+            "command": "python scripts/verify_scores.py --optimum",
+            "result": "PASS всех пяти reference-сценариев и PASS valid=694395, best=57.2367350.",
+            "id": "verify-scores",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Независимая реализация формулы совпадает с эталонами кейса."
+          },
+          {
+            "command": "CGO_ENABLED=0 go build -trimpath -o /tmp/server ./cmd/server",
+            "result": "Команда была частью общего Go-запуска; компиляция пакетов прошла, но цепочка остановлена после проектных HTTP documentation tests до отдельного финального build шага.",
+            "id": "go-build-chain",
+            "stage": "build",
+            "status": "not_run",
+            "cause": "project",
+            "expected": "Собрать серверный бинарник после успешных тестов."
+          },
+          {
+            "command": "npm run build",
+            "result": "PASS; TypeScript build and Vite production build, 1607 modules transformed, dist generated.",
+            "id": "web-build",
+            "stage": "build",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Собрать frontend production bundle."
+          },
+          {
+            "command": "go test ./internal/... ./cmd/... && go vet ./internal/... ./cmd/...",
+            "result": "FAIL only in internal/httpapi: demo/docs/recommend tests cannot find LF exact markers in CRLF docs; advisor, autopilot, explanation, optimizer and simulation packages PASS.",
+            "id": "go-http-docs",
+            "stage": "build",
+            "status": "fail",
+            "cause": "project",
+            "expected": "Все Go unit/domain/HTTP tests проходят и examples in docs остаются синхронизированными."
+          }
+        ],
+        "limitations": [
+          "API-ключи OpenAI/NVIDIA не предоставлялись, поэтому provider calls оценены по исходникам, а observed explanation — fallback.",
+          "Визуальная отрисовка браузером не проверялась по обязательной политике пользователя; frontend проверен статической сборкой, не screenshot/UI automation.",
+          "Фоновый полный поиск best занял 2m12s в ограниченном окружении; readiness-модель корректно возвращает not_ready до завершения."
+        ]
+      },
+      "liveDemo": {
+        "status": "none",
+        "url": null,
+        "notes": "Публичная live-ссылка в материалах не подтверждалась; локальный HTTP-сценарий подтверждён отдельно. Отсутствие URL не использовано как штраф."
+      },
+      "fiveHourContext": "Для пятичасового MVP объём реализации необычно полный: детерминированный движок, валидатор, независимая перепроверка, HTTP API, frontend, история, рекомендации и многоагентный автопилот. Оценка не требует production-данных или реальных городских интеграций; синтетические данные и fallback соответствуют границам кейса.",
+      "strengths": [
+        "Числовая модель полностью детерминирована и независимо перепроверена Fraction-скриптом.",
+        "Валидатор серверный и покрывает все правила кейса, включая district scope, повторы, бюджет, категории и несовместимости.",
+        "LLM отделён от расчётов; без ключа доступен содержательный fallback, а provider path статически защищает формат результата.",
+        "Документация и frontend раскрывают основной сценарий, числовые эталоны, рекомендации и ограничения модели."
+      ],
+      "gaps": [
+        "Машинно проверяемые примеры в docs/demo.md и docs/api.md не проходят включённые HTTP documentation tests из-за CRLF в документах и LF-чувствительных маркеров тестов; это ломает автоматическую проверку воспроизводимости примеров."
+      ],
+      "futureAdvice": [
+        {
+          "principle": "Документация должна быть исполняемым контрактом с нормализованными окончаниями строк",
+          "why": "F-DOC-CRLF: docs/demo.md и docs/api.md содержат ожидаемые маркеры визуально, но exact strings из demo_test.go/docs_test.go не находятся, поэтому падают TestDemoScenarios, TestAPIExamples и TestRecommendDocumentedExamples.",
+          "how": "В другом хакатоне закрепить LF через .gitattributes либо нормализовать строки перед marker parsing; затем обновить/сгенерировать JSON excerpts из реального handler output и запускать `go test ./internal/httpapi` в CI.",
+          "findingIds": [
+            "F-DOC-CRLF"
+          ],
+          "successCheck": "Все документационные тесты находят ровно один curl/JSON marker для каждого сценария и проходят с теми же HTTP-ответами, что и handler.",
+          "timeboxMinutes": 20
+        }
+      ],
+      "uncertainties": [
+        "Живой OpenAI/NVIDIA response не наблюдался без намеренно не предоставленных credentials; это ограничение проверки, а не основание считать provider path нерабочим.",
+        "Визуальное поведение React-интерфейса и accessibility в браузере не наблюдалось; подтверждены TypeScript/Vite build и исходные тестовые материалы.",
+        "Полный Go test command не дошёл до отдельного финального `go build` после остановки на документационных тестах, хотя все Go-пакеты были скомпилированы для тестов и production frontend build прошёл."
+      ],
+      "reviewPolicyVersion": 2,
+      "assessmentStatus": "ready",
+      "findings": [
+        {
+          "id": "F-ENGINE",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Детерминированный движок корректно считает базу, golden, эффекты, критические значения и Score.",
+          "expected": "Результаты совпадают с формулой кейса и меняются при изменении решений.",
+          "actual": "HTTP golden=56.54307, alternate=52.74611375; Python oracle PASS base/golden/skew/trap/optimum.",
+          "evidence": [
+            "internal/simulation/engine.go:13-110",
+            "runtime check scenario-golden",
+            "runtime check scenario-alternate",
+            "runtime check verify-scores"
+          ],
+          "checkIds": [
+            "scenario-golden",
+            "scenario-alternate",
+            "verify-scores"
+          ]
+        },
+        {
+          "id": "F-VALIDATION",
+          "kind": "strength",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Серверная валидация покрывает обязательные правила набора.",
+          "expected": "Невалидные решения не получают Score и возвращают конкретный код.",
+          "actual": "validator проверяет count, duplicate, budget, category, scope, district и incompatibility до расчёта.",
+          "evidence": [
+            "internal/simulation/validator.go:10-70",
+            "internal/simulation/engine_test.go:68-109"
+          ],
+          "checkIds": [
+            "invalid-budget"
+          ]
+        },
+        {
+          "id": "F-AI-BOUNDARY",
+          "kind": "strength",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "AI получает рассчитанный Result и не является источником числовых полей; fallback объясняет результат без ключа.",
+          "expected": "Внешняя модель может объяснять, но не подменяет Score и ошибки валидации.",
+          "actual": "Service вызывает provider только после result.Valid, иначе возвращает fallback; provider errors также приводят к fallback.",
+          "evidence": [
+            "internal/explanation/service.go:42-73",
+            "internal/explanation/openai.go:53-115",
+            "internal/explanation/fallback.go:45-93"
+          ],
+          "checkIds": [
+            "scenario-explain"
+          ]
+        },
+        {
+          "id": "F-OPTIMIZER",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Рекомендации основаны на полном проверяемом переборе фиксированного каталога.",
+          "expected": "Best должен совпадать с максимумом независимого oracle.",
+          "actual": "HTTP best=57.236735/cost=98; Python valid=694395 и тот же best.",
+          "evidence": [
+            "internal/optimizer/optimizer.go:101-183",
+            "runtime check recommend-best",
+            "runtime check verify-scores"
+          ],
+          "checkIds": [
+            "recommend-best",
+            "verify-scores"
+          ]
+        },
+        {
+          "id": "F-DOC-CRLF",
+          "kind": "defect",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Включённые HTTP-тесты не находят маркеры примеров в docs/demo.md и docs/api.md из-за несовпадения окончаний строк.",
+          "expected": "Exact marker strings из demo_test.go:20 и docs_test.go:65 должны встречаться ровно один раз, чтобы docs-примеры автоматически сверялись с handler.",
+          "actual": "Оба документа имеют CRLF (429/429 и 1170/1170 CR/LF); тесты ищут LF-строки и получают Count=0, из-за чего падают demo, API examples и recommend documentation tests.",
+          "evidence": [
+            "internal/httpapi/demo_test.go:16-34,76-93",
+            "internal/httpapi/docs_test.go:62-75,86-120",
+            "internal/httpapi/recommend_test.go:156-186",
+            "docs/demo.md:118-120",
+            "docs/api.md:340,512,899,975,1006,1051",
+            "check capture gotest-clean"
+          ],
+          "checkIds": [
+            "go-http-docs"
+          ]
+        },
+        {
+          "id": "F-NO-CREDENTIALS",
+          "kind": "limitation",
+          "verification": "unverified",
+          "responsibility": "external_service",
+          "claim": "Живой ответ OpenAI/NVIDIA не наблюдался.",
+          "expected": "С ключами provider возвращает текстовое объяснение/ревью по контракту.",
+          "actual": "Ключи не предоставлялись; реально наблюдался fallback, provider path проверен исходниками и unit tests.",
+          "evidence": [
+            "internal/explanation/openai.go:36-115",
+            "internal/explanation/nvidia.go:30-95",
+            "runtime check scenario-explain"
+          ],
+          "checkIds": [
+            "scenario-explain"
+          ]
+        },
+        {
+          "id": "F-VISUAL",
+          "kind": "limitation",
+          "verification": "unverified",
+          "responsibility": "review_environment",
+          "claim": "Визуальное поведение frontend не инспектировалось браузером.",
+          "expected": "UI показывает каталог, результат, графики и accessibility states.",
+          "actual": "Проверена production-сборка, но браузерная проверка запрещена пользовательской политикой.",
+          "evidence": [
+            "web/README.md:83-116",
+            "runtime check web-build"
+          ],
+          "checkIds": [
+            "web-build"
+          ]
+        }
+      ],
+      "gapFindingIds": [
+        "F-DOC-CRLF"
+      ]
+    }
+  ],
+  "score": 98.5,
+  "status": "complete",
+  "expectedJudges": 1
+}

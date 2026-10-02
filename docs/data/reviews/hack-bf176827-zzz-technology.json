@@ -1,0 +1,1145 @@
+{
+  "methodVersion": 4,
+  "repoId": "hack-bf176827-zzz-technology",
+  "repoUrl": "https://github.com/BAITC-Hacks/hack-bf176827-zzz-technology",
+  "caseId": 2,
+  "snapshot": "f18526e610d45c04d93ec92cb7aec382a61d5fcb",
+  "judges": [
+    {
+      "methodVersion": 4,
+      "repoId": "hack-bf176827-zzz-technology",
+      "caseId": 2,
+      "model": "GPT-5.6 Luna",
+      "snapshot": "f18526e610d45c04d93ec92cb7aec382a61d5fcb",
+      "overallSummary": "Проект представляет цельный локальный AML-прототип: три parquet-файла проверяются и превращаются в роли, приоритеты, кластеры и выгрузки, а тот же результат доступен через HTTP API и React-интерфейс. Пайплайн и основное API-сценарий воспроизведены на предоставленном графе; Go- и frontend-тесты прошли. Единственный подтверждённый дефект проекта — CRLF в cmd/web/entrypoint.sh: Alpine shell не принимает строку set -eu, поэтому рекомендованный docker compose запуск завершается до запуска приложения. Скомпилированный web-бинарник и обходной pipeline→check→web сценарий работают. Визуальное поведение намеренно не проверялось согласно политике ревью.",
+      "global": {
+        "criteria": [
+          {
+            "name": "Ценность решения",
+            "score": 24,
+            "max": 25,
+            "awarded": "Решение непосредственно сокращает ручной поиск узлов, которые AML-аналитику следует проверять первыми, и объясняет каждый приоритет числами.",
+            "deductions": "Снятый балл относится к подтверждённой недоступности рекомендованного контейнерного запуска, которая уменьшает практическую доступность прототипа на чистой машине.",
+            "evidence": [
+              "README.md:5-13",
+              "README.md:57-85",
+              "captures/20261001T124103412756-http-top.stdout.log",
+              "captures/20261001T124103560697-http-node.stdout.log"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "F1",
+                "reason": "Без исправления окончания строк стандартный docker compose сценарий не доходит до аналитики и интерфейса, поэтому ценность нельзя получить заявленным одним запуском."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Конкретная задача AML-аналитика",
+                "implementation": "README формулирует пользовательский вопрос как выбор того, кого из 2248 клиентов смотреть первым и почему; pipeline считает роли, кластеры, приоритет и evidence по каждому узлу.",
+                "value": "Это понятный рабочий результат для аудитории расследований: вместо просмотра всей сети аналитик получает короткий список кандидатов и проверяемое объяснение.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:5-13",
+                  "README.md:57-68"
+                ]
+              },
+              {
+                "aspect": "Приоритизация с объяснением",
+                "implementation": "priority_score складывает перцентильные ранги входящего оборота, степени, seed выше по цепочке, PageRank, betweenness и бонуса роли; top_nodes.csv дополняется why.",
+                "value": "Аналитик видит не только рейтинг, но и основания: например, HTTP top вернул consolidator с 8 плательщиками, 2 seed и 2.2 млн KZT первым.",
+                "verification": "observed",
+                "evidence": [
+                  "internal/services/analysis/priority.go:11-63",
+                  "captures/20261001T124103412756-http-top.stdout.log"
+                ]
+              },
+              {
+                "aspect": "Осторожная интерпретация",
+                "implementation": "Документация и шаблоны называют выводы гипотезами, отделяют подтверждённый sink от обрыва обхода и явно описывают невидимые входы seed, порог 5000 KZT и границу 4-го колена.",
+                "value": "Для финансового кейса это снижает риск превратить эвристическую роль в обвинение и помогает понимать, какие дополнительные данные нужны.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:13",
+                  "docs/methodology.md:8-15",
+                  "docs/methodology.md:112-116"
+                ]
+              },
+              {
+                "aspect": "Пользовательский следующий шаг",
+                "implementation": "API-карточка отдаёт входящие и исходящие связи, ближайший seed и next_candidates; endpoint robustness показывает эффект удаления top-5/10/20.",
+                "value": "Результат поддерживает переход от рейтинга к ручной проверке цепочки и к оценке того, какие узлы наиболее критичны для сети.",
+                "verification": "observed",
+                "evidence": [
+                  "internal/transport/http/v1/graph/handlers.go:48-104",
+                  "captures/20261001T124103560697-http-node.stdout.log",
+                  "captures/20261001T124103789222-http-robustness.stdout.log"
+                ]
+              }
+            ],
+            "scoreReasoning": "Почти максимальный балл заслужен за соответствие реальной задаче расследования, приоритизацию и аккуратные формулировки. Один балл удержан только из-за F1: полезный сценарий реализован, но стандартный Docker entrypoint не запускается на Alpine в текущем snapshot. Это снижает доступность результата, но не обнуляет ценность локальной аналитики, которая фактически воспроизведена отдельно."
+          },
+          {
+            "name": "Результат и качество решения",
+            "score": 17,
+            "max": 20,
+            "awarded": "Основной аналитический и API-сценарий целостен и выдаёт содержательный пользовательский результат; ограничение — поломка штатного контейнерного старта.",
+            "deductions": "Три балла сняты за то, что описанный единый путь запуска проекта завершается ошибкой shell до выдачи результата.",
+            "evidence": [
+              "captures/20261001T124258663850-scenario-case-data.stdout.log",
+              "captures/20261001T124103221261-http-health.stdout.log",
+              "captures/20261001T124103560697-http-node.stdout.log",
+              "captures/20261001T124432338079-http-card.stdout.log"
+            ],
+            "deductionItems": [
+              {
+                "points": 3,
+                "findingId": "F1",
+                "reason": "Сценарий, который README объявляет основным Docker-демо, падает на /app/entrypoint.sh до pipeline, check и web; это непосредственно уменьшает целостность доставленного продукта."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Проверенный end-to-end pipeline",
+                "implementation": "Go orchestration загружает edges, nodes и transactions, выполняет Validate, Analyze, обогащение гипотез и записывает CSV/graph JSON.",
+                "value": "На case-data фактически получены 2248 узлов, 3119 рёбер, 4840 транзакций, 88 кластеров и top из 30 строк за 1.733 секунды; cmd/check подтвердил 2248 уникальных узлов.",
+                "verification": "observed",
+                "evidence": [
+                  "internal/services/pipeline/service.go:66-91",
+                  "captures/20261001T124258663850-scenario-case-data.stdout.log"
+                ]
+              },
+              {
+                "aspect": "Содержательная карточка узла",
+                "implementation": "Node API объединяет роль, score, метрики, входящие/исходящие контрагенты, перцентили, ближайший seed и кандидатов следующего шага.",
+                "value": "Проверка обязательного GID вернула роль consolidator, 8 входящих, 2 исходящих, 2,160,500 KZT входа, 517,000 KZT выхода и 3 кандидата; это уже пригодный результат, а не только каркас.",
+                "verification": "observed",
+                "evidence": [
+                  "internal/transport/http/v1/graph/handlers.go:48-68",
+                  "captures/20261001T124103560697-http-node.stdout.log"
+                ]
+              },
+              {
+                "aspect": "API-слой для рабочего сценария",
+                "implementation": "Зарегистрированы graph, top, clusters, search, seeds, robustness, ego, health и card routes; данные сериализуются через DTO.",
+                "value": "HTTP-проверки вернули 200 для health, top, node, ego depth=2, seeds, robustness, search и card, поэтому основные операции интерфейса доступны программно.",
+                "verification": "observed",
+                "evidence": [
+                  "internal/transport/http/v1/router.go:14-38",
+                  "captures/20261001T124103221261-http-health.stdout.log",
+                  "captures/20261001T124103458761-http-ego.stdout.log",
+                  "captures/20261001T124103789222-http-robustness.stdout.log"
+                ]
+              },
+              {
+                "aspect": "Офлайн-основа без LLM",
+                "implementation": "Роли, приоритеты и карточка строятся локально; LLM отделён в assistant service и без ключа возвращает контролируемое состояние disabled, а card использует шаблон.",
+                "value": "Ключ не блокирует core-аналитику: status вернул enabled=false, а card для обязательного узла вернул by_llm=false с полноценным текстом.",
+                "verification": "observed",
+                "evidence": [
+                  "internal/services/assistant/service.go:24-58",
+                  "captures/20261001T124103874132-http-assistant-status.stdout.log",
+                  "captures/20261001T124432338079-http-card.stdout.log"
+                ]
+              }
+            ],
+            "scoreReasoning": "Проверки показывают работающий результат и связность компонентов: данные доходят до аналитики, выгрузок, API и шаблонной карточки. Удержание трёх баллов связано с F1, потому что пользовательский Docker-путь, заявленный как единая демонстрация, фактически останавливается до запуска; это серьёзный, но локализованный дефект упаковки, а не ошибка расчётов."
+          },
+          {
+            "name": "Инновационность",
+            "score": 15,
+            "max": 15,
+            "awarded": "Проект сочетает объяснимые ролевые правила с направленной графовой аналитикой, временными и структурными паттернами, устойчивостью сети и необязательным инструментальным LLM-слоем.",
+            "deductions": "Подтверждённых дефектов именно инновационного подхода не установлено; недостаток штатного entrypoint учитывается в критериях результата и воспроизводимости.",
+            "evidence": [
+              "internal/services/analysis/roles.go:11-115",
+              "internal/services/analysis/patterns.go:18-221",
+              "docs/methodology.md:76-107",
+              "pkg/llm/client.go:73-119"
+            ],
+            "deductionItems": [],
+            "awardedDetails": [
+              {
+                "aspect": "Роли как проверяемые правила",
+                "implementation": "Код явно задаёт пороги consolidator, distributor, transit, coordinator, terminal и периферии, затем выбирает лучший score с фиксированным precedence.",
+                "value": "Это более полезный для расследования подход, чем непрозрачная классификация: аналитик может воспроизвести решение по колонкам и понять конфликт ролей.",
+                "verification": "source",
+                "evidence": [
+                  "internal/services/analysis/roles.go:11-61",
+                  "README.md:123-147"
+                ]
+              },
+              {
+                "aspect": "Обработка ловушек 4-хопового графа",
+                "implementation": "metrics.go различает truncated depth=4 и verified_sink depth<4, а role logic запрещает назначать terminal обрезанным узлам и снижает их приоритет.",
+                "value": "Команда адресует центральную сложность кейса — нулевой исходящий поток не трактуется автоматически как конечный получатель.",
+                "verification": "source",
+                "evidence": [
+                  "internal/services/analysis/metrics.go:69-77",
+                  "internal/services/analysis/roles.go:106-109",
+                  "docs/methodology.md:152-160"
+                ]
+              },
+              {
+                "aspect": "Паттерны за пределами базовых метрик",
+                "implementation": "Добавлены циклы до длины 5, повторяющиеся A→B→C маршруты, fast-forward share, синхронные плательщики, дробление сумм и robustness top-5/10/20.",
+                "value": "Это даёт аналитику несколько независимых сигналов структуры и позволяет обсуждать не только центральность, но и возвратные/устойчивые денежные маршруты.",
+                "verification": "source",
+                "evidence": [
+                  "internal/services/analysis/patterns.go:18-221",
+                  "docs/methodology.md:90-96"
+                ]
+              },
+              {
+                "aspect": "LLM ограничен ролью формулировщика",
+                "implementation": "Responses API вызывается только после локального расчёта; инструменты получают факты графа, а prompt и service не передают модели назначение ролей или приоритетов.",
+                "value": "Интеграция добавляет естественный язык и подсветку GID, не превращая критическую классификацию в непроверяемый black box.",
+                "verification": "source",
+                "evidence": [
+                  "pkg/llm/client.go:73-119",
+                  "internal/services/assistant/ask.go:1-39",
+                  "docs/methodology.md:98-107"
+                ]
+              }
+            ],
+            "scoreReasoning": "Полный балл оправдан тем, что нестандартность здесь не в декоративном AI, а в сочетании объяснимых ролей, data-trap-aware логики, временных паттернов и network robustness. Нет подтверждённого недостатка, который требовал бы снижения именно за инновационность; F1 не меняет сам подход."
+          },
+          {
+            "name": "Потенциал развития и масштабирования",
+            "score": 19,
+            "max": 20,
+            "awarded": "Архитектура разделяет загрузку, анализ, экспорт, graph API и assistant, а README содержит конкретный план перехода к большим графам и новым источникам данных.",
+            "deductions": "Один балл снят за подтверждённую упаковочную проблему, которая станет препятствием для повторного развёртывания до масштабирования самого алгоритма.",
+            "evidence": [
+              "internal/app/internal.go:22-58",
+              "README.md:91-115",
+              "docs/methodology.md:127-145",
+              "Dockerfile:12-33"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "F1",
+                "reason": "Штатный образ не стартует на целевой Alpine-среде из-за entrypoint, поэтому повторное развёртывание и дальнейшее масштабирование требуют исправления упаковки."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Модульные границы",
+                "implementation": "FX-модули отдельно предоставляют loader, analysis, export, hypotheses, graph и assistant; newAnalysisResult связывает один расчёт с API-сервисами.",
+                "value": "Такой разрез позволяет заменить хранение или вычислительный слой, не переписывая HTTP-контракты и UI-сценарий целиком.",
+                "verification": "source",
+                "evidence": [
+                  "internal/app/internal.go:22-58",
+                  "internal/services/pipeline/service.go:40-64"
+                ]
+              },
+              {
+                "aspect": "План роста до миллиона узлов",
+                "implementation": "Документация предлагает columnar/graph storage, sampled betweenness, Leiden, компонентный/incremental пересчёт и ego-подграфы вместо полного рисования.",
+                "value": "Это конкретные архитектурные замены, привязанные к известным узким местам O(V·E), памяти и визуализации, а не абстрактное обещание масштабирования.",
+                "verification": "source",
+                "evidence": [
+                  "docs/methodology.md:133-145",
+                  "README.md:247-259"
+                ]
+              },
+              {
+                "aspect": "Расширяемый API и инструменты",
+                "implementation": "Graph service уже выделяет фильтры по роли/кластеру/компоненте, ego depth, поиск, кандидатов и robustness; assistant tools работают поверх того же AnalysisResult.",
+                "value": "Новые сценарии проверки могут добавляться как запросы и инструменты без изменения формата parquet или базовой ролевой логики.",
+                "verification": "source",
+                "evidence": [
+                  "internal/services/graph/service.go:17-57",
+                  "internal/services/assistant/tools.go:1-220"
+                ]
+              },
+              {
+                "aspect": "Детерминированность и кэширование",
+                "implementation": "Кластеры используют фиксированный seed, сортировки имеют tie-break по GID, а LLM-ответы сохраняются в llm_cache.json.",
+                "value": "Для аналитического продукта это создаёт основу для сравнения запусков и постепенного перехода к версионированным данным.",
+                "verification": "observed",
+                "evidence": [
+                  "internal/services/analysis/clusters.go:23-58",
+                  "captures/20261001T124432526060-deterministic.stdout.log",
+                  "README.md:214-218"
+                ]
+              }
+            ],
+            "scoreReasoning": "Потенциал хорошо обоснован кодом и методологией, поэтому балл близок к максимуму. F1 удерживает один балл как практический deployment-риск: масштабирование не имеет смысла, пока базовый образ не запускается штатно; это исправление упаковки, а не необходимость менять архитектуру анализа."
+          },
+          {
+            "name": "Презентация, демо и ответы на вопросы",
+            "score": 16,
+            "max": 20,
+            "awarded": "README и docs/demo.md дают ясный сценарий демонстрации, конкретные GID, ответы на типовые вопросы и API-команды; устная презентация не оценивалась.",
+            "deductions": "Четыре балла сняты за то, что ключевая команда из раздела быстрого старта не запускается из-за F1. Визуальное поведение не снижало оценку отдельно и осталось непроверенным по установленной политике.",
+            "evidence": [
+              "README.md:17-55",
+              "README.md:162-210",
+              "docs/demo.md:1-66",
+              "captures/20261001T124103412756-http-top.stdout.log",
+              "captures/20261001T124432338079-http-card.stdout.log"
+            ],
+            "deductionItems": [
+              {
+                "points": 4,
+                "findingId": "F1",
+                "reason": "Участник получает подробный сценарий, но на чистом Docker запуск обрывается до лога готовности и web; это снижает воспроизводимость демо и убедительность показа из README."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Быстрый старт и критерии проверки",
+                "implementation": "README перечисляет Docker и make варианты, ожидаемые CSV, команды make check/test, API routes и конкретные результаты на датасете.",
+                "value": "Жюри может быстро связать требование с артефактом и ожидаемым ответом, а не разбираться в проекте по исходникам без навигации.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:17-55",
+                  "README.md:185-210"
+                ]
+              },
+              {
+                "aspect": "Сценарий разбора узлов",
+                "implementation": "docs/demo.md последовательно разбирает consolidator, coordinator, transit, terminal и truncated peripheral с числами, формулами и гипотезами.",
+                "value": "Материал поддерживает короткое предметное демо и показывает, как объяснить назначение роли без обращения к ML-терминам.",
+                "verification": "source",
+                "evidence": [
+                  "docs/demo.md:7-55"
+                ]
+              },
+              {
+                "aspect": "Техническая проверяемость показа",
+                "implementation": "Фактические API запросы подтвердили top-3, карточку обязательного GID, ego depth=2, seeds, robustness, search и шаблонную card.",
+                "value": "Хотя браузерный экран не инспектировался, серверная часть пользовательского маршрута реально отвечает и возвращает данные, на которых строится демо.",
+                "verification": "observed",
+                "evidence": [
+                  "captures/20261001T124103412756-http-top.stdout.log",
+                  "captures/20261001T124103560697-http-node.stdout.log",
+                  "captures/20261001T124103458761-http-ego.stdout.log",
+                  "captures/20261001T124432338079-http-card.stdout.log"
+                ]
+              },
+              {
+                "aspect": "Ответы на ограничения и AI",
+                "implementation": "README и methodology объясняют отсутствие ground truth, обрыв 4-го колена, порог 5000 KZT, гипотетический характер выводов и optional OpenAI режим.",
+                "value": "Это заранее закрывает главные вопросы жюри и не обещает accuracy или внешние атрибуты, которых нет в данных.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:108-160",
+                  "docs/demo.md:55-66"
+                ]
+              }
+            ],
+            "scoreReasoning": "README заметно сильнее минимальной инструкции и пригоден для предметного walkthrough. Однако заявленная команда docker compose не выполняет демо на snapshot из-за F1, поэтому четыре балла удержаны. Отсутствие публичного URL и отсутствие визуальной проверки не использовались как штрафы: кейс допускает локальное демо, а UI проверялся только статически и через API."
+          }
+        ],
+        "total": 91
+      },
+      "case": {
+        "criteria": [
+          {
+            "name": "Соответствие задаче и работоспособность",
+            "score": 23,
+            "max": 25,
+            "awarded": "Все обязательные артефакты и основной аналитический маршрут реализованы и воспроизведены на 4-хоповом графе; штатный Docker старт требует исправления.",
+            "deductions": "Два балла сняты за F1, потому что основная команда из README не запускает весь заявленный сценарий.",
+            "evidence": [
+              "cases/2/case-data/README.md",
+              "internal/services/pipeline/service.go:66-91",
+              "captures/20261001T124258663850-scenario-case-data.stdout.log"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "F1",
+                "reason": "Репозиторий обещает один Docker запуск от parquet до web, но /app/entrypoint.sh завершается на shell-синтаксисе до выполнения pipeline и check."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Три требуемые выгрузки",
+                "implementation": "export service пишет nodes_roles.csv, clusters.csv, top_nodes.csv и graph.json; cmd/check проверяет обязательные поля, число узлов, кластерные ссылки и сортировку top.",
+                "value": "Закрывается основной контракт кейса, включая evidence для каждого узла и минимум 20 top-строк.",
+                "verification": "observed",
+                "evidence": [
+                  "internal/services/export/csv.go:16-106",
+                  "cmd/check/main.go:75-183",
+                  "captures/20261001T124258663850-scenario-case-data.stdout.log"
+                ]
+              },
+              {
+                "aspect": "Роли и приоритет",
+                "implementation": "Шесть ролей вычисляются из направленных метрик и порогов; priority score не использует захардкоженный ответ, а строится по percentile ranks.",
+                "value": "Решение соответствует содержанию задания: не только рисует сеть, но и выделяет тех, кого проверять первым.",
+                "verification": "source",
+                "evidence": [
+                  "internal/services/analysis/roles.go:48-115",
+                  "internal/services/analysis/priority.go:29-63"
+                ]
+              },
+              {
+                "aspect": "Четвёртое колено и seed",
+                "implementation": "Depth и is_seed загружаются из parquet; truncated и verified_sink вычисляются отдельно, seed исключается из transit, а seed/truncated получают множители приоритета.",
+                "value": "Ключевая ловушка кейса обработана явно, поэтому нулевой out-degree на глубине 4 не становится ложным terminal.",
+                "verification": "source",
+                "evidence": [
+                  "internal/repo/dataset/loader.go:14-34",
+                  "internal/services/analysis/metrics.go:69-77",
+                  "internal/services/analysis/priority.go:36-46"
+                ]
+              },
+              {
+                "aspect": "Направленный поиск и визуальный контракт",
+                "implementation": "Graph service расширяет top-узлы соседями, сохраняет направления ребер, поддерживает ego depth 1–2 и prefix search; React toolbar вызывает тот же API.",
+                "value": "Основной переход от числовой выгрузки к поиску конкретного GID реализован в коде и серверном контракте.",
+                "verification": "observed",
+                "evidence": [
+                  "internal/services/graph/service.go:55-143",
+                  "frontend/src/App.jsx:59-118",
+                  "captures/20261001T124103921921-http-search.stdout.log"
+                ]
+              }
+            ],
+            "scoreReasoning": "Соответствие высокое: case-data прошёл полный pipeline, check подтвердил все 2248 узлов, а HTTP-маршрут поиска и карточки работает. F1 удерживает два балла за недоступность именно заявленного запуска; это не отменяет воспроизведённого обходного запуска бинарей и не является штрафом за отсутствие API key."
+          },
+          {
+            "name": "Техническая реализация",
+            "score": 22,
+            "max": 25,
+            "awarded": "Техническая реализация зрелая для пятичасового MVP: Go-пайплайн, детерминированные метрики, отдельные сервисы, DTO/HTTP и React-сборка согласованы между собой.",
+            "deductions": "Три балла сняты за F1 — дефект поставки контейнера, который ломает фактическое взаимодействие entrypoint с Alpine runtime.",
+            "evidence": [
+              "Dockerfile:5-33",
+              "internal/services/analysis/service.go:38-63",
+              "internal/transport/http/v1/router.go:14-38",
+              "captures/20261001T123200128018-build.stderr.log"
+            ],
+            "deductionItems": [
+              {
+                "points": 3,
+                "findingId": "F1",
+                "reason": "Dockerfile копирует entrypoint без нормализации line endings, а runtime использует /bin/sh; подтверждённый стартовый дефект снижает техническую готовность сборки к запуску."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Проверка входных данных",
+                "implementation": "Loader типизированно читает три parquet схемы; Validate сверяет пары, число транзакций и суммы рёбер, считает период, seeds и orphan nodes.",
+                "value": "Неправильный или неполный вход отбрасывается до анализа, а синтетические case-data проверяются не только по наличию файлов.",
+                "verification": "source",
+                "evidence": [
+                  "internal/repo/dataset/loader.go:14-57",
+                  "internal/repo/dataset/validate.go:14-76"
+                ]
+              },
+              {
+                "aspect": "Последовательность анализа",
+                "implementation": "Analyze строит graph, features, clusters, patterns, roles, priority, robustness и cluster descriptions в фиксированном порядке.",
+                "value": "Компоненты используют один AnalysisResult, поэтому значения в CSV, API и карточке согласованы; это подтвердилось одинаковыми данными top и node API.",
+                "verification": "source",
+                "evidence": [
+                  "internal/services/analysis/service.go:38-63",
+                  "internal/app/internal.go:50-58",
+                  "captures/20261001T124103412756-http-top.stdout.log",
+                  "captures/20261001T124103560697-http-node.stdout.log"
+                ]
+              },
+              {
+                "aspect": "HTTP-контракты и типы GID",
+                "implementation": "DTO сериализуют GID строкой, handler валидирует query/path параметры, а graph API ограничивает depth и лимиты.",
+                "value": "18-значные идентификаторы не теряют точность в JavaScript и некорректные параметры имеют выделенный HTTP error path.",
+                "verification": "source",
+                "evidence": [
+                  "internal/data/dto/graph/responses.go:1-180",
+                  "internal/transport/http/v1/graph/handlers.go:48-246",
+                  "frontend/src/graph.test.js"
+                ]
+              },
+              {
+                "aspect": "Сборка и тесты",
+                "implementation": "Multi-stage Dockerfile собирает React через npm и три Go-бинаря; локальные Go tests и node --test запускаются в изолированных окружениях.",
+                "value": "Build, 6 frontend tests и полный Go test ./... прошли; это подтверждает не только наличие исходников, но и компилируемость/контракты.",
+                "verification": "observed",
+                "evidence": [
+                  "Dockerfile:5-19",
+                  "captures/20261001T123200128018-build.stderr.log",
+                  "captures/20261001T123502471342-frontend-test.stdout.log",
+                  "captures/20261001T123502460342-go-test.stdout.log"
+                ]
+              }
+            ],
+            "scoreReasoning": "Архитектура и тестовое покрытие дают высокий балл: вход, расчёты, сериализация и UI data helpers реально собираются и проходят проверки. Не максимум из-за F1, поскольку корректно собранный image не становится запускаемым через свой ENTRYPOINT; это существенный operational defect, но не дефект алгоритма или API-контрактов."
+          },
+          {
+            "name": "README и воспроизводимость",
+            "score": 20,
+            "max": 25,
+            "awarded": "Документация подробная: описывает запуск, правила, data traps, API, demo script, ограничения и масштабирование. Практическая воспроизводимость аналитики подтверждена, но главный Docker command сломан.",
+            "deductions": "Пять баллов сняты только за подтверждённое несоответствие между инструкцией docker compose и фактическим стартом.",
+            "evidence": [
+              "README.md:17-55",
+              "README.md:162-218",
+              "docs/demo.md:1-66",
+              "captures/20261001T123434830032-start.stderr.log",
+              "captures/20261001T124258663850-scenario-case-data.stdout.log"
+            ],
+            "deductionItems": [
+              {
+                "points": 5,
+                "findingId": "F1",
+                "reason": "Инструкция прямо говорит, что docker compose сам выполнит pipeline, check и поднимет интерфейс, но проверенный entrypoint падает с illegal option до этих шагов."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Команды и ожидаемые артефакты",
+                "implementation": "README даёт docker compose, make demo/demo-full, make pipeline/check/test, список CSV и API verification calls.",
+                "value": "Участник не оставил жюри угадывать порядок действий или структуру результата.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:17-55",
+                  "README.md:185-210"
+                ]
+              },
+              {
+                "aspect": "Методология с числами",
+                "implementation": "docs/methodology.md фиксирует формулы ролей, score, priority weights, кластеры, паттерны, data traps и распределение ролей на датасете.",
+                "value": "Документация объясняет не только как запустить, но и как интерпретировать результат и защищать пороги.",
+                "verification": "source",
+                "evidence": [
+                  "docs/methodology.md:17-96"
+                ]
+              },
+              {
+                "aspect": "Предметный demo script",
+                "implementation": "docs/demo.md содержит обязательный GID, три дополнительных узла, численные входы/выходы, вопросы ассистенту и ответы на типовые вопросы жюри.",
+                "value": "Это хороший материал для пятиминутного walkthrough и проверки требований без устного контекста команды.",
+                "verification": "source",
+                "evidence": [
+                  "docs/demo.md:1-66"
+                ]
+              },
+              {
+                "aspect": "Фактическая проверка по предоставленным данным",
+                "implementation": "Путь pipeline был запущен с mounted case-data, а hashes edges/nodes/transactions совпали с repo data; check вывел ожидаемые counts и роли.",
+                "value": "Воспроизводимость не осталась декларацией README: основной аналитический результат реально получен на организаторском наборе.",
+                "verification": "observed",
+                "evidence": [
+                  "captures/20261001T124258663850-scenario-case-data.stdout.log",
+                  "captures/20261001T124258663850-scenario-case-data.stderr.log",
+                  "captures/20261001T124258663850-scenario-case-data.stdout.log"
+                ]
+              }
+            ],
+            "scoreReasoning": "Документация существенно выше базового уровня и хорошо связывает требования с файлами/командами. Но именно проверка чистого запуска, которую README предлагает как первый шаг, выявила F1; пять баллов удержаны за эту практическую несостоятельность инструкции, а не за отсутствие публичного URL или внешнего ключа."
+          },
+          {
+            "name": "Ценность и применимость решения",
+            "score": 14,
+            "max": 15,
+            "awarded": "Практическая применимость хорошо показана через приоритеты, evidence, карточку, маршруты и robustness; решение остаётся корректно ограниченным синтетической внутрибанковской выборкой.",
+            "deductions": "Один балл снят за F1, поскольку аналитическая польза недоступна через основной локальный deployment path без ручного обхода дефекта.",
+            "evidence": [
+              "README.md:5-13",
+              "docs/methodology.md:112-127",
+              "captures/20261001T124103560697-http-node.stdout.log",
+              "captures/20261001T124103789222-http-robustness.stdout.log"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "F1",
+                "reason": "Практическое применение в среде жюри требует, чтобы заявленный локальный запуск действительно поднимал интерфейс; F1 добавляет трение именно на этом переходе."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Понятная аудитория",
+                "implementation": "Сценарий построен вокруг AML-аналитика, который получает 81 seed и должен восстановить верхние узлы в сети исходящих переводов.",
+                "value": "Проблема конкретна, ограничена и измерима: 2248 узлов вместо ручной трассировки каждого кандидата.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:5-13",
+                  "cases/2/task.txt"
+                ]
+              },
+              {
+                "aspect": "Результат пригоден для проверки",
+                "implementation": "Top list, node card, incoming/outgoing counterparties, nearest seed, candidates and evidence представлены вместе.",
+                "value": "Аналитик может перейти от общего ранжирования к конкретной цепочке и сформулировать следующий запрос данных.",
+                "verification": "observed",
+                "evidence": [
+                  "captures/20261001T124103560697-http-node.stdout.log",
+                  "captures/20261001T124432338079-http-card.stdout.log"
+                ]
+              },
+              {
+                "aspect": "Устойчивость как дополнительная польза",
+                "implementation": "Robustness endpoint оценивает потерянный оборот, изменение компонент и узлы без входящих после удаления top-5/10/20.",
+                "value": "Это расширяет применение с индивидуального поиска на оценку структуры сети и критичности вмешательства.",
+                "verification": "observed",
+                "evidence": [
+                  "captures/20261001T124103789222-http-robustness.stdout.log",
+                  "internal/services/analysis/patterns.go:107-221"
+                ]
+              },
+              {
+                "aspect": "Ограничения пригодности описаны",
+                "implementation": "Methodology перечисляет, что отсутствуют входы извне seed, потоки после 4-го колена, операции ниже порога и ground truth, и предлагает запросы, закрывающие пробелы.",
+                "value": "Применимость не завышается: результат позиционируется как гипотеза для проверки, что важно в финансовом контексте.",
+                "verification": "source",
+                "evidence": [
+                  "docs/methodology.md:112-127"
+                ]
+              }
+            ],
+            "scoreReasoning": "Высокий балл отражает конкретную пользу и проверяемую карточку узла. Один балл удержан за F1 как практическое ограничение доступа к уже работающей аналитике; отсутствие production-атрибутов и внешних данных не считалось дефектом пятичасового кейса."
+          },
+          {
+            "name": "Потенциал развития и оригинальность подхода",
+            "score": 10,
+            "max": 10,
+            "awarded": "Потенциал и оригинальность полностью подтверждены: эвристические роли объяснимы, паттерны расширяют starter, AI опционален, а масштабирование описано конкретными техническими шагами.",
+            "deductions": "Подтверждённых дефектов, требующих снижения именно по этому критерию, не установлено.",
+            "evidence": [
+              "cases/2/case-data/starter/starter.py",
+              "docs/methodology.md:90-145",
+              "internal/services/analysis/patterns.go:18-221",
+              "pkg/llm/client.go:73-119"
+            ],
+            "deductionItems": [],
+            "awardedDetails": [
+              {
+                "aspect": "Развитие относительно starter",
+                "implementation": "Starter оставляет роли, кластеры, ranking и graph UI пустыми; проект добавляет их плюс temporal, cycle, route, structuring и robustness analysis.",
+                "value": "Добавленная логика адресует именно незаполненные части кейса, а не только меняет интерфейс вокруг исходного каркаса.",
+                "verification": "source",
+                "evidence": [
+                  "cases/2/case-data/starter/starter.py",
+                  "README.md:57-68"
+                ]
+              },
+              {
+                "aspect": "Оригинальная комбинация сигналов",
+                "implementation": "Priority и roles объединяют направленный денежный поток, seed reachability, betweenness, clusters-in и временную близость переводов; sensitivity к весам описана в методологии.",
+                "value": "Подход даёт объяснимый компромисс между сбором, посредничеством и транзитом без обучения на отсутствующем ground truth.",
+                "verification": "source",
+                "evidence": [
+                  "internal/services/analysis/priority.go:11-46",
+                  "docs/methodology.md:76-87"
+                ]
+              },
+              {
+                "aspect": "Расширение через optional AI",
+                "implementation": "LLM использует tools по локальному графу для вопросов и текстовых гипотез, но не принимает решения о ролях; кэш позволяет повторять ответы.",
+                "value": "Это разумное применение AI как интерфейса аналитика, с сохранением детерминированного ядра.",
+                "verification": "source",
+                "evidence": [
+                  "internal/services/assistant/tools.go:1-220",
+                  "pkg/llm/client.go:73-119",
+                  "docs/methodology.md:98-107"
+                ]
+              },
+              {
+                "aspect": "Масштабирование не декларативно",
+                "implementation": "Предложены конкретные замены для хранения, betweenness, clustering, incremental updates, UI и LLM data access при росте до ~1M nodes.",
+                "value": "Команда показывает, какие части прототипа являются MVP-реализацией и как их менять при росте нагрузки.",
+                "verification": "source",
+                "evidence": [
+                  "docs/methodology.md:133-145"
+                ]
+              }
+            ],
+            "scoreReasoning": "По собственному кейсовому критерию полный балл заслужен: решение заметно превосходит starter по аналитической глубине, остаётся объяснимым и содержит реалистичную дорожную карту роста. F1 относится к упаковке запуска и уже учтён в работоспособности/README, поэтому не создаёт дополнительного снижения здесь."
+          }
+        ],
+        "total": 89
+      },
+      "judgeScore": 90,
+      "caseRequirements": [
+        {
+          "requirement": "Воспроизводимый локальный pipeline от edges.parquet, nodes.parquet и transactions.parquet до nodes_roles.csv, clusters.csv и top_nodes.csv менее чем за 5 минут",
+          "status": "met",
+          "explanation": "Pipeline был запущен именно на предоставленном case-data: получил 2248 узлов, 3119 рёбер, 4840 транзакций и завершился за 1.733 s; cmd/check прошёл. Стандартный Docker entrypoint отдельно падает из-за F1, но сам pipeline воспроизводим.",
+          "evidence": [
+            "internal/services/pipeline/service.go:66-91",
+            "captures/20261001T124258663850-scenario-case-data.stdout.log"
+          ]
+        },
+        {
+          "requirement": "nodes_roles.csv содержит всех 2248 узлов, роль из шести ролей, score, cluster, priority и непустой evidence",
+          "status": "met",
+          "explanation": "cmd/check на фактической выгрузке подтвердил 2248 уникальных узлов и распределение consolidator 31, coordinator 43, distributor 16, transit 105, terminal 153, peripheral 1900.",
+          "evidence": [
+            "internal/services/export/csv.go:16-55",
+            "cmd/check/main.go:75-109",
+            "captures/20261001T124258663850-scenario-case-data.stdout.log"
+          ]
+        },
+        {
+          "requirement": "Для каждой базовой роли задокументировано формальное объяснимое правило с порогами",
+          "status": "met",
+          "explanation": "Пороги и score реализованы в roles.go и раскрыты в methodology.md; evidence содержит численные признаки, а tie precedence фиксирован.",
+          "evidence": [
+            "internal/services/analysis/roles.go:11-115",
+            "README.md:123-150",
+            "docs/methodology.md:36-55"
+          ]
+        },
+        {
+          "requirement": "Граф направленный и взвешенный, с учётом ловушек 4-го колена и seed",
+          "status": "met",
+          "explanation": "Граф хранит payer→payee и SumKZT, edges и transactions валидируются по парам; truncated/verified_sink, seed exclusion и множители приоритета реализованы явно.",
+          "evidence": [
+            "internal/data/graph/graph.go:10-69",
+            "internal/repo/dataset/validate.go:14-76",
+            "internal/services/analysis/metrics.go:69-77"
+          ]
+        },
+        {
+          "requirement": "clusters.csv содержит размер, seed, внутренний оборот, top_gids и гипотезу для каждого кластера",
+          "status": "met",
+          "explanation": "Louvain-кластеры и изолированные узлы описываются в export schema; фактический запуск получил 88 кластеров и успешно прошёл проверку cluster IDs.",
+          "evidence": [
+            "internal/services/analysis/clusters.go:23-145",
+            "internal/services/export/csv.go:17-22",
+            "captures/20261001T124258663850-scenario-case-data.stdout.log"
+          ]
+        },
+        {
+          "requirement": "top_nodes.csv содержит не менее 20 узлов с сортировкой и why",
+          "status": "met",
+          "explanation": "Pipeline сформировал top: 30; cmd/check проверяет непрерывные ranks, невозрастание priority и непустой why.",
+          "evidence": [
+            "internal/services/analysis/priority.go:49-63",
+            "cmd/check/main.go:145-182",
+            "captures/20261001T124258663850-scenario-case-data.stdout.log"
+          ]
+        },
+        {
+          "requirement": "Экран просмотра направленного графа с поиском по gid, ролями и кластерами",
+          "status": "partial",
+          "explanation": "Источник React, API search/graph/ego, production build и HTTP GET /v1/search проверены; фактическое визуальное поведение браузера не проверялось согласно пользовательской политике визуальной проверки.",
+          "evidence": [
+            "frontend/src/App.jsx:59-118",
+            "frontend/src/components/Toolbar.jsx:17-37",
+            "internal/transport/http/v1/router.go:18-29",
+            "captures/20261001T124103921921-http-search.stdout.log",
+            "captures/20261001T123502471342-frontend-test.stdout.log"
+          ]
+        },
+        {
+          "requirement": "Выводы должны быть гипотезами, без выдуманных атрибутов личности и без hardcoded gid",
+          "status": "met",
+          "explanation": "Роли вычисляются по признакам результата, documentation говорит о гипотезах и границах данных; обязательный GID используется в demo как проверочный пример, а не как ветвь классификатора.",
+          "evidence": [
+            "internal/services/analysis/roles.go:48-115",
+            "docs/methodology.md:112-116",
+            "README.md:13",
+            "docs/demo.md:7-55"
+          ]
+        },
+        {
+          "requirement": "Опциональный AI не должен блокировать локальную core-аналитику",
+          "status": "met",
+          "explanation": "Без OPENAI_API_KEY status показывает disabled, локальные роли/карточки работают, а новые вопросы должны возвращать контролируемый 503. Внешний OpenAI ответ не проверялся без предоставленного credential.",
+          "evidence": [
+            "internal/services/assistant/handlers.go:26-64",
+            "pkg/llm/client.go:28-38",
+            "captures/20261001T124103874132-http-assistant-status.stdout.log",
+            "captures/20261001T124237897828-http-assistant-post-wget.stderr.log"
+          ]
+        },
+        {
+          "requirement": "README должен описывать локальное воспроизведение и путь развития примерно до 1 млн узлов",
+          "status": "met",
+          "explanation": "README и methodology содержат команды, API, demo script, ограничения и конкретные предложения по хранению, betweenness, кластеризации, инкрементальности и UI.",
+          "evidence": [
+            "README.md:17-55",
+            "README.md:214-259",
+            "docs/methodology.md:127-145"
+          ]
+        }
+      ],
+      "testData": {
+        "provided": [
+          "cases/2/case-data/README.md",
+          "cases/2/case-data/data/edges.parquet",
+          "cases/2/case-data/data/nodes.parquet",
+          "cases/2/case-data/data/transactions.parquet",
+          "cases/2/case-data/starter/README.md",
+          "cases/2/case-data/starter/requirements.txt",
+          "cases/2/case-data/starter/starter.py",
+          "cases/2/case-data/ТЗ Финансы Граф денег_ восстановление финансовой структуры организованной группы по транзакционной сети.md"
+        ],
+        "used": [
+          "cases/2/case-data/README.md",
+          "cases/2/case-data/data/edges.parquet",
+          "cases/2/case-data/data/nodes.parquet",
+          "cases/2/case-data/data/transactions.parquet",
+          "cases/2/case-data/starter/README.md",
+          "cases/2/case-data/starter/starter.py"
+        ],
+        "checks": [
+          {
+            "input": "Три parquet-файла case-data и их схемы из README",
+            "method": "Сверка SHA256 с repo data и запуск Go loader/Validate через pipeline",
+            "result": "Хэши edges, nodes и transactions совпали попарно; loader принял типы src/dst/gid, depth, is_seed, date и sum_kzt.",
+            "conclusion": "Предоставленный набор применён без подмены или изменения."
+          },
+          {
+            "input": "cases/2/case-data/data/{nodes,edges,transactions}.parquet",
+            "method": "Изолированный запуск /app/bin/pipeline --data /case-data/data --out /tmp/case-out",
+            "result": "2248 nodes, 3119 edges, 4840 tx, 81 seeds, 365890012 KZT, период 2026-07-01—2026-07-31; 88 кластеров, 30 top, 1.733 s.",
+            "conclusion": "Полный расчёт на организаторском графе прошёл."
+          },
+          {
+            "input": "Три CSV после предыдущего pipeline",
+            "method": "Запуск cmd/check --out /tmp/case-out",
+            "result": "Проверка пройдена: 2248 уникальных узлов; роли 31/105/16/153/43/1900 по словарю.",
+            "conclusion": "Схема, обязательные поля, evidence, cluster coverage и top≥20 подтверждены валидатором."
+          },
+          {
+            "input": "Узлы depth=4 и узлы depth<4 без исходящих",
+            "method": "Проверка реализации metrics/roles и фактической статистики pipeline",
+            "result": "Код различает truncated и verified_sink; результат содержит 19 orphan seeds и не использует нулевой out-degree как общий terminal сигнал.",
+            "conclusion": "Основная data trap кейса обработана; отдельного ground truth для accuracy нет по условию."
+          },
+          {
+            "input": "Повторный расчёт на встроенных data",
+            "method": "Два запуска pipeline и cmp nodes_roles.csv, clusters.csv, top_nodes.csv",
+            "result": "cmp завершился с deterministic-csv-pass.",
+            "conclusion": "Для трёх основных выгрузок детерминированность наблюдалась."
+          }
+        ],
+        "limitations": [
+          "Полные визуальные состояния браузера не проверялись по обязательной политике пользовательской визуальной проверки.",
+          "Новый ответ OpenAI не проверялся: credential намеренно не предоставлен; локальный disabled path и шаблонная карточка проверены.",
+          "Ground truth ролей и данные за пределами исходящих 4-хоповых внутрибанковских переводов отсутствуют в самом кейсе."
+        ]
+      },
+      "runtime": {
+        "status": "partial",
+        "build": "Docker multi-stage image build прошёл: React production bundle, Go pipeline/check/web binaries и runtime image собраны.",
+        "start": "Штатный /app/entrypoint.sh не стартует из-за CRLF; прямой запуск /app/bin/web после pipeline/check успешно поднял HTTP-сервис.",
+        "scenario": "Основной pipeline и API сценарий воспроизведены; полный документированный container start заблокирован проектным entrypoint дефектом.",
+        "environment": "Проверки выполнены статически и в изолированных Docker-контейнерах с ограничением 3 GB/2 CPU, без секретов; браузерные и визуальные проверки не выполнялись.",
+        "summary": "Core analytics working, documented Docker launch partial.",
+        "checks": [
+          {
+            "command": "docker build",
+            "result": "exit 0; Vite built 38 modules, Go pipeline/check/web compiled, image exported.",
+            "id": "build-image",
+            "stage": "build",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Проект собирается в multi-stage image с frontend и тремя Go-бинарями."
+          },
+          {
+            "command": "/app/entrypoint.sh",
+            "result": "exit 2; /app/entrypoint.sh: set: line 2: illegal option -.",
+            "id": "start-compose",
+            "stage": "start",
+            "status": "fail",
+            "cause": "project",
+            "expected": "Entrypoint запускает pipeline, check и web server."
+          },
+          {
+            "command": "/app/bin/pipeline --data /case-data/data --out /tmp/case-out && /app/bin/check --out /tmp/case-out",
+            "result": "exit 0; 2248 nodes, 3119 edges, 4840 tx, 88 clusters, top 30; check passed.",
+            "id": "scenario-case-data",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "На предоставленном графе создаются три валидные выгрузки за менее чем 5 минут."
+          },
+          {
+            "command": "go test ./...",
+            "result": "exit 0; все пакеты с тестами ok, включая cmd/check, assistant, graph HTTP и tests/unit/analysis.",
+            "id": "go-tests",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Go unit/domain/HTTP test suite проходит."
+          },
+          {
+            "command": "cd frontend && npm ci && npm test",
+            "result": "exit 0; 6 tests pass, 0 fail, 0 skipped.",
+            "id": "frontend-tests",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Frontend graph data and route helpers pass tests."
+          },
+          {
+            "command": "/app/bin/web",
+            "result": "Процесс стартовал после предварительного pipeline; GET /v1/health вернул {\"status\":\"ok\"}; HTTP routes отвечают.",
+            "id": "start-web-binary",
+            "stage": "start",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Web binary поднимает API без OPENAI_API_KEY."
+          },
+          {
+            "command": "GET /v1/health",
+            "result": "HTTP 200, {\"status\":\"ok\"}.",
+            "id": "http-health",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Сервис доступен и сообщает ok."
+          },
+          {
+            "command": "GET /v1/top?n=3",
+            "result": "HTTP 200; первым возвращён gid 100000003115284100, role consolidator, priority 0.9874; 3 элемента.",
+            "id": "http-top",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Top API возвращает отсортированный список приоритетных узлов."
+          },
+          {
+            "command": "GET /v1/nodes/100000003115284100",
+            "result": "HTTP 200; card содержит роль, 8 incoming, 2 outgoing, суммы 2160500/517000 KZT, nearest_seed и next_candidates.",
+            "id": "http-node",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Обязательный demo GID находится и даёт объяснимую карточку."
+          },
+          {
+            "command": "GET /v1/nodes/100000003115284100/ego?depth=2",
+            "result": "HTTP 200; направленный ego subgraph с узлами и рёбрами возвращён.",
+            "id": "http-ego",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Пользователь может раскрыть окружение узла на глубину 2."
+          },
+          {
+            "command": "GET /v1/seeds; GET /v1/robustness; GET /v1/search?q=100000003115284100&limit=10",
+            "result": "Все три запроса HTTP 200; seeds содержит seed list, robustness — top-5/10/20, search нашёл обязательный GID.",
+            "id": "http-supporting-routes",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Поддерживающие вкладки и поиск доступны через API."
+          },
+          {
+            "command": "GET /v1/assistant/status; POST /v1/assistant",
+            "result": "Status HTTP 200 enabled=false; новый вопрос без ключа возвращает HTTP 503 через disabled path.",
+            "id": "assistant-no-key",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Отсутствие внешнего credential не ломает core и явно ограничивает новый LLM-вопрос."
+          },
+          {
+            "command": "GET /; GET /graph.json после pipeline→check→web",
+            "result": "GET / HTTP 200; combined run подтвердил наличие и доступность graph.json после предварительной генерации.",
+            "id": "http-static-after-pipeline",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "После штатных подготовительных шагов web отдаёт статический UI и fallback graph export."
+          }
+        ],
+        "limitations": [
+          "Стандартный ENTRYPOINT не запускается на Alpine из-за CRLF в cmd/web/entrypoint.sh:2; это проектный дефект, а не ограничение среды.",
+          "OPENAI_API_KEY не предоставлялся, поэтому новый внешний Responses API запрос не оценивался; code path и disabled response проверены.",
+          "Визуальное отображение React/Cytoscape не инспектировалось браузером; проверены build, unit tests и HTTP/API contracts."
+        ]
+      },
+      "liveDemo": {
+        "status": "none",
+        "url": null,
+        "notes": "Публичная Live-ссылка в репозитории не заявлена; кейс допускает локальный запуск. Отсутствие URL не использовано как причина снятия баллов."
+      },
+      "fiveHourContext": "Для пятичасового MVP объём оправдан: команда успела реализовать не только базовые CSV, но и формальные роли, обработку 4-го колена, кластеры, циклы/маршруты, robustness, HTTP API, React data flow, demo documentation и optional assistant. Оценка не требует production authentication, внешних данных или полноценной инфраструктуры. С учётом этого F1 — локализованный, но реальный дефект финальной упаковки, а не требование production-качества.",
+      "strengths": [
+        "F2: Полный pipeline на предоставленном case-data прошёл за 1.733 s и создал проверяемые выгрузки.",
+        "F3: HTTP API подтверждён на health, top, карточке обязательного GID, ego, seeds, robustness и search.",
+        "F4: Правила ролей и data traps прозрачны, формальны и согласованы с evidence.",
+        "F5: Docker build, полный Go test ./..., frontend 6/6 и повторная детерминированность CSV прошли."
+      ],
+      "gaps": [
+        "F1: Рекомендованный Docker/Compose запуск не работает на snapshot: CRLF в cmd/web/entrypoint.sh приводит к illegal option в set -eu до запуска pipeline и web."
+      ],
+      "futureAdvice": [
+        {
+          "principle": "Проверять артефакт запуска в целевой shell-среде до демонстрации",
+          "why": "F1 показывает, что корректно собранные бинарь и image всё равно не стартуют через checked-in entrypoint из-за line endings; ошибка обнаруживается мгновенно при smoke test, но ломает весь первый шаг README.",
+          "how": "В другом хакатоне добавьте LF-нормализацию для .sh в репозиторий или Docker build и CI smoke test, который запускает ровно ENTRYPOINT, ждёт health endpoint и проверяет один пользовательский endpoint.",
+          "findingIds": [
+            "F1"
+          ],
+          "successCheck": "Чистый docker run/compose из README достигает pipeline output, health 200 и обязательной карточки GID без ручного обхода entrypoint.",
+          "timeboxMinutes": 20
+        },
+        {
+          "principle": "Сохранять детерминированное ядро независимым от внешнего AI",
+          "why": "F5 показывает сильную сторону проекта: локальные сборки, тесты и основной CSV-результат проходят без внешней интеграции; этот приём стоит переносить в другие прототипы.",
+          "how": "Сначала реализуйте локальный структурированный результат и шаблонный fallback, затем добавляйте provider adapter с явным status/error path и кэшем; в demo показывайте оба режима на одном входе.",
+          "findingIds": [
+            "F5"
+          ],
+          "successCheck": "Без внешнего ключа core scenario полностью проходит, а UI/API показывают понятное ограничение; с ключом provider отвечает через тот же контракт без изменения role/priority данных.",
+          "timeboxMinutes": 30
+        }
+      ],
+      "uncertainties": [
+        "Визуальная раскладка Cytoscape, подсветка направлений, клики и фактическая читаемость интерфейса не инспектировались браузером по обязательной политике; оценены source/build/API.",
+        "Качество новых формулировок OpenAI, retry-поведение и provider-specific response не проверялись без предоставленного credential; локальный disabled path и шаблонный card проверены.",
+        "В кейсе нет ground truth ролей, входящих переводов seed извне выборки, потоков после 4-го колена и операций ниже порога, поэтому accuracy ролей не устанавливается."
+      ],
+      "reviewPolicyVersion": 2,
+      "assessmentStatus": "ready",
+      "findings": [
+        {
+          "id": "F1",
+          "kind": "defect",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Штатный контейнерный запуск проекта не выполняет entrypoint на Alpine.",
+          "expected": "ENTRYPOINT запускает pipeline, check и web server, как описано в README и Dockerfile.",
+          "actual": "Запуск завершился с exit 2 и сообщением /app/entrypoint.sh: set: line 2: illegal option -; git показывает рабочую CRLF для cmd/web/entrypoint.sh, а файл содержит set -eu на строке 2.",
+          "evidence": [
+            "cmd/web/entrypoint.sh:1-5",
+            "Dockerfile:29-33",
+            "captures/20261001T123434830032-start.stderr.log",
+            "git ls-files --eol cmd/web/entrypoint.sh: i/lf w/crlf"
+          ],
+          "checkIds": [
+            "start-compose"
+          ]
+        },
+        {
+          "id": "F2",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Полный аналитический pipeline и экспорт работают на предоставленном графе.",
+          "expected": "Из трёх parquet получаются валидные три CSV за менее чем 5 минут с 2248 узлами и top не менее 20.",
+          "actual": "Получены 2248 nodes, 3119 edges, 4840 tx, 88 clusters, top 30; check прошёл за 1.733 s.",
+          "evidence": [
+            "captures/20261001T124258663850-scenario-case-data.stdout.log",
+            "internal/services/pipeline/service.go:66-91",
+            "cmd/check/main.go:75-183"
+          ],
+          "checkIds": [
+            "scenario-case-data"
+          ]
+        },
+        {
+          "id": "F3",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Основные HTTP операции пользователя возвращают структурированный результат.",
+          "expected": "Health, top, node, ego, seeds, robustness, search и card доступны после старта web.",
+          "actual": "Все перечисленные GET запросы вернули HTTP 200; обязательный GID выдан первым в top и как consolidator card.",
+          "evidence": [
+            "captures/20261001T124103221261-http-health.stdout.log",
+            "captures/20261001T124103412756-http-top.stdout.log",
+            "captures/20261001T124103560697-http-node.stdout.log",
+            "captures/20261001T124103458761-http-ego.stdout.log",
+            "captures/20261001T124103789222-http-robustness.stdout.log",
+            "captures/20261001T124103921921-http-search.stdout.log",
+            "captures/20261001T124432338079-http-card.stdout.log"
+          ],
+          "checkIds": [
+            "http-health",
+            "http-top",
+            "http-node",
+            "http-ego",
+            "http-supporting-routes"
+          ]
+        },
+        {
+          "id": "F4",
+          "kind": "strength",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Ролевые правила учитывают направленность и ловушки предоставленной выборки.",
+          "expected": "Шесть ролей имеют формальные условия, а depth=4 без исходящих не доказывает terminal.",
+          "actual": "roles.go реализует пороги и precedence; metrics.go выставляет truncated/verified_sink; priority.go применяет seed/truncated multipliers.",
+          "evidence": [
+            "internal/services/analysis/roles.go:11-115",
+            "internal/services/analysis/metrics.go:69-77",
+            "internal/services/analysis/priority.go:36-46",
+            "docs/methodology.md:152-160"
+          ],
+          "checkIds": [
+            "scenario-case-data"
+          ]
+        },
+        {
+          "id": "F5",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Сборка, тесты и основная детерминированность подтверждены.",
+          "expected": "Production build и тестовые suites проходят, повторный расчёт не меняет основные CSV.",
+          "actual": "Docker build exit 0, Go test ./... exit 0, frontend tests 6/6, cmp трёх CSV завершился deterministic-csv-pass.",
+          "evidence": [
+            "captures/20261001T123200128018-build.stderr.log",
+            "captures/20261001T123502460342-go-test.stdout.log",
+            "captures/20261001T123502471342-frontend-test.stdout.log",
+            "captures/20261001T124432526060-deterministic.stdout.log"
+          ],
+          "checkIds": [
+            "build-image",
+            "go-tests",
+            "frontend-tests"
+          ]
+        },
+        {
+          "id": "F6",
+          "kind": "limitation",
+          "verification": "observed",
+          "responsibility": "external_service",
+          "claim": "Новые LLM-вопросы зависят от OPENAI_API_KEY, которого нет в проверке.",
+          "expected": "Без ключа core продолжает работать, а assistant сообщает контролируемое ограничение.",
+          "actual": "assistant status вернул enabled=false; POST нового вопроса вернул HTTP 503, а шаблонная node card вернула by_llm=false и текст.",
+          "evidence": [
+            ".env.example:4",
+            "pkg/llm/client.go:28-38",
+            "internal/transport/http/v1/assistant/handlers.go:26-64",
+            "captures/20261001T124103874132-http-assistant-status.stdout.log",
+            "captures/20261001T124237897828-http-assistant-post-wget.stderr.log",
+            "captures/20261001T124432338079-http-card.stdout.log"
+          ],
+          "checkIds": [
+            "assistant-no-key"
+          ]
+        },
+        {
+          "id": "F7",
+          "kind": "limitation",
+          "verification": "unverified",
+          "responsibility": "review_environment",
+          "claim": "Фактическая визуальная раскладка, подсветка и кликабельное поведение не установлены этим ревью.",
+          "expected": "Экран показывает directed graph, роли, кластеры и поиск gid.",
+          "actual": "Статический React source, production build, frontend tests и API search проверены, но браузерная визуальная инспекция запрещена политикой пользователя.",
+          "evidence": [
+            "frontend/src/App.jsx:59-155",
+            "frontend/src/components/Toolbar.jsx:17-37",
+            "captures/20261001T123502471342-frontend-test.stdout.log",
+            "captures/20261001T124103921921-http-search.stdout.log"
+          ],
+          "checkIds": [
+            "frontend-tests",
+            "http-supporting-routes"
+          ]
+        }
+      ],
+      "gapFindingIds": [
+        "F1"
+      ]
+    }
+  ],
+  "score": 90.0,
+  "status": "complete",
+  "expectedJudges": 1
+}

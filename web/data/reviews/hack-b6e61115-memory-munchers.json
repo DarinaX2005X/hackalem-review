@@ -1,0 +1,885 @@
+{
+  "methodVersion": 4,
+  "repoId": "hack-b6e61115-memory-munchers",
+  "repoUrl": "https://github.com/BAITC-Hacks/hack-b6e61115-memory-munchers",
+  "caseId": 10,
+  "snapshot": "954ab41018c55169eead9d2b068cbf6dad8e7f7e",
+  "judges": [
+    {
+      "methodVersion": 4,
+      "repoId": "hack-b6e61115-memory-munchers",
+      "caseId": 10,
+      "model": "GPT-5.6 Luna",
+      "snapshot": "954ab41018c55169eead9d2b068cbf6dad8e7f7e",
+      "overallSummary": "Проект представляет собой достаточно цельный прототип консультанта по электротехническим товарам: каталог импортируется в PostgreSQL, агент получает инструменты поиска, характеристик, сертификатов, аналогов и условий покупки, а изменение корзины вынесено в отдельный двухшаговый поток предложения и явного подтверждения. Сборка на .NET 10 прошла, локальная acceptance-проверка дала 7 успешных и 2 неуспешных теста, а HTTP-проверка подтвердила запуск, миграции, каталог и изолированную корзину. Итог ограничен тремя подтверждёнными проблемами проекта: в опубликованных настройках отсутствуют условия покупки и разрешённый origin фронтенда, а импорт существующих товаров не обновляет изменившиеся поля. Дополнительно в appsettings.json находится credential-подобное значение OpenAI, что создаёт реальный риск утечки секрета.",
+      "global": {
+        "criteria": [
+          {
+            "name": "Ценность решения",
+            "score": 22,
+            "max": 25,
+            "awarded": "Решение напрямую сокращает типовые консультационные шаги, которые в кейсе отнесены к менеджерам: поиск по каталогу, проверка остатка, характеристики, сертификаты, аналог и переход к корзине.",
+            "deductions": "До максимума не хватает готовой конфигурации обязательных коммерческих условий и безопасной эксплуатационной конфигурации по умолчанию; пользовательский путь зависит от ручной настройки.",
+            "evidence": [
+              "README.md:107-115",
+              "MemoryMunchers/MemoryMunchers/Shopping/ProductConsultant.cs:8-48",
+              "MemoryMunchers/MemoryMunchers/Shopping/BasketService.cs:20-86",
+              "test-musthave: R1, R2, R4, R5 — 7 из 9 тестов прошли"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "F2",
+                "reason": "В поставленной конфигурации инструмент условий покупки возвращает configured=false и не даёт требуемого содержательного ответа."
+              },
+              {
+                "points": 1,
+                "findingId": "F3",
+                "reason": "Описанный в README стандартный адрес фронтенда не разрешён CORS без ручного добавления настройки, поэтому базовый пользовательский путь не является готовым из checkout."
+              },
+              {
+                "points": 1,
+                "findingId": "F1",
+                "reason": "Credential-подобное значение в отслеживаемом appsettings.json снижает доверие к безопасному применению решения в реальном магазине."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Понятная боль клиента",
+                "implementation": "README связывает решение с конкретной задержкой покупки: клиенту не нужно отдельно писать менеджеру, чтобы узнать характеристики, наличие или возможную замену. Контроллеры каталога и инструменты агента действительно покрывают эти операции, а не только рисуют чат.",
+                "value": "Польза понятна и адресует как покупателя, которому нужен быстрый ответ, так и менеджера, которого освобождают от повторяющихся запросов. Это хорошо соответствует аудитории кейса.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:1-12",
+                  "MemoryMunchers/MemoryMunchers/Controllers/ProductsController.cs:21-47",
+                  "MemoryMunchers/MemoryMunchers/Shopping/ProductConsultant.cs:8-28"
+                ]
+              },
+              {
+                "aspect": "Снижение риска ошибочной покупки",
+                "implementation": "Ответы строятся через инструменты каталога; ProductCard разделяет цену, доступность, фактический остаток и статус каталога. Для аналогов возвращаются совпадающие и отличающиеся характеристики, цена и объяснение reason, причём compatibilityVerified явно false.",
+                "value": "Для электротехнических товаров это важнее простого текстового поиска: пользователь видит, какие параметры совпали, и предупреждён, что аналог не является гарантированно совместимым.",
+                "verification": "observed",
+                "evidence": [
+                  "MemoryMunchers/MemoryMunchers/Shopping/ProductLookup.cs:49-119",
+                  "MemoryMunchers/MemoryMunchers/Shopping/ProductLookup.cs:121-151",
+                  "test-musthave: R1_ProductQuestion_ReturnsStockSpecificationsAndCertificate",
+                  "test-musthave: R2_OutOfStockProduct_OffersAlternativeWithReason"
+                ]
+              },
+              {
+                "aspect": "Полезный путь до корзины",
+                "implementation": "Агент только создаёт BasketProposal, а BasketService проверяет версию корзины, свежие цену/доступность, минимум, кратность, лимит и остаток перед изменением строк. UI отдельно показывает кнопку подтверждения и после подтверждения ссылку.",
+                "value": "Это превращает консультацию в измеримый пользовательский результат — не только сообщение, но и безопасно подготовленную покупку. Основной риск несанкционированного изменения корзины закрыт архитектурно.",
+                "verification": "observed",
+                "evidence": [
+                  "MemoryMunchers/MemoryMunchers/Shopping/ProductConsultant.cs:28-39",
+                  "MemoryMunchers/MemoryMunchers/Shopping/BasketService.cs:35-118",
+                  "frontend/chatbot.js:53-72",
+                  "test-musthave: R4_BasketChangesOnlyAfterExplicitConfirmation_AndNeverExceedsStock",
+                  "test-musthave: R5_AfterConfirmation_LinkLeadsToCurrentBasket"
+                ]
+              },
+              {
+                "aspect": "Ограниченная готовность коммерческих ответов",
+                "implementation": "Инструмент get_purchase_conditions предусмотрен и умеет добавлять к общим условиям минимум и кратность конкретного товара, но данные берутся из Shopping:PurchaseConditions. В appsettings.json этот раздел задан null, поэтому реальный запуск по умолчанию сообщает, что условия не предоставлены.",
+                "value": "Каркас расширяемый, но именно для заявленной ценности кейса отсутствие настроенных оплаты, доставки и возврата оставляет важную часть вопроса клиента нерешённой.",
+                "verification": "observed",
+                "evidence": [
+                  "MemoryMunchers/MemoryMunchers/Shopping/ProductConsultant.cs:41-50",
+                  "MemoryMunchers/MemoryMunchers/Shopping/ShoppingModels.cs:5-31",
+                  "MemoryMunchers/MemoryMunchers/appsettings.json:15-25",
+                  "test-musthave: R3_PurchaseConditionsQuestion_GetsSubstantiveAnswer — failed"
+                ]
+              }
+            ],
+            "scoreReasoning": "22/25 отражает сильное соответствие реальной проблеме и наличие безопасного пути от консультации к корзине. Сняты только подтверждённые эксплуатационные ограничения: обязательные условия покупки не настроены, стандартный фронтенд не проходит CORS, а credential-подобное значение попало в репозиторий. Это заметные препятствия для немедленной передачи магазину, но они не отменяют ценность самого сценария и не относятся к отсутствию публичного live URL."
+          },
+          {
+            "name": "Результат и качество решения",
+            "score": 15,
+            "max": 20,
+            "awarded": "Основной серверный сценарий реализован и частично воспроизведён: сборка прошла, миграции и HTTP API стартуют, локальные acceptance-проверки подтверждают каталог, аналоги, корзину и изоляцию.",
+            "deductions": "Качество снижают неработающие настройки обязательных условий и CORS по умолчанию, а также дефект импорта, который не обновляет уже существующие товары.",
+            "evidence": [
+              "build4: dotnet restore/build — Build succeeded, 0 errors",
+              "start-api: приложение запустилось и применило миграции",
+              "http-catalog: status expectedCount=12853, databaseCount=12853, isComplete=true",
+              "test-musthave: 7 passed, 2 failed"
+            ],
+            "deductionItems": [
+              {
+                "points": 3,
+                "findingId": "F2",
+                "reason": "Один из пяти обязательных acceptance-сценариев — условия покупки — фактически не даёт содержательного ответа в поставленном запуске."
+              },
+              {
+                "points": 1,
+                "findingId": "F3",
+                "reason": "Поставленный веб-путь с localhost:5500 не проходит CORS preflight, что блокирует штатное обращение фронтенда к API."
+              },
+              {
+                "points": 1,
+                "findingId": "F4",
+                "reason": "Повторный импорт только добавляет отсутствующие ID и оставляет устаревшими изменившиеся название, цену, доступность и другие поля."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Сборка и структура сервера",
+                "implementation": "Проект собирается на заявленном .NET 10 SDK с EF Core/Npgsql, миграциями, контроллерами и отдельными сервисами. В проверке restore/build завершились с кодом 0; были только два предупреждения о названии класса миграции.",
+                "value": "Это подтверждает, что кодовый прототип не является только набором экранов и имеет воспроизводимую компилируемую серверную основу.",
+                "verification": "observed",
+                "evidence": [
+                  "MemoryMunchers/MemoryMunchers/MemoryMunchers.csproj:1-31",
+                  "MemoryMunchers/MemoryMunchers/Program.cs:8-44",
+                  "build4: Build succeeded; 0 errors, 2 warnings"
+                ]
+              },
+              {
+                "aspect": "Работа каталога на данных кейса",
+                "implementation": "ProductCatalogReader валидирует заголовки, JSON характеристик, уникальность ID и даты, после чего ProductsController отдаёт пагинацию и детали. HTTP-проверка после импорта вернула полную целостность каталога: 12 853 ожидаемых и 12 853 записанных товара.",
+                "value": "Данные не подменяются статическими ответами: сервер действительно читает CSV, сохраняет записи и отдаёт конкретный товар с кодом, названием и доступностью.",
+                "verification": "observed",
+                "evidence": [
+                  "MemoryMunchers/MemoryMunchers/Products/ProductCatalogReader.cs:14-98",
+                  "MemoryMunchers/MemoryMunchers/Controllers/ProductsController.cs:21-47",
+                  "http-catalog: GET /api/products/status, GET /api/products?page=1&pageSize=20, GET /api/products/{id}"
+                ]
+              },
+              {
+                "aspect": "Транзакционный поток корзины",
+                "implementation": "PrepareAsync блокирует корзину и сохраняет снимок предложения; ConfirmAsync повторно сравнивает версию, цену, доступность и ограничения и только затем обновляет BasketItem. Конфликт устаревшего предложения оставляет корзину неизменённой.",
+                "value": "Это качественная реализация критического бизнес-правила кейса. Она проверяет не только намерение модели, но и серверное состояние непосредственно перед изменением.",
+                "verification": "observed",
+                "evidence": [
+                  "MemoryMunchers/MemoryMunchers/Shopping/BasketService.cs:35-118",
+                  "MemoryMunchers/MemoryMunchers/Shopping/BasketService.cs:129-158",
+                  "test-musthave: R4 — pending proposal не меняет корзину, превышение остатка отклоняется, stale confirmation даёт 409"
+                ]
+              },
+              {
+                "aspect": "Подтверждённые границы качества",
+                "implementation": "Проект содержит девять acceptance-тестов, включая характеристики и сертификат, аналог, условия, корзину, ссылку, изоляцию, CORS и удаление данных. Семь тестов прошли, а два выявили конкретные проблемы конфигурации, а не неопределённые ошибки стенда.",
+                "value": "Наличие тестов делает результат проверяемым и позволяет отделить работающий серверный домен от незавершённых настроек. Это сильнее, чем вывод только по README.",
+                "verification": "observed",
+                "evidence": [
+                  "MemoryMunchers/MemoryMunchers.Tests/MustHaveTests.cs:16-225",
+                  "MemoryMunchers/MemoryMunchers.Tests/ShopFixture.cs:14-103",
+                  "test-musthave: Total 9; Passed 7; Failed 2"
+                ]
+              }
+            ],
+            "scoreReasoning": "15/20 — это рабочий и достаточно аккуратно защищённый MVP, но не полностью готовый сценарий. Сборка, старт, каталог и корзина доказаны; два теста обнаружили проблемы, которые проявляются в обычной конфигурации, а дефект обновления каталога виден непосредственно в коде. Отсутствие ключа модели не использовано как штраф: это отдельно указано как ограничение проверки."
+          },
+          {
+            "name": "Инновационность",
+            "score": 13,
+            "max": 15,
+            "awarded": "Нестандартная для простого чат-виджета часть решения — сочетание grounded-инструментов, объяснимого ранжирования аналогов и серверного предложения корзины с повторной проверкой перед подтверждением.",
+            "deductions": "Часть инновационного эффекта остаётся архитектурным обещанием: интеграция модели не была выполнена в проверке из-за отсутствия внешнего ключа, а credential-подобная конфигурация в репозитории противоречит заявленной безопасной инженерии.",
+            "evidence": [
+              "MemoryMunchers/MemoryMunchers/Shopping/ProductLookup.cs:49-151",
+              "MemoryMunchers/MemoryMunchers/Shopping/ProductConsultant.cs:8-48",
+              "MemoryMunchers/MemoryMunchers/Agents/OpenAI/OpenAiResponsesClient.cs:10-33",
+              "test-musthave: R2 и R4 прошли"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "F1",
+                "reason": "Хранение credential-подобного значения в appsettings.json — подтверждённый инженерный дефект, который уменьшает доверие к безопасному применению разработанного подхода."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Объяснимый подбор аналога",
+                "implementation": "AlternativesAsync сначала исключает известные нулевые остатки, затем ранжирует кандидатов по типу товара в названии, совпадениям характеристик, подкатегории, бренду, наличию и близости цены. Для каждого кандидата формируется reason с совпавшими и отличающимися полями.",
+                "value": "Это заметно отличается от непрозрачного ответа «похожий товар» и даёт покупателю материал для проверки совместимости. Для домена электротехники это практически полезная форма объяснимости.",
+                "verification": "source",
+                "evidence": [
+                  "MemoryMunchers/MemoryMunchers/Shopping/ProductLookup.cs:49-119",
+                  "MemoryMunchers/MemoryMunchers/Shopping/ProductLookup.cs:121-151"
+                ]
+              },
+              {
+                "aspect": "Модель ограничена инструментами",
+                "implementation": "ProductConsultant требует сначала искать факты, запрещает выдумывать цены и наличие, разделяет сертификаты и обычные документы и запрещает считать предложение добавлением в корзину. Схемы инструментов имеют strict=true на стороне клиента OpenAI.",
+                "value": "Инновация здесь не в одном LLM-вызове, а в ограничении агентной автономии доменными операциями и серверными проверками.",
+                "verification": "source",
+                "evidence": [
+                  "MemoryMunchers/MemoryMunchers/Shopping/ProductConsultant.cs:8-48",
+                  "MemoryMunchers/MemoryMunchers/Shopping/ProductConsultant.cs:73-123",
+                  "MemoryMunchers/MemoryMunchers/Agents/OpenAI/OpenAiResponsesClient.cs:16-31"
+                ]
+              },
+              {
+                "aspect": "Двухфазная покупка вместо доверия модели",
+                "implementation": "Инструмент prepare_basket_addition создаёт только предложение. Реальное изменение выполняется отдельным endpoint confirm, который повторно получает карточки товаров и проверяет согласованность снимка.",
+                "value": "Такой разрыв между намерением агента и побочным эффектом является сильным нестандартным решением для чат-покупки: модель не получает прямой операции записи корзины.",
+                "verification": "observed",
+                "evidence": [
+                  "MemoryMunchers/MemoryMunchers/Shopping/ProductConsultant.cs:86-90",
+                  "MemoryMunchers/MemoryMunchers/Controllers/BasketController.cs:9-28",
+                  "test-musthave: R4_BasketChangesOnlyAfterExplicitConfirmation_AndNeverExceedsStock"
+                ]
+              },
+              {
+                "aspect": "Работа с неоднородными вложениями",
+                "implementation": "AttachmentService проверяет сигнатуры JPEG/PDF/Office, ограничивает размер и срок хранения, извлекает Word/Excel-текст, передаёт JPEG как input_image, а остальные бинарные форматы как input_file. Большие таблицы дочитываются порциями через read_attachment_rows.",
+                "value": "Для входа кейса это более глубокий прототип, чем чат только по тексту; при этом в инструкции явно обозначено, что встроенные изображения Word не анализируются.",
+                "verification": "source",
+                "evidence": [
+                  "MemoryMunchers/MemoryMunchers/Shopping/AttachmentService.cs:10-84",
+                  "MemoryMunchers/MemoryMunchers/Shopping/AttachmentService.cs:88-152",
+                  "frontend/chatbot.js:21-29"
+                ]
+              }
+            ],
+            "scoreReasoning": "13/15 — подход содержит несколько осмысленных инженерных отличий от обычного LLM-чата, особенно объяснимый аналог и двухфазную корзину. Два балла удержаны подтверждённым секретом в конфигурации, который противоречит безопасной эксплуатации; отсутствие реального ключа модели не трактовалось как недостаток инновации."
+          },
+          {
+            "name": "Потенциал развития и масштабирования",
+            "score": 15,
+            "max": 20,
+            "awarded": "Код выделяет отдельные границы для каталога, feed-импорта, хранения сессий, вложений, агента и магазина; предусмотрены rate limits, токены покупателя, миграции, удаление данных и расширение через merchant feeds.",
+            "deductions": "Масштабирование сдерживают не обновляющийся импорт каталога, обязательная ручная конфигурация origin/коммерческих условий и небезопасный секрет в checkout.",
+            "evidence": [
+              "MemoryMunchers/MemoryMunchers/Program.cs:12-63",
+              "MemoryMunchers/MemoryMunchers/Products/MerchantFeedImporter.cs:1-128",
+              "MemoryMunchers/MemoryMunchers/Shopping/AttachmentService.cs:163-182",
+              "README.md:117-154"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "F4",
+                "reason": "При повторной синхронизации существующие карточки не обновляются, поэтому расширение на изменяющийся каталог может раздавать устаревшие цены и статусы."
+              },
+              {
+                "points": 2,
+                "findingId": "F3",
+                "reason": "Подключение нового storefront origin требует ручной настройки, а стандартный origin README не включён изначально."
+              },
+              {
+                "points": 1,
+                "findingId": "F1",
+                "reason": "Секрет в отслеживаемой конфигурации создаёт неприемлемый операционный риск при копировании проекта в следующий контур."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Разделение источников данных",
+                "implementation": "Каталог, остатки и сертификаты представлены разными сущностями и импортерами. MerchantFeedImporter делает upsert остатков и заменяет сертификаты по товарам, а demo feed может быть отключён отдельной настройкой.",
+                "value": "Такую схему можно адаптировать к реальному 1С/API feed без изменения агентных инструментов и UI-контракта.",
+                "verification": "source",
+                "evidence": [
+                  "MemoryMunchers/MemoryMunchers/Products/MerchantFeedImporter.cs:1-78",
+                  "MemoryMunchers/MemoryMunchers/Shopping/ShoppingModels.cs:48-73",
+                  "MemoryMunchers/MemoryMunchers/Program.cs:24-25"
+                ]
+              },
+              {
+                "aspect": "Изоляция арендатора и жизненный цикл данных",
+                "implementation": "Подписанный X-Shopper-Token связывает сессии, файлы и корзину с ShopperId; rate limiter разделяет токены и IP, а DataRetentionCleanup удаляет просроченные вложения и старые диалоги. Есть endpoint удаления собственных данных.",
+                "value": "Это задел для нескольких анонимных покупателей и для требований приватности, а не только локальная переменная в браузере.",
+                "verification": "observed",
+                "evidence": [
+                  "MemoryMunchers/MemoryMunchers/Shopping/ShopperContext.cs:1-119",
+                  "MemoryMunchers/MemoryMunchers/Program.cs:45-63",
+                  "MemoryMunchers/MemoryMunchers/Shopping/AttachmentService.cs:163-182",
+                  "test-musthave: Security_ShoppersAreIsolated_AndCannotChangeEachOthersBasket",
+                  "test-musthave: Privacy_ShopperCanDeleteAllOwnData"
+                ]
+              },
+              {
+                "aspect": "Защищённый рост бизнес-правил",
+                "implementation": "В ShoppingOptions выделены срок предложения, максимальный возраст остатков, лимиты вложений, срок хранения, лимиты заказа и обязательность подтверждённого остатка. BasketService централизует ValidateQuantity, что облегчает добавление новых каналов.",
+                "value": "Центральные проверки уменьшают риск расхождения правил между агентом, API корзины и будущим встраиваемым виджетом.",
+                "verification": "source",
+                "evidence": [
+                  "MemoryMunchers/MemoryMunchers/Shopping/ShoppingModels.cs:5-31",
+                  "MemoryMunchers/MemoryMunchers/Shopping/BasketService.cs:129-158",
+                  "MemoryMunchers/MemoryMunchers/Program.cs:26-30"
+                ]
+              },
+              {
+                "aspect": "Ограничения интеграции с текущим магазином",
+                "implementation": "README описывает встраивание через script data-атрибуты, отдельные BasketUrl/PublicApiUrl/CheckoutUrl и дальнейший перенос в 1С-Битрикс. При этом автоматический sale.basketitem.add в текущем snapshot не подключён.",
+                "value": "Направление развития реалистично обозначено: API и виджет можно использовать отдельно от конкретной CMS, а интеграционный gap явно назван.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:142-154",
+                  "frontend/shopping.js:1-17",
+                  "MemoryMunchers/MemoryMunchers/Shopping/ShoppingModels.cs:5-18"
+                ]
+              }
+            ],
+            "scoreReasoning": "15/20 — архитектура хорошо разделена и содержит реальные точки расширения, поэтому решение можно развивать после хакатона. Но актуальность каталога и готовность подключения к storefront сейчас зависят от ручных настроек, а импорт существующих записей не является полноценной синхронизацией. Это существенные, но исправимые ограничения MVP."
+          },
+          {
+            "name": "Презентация, демо и ответы на вопросы",
+            "score": 13,
+            "max": 20,
+            "awarded": "Устного выступления не было; по правилам критерия оценены README, объяснение архитектуры и воспроизводимость демонстрации из репозитория. README подробно описывает запуск, endpoints, данные, ограничения и пользовательский сценарий.",
+            "deductions": "Воспроизводимость из чистого checkout ухудшается отсутствующими настройками условий и CORS, а размещение credential-подобного значения в README-соседнем appsettings.json является серьёзным дефектом демонстрационного пакета.",
+            "evidence": [
+              "README.md:1-206",
+              "README.md:107-140",
+              "README.md:142-173",
+              "build4, start-api, http-catalog, http-shopper-basket"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "F2",
+                "reason": "README описывает get_purchase_conditions как готовую возможность, но без ручного заполнения Shopping:PurchaseConditions демонстрация обязательного вопроса завершается ответом о непредоставленных условиях."
+              },
+              {
+                "points": 2,
+                "findingId": "F3",
+                "reason": "README называет localhost:5500 штатным адресом фронтенда, но эта конфигурация не разрешена в appsettings.json и acceptance-тесте CORS."
+              },
+              {
+                "points": 3,
+                "findingId": "F1",
+                "reason": "Пакет, который должен быть воспроизводимым, содержит секретоподобное значение в tracked configuration; это мешает безопасно делиться и запускать репозиторий."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Инструкция запуска",
+                "implementation": "README перечисляет .NET 10, PostgreSQL, переменные подключения, user-secrets для OpenAI, команды запуска API и статического фронтенда, URL страниц и типичные ошибки.",
+                "value": "Участнику или техническому демо-оператору понятно, какие компоненты нужны и где искать проблему. Это хорошая основа для воспроизводимого локального показа.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:14-106",
+                  "README.md:160-180"
+                ]
+              },
+              {
+                "aspect": "Объяснение решения по требованиям",
+                "implementation": "Таблица README связывает каждый must-have с конкретным инструментом или сервисом: детали, аналог, условия, proposal/confirm и basket URL. Отдельно описаны изоляция покупателей, rate limits, retention и demo feeds.",
+                "value": "Документ не ограничивается маркетинговым описанием и позволяет сопоставить заявленный сценарий с файлами исходников.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:107-140",
+                  "README.md:117-154",
+                  "MemoryMunchers/MemoryMunchers/Shopping/ProductConsultant.cs:8-48"
+                ]
+              },
+              {
+                "aspect": "Воспроизводимый серверный результат",
+                "implementation": "Из checkout удалось собрать приложение, запустить его с PostgreSQL, получить 12 853 товара через статус каталога, запросить страницу и детали, выдать shopper token и получить пустую корзину.",
+                "value": "Даже без UI-осмотра это даёт проверяемую демонстрацию серверного результата и подтверждает, что README не описывает полностью отсутствующий backend.",
+                "verification": "observed",
+                "evidence": [
+                  "build4: dotnet restore/build",
+                  "start-api: миграции применены, HTTP listener запущен",
+                  "http-catalog: status/page/detail",
+                  "http-shopper-basket: shopper token and GET /api/basket"
+                ]
+              },
+              {
+                "aspect": "Честно обозначенные границы",
+                "implementation": "README сообщает, что автоматический перенос позиций в 1С-Битрикс пока не подключён, что для production нужно отключить demo feeds, и что OpenAI нужен только ассистенту, тогда как каталог и корзина могут работать без него.",
+                "value": "Такая маркировка снижает риск принять прототип за готовую production-интеграцию и помогает задавать корректные вопросы на демо.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:140-154",
+                  "README.md:168-173",
+                  "MemoryMunchers/MemoryMunchers/Agents/OpenAI/OpenAiResponsesClient.cs:10-33"
+                ]
+              }
+            ],
+            "scoreReasoning": "13/20 — документация заметно выше минимального уровня и серверный результат реально воспроизводится. Балл не максимальный из-за разрыва между README и настройками чистого checkout: условия и CORS требуют ручных действий, а секрет в конфиге делает пакет небезопасным для публичной передачи. Отсутствие live URL или устного выступления само по себе не учитывалось как штраф."
+          }
+        ],
+        "total": 78
+      },
+      "case": null,
+      "judgeScore": 78,
+      "caseRequirements": [
+        {
+          "requirement": "Консультация по существующему товару: наличие, цена, характеристики и сертификат из каталога.",
+          "status": "met",
+          "explanation": "Инструменты search_products и get_product_details возвращают карточку, свежий остаток, stockStatus, характеристики и сертификаты. Acceptance-тест R1 установил остаток 7, проверил все поля характеристик, ссылку сертификата и GET сертификата.",
+          "evidence": [
+            "MemoryMunchers/MemoryMunchers/Shopping/ProductConsultant.cs:11-17",
+            "MemoryMunchers/MemoryMunchers/Shopping/ProductLookup.cs:153-167",
+            "MemoryMunchers/MemoryMunchers/Controllers/CertificatesController.cs:14-42",
+            "test-musthave: R1_ProductQuestion_ReturnsStockSpecificationsAndCertificate"
+          ]
+        },
+        {
+          "requirement": "При нулевом остатке предложить минимум один релевантный аналог с объяснением.",
+          "status": "met",
+          "explanation": "AlternativesAsync исключает кандидатов с известным нулевым остатком, ранжирует их по типу, характеристикам, подкатегории, бренду, наличию и цене и возвращает reason. R2 подтвердил непустой список, объяснение, исключение исходного товара и compatibilityVerified=false.",
+          "evidence": [
+            "MemoryMunchers/MemoryMunchers/Shopping/ProductLookup.cs:49-119",
+            "MemoryMunchers/MemoryMunchers/Shopping/ProductLookup.cs:121-151",
+            "test-musthave: R2_OutOfStockProduct_OffersAlternativeWithReason"
+          ]
+        },
+        {
+          "requirement": "Содержательно отвечать об оплате, доставке, самовывозе, возврате и минимальной партии.",
+          "status": "partial",
+          "explanation": "Код имеет отдельный get_purchase_conditions и умеет добавлять ограничения конкретного товара, но в committed appsettings.json Shopping:PurchaseConditions=null. Поэтому тест R3 получил configured=false вместо заполненных payment, delivery, minimumOrder и sourceUrl.",
+          "evidence": [
+            "MemoryMunchers/MemoryMunchers/Shopping/ProductConsultant.cs:41-50",
+            "MemoryMunchers/MemoryMunchers/Shopping/ShoppingModels.cs:24-31",
+            "MemoryMunchers/MemoryMunchers/appsettings.json:15-25",
+            "test-musthave: R3_PurchaseConditionsQuestion_GetsSubstantiveAnswer — failed"
+          ]
+        },
+        {
+          "requirement": "Изменять корзину только после явного подтверждения клиента.",
+          "status": "met",
+          "explanation": "Модель вызывает только prepare_basket_addition, которое сохраняет pending proposal. Изменение BasketItem выполняется отдельным POST confirm, а UI создаёт кнопку «Подтвердить добавление». R4 подтвердил, что до confirm корзина пуста.",
+          "evidence": [
+            "MemoryMunchers/MemoryMunchers/Shopping/ProductConsultant.cs:28-39",
+            "MemoryMunchers/MemoryMunchers/Shopping/BasketService.cs:35-86",
+            "MemoryMunchers/MemoryMunchers/Controllers/BasketController.cs:10-16",
+            "frontend/chatbot.js:63-72",
+            "test-musthave: R4_BasketChangesOnlyAfterExplicitConfirmation_AndNeverExceedsStock"
+          ]
+        },
+        {
+          "requirement": "Не допускать количества выше остатка и повторно проверять состояние перед подтверждением.",
+          "status": "met",
+          "explanation": "ValidateQuantity проверяет доступный остаток, минимум, кратность и website limit; ConfirmAsync заново получает карточки и отклоняет изменившуюся цену, доступность, остаток или версию корзины. R4 проверил превышение 5 единиц, изменение остатка после proposal и прямое PATCH.",
+          "evidence": [
+            "MemoryMunchers/MemoryMunchers/Shopping/BasketService.cs:90-118",
+            "MemoryMunchers/MemoryMunchers/Shopping/BasketService.cs:129-158",
+            "test-musthave: R4_BasketChangesOnlyAfterExplicitConfirmation_AndNeverExceedsStock"
+          ]
+        },
+        {
+          "requirement": "После добавления дать ссылку на актуальную корзину/оформление.",
+          "status": "partial",
+          "explanation": "Подтверждение возвращает basketUrl и UI умеет ссылаться на локальную basket.html, а R5 проверил, что после изменения корзины страница читает актуальное состояние. Однако в appsettings.json BasketUrl и CheckoutUrl null, поэтому серверная ссылка на сайт магазина не настроена и внешняя checkout-интеграция отсутствует.",
+          "evidence": [
+            "MemoryMunchers/MemoryMunchers/Shopping/BasketService.cs:118-127",
+            "MemoryMunchers/MemoryMunchers/appsettings.json:15-25",
+            "frontend/shopping.js:47-55",
+            "frontend/chatbot.js:70-72",
+            "test-musthave: R5_AfterConfirmation_LinkLeadsToCurrentBasket"
+          ]
+        },
+        {
+          "requirement": "Принимать заявленные вложения JPEG, PDF, Word и Excel и не считать непрочитанные строки обработанными.",
+          "status": "met",
+          "explanation": "AttachmentService проверяет содержимое по сигнатуре и принимает JPEG, PDF, DOC/DOCX и XLS/XLSX, извлекает Word/Excel, передаёт изображения и PDF модели соответствующим типом, а таблицы дочитываются порциями через read_attachment_rows с nextRow. Визуальный пользовательский путь не осматривался, но серверная реализация покрывает форматы.",
+          "evidence": [
+            "MemoryMunchers/MemoryMunchers/Shopping/AttachmentService.cs:10-84",
+            "MemoryMunchers/MemoryMunchers/Shopping/AttachmentService.cs:88-152",
+            "frontend/chatbot.js:21-26",
+            "MemoryMunchers/MemoryMunchers/Shopping/ProductConsultant.cs:31-35"
+          ]
+        },
+        {
+          "requirement": "Не выдумывать цену, наличие, характеристики и сертификаты.",
+          "status": "met",
+          "explanation": "Инструкции агента требуют сначала использовать инструменты, запрещают выдумывать факты, различают остаток и лимит заказа, а ProductLookup получает карточки из базы и считает свежесть inventory. Для сертификата используется отдельная коллекция certificates, а не произвольная ссылка из документов.",
+          "evidence": [
+            "MemoryMunchers/MemoryMunchers/Shopping/ProductConsultant.cs:11-28",
+            "MemoryMunchers/MemoryMunchers/Shopping/ProductLookup.cs:153-167",
+            "MemoryMunchers/MemoryMunchers/Shopping/ShoppingModels.cs:104-119"
+          ]
+        },
+        {
+          "requirement": "Изолировать покупателей, не принимать изменение корзины по чужому токену и не хранить платёжные данные.",
+          "status": "met",
+          "explanation": "ShopperContext требует подписанный X-Shopper-Token, запросы к сессиям/файлам/корзине фильтруются по ShopperId, а агенту запрещено запрашивать ИИН, карту, адрес и телефон. Тесты подтвердили 401 без токена, 404 при доступе к чужому proposal/session и удаление собственных данных.",
+          "evidence": [
+            "MemoryMunchers/MemoryMunchers/Shopping/ShopperContext.cs:1-119",
+            "MemoryMunchers/MemoryMunchers/Shopping/ProductConsultant.cs:36-39",
+            "test-musthave: Security_ShoppersAreIsolated_AndCannotChangeEachOthersBasket",
+            "test-musthave: Privacy_ShopperCanDeleteAllOwnData"
+          ]
+        },
+        {
+          "requirement": "Запускать демонстрацию из README с каталогом и фронтендом.",
+          "status": "partial",
+          "explanation": "README содержит архитектуру, команды, PostgreSQL, endpoints, данные и ограничения; backend собрался и HTTP API воспроизвёл каталог. Но чистая конфигурация не включает purchase conditions и localhost:5500 в CORS, поэтому обязательные части демо требуют ручного донастраивания.",
+          "evidence": [
+            "README.md:14-106",
+            "README.md:107-154",
+            "build4",
+            "start-api",
+            "test-musthave: 7 passed, 2 failed"
+          ]
+        }
+      ],
+      "testData": {
+        "provided": [
+          "cases/10/case-data/HackAlem AI_ ИИ-ассистент для чата на сайте ekt.kz.md",
+          "cases/10/case-data/ИИ-ассистент для чата на сайте ekt.kz ДАННЫЕ.docx.md",
+          "MemoryMunchers/MemoryMunchers/nursultan_ekt_catalog.csv",
+          "MemoryMunchers/MemoryMunchers/demo_inventory.csv",
+          "MemoryMunchers/MemoryMunchers/demo_certificates.csv"
+        ],
+        "used": [
+          "cases/10/case-data/HackAlem AI_ ИИ-ассистент для чата на сайте ekt.kz.md — требования и must-have сценарии",
+          "cases/10/case-data/ИИ-ассистент для чата на сайте ekt.kz ДАННЫЕ.docx.md — формат test API и ограничения публикации credentials; внешние credentials в отчёт не переносились",
+          "MemoryMunchers/MemoryMunchers/nursultan_ekt_catalog.csv — импорт через acceptance fixture и HTTP catalog status/page/detail",
+          "MemoryMunchers/MemoryMunchers/demo_inventory.csv и demo_certificates.csv — проверены структурами и сопоставлены с MerchantFeedImporter; не запускались как DemoData feed в основном HTTP запуске"
+        ],
+        "checks": [
+          {
+            "input": "Каталог nursultan_ekt_catalog.csv и endpoint статуса/страницы/детали.",
+            "method": "Acceptance fixture импортировал CSV в PostgreSQL; затем HTTP GET /api/products/status, GET /api/products?page=1&pageSize=20 и GET /api/products/{id}.",
+            "result": "Статус: expectedCount=12853, databaseCount=12853, missingCount=0, unexpectedCount=0, isComplete=true. Страница вернула 20 записей из 643 страниц; деталь первого товара вернула ID 17983, код, название и доступность.",
+            "conclusion": "Структура и парсинг основного каталога применимы к проекту и реально отработали."
+          },
+          {
+            "input": "Существующий товар с характеристиками, остатком и сертификатом.",
+            "method": "R1 напрямую вызвал search_products/get_product_details, предварительно установив остаток 7 и тестовую запись сертификата; затем запросил certificate endpoint.",
+            "result": "Найден правильный ID; availableQuantity=7, stockStatus=in_stock, количество характеристик совпало с исходным JSON, номер сертификата и ссылка /api/certificates/{id} подтвердились.",
+            "conclusion": "Must-have по карточке товара и сертификату выполнен."
+          },
+          {
+            "input": "Товар с нулевым остатком и кандидаты в той же категории.",
+            "method": "R2 установил исходному товару остаток 0, другим товарам категории — 10, затем вызвал get_product_details и find_product_alternatives.",
+            "result": "Исходный товар получил out_of_stock; candidates непуст, у каждого есть reason, исходный ID исключён, out_of_stock кандидаты исключены, compatibilityVerified=false.",
+            "conclusion": "Аналог и объяснимое обоснование действительно формируются."
+          },
+          {
+            "input": "Вопрос об оплате, доставке, минимальном заказе и source URL.",
+            "method": "R3 вызвал get_purchase_conditions на товаре из того же каталога.",
+            "result": "configured=false, поэтому conditions/payment/delivery/minimumOrder/sourceUrl не соответствуют ожиданию теста; тест завершился assertion failure.",
+            "conclusion": "Инструмент существует, но committed settings не содержат обязательных коммерческих данных."
+          },
+          {
+            "input": "Proposal quantity=2 при остатке 5, quantity=6, stale остаток и подтверждение.",
+            "method": "R4 вызвал prepare_basket_addition, GET basket, POST confirm и повторные операции после изменения остатка.",
+            "result": "До подтверждения basket пуст; quantity=6 отклонено; подтверждение quantity=2 прошло; stale confirmation вернул 409 и не изменил корзину; прямой PATCH quantity=4 вернул 422.",
+            "conclusion": "Серверная защита корзины и требование явного подтверждения выполнены."
+          },
+          {
+            "input": "Подтверждённая ссылка и актуальное состояние корзины.",
+            "method": "R5 подтвердил proposal, проверил basketUrl, изменил quantity через PATCH с версией и перечитал GET basket и историю чата.",
+            "result": "Ссылка на basket.html присутствовала; после PATCH GET basket показал актуальное quantity=1; событие basket_confirmed содержало ту же ссылку.",
+            "conclusion": "Локальный путь к актуальной корзине работает; внешние CheckoutUrl/BasketUrl по умолчанию не настроены."
+          }
+        ],
+        "limitations": [
+          "Внешний test API из документа кейса не вызывался: автоматическая передача credentials в окружение не настроена, а в отчёт нельзя переносить данные доступа. Проверка внешнего сервиса заменена анализом локального каталога и путей импорта.",
+          "Визуальную работу HTML/JS и адаптивность не проверял: по политике этого кейса визуальную проверку выполняет пользователь. Статические frontend-файлы были прочитаны."
+        ]
+      },
+      "runtime": {
+        "status": "partial",
+        "build": "Сборка .NET 10 в изолированном контейнере прошла: 0 ошибок, 2 предупреждения CS8981 в именах классов миграций.",
+        "start": "Приложение стартовало, подключилось к PostgreSQL и применило/проверило EF Core migrations; HTTP API отвечал.",
+        "scenario": "Каталог, shopper token и пустая корзина воспроизведены через HTTP; агентский чат дошёл до provider_not_configured при намеренно пустом ключе внешней модели, поэтому полный AI-сценарий не был выполнен.",
+        "environment": ".NET SDK 10.0.401, PostgreSQL 16-compatible container, изолированные ресурсы; UI/browser automation не использовались.",
+        "summary": "Статус partial означает, что проект реально стартовал и доменные операции без модели доступны, но внешний OpenAI вызов не проверен из-за отсутствующего credential. Это ограничение окружения, а не автоматический штраф.",
+        "checks": [
+          {
+            "command": "dotnet restore MemoryMunchers/MemoryMunchers/MemoryMunchers.csproj && dotnet build MemoryMunchers/MemoryMunchers/MemoryMunchers.csproj --no-restore",
+            "result": "Build succeeded; 0 errors, 2 warnings. Output assembly MemoryMunchers.dll создан.",
+            "id": "build-dotnet10",
+            "stage": "build",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Проект восстанавливает зависимости и собирается на целевом .NET 10."
+          },
+          {
+            "command": "dotnet test MemoryMunchers/MemoryMunchers.Tests/MemoryMunchers.Tests.csproj",
+            "result": "Всего 9 тестов: Passed 7, Failed 2. Успешны R1, R2, R4, R5, isolation, privacy и часть CORS; R3 purchase conditions и allowed localhost:5500 CORS завершились assertion failure.",
+            "id": "test-musthave",
+            "stage": "scenario",
+            "status": "fail",
+            "cause": "project",
+            "expected": "Acceptance/security suite должна подтвердить обязательные сценарии и разрешить штатный storefront origin."
+          },
+          {
+            "command": "dotnet run --project MemoryMunchers/MemoryMunchers/MemoryMunchers.csproj --no-build",
+            "result": "Процесс стартовал, миграции выполнены/проверены, сервер начал принимать HTTP.",
+            "id": "start-api",
+            "stage": "start",
+            "status": "pass",
+            "cause": "none",
+            "expected": "ASP.NET Core API запускается с PostgreSQL и доступен для HTTP-проверок."
+          },
+          {
+            "command": "GET /api/products/status; GET /api/products?page=1&pageSize=20; GET /api/products/{id}",
+            "result": "status вернул expectedCount=12853, databaseCount=12853, missingCount=0, unexpectedCount=0; page вернула 20 товаров; detail вернула конкретную карточку.",
+            "id": "http-catalog",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Каталог и карточка товара доступны через HTTP после старта."
+          },
+          {
+            "command": "POST /api/shopper; GET /api/basket",
+            "result": "Shopper token выдан; GET basket вернул version=0, items=[], totals={}, basketUrl локальной basket.html.",
+            "id": "http-shopper-basket",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Анонимный покупатель получает изолированную идентичность и читаемую пустую корзину."
+          },
+          {
+            "command": "POST /api/product-chat/sessions; POST /api/product-chat/sessions/{id}/messages",
+            "result": "Сессия создана; запрос сообщения с пустым OpenAI__ApiKey вернул HTTP 503 provider_not_configured.",
+            "id": "http-chat",
+            "stage": "scenario",
+            "status": "blocked",
+            "cause": "review_environment",
+            "expected": "Модель отвечает и запускает инструменты консультанта для сообщения о товаре."
+          },
+          {
+            "command": "OPTIONS /api/basket с Origin http://localhost:5500 и Access-Control-Request-Headers: X-Shopper-Token",
+            "result": "Заголовок Access-Control-Allow-Origin отсутствовал; тот же сценарий отражён в failed theory case.",
+            "id": "http-cors",
+            "stage": "scenario",
+            "status": "fail",
+            "cause": "project",
+            "expected": "Штатный origin фронтенда из README проходит CORS preflight."
+          }
+        ],
+        "limitations": [
+          "Ключ внешней модели намеренно не предоставлялся и не искался на машине; поэтому чат проверен по исходникам и обработке ошибки 503, но не по фактическому ответу OpenAI.",
+          "Визуальная проверка браузера запрещена пользовательской политикой и не влияет на оценку как самостоятельный штраф.",
+          "Основной запуск использовал уже импортированный локальный каталог; demo feed не включался в HTTP сценарии."
+        ]
+      },
+      "liveDemo": {
+        "status": "none",
+        "url": null,
+        "notes": "В репозитории нет подтверждённой публичной live-ссылки. Это отмечено информативно и не снижало балл само по себе; локально воспроизводимый backend был проверен."
+      },
+      "fiveHourContext": "Для пятичасового хакатона объём прототипа высокий: команда довела до компилируемого .NET API, базу с миграциями, каталог, feed-модель, агентные инструменты, вложения, изолированную корзину и acceptance-тесты. Оценка не требует production-интеграции с 1С-Битрикс или полноценных эксплуатационных процессов. Снятия относятся только к уже заявленному must-have и конкретным ошибкам в поставленных настройках/реализации.",
+      "strengths": [
+        "F7: Инструментная модель агента запрещает выдумывать каталоговые факты и отделяет предложение корзины от фактического подтверждения.",
+        "F8: Серверный proposal/confirm-поток повторно проверяет остаток, цену, лимиты и версию корзины; это подтверждено acceptance-тестом.",
+        "F9: Ранжирование аналогов возвращает объяснение совпадающих и отличающихся характеристик и явно помечает совместимость как неподтверждённую.",
+        "F10: Изоляция покупателей, удаление собственных данных, срок жизни вложений и rate limits покрыты кодом и тестами."
+      ],
+      "gaps": [
+        "F1: В MemoryMunchers/MemoryMunchers/appsettings.json:6 закоммичено credential-подобное значение OpenAI; его нельзя оставлять в репозитории.",
+        "F2: В поставленном appsettings.json условия покупки не сконфигурированы; R3 подтвердил configured=false вместо содержательного ответа.",
+        "F3: Cors:AllowedOrigins отсутствует, поэтому штатный localhost:5500 не проходит preflight; это подтверждено R3-соседним CORS тестом и HTTP-проверкой.",
+        "F4: ProductCatalogService.ImportAsync добавляет только отсутствующие ID и не обновляет существующие записи при изменении каталога."
+      ],
+      "futureAdvice": [
+        {
+          "principle": "Обязательные бизнес-данные должны быть частью безопасного demo-контура, а секреты — только runtime configuration.",
+          "why": "F1 показывает credential-подобное значение в tracked appsettings.json, а F2 и F3 показывают, что без ручного конфига два обязательных пути не работают.",
+          "how": "Для следующего хакатона вынесите ключи в user-secrets/environment, добавьте безопасный appsettings.example.json без значений, а в demo-профиле задайте тестовые PurchaseConditions и AllowedOrigins. Запустите smoke-проверку на чистой базе до презентации.",
+          "findingIds": [
+            "F1",
+            "F2",
+            "F3"
+          ],
+          "successCheck": "Секрет отсутствует в git diff; GET/agent tool условий возвращает payment, delivery, minimumOrder и sourceUrl; preflight с адресом storefront возвращает Allow-Origin.",
+          "timeboxMinutes": 25
+        },
+        {
+          "principle": "Синхронизация каталога должна обновлять существующие записи, а не только дополнять множество.",
+          "why": "F4 следует из ImportAsync: missing вычисляется по ID, после чего сохраняются только новые товары; изменение цены или статуса уже имеющегося ID остаётся в базе.",
+          "how": "Для другого кейса добавьте upsert по ключу источника с явным списком обновляемых полей, затем один тест: импорт версии A, импорт версии B с изменённой ценой/доступностью, GET detail должен вернуть B.",
+          "findingIds": [
+            "F4"
+          ],
+          "successCheck": "Повторный импорт изменённой строки меняет GET /api/products/{id}, а импорт остаётся идемпотентным при повторе той же версии.",
+          "timeboxMinutes": 30
+        },
+        {
+          "principle": "Acceptance-тесты должны запускать ровно тот путь, который будет показан пользователю.",
+          "why": "F2 и F3 были обнаружены проектными тестами; границы между доменным tool-тестом, HTTP и UI нужно фиксировать заранее, чтобы конфигурационные разрывы находились до показа.",
+          "how": "В следующем прототипе оставьте быстрые прямые tool-тесты, добавьте один HTTP smoke для чистого старта и один контрактный тест фронтенд-конфигурации: default origin, basket URL и условия должны приходить из demo-профиля. Внешний ключ подставляйте только в отдельном ручном прогоне.",
+          "findingIds": [
+            "F2",
+            "F3"
+          ],
+          "successCheck": "На чистой базе build/start/HTTP smoke проходит без ручного редактирования tracked files; отдельный credential-dependent тест явно помечен blocked при отсутствии ключа.",
+          "timeboxMinutes": 35
+        }
+      ],
+      "uncertainties": [
+        "Фактический ответ OpenAI и полный SSE-диалог не проверялись: evaluation environment намеренно не предоставил credential, поэтому вывод об агентском runtime основан на source и обработке 503.",
+        "Визуальная доступность, адаптивность и реальное поведение DOM не проверялись по пользовательской политике; frontend-код прочитан статически.",
+        "Внешний тестовый API из case-data не вызывался; проверены локальные файлы кейса, локальный каталог и серверный импорт."
+      ],
+      "reviewPolicyVersion": 2,
+      "assessmentStatus": "ready",
+      "findings": [
+        {
+          "id": "F1",
+          "kind": "defect",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "В tracked appsettings.json хранится credential-подобное значение для OpenAI.",
+          "expected": "Секреты не должны попадать в репозиторий; запуск должен получать ключ через user-secrets или environment configuration.",
+          "actual": "В MemoryMunchers/MemoryMunchers/appsettings.json:6 находится строковое значение с префиксом sk-proj-, а OpenAiResponsesClient напрямую читает OpenAI:ApiKey.",
+          "evidence": [
+            "MemoryMunchers/MemoryMunchers/appsettings.json:5-10",
+            "MemoryMunchers/MemoryMunchers/Agents/OpenAI/OpenAiResponsesClient.cs:10-17",
+            "README.md:44-62"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "F2",
+          "kind": "defect",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "В committed-конфигурации консультант не может дать содержательный ответ об условиях покупки.",
+          "expected": "get_purchase_conditions должен вернуть настроенные оплату, доставку, возврат, минимум и источник.",
+          "actual": "R3 завершился assertion failure: configured=false; appsettings.json задаёт Shopping:PurchaseConditions=null, а источник условий отсутствует.",
+          "evidence": [
+            "MemoryMunchers/MemoryMunchers/appsettings.json:15-25",
+            "MemoryMunchers/MemoryMunchers/Shopping/ProductConsultant.cs:41-50",
+            "MemoryMunchers/MemoryMunchers.Tests/MustHaveTests.cs:84-98",
+            "captures/20261002T124201203369-test.stdout.log"
+          ],
+          "checkIds": [
+            "test-musthave"
+          ]
+        },
+        {
+          "id": "F3",
+          "kind": "defect",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Штатный фронтенд-origin из README не разрешён CORS поставленной конфигурацией.",
+          "expected": "Origin http://localhost:5500 должен проходить preflight для API-запросов с X-Shopper-Token.",
+          "actual": "Cors:AllowedOrigins отсутствует в appsettings.json; OPTIONS-проверка не вернула Access-Control-Allow-Origin, а теория теста для localhost:5500 упала.",
+          "evidence": [
+            "MemoryMunchers/MemoryMunchers/Program.cs:45-49",
+            "MemoryMunchers/MemoryMunchers/appsettings.json:27-33",
+            "README.md:102-105",
+            "MemoryMunchers/MemoryMunchers.Tests/MustHaveTests.cs:189-204",
+            "captures/20261002T124201203369-test.stdout.log"
+          ],
+          "checkIds": [
+            "test-musthave",
+            "http-cors"
+          ]
+        },
+        {
+          "id": "F4",
+          "kind": "defect",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Повторный импорт каталога не обновляет существующие товары.",
+          "expected": "Синхронизация текущего каталога должна обновлять изменившиеся цену, доступность, описание и другие поля записи с тем же ID.",
+          "actual": "ImportAsync вычисляет missing по existingIds и сохраняет только missing; существующие сущности не сравниваются и не обновляются.",
+          "evidence": [
+            "MemoryMunchers/MemoryMunchers/Products/ProductCatalogService.cs:10-35",
+            "MemoryMunchers/MemoryMunchers/Products/ProductCatalogReader.cs:43-93",
+            "README.md:140"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "F5",
+          "kind": "limitation",
+          "verification": "observed",
+          "responsibility": "review_environment",
+          "claim": "Полный AI-чат не был выполнен без внешнего ключа модели.",
+          "expected": "При наличии настроенного внешнего провайдера сообщение проходит модель, вызывает инструменты и возвращает ответ.",
+          "actual": "С ключом OpenAI__ApiKey, намеренно установленным в пустое значение для проверки без credentials, POST сообщения вернул HTTP 503 provider_not_configured.",
+          "evidence": [
+            "MemoryMunchers/MemoryMunchers/Agents/OpenAI/OpenAiResponsesClient.cs:10-17",
+            "http-chat: POST /api/product-chat/sessions/{id}/messages → 503"
+          ],
+          "checkIds": [
+            "http-chat"
+          ]
+        },
+        {
+          "id": "F6",
+          "kind": "limitation",
+          "verification": "unverified",
+          "responsibility": "review_environment",
+          "claim": "Визуальное поведение браузерного интерфейса не подтверждено в этой проверке.",
+          "expected": "HTML/JS должен корректно отобразить чат, карточки, proposal actions и basket link на desktop/mobile.",
+          "actual": "Пользовательская политика запрещает browser/CUA/скриншотную проверку; доступно только чтение статического frontend-кода.",
+          "evidence": [
+            "frontend/chatbot.js:1-218",
+            "frontend/basket.js:1-40",
+            "frontend/shopping.js:1-97"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "F7",
+          "kind": "strength",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Агент ограничен grounded-инструментами и явными правилами безопасности.",
+          "expected": "Модель должна получать факты из каталога и не считать намерение пользователя или своё предложение изменением корзины.",
+          "actual": "ProductConsultant требует вызов инструментов, запрещает выдумывать факты и направляет добавление только через prepare_basket_addition и последующее UI-подтверждение.",
+          "evidence": [
+            "MemoryMunchers/MemoryMunchers/Shopping/ProductConsultant.cs:8-48",
+            "MemoryMunchers/MemoryMunchers/Shopping/ProductConsultant.cs:73-123"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "F8",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Серверная корзина защищена двухфазным подтверждением и повторной проверкой свежего состояния.",
+          "expected": "До confirm корзина не меняется, количество не превышает остаток, stale proposal не должен примениться.",
+          "actual": "R4 подтвердил pending proposal при пустой корзине, отказ превышения, успешное confirm и 409 после падения остатка.",
+          "evidence": [
+            "MemoryMunchers/MemoryMunchers/Shopping/BasketService.cs:35-118",
+            "MemoryMunchers/MemoryMunchers/Shopping/BasketService.cs:129-158",
+            "captures/20261002T124201203369-test.stdout.log"
+          ],
+          "checkIds": [
+            "test-musthave"
+          ]
+        },
+        {
+          "id": "F9",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Для аналога возвращается объяснимое сравнение, а совместимость не выдаётся за доказанную.",
+          "expected": "При нулевом остатке пользователь должен получить релевантный кандидат с причиной и предупреждением о необходимости проверки.",
+          "actual": "R2 получил непустой candidates, reason у каждого кандидата и compatibilityVerified=false; исходный out_of_stock товар исключён.",
+          "evidence": [
+            "MemoryMunchers/MemoryMunchers/Shopping/ProductLookup.cs:49-151",
+            "captures/20261002T124201203369-test.stdout.log"
+          ],
+          "checkIds": [
+            "test-musthave"
+          ]
+        },
+        {
+          "id": "F10",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Изоляция покупателей и удаление собственных данных реализованы и проверены.",
+          "expected": "Чужой shopper не должен видеть сессию или подтверждать proposal; владелец должен удалить свои диалоги, файлы и корзину.",
+          "actual": "Security и Privacy тесты прошли: чужие запросы получили 404, а anonymous API — 401; после DELETE /api/shopper собственные данные исчезли.",
+          "evidence": [
+            "MemoryMunchers/MemoryMunchers/Shopping/ShopperContext.cs:1-119",
+            "MemoryMunchers/MemoryMunchers/Controllers/ShopperController.cs:1-20",
+            "captures/20261002T124201203369-test.stdout.log"
+          ],
+          "checkIds": [
+            "test-musthave"
+          ]
+        }
+      ],
+      "gapFindingIds": [
+        "F1",
+        "F2",
+        "F3",
+        "F4"
+      ]
+    }
+  ],
+  "score": 78.0,
+  "status": "complete",
+  "expectedJudges": 1
+}

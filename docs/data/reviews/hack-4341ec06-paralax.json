@@ -1,0 +1,759 @@
+{
+  "methodVersion": 4,
+  "repoId": "hack-4341ec06-paralax",
+  "repoUrl": "https://github.com/BAITC-Hacks/hack-4341ec06-paralax",
+  "caseId": 5,
+  "snapshot": "1d0b6545d6526b1b0ea9708e054dacf87bd60e37",
+  "judges": [
+    {
+      "methodVersion": 4,
+      "repoId": "hack-4341ec06-paralax",
+      "caseId": 5,
+      "model": "GPT-5.6 Luna",
+      "snapshot": "1d0b6545d6526b1b0ea9708e054dacf87bd60e37",
+      "overallSummary": "Проект представляет собой воспроизводимый локальный прототип закупочного планирования с чистой функцией расчёта, объяснимыми факторами, ручной корректировкой, утверждением и CSV-экспортом. Синтетический сценарий и HTTP-путь реально проходят, а импорт предоставленных IEK-файлов формирует 50 рекомендаций. Главная граница результата находится в производственном пути данных: реальный импорт использует только четыре книги IEK, оставляет категорию неклассифицированной, задаёт прирост нулём, не подключает сезонность/MOQ/Systeme Electric и использует начальный остаток 01.09 для расчёта на 22.09 без восстановления движений. Поэтому решение заслуживает 84/100 как сильный пятичасовой MVP, но не максимума за полноту работы с реальным кейсом.",
+      "global": {
+        "criteria": [
+          {
+            "name": "Ценность решения",
+            "score": 21,
+            "max": 25,
+            "awarded": "Решение непосредственно сокращает ручной Excel-анализ менеджера закупок и даёт понятный черновик заказа с числовым обоснованием.",
+            "deductions": "Сняты баллы за то, что основной реальный путь охватывает лишь один бренд и четыре книги, а дата остатка не совпадает с датой расчёта.",
+            "evidence": [
+              "README.md:1-16",
+              "backend/planning.py:164-270",
+              "check-http-flow: HTTP-путь синтетического черновика завершён",
+              "check-iek-case-data: 50 рекомендаций из предоставленных XLSX"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "D1",
+                "reason": "Для реального пользовательского сценария отсутствует часть предусмотренных входов: категории не классифицируются, прирост принудительно равен нулю, а книги Systeme Electric и сезонность не участвуют; ценность ограничена демонстрационным IEK-срезом."
+              },
+              {
+                "points": 2,
+                "findingId": "D2",
+                "reason": "Рекомендация по реальному IEK строится на начальном остатке 01.09.2026 при дате расчёта 22.09.2026, поэтому потенциальная ценность для актуального решения закупщика снижается до ручной сверки."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Прямая автоматизация работы закупщика",
+                "implementation": "Backend принимает нормализованный набор, выбирает модель спроса, считает горизонт покрытия и формирует строку рекомендации с количеством, срочностью, факторами и reason; UI предлагает синтетический или IEK-набор и показывает черновик.",
+                "value": "Это превращает ручную консолидацию истории, остатков и транзита в повторяемый рабочий шаг и оставляет решение менеджеру, что соответствует проблеме из кейса.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:11-16",
+                  "backend/planning.py:164-270",
+                  "frontend/src/App.tsx:90-113"
+                ]
+              },
+              {
+                "aspect": "Снижение риска избыточного заказа",
+                "implementation": "Формула вычитает текущий запас и подходящий транзит из спроса плюс страховой запас; транзит после горизонта выделяется отдельно, а тест увеличения транзита требует, чтобы заказ не рос.",
+                "value": "Менеджер видит, почему позиция не заказывается повторно при наличии ожидаемого поступления, что адресует одновременно дефицит и лишний запас.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/planning.py:189-204",
+                  "tests/test_acceptance.py:20-28",
+                  "check-pytest: 64 passed"
+                ]
+              },
+              {
+                "aspect": "Понятный управленческий результат",
+                "implementation": "Результат содержит recommended_quantity и selected_quantity, supplier_id/name, urgency, flags, reason и diagnostics; UI выделяет позиции к пополнению и показывает детали.",
+                "value": "Ценность не сводится к числу модели: менеджер может проверить входные факторы, изменить выбранное количество и только затем утвердить черновик.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/planning.py:231-270",
+                  "frontend/src/components/RecommendationDetail.tsx:72-171",
+                  "check-http-flow: edit=200, approve=200, export=200"
+                ]
+              }
+            ],
+            "scoreReasoning": "Высокий балл заслужен за очевидную связь с реальной болью закупщика и за работающий результат, который можно проверить без внешней интеграции. До максимума не хватает полноты входов в реальном сценарии и актуализации запаса: эти ограничения прямо проявляются в импортёре и в сформированном IEK-результате, а не являются предположением о среде ревью."
+          },
+          {
+            "name": "Результат и качество решения",
+            "score": 16,
+            "max": 20,
+            "awarded": "Основной сценарий расчёт → просмотр → объяснение → ручная правка → утверждение → CSV целостен и проверен тестами и HTTP.",
+            "deductions": "Сняты баллы за устаревший запас в реальном импорте и условность удаления аномалий при несовпадении сумм документов с месячной историей.",
+            "evidence": [
+              "tests/test_api.py:24-65",
+              "backend/app.py:148-249",
+              "check-http-flow",
+              "check-iek-http"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "D2",
+                "reason": "В рабочем IEK-сценарии current_stock берётся из начала сентября, а расчётная дата — 22 сентября; код сам добавляет предупреждение, но не пересчитывает остаток по движениям."
+              },
+              {
+                "points": 2,
+                "findingId": "D3",
+                "reason": "Обработка выброса зависит от точного совпадения суммы документов с месячной суммой; при несовпадении код оставляет аномалию в спросе и только добавляет warning, что может ухудшить рекомендуемое количество на реальном наборе."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Целостный backend workflow",
+                "implementation": "HTTP API создаёт draft, хранит его, позволяет PATCH выбранного количества, запрещает редактирование после approve и выдаёт CSV; обработчики отделяют ошибки отсутствующего run/SKU от ошибки утверждённого run.",
+                "value": "Это покрывает не только расчёт, но и фактическую операционную последовательность менеджера, не отправляя заказ автоматически.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/app.py:148-249",
+                  "backend/workflow.py:17-34",
+                  "tests/test_api.py:24-65",
+                  "check-http-flow"
+                ]
+              },
+              {
+                "aspect": "Проверяемая формула и диагностика",
+                "implementation": "В каждой рекомендации сохранены прогноз, safety stock, запас, транзит, поздний транзит, поправка stockout/аномалии, выбранная модель и MAE; reason повторяет порядок вычисления.",
+                "value": "Результат можно аудировать по строке SKU, а не принимать непрозрачное число, что особенно важно для закупочных решений.",
+                "verification": "source",
+                "evidence": [
+                  "backend/planning.py:174-270",
+                  "backend/forecast.py:74-95",
+                  "backend/ai.py:46-87"
+                ]
+              },
+              {
+                "aspect": "Ошибкоустойчивое объяснение",
+                "implementation": "AI получает только рассчитанные факторы, жёсткая JSON-схема проверяет выбранные evidence keys, а отказ API превращается в серверный fallback без изменения плана.",
+                "value": "Внешняя модель не становится скрытым источником количества и не ломает основной пользовательский путь.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/ai.py:90-181",
+                  "tests/test_mvp_gaps.py:42-58",
+                  "check-http-flow: ai_ready=false, explanation source=fallback"
+                ]
+              }
+            ],
+            "scoreReasoning": "Сценарий действительно работает от входа до выгрузки: 64 backend-теста, frontend check и HTTP-проверка дали положительный результат. Снижение относится к качеству именно реального расчёта: stale stock явно не исправляется, а выбросы отбрасываются только при согласованности двух представлений продаж. Для пятичасового MVP это заметные, но локализованные риски, а не поломка всего сценария."
+          },
+          {
+            "name": "Инновационность",
+            "score": 12,
+            "max": 15,
+            "awarded": "Сильная сторона — аудируемое сочетание rolling-origin выбора нескольких простых моделей, обработки цензурированного спроса и grounded AI-объяснения.",
+            "deductions": "Сняты баллы за то, что наиболее нестандартные поправки не доходят до реального IEK-пути полностью, а базовый прогноз остаётся набором компактных эвристических моделей.",
+            "evidence": [
+              "backend/forecast.py:1-95",
+              "backend/planning.py:16-161",
+              "docs/methodology.md:1-?",
+              "tests/test_acceptance.py:31-88"
+            ],
+            "deductionItems": [
+              {
+                "points": 3,
+                "findingId": "D3",
+                "reason": "Подход к устойчивости к разовым продажам реализован, но в реальном потоке аномалия может не вычитаться при расхождении агрегатов; инновационное преимущество поэтому не доказано одинаково для всех входов."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Выбор модели по временной валидации",
+                "implementation": "forecast.py сравнивает mean6, SES, trend, seasonal и TSB на rolling origins, отбрасывает недоступные модели и выбирает минимум MAE с детерминированным tie-break.",
+                "value": "Для хакатонного прототипа это более обоснованный подход, чем одно среднее по всей истории: модель выбирается по форме конкретного ряда и остаётся объяснимой.",
+                "verification": "source",
+                "evidence": [
+                  "backend/forecast.py:1-10",
+                  "backend/forecast.py:21-33",
+                  "backend/forecast.py:74-95"
+                ]
+              },
+              {
+                "aspect": "Моделирование потерянного спроса",
+                "implementation": "history хранит недоступные месяцы как None, оценивает полное подтверждённое отсутствие по прошлым сопоставимым периодам и поднимает flags/warnings вместо подмены неизвестного нулём.",
+                "value": "Это адресует одну из самых сложных частей кейса — отличить отсутствие продаж из-за отсутствия товара от нулевого спроса.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/planning.py:16-21",
+                  "backend/planning.py:68-161",
+                  "tests/test_mvp_gaps.py:13-39",
+                  "check-pytest: 64 passed"
+                ]
+              },
+              {
+                "aspect": "Grounded explanation вместо генерации количества",
+                "implementation": "ai.py принудительно добавляет обязательные числовые факторы, передаёт модели только факты, проверяет risk/question/evidence и рендерит числа сервером.",
+                "value": "Это разумный нестандартный баланс для procurement MVP: языковая модель улучшает объяснение, но не получает полномочий менять закупочный расчёт.",
+                "verification": "source",
+                "evidence": [
+                  "backend/ai.py:40-58",
+                  "backend/ai.py:109-180",
+                  "tests/test_api.py:164-201"
+                ]
+              }
+            ],
+            "scoreReasoning": "12 баллов отражают собственный инженерный подход: временная валидация, цензурированный спрос, flags и защищённое объяснение собраны в единый контур. До максимума удерживает D3: устойчивость к выбросам доказана на синтетическом сценарии, но реальный импорт допускает случаи, в которых найденная аномалия не исключается."
+          },
+          {
+            "name": "Потенциал развития и масштабирования",
+            "score": 15,
+            "max": 20,
+            "awarded": "Контракты, отдельные importer/planning/API/UI слои и нормализованный JSON создают понятную основу для подключения новых поставщиков и источников.",
+            "deductions": "Сняты баллы за узкий реальный импорт и in-memory хранение run, которое ограничивает длительные и многопроцессные сценарии.",
+            "evidence": [
+              "contracts/planning-input.schema.json",
+              "backend/importers/iek.py:16-21",
+              "backend/store.py:15-41",
+              "README.md:102-116"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "D1",
+                "reason": "Новые бренды и категории пока не проходят единый адаптер: код привязан к заголовкам четырёх IEK-книг и явно помечает Systeme Electric как unused."
+              },
+              {
+                "points": 3,
+                "findingId": "D4",
+                "reason": "RunStore держит все черновики только в словаре процесса; после перезапуска данные исчезают, а горизонтальное масштабирование нескольких backend-инстансов не имеет общего состояния."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Контрактная граница между слоями",
+                "implementation": "planning-input/result schemas, validation.py, pure plan() и API boundary разделяют вход, расчёт, проверку и представление; frontend-типы генерируются из схемы.",
+                "value": "Новый адаптер может нормализовать другой источник без переписывания UI и формулы, а контрактные ошибки выявляются до расчёта.",
+                "verification": "source",
+                "evidence": [
+                  "contracts/planning-input.schema.json",
+                  "contracts/planning-result.schema.json",
+                  "backend/validation.py:19-37",
+                  "frontend/package.json:8-16"
+                ]
+              },
+              {
+                "aspect": "Готовая точка расширения источников",
+                "implementation": "API уже различает synthetic/partner_excel, importer выдаёт audit и source_files, а UI показывает источники и assumptions; документация перечисляет следующий порядок развития.",
+                "value": "Команда заложила расширение на второй бренд, сценарии и импорт, не смешивая нормализацию XLSX с UI.",
+                "verification": "source",
+                "evidence": [
+                  "backend/importers/iek.py:296-319",
+                  "frontend/src/pages/SourcesPage.tsx:20-75",
+                  "README.md:106-116"
+                ]
+              },
+              {
+                "aspect": "Локальная безопасность операционного решения",
+                "implementation": "Клиентские данные не нужны для текущего расчёта, Excel не передаётся в OpenAI, а approve и CSV остаются ручными локальными действиями.",
+                "value": "Это снижает барьер для пилота с чувствительными продажами и оставляет понятную точку для последующей интеграции с 1С или ERP.",
+                "verification": "source",
+                "evidence": [
+                  "backend/ai.py:104-109",
+                  "frontend/src/pages/OrdersPage.tsx:87-115",
+                  "README.md:102-112"
+                ]
+              }
+            ],
+            "scoreReasoning": "Архитектура достаточно модульна для следующего этапа, поэтому балл выше среднего. Однако реальный scope жёстко привязан к IEK, а состояние процесса живёт только в памяти; это подтверждённые ограничения масштабирования, не просто отсутствие внешней демонстрации."
+          },
+          {
+            "name": "Презентация, демо и ответы на вопросы",
+            "score": 20,
+            "max": 20,
+            "awarded": "README ясно описывает задачу, ограничения, команды запуска и быстрый сценарий; локальное демо воспроизводится через backend и frontend build.",
+            "deductions": "Существенных подтверждённых дефектов в этом критерии не установлено; устная презентация, видео и визуальный просмотр по условиям проверки отсутствовали и не штрафуются.",
+            "evidence": [
+              "README.md:1-16",
+              "README.md:58-116",
+              "check-pytest",
+              "check-frontend",
+              "check-http-flow"
+            ],
+            "deductionItems": [],
+            "awardedDetails": [
+              {
+                "aspect": "Воспроизводимая инструкция",
+                "implementation": "README содержит установку, запуск uvicorn/Vite, быстрый синтетический маршрут, IEK CLI, описание API, ограничения и ожидаемый ручной сценарий.",
+                "value": "Участник или проверяющий может понять, что запускать и какой результат ожидать, без доступа к устной защите.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:58-100"
+                ]
+              },
+              {
+                "aspect": "Честная демонстрационная граница",
+                "implementation": "Документация явно сообщает о локальном прототипе, stale stock, охвате складов, fallback для IEK и отсутствии автоматической отправки; UI содержит текстовые статусы и предупреждения.",
+                "value": "Это повышает доверие к демо: ограничения не маскируются за production-интеграцию и не требуют от жюри угадывать, что было проверено.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:6",
+                  "README.md:106-116",
+                  "frontend/src/pages/OverviewPage.tsx:54-74",
+                  "frontend/src/pages/SourcesPage.tsx:20-75"
+                ]
+              },
+              {
+                "aspect": "Подтверждённое локальное демо",
+                "implementation": "Синтетический HTTP-путь дал draft, fallback explanation, edit, approve и CSV; IEK endpoint обработал предоставленные XLSX и вернул 50 рекомендаций; frontend check собрал production bundle.",
+                "value": "Хотя визуальная часть не инспектировалась, репозиторий содержит и реально запускаемый серверный результат, и успешно собираемый интерфейс.",
+                "verification": "observed",
+                "evidence": [
+                  "check-http-flow",
+                  "check-iek-http",
+                  "check-frontend"
+                ]
+              }
+            ],
+            "scoreReasoning": "README и локально воспроизводимое демо хорошо раскрывают решение. Полный балл оправдан: отсутствие публичного URL, видео или устной защиты не считается недостатком по правилам проверки, визуальное поведение оставлено непроверенным без штрафа, а команды запуска и ограничения описаны честно и проверяемо."
+          }
+        ],
+        "total": 84
+      },
+      "case": null,
+      "judgeScore": 84,
+      "caseRequirements": [
+        {
+          "requirement": "Базовый расчёт пополнения по артикулам с учётом истории продаж, остатков, товаров в пути, поставщика и горизонта покрытия.",
+          "status": "partial",
+          "explanation": "Расчётный движок учитывает историю, current_stock, eligible transit, срок поставки, review period и safety stock. На синтетическом входе изменение транзита меняет/не увеличивает заказ. В реальном IEK-пути категория не классифицируется, внешний прирост равен 0, а часть переданных книг не подключена.",
+          "evidence": [
+            "backend/planning.py:164-204",
+            "backend/importers/iek.py:235-250",
+            "tests/test_acceptance.py:20-28",
+            "check-iek-case-data"
+          ]
+        },
+        {
+          "requirement": "Учёт сезонности и устойчивого роста спроса в прогнозе.",
+          "status": "partial",
+          "explanation": "Сезонная и trend-модели есть, выбор моделей тестируется на синтетике. Но реальный importer не читает агрегированную сезонность, не выводит growth из динамики и выставляет growth_forecast_pct=0; все IEK-категории равны «Не классифицировано».",
+          "evidence": [
+            "backend/forecast.py:25-60",
+            "backend/planning.py:181-186",
+            "backend/importers/iek.py:239-244",
+            "backend/importers/iek.py:317",
+            "tests/test_acceptance.py:61-88"
+          ]
+        },
+        {
+          "requirement": "Оценка и компенсация упущенного спроса при stockout.",
+          "status": "partial",
+          "explanation": "Для подтверждённых stockout в синтетическом контракте history оценивает lost demand и увеличивает forecast; тесты также проверяют отсутствие двойного счёта. Реальный IEK importer создаёт stockouts=[] и не восстанавливает периоды отсутствия по выгруженным остаткам, поэтому эта часть не переносится на партнёрский путь.",
+          "evidence": [
+            "backend/planning.py:51-161",
+            "backend/importers/iek.py:261-271",
+            "tests/test_mvp_gaps.py:13-39",
+            "README.md:102-111"
+          ]
+        },
+        {
+          "requirement": "Выявление и исключение разовых крупных заказов, включая продажу одному клиенту.",
+          "status": "partial",
+          "explanation": "Синтетический сценарий выявляет one_off_sale и ограничивает влияние документа через сравнение с медианой. В реальных данных используется document_id, а не обезличенный customer_id; кроме того, при несовпадении документной и месячной суммы anomaly не вычитается. Условие «один клиент» поэтому не доказано.",
+          "evidence": [
+            "backend/planning.py:24-40",
+            "backend/planning.py:79-85",
+            "tests/test_acceptance.py:31-45",
+            "README.md:109-111",
+            "check-iek-case-data"
+          ]
+        },
+        {
+          "requirement": "Список заказов по поставщикам с количеством, кратким объяснением и срочностью.",
+          "status": "met",
+          "explanation": "Каждая рекомендация содержит supplier, quantity, urgency и reason; OrdersPage группирует выбранные строки по supplier_id. HTTP-сценарий подтвердил получение draft и экспорт CSV.",
+          "evidence": [
+            "backend/planning.py:249-270",
+            "frontend/src/pages/OrdersPage.tsx:17-84",
+            "check-http-flow"
+          ]
+        },
+        {
+          "requirement": "Ручное подтверждение; автоматическая отправка поставщику запрещена.",
+          "status": "met",
+          "explanation": "Новый run создаётся draft, выбранное количество можно изменить до approve, после утверждения редактирование блокируется. Реального send-to-supplier маршрута нет, CSV скачивается локально.",
+          "evidence": [
+            "backend/workflow.py:17-34",
+            "backend/app.py:205-249",
+            "frontend/src/pages/OrdersPage.tsx:87-115",
+            "check-http-flow"
+          ]
+        },
+        {
+          "requirement": "Обезличивание клиентских данных и безопасное объяснение результата.",
+          "status": "partial",
+          "explanation": "В текущем расчёте клиентский идентификатор не отображается и partner Excel не отправляется в OpenAI; объяснение получает только агрегированные факторы. Однако предоставленный набор не даёт customer_id для проверки сценария крупной продажи одному клиенту, и это ограничивает доказательность именно этого требования.",
+          "evidence": [
+            "backend/ai.py:104-109",
+            "backend/ai.py:127-139",
+            "README.md:102-111",
+            "case-data/HackAlem AI_ Автоматизация формирования заказов поставщикам.docx.md:29-36"
+          ]
+        }
+      ],
+      "testData": {
+        "provided": [
+          "case-data/HackAlem AI_ Автоматизация формирования заказов поставщикам.docx.md",
+          "case-data/IEK/MOQ  ИЭК.xlsx",
+          "case-data/IEK/Динамика продаж_2025-2026.xlsx",
+          "case-data/IEK/Ежемесячные остатки продукции за последние 2 года  ИЭК.xlsx",
+          "case-data/IEK/Ежемесячные продажи в количественном выражении за последние 2 года.xlsx",
+          "case-data/IEK/Путь ИЭК 22.09.2026.xlsx",
+          "case-data/IEK/Сезонность ИЭК.xlsx",
+          "case-data/Systeme electric/MOQ SystemElectric.xlsx",
+          "case-data/Systeme electric/Динамика продаж_Syseme Electric_2025-2026.xlsx",
+          "case-data/Systeme electric/Ежемесячные остатки SystemElectric 2024-2026.xlsx",
+          "case-data/Systeme electric/Ежемесячные продажи в кол-м выражении SystemElectric 2024-2026.xlsx",
+          "case-data/Systeme electric/Сезонность SystemElectric 2024-2026.xlsx",
+          "case-data/Systeme electric/Товар в пути_SystemElectric на 22.09.2026.xlsx"
+        ],
+        "used": [
+          "case-data/IEK/Ежемесячные продажи в количественном выражении за последние 2 года.xlsx",
+          "case-data/IEK/Ежемесячные остатки продукции за последние 2 года  ИЭК.xlsx",
+          "case-data/IEK/Динамика продаж_2025-2026.xlsx",
+          "case-data/IEK/Путь ИЭК 22.09.2026.xlsx",
+          "fixtures/planning-input.sample.json",
+          "tests/test_acceptance.py",
+          "tests/test_mvp_gaps.py"
+        ],
+        "checks": [
+          {
+            "input": "Четыре IEK XLSX из case-data: месячные продажи, месячные остатки, динамика документов и путь IEK.",
+            "method": "Запущены import_iek(limit=50) и plan() в изолированном Python 3.11 окружении на самих организаторских файлах.",
+            "result": "Получено 404 пригодных SKU, отобрано 50, нормализовано 38155 документов, сформировано 50 рекомендаций; data_source=partner_excel. Аудит указал unused_files=[MOQ ИЭК.xlsx, Сезонность ИЭК.xlsx, Systeme electric/*].",
+            "conclusion": "Реальный IEK путь запускается, но проверка одновременно подтверждает неполный охват предоставленного набора."
+          },
+          {
+            "input": "fixtures/planning-input.sample.json, изменение goods_in_transit для CABLE-01.",
+            "method": "tests/test_acceptance.py::test_goods_in_transit_cannot_increase_order.",
+            "result": "Тест прошёл: увеличение транзита не увеличило recommended_quantity.",
+            "conclusion": "Чувствительность к товару в пути реализована в синтетическом контрактном сценарии."
+          },
+          {
+            "input": "Синтетическая разовая продажа demo-bulk для CABLE-01.",
+            "method": "tests/test_acceptance.py::test_one_off_sale_is_flagged_and_does_not_dominate_regular_demand.",
+            "result": "Тест прошёл: установлен one_off_sale, regular_daily_demand с выбросом не превысил двукратный baseline без него.",
+            "conclusion": "Устойчивость к искусственному выбросу доказана для синтетического входа."
+          },
+          {
+            "input": "Синтетический подтверждённый stockout для LAMP-02 и cases()['stockout'].",
+            "method": "tests/test_acceptance.py::test_confirmed_stockout_increases_estimated_demand и tests/test_mvp_gaps.py::test_full_stockout_estimate_and_no_double_count.",
+            "result": "Тесты прошли; lost demand положителен, forecast вырос, контрольный lost=62 и quantity=60; положительные продажи в полном stockout отклоняются.",
+            "conclusion": "Компенсация stockout и защита от двойного счёта реализованы на нормализованном тестовом контракте, но не подключены к реальному IEK importer."
+          },
+          {
+            "input": "Синтетические два годовых сезона с пиком в июне.",
+            "method": "tests/test_acceptance.py::test_two_repeated_high_seasons_raise_high_season_forecast.",
+            "result": "Тест прошёл: расчёт для горизонта в июне выше расчёта для ноября.",
+            "conclusion": "Сезонная модель работает в движке, но сезонная XLSX-книга партнёра не читается importer-ом."
+          },
+          {
+            "input": "Полный backend/frontend набор проекта.",
+            "method": "python -m pytest -q и npm run check.",
+            "result": "64 backend-теста прошли; frontend types:check, format:check, lint, typecheck, smoke test и Vite build прошли.",
+            "conclusion": "Контракты, расчёт, API и сборка интерфейса имеют воспроизводимую локальную проверку."
+          }
+        ],
+        "limitations": [
+          "Реальный importer сознательно использует только четыре IEK-книги; восемь остальных предоставленных XLSX не попадают в нормализованный вход.",
+          "Тесты сезонности, stockout и выброса используют синтетический нормализованный JSON, потому что реальный importer не строит соответствующие признаки из всех предоставленных таблиц.",
+          "Визуальное поведение React-интерфейса не инспектировалось: проверены статическая сборка и HTTP/API, а не браузерный просмотр."
+        ]
+      },
+      "runtime": {
+        "status": "working",
+        "build": "Backend dependencies installed in isolated Python 3.11 environment; python -m pytest -q passed 64 tests. Frontend npm run check completed types, formatting, lint, typecheck, smoke test and Vite production build.",
+        "start": "uvicorn backend.app:app started successfully; GET /api/health returned HTTP 200 with planner_ready=true. No external API key was used.",
+        "scenario": "HTTP scenario reproduced synthetic draft creation, fallback explanation, quantity edit, approval and CSV export. The real IEK endpoint also imported the provided XLSX and returned 50 recommendations.",
+        "environment": "Изолированные Docker-проверки с Python 3.11 и Node 22; OPENAI_API_KEY не предоставлялся и был явно пустым. Браузерная и визуальная проверка не выполнялись.",
+        "summary": "Основной серверный сценарий работает. AI для partner_excel корректно остаётся fallback из-за политики передачи данных и отсутствия ключа; это ограничение проверки/конфигурации, а не автоматический штраф.",
+        "checks": [
+          {
+            "command": "python -m pytest -q",
+            "result": "64 passed in 4.68s; warning only because read-only checkout did not allow pytest cache.",
+            "id": "check-pytest",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Unit, contract, acceptance and API tests pass without external credentials."
+          },
+          {
+            "command": "npm run check",
+            "result": "types:check, format:check, lint, typecheck, node smoke test and vite build all passed; production bundle generated.",
+            "id": "check-frontend",
+            "stage": "build",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Frontend validates and builds successfully."
+          },
+          {
+            "command": "python -m backend.cli --data-dir data --output outputs/iek-planning-result.json --limit 50",
+            "result": "Returned draft with 50 recommendations; on case-data audit: 404 eligible SKU, 50 selected, 38155 normalized documents, unused MOQ/seasonality/Systeme files.",
+            "id": "check-iek-case-data",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Provided IEK workbooks are parsed and produce a valid planning result with audit."
+          },
+          {
+            "command": "GET /api/health",
+            "result": "HTTP 200; body status=ok, planner_ready=true, ai_ready=false.",
+            "id": "check-health",
+            "stage": "start",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Application starts and exposes a healthy planner without an API key."
+          },
+          {
+            "command": "POST /api/demo/planning-runs; POST /api/planning-runs/{run_id}/recommendations/CABLE-01/explanation; PATCH /api/planning-runs/{run_id}/recommendations/CABLE-01; POST /api/planning-runs/{run_id}/approve; GET /api/planning-runs/{run_id}/export",
+            "result": "HTTP 201 draft with 4 recommendations; explanation HTTP 200 source=fallback; edit HTTP 200 draft; approve HTTP 200 approved; export HTTP 200 with CSV header.",
+            "id": "check-http-flow",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "User can inspect, explain, edit, approve and export a draft without automatic supplier sending."
+          },
+          {
+            "command": "POST /api/iek/planning-runs",
+            "result": "HTTP 201 in 44.46s; body data_source=partner_excel, 50 recommendations, source_files=4, first row carried missing_data and one_off_sale flags.",
+            "id": "check-iek-http",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "IEK HTTP path imports local workbooks and returns a valid result."
+          }
+        ],
+        "limitations": [
+          "OpenAI credentials were intentionally unavailable; only the code path and deterministic fallback were verified, not a live provider response.",
+          "The React UI was not opened or visually tested; frontend build and API client wiring were checked statically and by build only.",
+          "Run state is process-local and disappears after backend restart, as documented by the project."
+        ]
+      },
+      "liveDemo": {
+        "status": "none",
+        "url": null,
+        "notes": "Публичная live-ссылка в репозитории не указана. Локальный HTTP-сценарий подтверждён; отсутствие URL не использовано как причина снятия баллов."
+      },
+      "fiveHourContext": "Для пятичасового MVP объём оправдан: есть контракт, расчётный движок, importer, API, UI, fallback объяснения и тестовый harness. Полноценная ERP/1С интеграция, аутентификация, долговременное хранилище и все бренды не требуются сами по себе. При этом D1 и D2 относятся к обязательному содержанию реального кейса — охвату входов и актуальности остатка — поэтому удерживают баллы даже с учётом короткого окна.",
+      "strengths": [
+        "Детерминированный расчёт не делегирован LLM: количество воспроизводится чистой функцией и сопровождается факторами, flags и diagnostics.",
+        "Синтетические acceptance-тесты покрывают транзит, выброс, stockout, сезонность и ручной approval; полный backend прогон дал 64 passed.",
+        "HTTP-путь реально проходит от draft до approval и CSV, а frontend собирается всеми заявленными quality checks.",
+        "Проект честно показывает stale stock, неполный scope и fallback объяснения вместо скрытия ограничений."
+      ],
+      "gaps": [
+        "D1: Реальный importer использует только четыре IEK-книги; сезонность, MOQ, Systeme Electric, категории и вычисление роста не входят в реальный план.",
+        "D2: Остаток на начало 01.09.2026 используется для даты расчёта 22.09.2026 без восстановления движений и без подтверждённого охвата складов.",
+        "D3: Вычитание крупных документов в monthly_history условно: при несовпадении месячной суммы и суммы документов аномалия остаётся в спросе, хотя обнаружение уже сработало.",
+        "D4: Черновики хранятся только в памяти процесса, поэтому перезапуск теряет состояние и несколько экземпляров не разделяют run."
+      ],
+      "futureAdvice": [
+        {
+          "principle": "Каждый обязательный источник должен иметь проверяемый нормализованный путь",
+          "why": "D1 показывает, что синтетическая функциональность шире реального IEK-пути: импортёр явно помечает сезонность, MOQ и Systeme Electric как unused, а category/growth не извлекаются.",
+          "how": "В следующем хакатоне сначала зафиксируйте матрицу source-file → normalized field → mutation test. Подключите по одному адаптеру для категории, сезонного коэффициента, роста и второго бренда; неизвестные единицы оставляйте в аудите, но не молча отбрасывайте.",
+          "findingIds": [
+            "D1"
+          ],
+          "successCheck": "Изменение каждого переданного источника меняет ожидаемый normalized input или даёт явный blocking/audit результат; интеграционный тест перечисляет 12 книг и не содержит неожиданных unused.",
+          "timeboxMinutes": 70
+        },
+        {
+          "principle": "Сначала выровнять дату запаса и дату прогноза",
+          "why": "D2 означает, что работоспособный расчёт может опираться на остаток, устаревший на 21 день относительно as_of_date.",
+          "how": "В другом проекте добавьте явный reconciliation step: opening stock + поступления − отгрузки до as_of, с отдельным quality flag при неполном движении. Если восстановление невозможно, блокируйте утверждение либо требуйте ручного подтверждения актуального остатка.",
+          "findingIds": [
+            "D2"
+          ],
+          "successCheck": "На сценарии с поступлением между датой среза и датой расчёта current_stock и recommended_quantity меняются предсказуемо, а UI показывает дату и источник до approval.",
+          "timeboxMinutes": 45
+        },
+        {
+          "principle": "Не терять найденный сигнал аномалии из-за несовершенного агрегата",
+          "why": "D3 показывает, что несовпадение document totals и monthly totals превращает корректный сигнал выброса в warning без поправки.",
+          "how": "Для другого кейса разделите документную и месячную историю явно: сопоставляйте по SKU/месяцу с audit delta, используйте консервативное правило или ручной review flag, а не silently keep. Отдельно поддержите optional anonymized customer_id, когда поле доступно.",
+          "findingIds": [
+            "D3"
+          ],
+          "successCheck": "Mutation test с несовпадающими агрегатами не увеличивает регулярный baseline без warning, а отчёт показывает точную delta и выбранное правило.",
+          "timeboxMinutes": 40
+        }
+      ],
+      "uncertainties": [
+        "Живой OpenAI provider не проверялся из-за намеренно не предоставленных credentials; проверены вход, schema validation, fallback и неизменность плана.",
+        "Визуальная доступность и фактическое отображение React в браузере не проверялись по инструкции пользователя; это не трактуется как дефект.",
+        "Предоставленный пакет не содержит достаточного customer_id-сценария для независимого подтверждения крупных продаж одного клиента; проект использует document_id.",
+        "Публичной live-demo ссылки нет, поэтому liveDemo отмечен none; локальная воспроизводимость проверена отдельно."
+      ],
+      "reviewPolicyVersion": 2,
+      "assessmentStatus": "ready",
+      "findings": [
+        {
+          "id": "S1",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Основной расчёт и чувствительность к транзиту, выбросу, stockout и сезонности работают на нормализованной синтетической фикстуре.",
+          "expected": "Изменения входных факторов должны давать предсказуемое изменение результата, а stockout и выброс должны быть видны в диагностике.",
+          "actual": "Acceptance/MVP tests passed; 64 backend tests passed overall, включая relevant scenarios.",
+          "evidence": [
+            "tests/test_acceptance.py:20-101",
+            "tests/test_mvp_gaps.py:13-58",
+            "check-pytest"
+          ],
+          "checkIds": [
+            "check-pytest"
+          ]
+        },
+        {
+          "id": "S2",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Серверный пользовательский путь воспроизведён от создания черновика до объяснения, редактирования, утверждения и CSV.",
+          "expected": "Основной сценарий должен стартовать без ключа и не отправлять заказ автоматически.",
+          "actual": "Health=200, demo=201, fallback explanation=200, edit=200, approve=200, export=200.",
+          "evidence": [
+            "backend/app.py:135-249",
+            "check-health",
+            "check-http-flow"
+          ],
+          "checkIds": [
+            "check-health",
+            "check-http-flow"
+          ]
+        },
+        {
+          "id": "S3",
+          "kind": "strength",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Импортёр валидирует заголовки, единицы, даты, дубликаты и формирует audit вместо молчаливого принятия сомнительных строк.",
+          "expected": "Неполные или противоречивые XLSX должны давать явную ошибку/исключение или запись аудита.",
+          "actual": "Код проверяет структуру книг, исключает invalid quantities/units/history и возвращает excluded_counts, invalid rows, hashes и unused_files.",
+          "evidence": [
+            "backend/importers/iek.py:38-165",
+            "backend/importers/iek.py:296-319"
+          ],
+          "checkIds": [
+            "check-iek-case-data"
+          ]
+        },
+        {
+          "id": "S4",
+          "kind": "strength",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "AI-объяснение ограничено агрегированными факторами и не меняет количество; при ошибке используется fallback.",
+          "expected": "Внешняя модель не должна самостоятельно задавать закупочное количество или получать partner Excel без разрешения.",
+          "actual": "explain() передаёт facts/factors, валидирует structured response и возвращает render/fallback; partner data без allow_partner_data сразу получает fallback.",
+          "evidence": [
+            "backend/ai.py:90-181",
+            "tests/test_api.py:164-201"
+          ],
+          "checkIds": [
+            "check-http-flow",
+            "check-pytest"
+          ]
+        },
+        {
+          "id": "D1",
+          "kind": "defect",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Реальный путь использует неполный scope предоставленных данных и не переносит часть обязательных входов кейса в план.",
+          "expected": "Тестовый реальный расчёт должен использовать релевантные продажи, остатки, товары в пути, категории и прогноз роста; подключение остальных книг должно быть явным и обоснованным.",
+          "actual": "import_iek читает только четыре IEK-файла; category='Не классифицировано', growth_forecast_pct=0, stockouts=[]; audit/README явно указывают unused MOQ, Сезонность и Systeme electric.",
+          "evidence": [
+            "backend/importers/iek.py:16-21",
+            "backend/importers/iek.py:235-271",
+            "backend/importers/iek.py:317",
+            "README.md:102-104",
+            "check-iek-case-data"
+          ],
+          "checkIds": [
+            "check-iek-case-data",
+            "check-iek-http"
+          ]
+        },
+        {
+          "id": "D2",
+          "kind": "defect",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Реальный IEK расчёт использует начальный остаток 01.09.2026 для as_of 22.09.2026 и не восстанавливает движения между датами.",
+          "expected": "Для current_stock на дату расчёта нужно использовать актуальный остаток или явно пересчитать его по подтверждённым движениям.",
+          "actual": "Importer выбирает stock_month=01.09, записывает stock_as_of_date=2026-09-01, а planner только добавляет warning «Остаток устарел...». Рекомендации всё равно строятся на этом числе.",
+          "evidence": [
+            "backend/importers/iek.py:105-111",
+            "backend/importers/iek.py:241-247",
+            "backend/importers/iek.py:284-288",
+            "backend/planning.py:225-228",
+            "README.md:6",
+            "check-iek-case-data"
+          ],
+          "checkIds": [
+            "check-iek-case-data",
+            "check-iek-http"
+          ]
+        },
+        {
+          "id": "D3",
+          "kind": "defect",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Обнаруженный крупный документ не всегда исключается из regular demand при расхождении document total и monthly total.",
+          "expected": "Разовый крупный заказ должен быть исключён или переведён в явный ручной review с сохранением устойчивого baseline.",
+          "actual": "В monthly_history ветке при totals != monthly quantity код добавляет warning и не уменьшает qty; в реальном прогоне такие warnings присутствуют в quality_warnings.",
+          "evidence": [
+            "backend/planning.py:79-85",
+            "backend/importers/iek.py:229-234",
+            "check-iek-case-data"
+          ],
+          "checkIds": [
+            "check-iek-case-data"
+          ]
+        },
+        {
+          "id": "D4",
+          "kind": "defect",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Состояние planning run хранится только в памяти процесса.",
+          "expected": "Для устойчивого многопользовательского/многопроцессного сценария черновик должен переживать перезапуск и иметь общее хранилище.",
+          "actual": "RunStore создаёт _runs как dict в конструкторе; README сообщает, что черновики исчезают после перезапуска.",
+          "evidence": [
+            "backend/store.py:15-41",
+            "README.md:111"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "L1",
+          "kind": "limitation",
+          "verification": "source",
+          "responsibility": "unknown",
+          "claim": "Проверенный пакет не даёт поля customer_id, поэтому проект использует document_id и не может доказать идентификацию одного клиента.",
+          "expected": "Если customer-level анализ требуется данными кейса, должен присутствовать обезличенный customer_id или явное отсутствие такого поля в границе проверки.",
+          "actual": "contract/README описывают document_id; importer и anomalies группируют по документу, а не по клиенту.",
+          "evidence": [
+            "backend/planning.py:24-40",
+            "backend/importers/iek.py:166-220",
+            "README.md:109-111",
+            "case-data/HackAlem AI_ Автоматизация формирования заказов поставщикам.docx.md:29-36"
+          ],
+          "checkIds": []
+        }
+      ],
+      "gapFindingIds": [
+        "D1",
+        "D2",
+        "D3",
+        "D4"
+      ]
+    }
+  ],
+  "score": 84.0,
+  "status": "complete",
+  "expectedJudges": 1
+}

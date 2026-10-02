@@ -1,0 +1,1126 @@
+{
+  "methodVersion": 4,
+  "repoId": "hack-4c401bd7-pied-piper",
+  "repoUrl": "https://github.com/BAITC-Hacks/hack-4c401bd7-pied-piper",
+  "caseId": 2,
+  "snapshot": "9e4277c83fe75b88acc0139b6582e13157acc145",
+  "judges": [
+    {
+      "methodVersion": 4,
+      "repoId": "hack-4c401bd7-pied-piper",
+      "caseId": 2,
+      "model": "GPT-5.6 Luna",
+      "snapshot": "9e4277c83fe75b88acc0139b6582e13157acc145",
+      "overallSummary": "Это зрелый, воспроизводимый локальный прототип AML-аналитики: на предоставленных организаторами трёх Parquet-файлах он за 6,4 секунды построил и сам провалидировал bundle на 2248 узлов, 3119 связей и 105 кластеров, а затем тот же результат был доступен через API и загрузку CSV. Сильные стороны — направленный граф, детерминированные объяснимые правила, корректная обработка seed и границы depth=4, независимый валидатор, хешированный immutable bundle, API и подробная документация. Единственный подтверждённый недостаток — компактное поле evidence не раскрывает конкретную причину отказа для роли peripheral и не сводит факт с порогом в одной фразе; это уменьшает ясность объяснения, но не ломает расчёт. UI-сервер поднялся и прошёл HTTP health-check, однако визуальное поведение намеренно не проверялось по политике ревью.",
+      "global": {
+        "criteria": [
+          {
+            "name": "Ценность решения",
+            "score": 23,
+            "max": 25,
+            "awarded": "Практическая ценность для AML-аналитика доказана целостным локальным сценарием: от транзакционной сети до очереди ручной проверки с объяснениями и оговорками о неполноте наблюдений.",
+            "deductions": "Снято 2 балла за подтверждённый недостаток ясности evidence: часть аналитика, особенно peripheral, вынуждена сама сопоставлять числа с правилами.",
+            "evidence": [
+              "F-PIPELINE-001",
+              "F-API-004",
+              "D-EVIDENCE-001",
+              "backend/core/engine.py:34-106",
+              "frontend/app.py:238-272",
+              "captures/20261001T100438405449-case_pipeline.stdout.log"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "D-EVIDENCE-001",
+                "reason": "Для роли peripheral выгрузка даёт только факт «5 основных ролей не выполнены», поэтому аналитик не видит в одной строке, какое из условий consolidator, distributor, transit, terminal или coordinator не прошло. Это снижает непосредственную пользу результата как очереди ручной проверки, хотя метрики и подробная карточка сохраняются."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Очередь ручной проверки вместо безусловных обвинений",
+                "implementation": "frontend/app.py сортирует узлы по priority_score, показывает первые позиции очереди, роль, score и evidence, а карточка отдельно сообщает, что роли являются гипотезами для проверки. Это превращает графовую аналитику в понятный следующий шаг для AML-аналитика.",
+                "value": "Пользователь получает не просто таблицу центральностей, а порядок просмотра клиентов и их наблюдаемые основания. Такой формат непосредственно отвечает проблеме ручного восстановления финансовой структуры.",
+                "verification": "source",
+                "evidence": [
+                  "frontend/app.py:238-260",
+                  "frontend/app.py:243-254",
+                  "backend/core/reporting.py:53-71"
+                ]
+              },
+              {
+                "aspect": "Объяснения привязаны к наблюдаемым денежным потокам",
+                "implementation": "backend/core/reporting.py строит evidence из входящей/исходящей степени, сумм KZT, pass-through и оговорок seed/depth=4; backend/core/explanations.py добавляет роль-специфический порог или условие.",
+                "value": "Аналитик может проверить гипотезу по числам из выборки, а не принимать непрозрачный риск-скор. Это особенно важно при отсутствии ground truth и атрибутов личности.",
+                "verification": "source",
+                "evidence": [
+                  "backend/core/reporting.py:12-36",
+                  "backend/core/explanations.py:10-38",
+                  "captures/20261001T100605431451-case_output_audit.stdout.log"
+                ]
+              },
+              {
+                "aspect": "Оговорки о неполноте данных встроены в результат",
+                "implementation": "Для seed и узлов на boundary depth=4 генератор evidence добавляет отдельные caveat, а UI явно сообщает про наблюдаемые исходящие ветви, порог 5000 KZT, максимум четыре шага и неизвестную полную историю счетов.",
+                "value": "Решение не выдаёт обрыв выборки за доказанный конечный адресат или доказательство нарушения. Это делает результат применимым в чувствительном AML-контексте.",
+                "verification": "source",
+                "evidence": [
+                  "backend/core/engine.py:73-76",
+                  "backend/core/reporting.py:28-35",
+                  "frontend/app.py:208-210"
+                ]
+              },
+              {
+                "aspect": "Результат доступен и как файл, и как проверяемый сервис",
+                "implementation": "Pipeline сохраняет nodes_roles.csv, clusters.csv, top_nodes.csv и расширенные Parquet-метрики; API предоставляет summary, node detail, graph и CSV export.",
+                "value": "Команда аналитики может использовать batch-выгрузку, а интерактивный сценарий — для разборов конкретных gid. Это снижает барьер между исследованием и ручной проверкой.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/pipeline.py:53-61",
+                  "backend/api.py:225-296",
+                  "API-SCENARIO-001"
+                ]
+              }
+            ],
+            "scoreReasoning": "23/25 заслужены за конкретную AML-пользу, полноценную очередь проверки, числовые объяснения и честные ограничения выборки. До максимума не хватает только прямого, gate-by-gate объяснения отрицательного результата peripheral и близких альтернатив в компактной выгрузке; это подтверждённый недостаток представления, а не проблема расчёта."
+          },
+          {
+            "name": "Результат и качество решения",
+            "score": 19,
+            "max": 20,
+            "awarded": "Основной сценарий фактически работает: предоставленный граф прошёл расчёт, независимую проверку bundle, API-доступ и HTTP health-check UI.",
+            "deductions": "Снято 1 балл за то, что часть итогового объяснения остаётся менее самодостаточной, чем сам вычислительный результат.",
+            "evidence": [
+              "F-PIPELINE-001",
+              "F-TESTS-006",
+              "F-API-004",
+              "D-EVIDENCE-001",
+              "captures/20261001T100458612333-case_validate.stdout.log",
+              "captures/20261001T100749173905-api_scenario.stdout.log"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "D-EVIDENCE-001",
+                "reason": "Пользовательский результат технически полный, но compact evidence для peripheral не сообщает конкретный отрицательный gate. Поэтому качество объяснения немного ниже качества самого расчёта."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Полный воспроизведённый результат на case-data",
+                "implementation": "Команда загрузила nodes.parquet, edges.parquet и transactions.parquet, построила признаки, роли, кластеры и top-list, затем перед публикацией запустила backend.validate на staging-кандидате.",
+                "value": "Получен проверенный bundle, а не только демонстрационный экран. На фактическом наборе выход содержит ровно 2248 node rows, 105 cluster rows и 20 top rows.",
+                "verification": "observed",
+                "evidence": [
+                  "CASE-PIPELINE-001",
+                  "CASE-VALIDATE-001",
+                  "CASE-OUTPUT-AUDIT-001"
+                ]
+              },
+              {
+                "aspect": "Корректная boundary-семантика",
+                "implementation": "engine.py помечает depth=4 как at_boundary и truncated_by_depth, исключает boundary из ratio_usable, а terminal gate требует depth<4. В output-аудите было 444 узла depth=4 и 0 terminal на depth=4.",
+                "value": "Ключевая ловушка задания не сводится к out_degree=0: узлы на четвёртом колене не объявляются конечными получателями.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/core/engine.py:73-76",
+                  "backend/core/engine.py:148-157",
+                  "backend/validate.py:99-107",
+                  "CASE-OUTPUT-AUDIT-001"
+                ]
+              },
+              {
+                "aspect": "Согласованные выгрузки",
+                "implementation": "Validator проверяет покрытие всех gid, диапазоны score, роль terminal, соответствие cluster membership, порядок top_nodes, внутренние суммы и минимальный размер top-list.",
+                "value": "Пользовательские таблицы не являются независимыми несогласованными артефактами: их ключи, роли, ранги и суммы связаны проверяемыми инвариантами.",
+                "verification": "source",
+                "evidence": [
+                  "backend/validate.py:89-142",
+                  "captures/20261001T100458612333-case_validate.stdout.log"
+                ]
+              },
+              {
+                "aspect": "Сервисный и файловый пользовательский путь",
+                "implementation": "API отдаёт summary, страницы nodes, detail конкретного gid, ограниченный directed graph и CSV exports; отдельный Streamlit process поднялся с опубликованными outputs.",
+                "value": "Решение выдерживает как batch-потребление, так и сценарий поиска узла и просмотра его связей. В отличие от предположения по исходникам, этот путь был проверен HTTP-запросами.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/api.py:149-153",
+                  "backend/api.py:225-296",
+                  "API-HEALTH-001",
+                  "API-SCENARIO-001",
+                  "UI-HEALTH-001"
+                ]
+              }
+            ],
+            "scoreReasoning": "19/20: прототип дал проверяемый результат и сервисный путь на реальных case-data. Один балл удержан только за локальную самодостаточность объяснения peripheral в CSV; это не влияет на вычисление, публикацию или API."
+          },
+          {
+            "name": "Инновационность",
+            "score": 15,
+            "max": 15,
+            "awarded": "Нестандартность здесь не в использовании модного AI, а в соединении объяснимых ролей, структурной приоритизации, кластеров и what-if устойчивости в одном локальном аналитическом инструменте.",
+            "deductions": "Снятий нет.",
+            "evidence": [
+              "F-EXPLAIN-002",
+              "backend/core/engine.py:40-57",
+              "backend/core/engine.py:194-202",
+              "backend/core/resilience.py:7-61",
+              "frontend/app.py:273-285"
+            ],
+            "deductionItems": [],
+            "awardedDetails": [
+              {
+                "aspect": "Ролевая модель как набор проверяемых gates",
+                "implementation": "Для consolidator/distributor используются data-derived quantile thresholds степени, для transit — баланс потока, для terminal — observed inflow и boundary guard, для coordinator — betweenness, cross-cluster degree и структурные условия.",
+                "value": "Это сильнее простого ранжирования по одной центральности: результат предлагает интерпретируемую гипотезу о функции узла в сети.",
+                "verification": "source",
+                "evidence": [
+                  "backend/core/engine.py:109-157",
+                  "backend/core/explanations.py:10-38"
+                ]
+              },
+              {
+                "aspect": "Разделение роли и priority",
+                "implementation": "Код отдельно вычисляет role_score и priority_score; priority собирается из structure, seed_proximity, magnitude и role_support с фиксированными весами из contracts.py.",
+                "value": "Узел может быть важным для очереди не потому, что его роль объявлена вероятностью нарушения. Это концептуально аккуратно для ручного AML-review.",
+                "verification": "source",
+                "evidence": [
+                  "backend/core/contracts.py:19-30",
+                  "backend/core/engine.py:188-202",
+                  "backend/core/reporting.py:60-68"
+                ]
+              },
+              {
+                "aspect": "Кластеризация направленной сети с сохранением направлений",
+                "implementation": "Для community detection строится неориентированная weighted projection с Louvain и фиксированным seed, тогда как исходный DiGraph сохраняется для потоков, степеней и graph API.",
+                "value": "Команда получает сообщества для обзора, не теряя направление денег в аналитических фактах и визуальном эго-графе.",
+                "verification": "source",
+                "evidence": [
+                  "backend/core/engine.py:34-57",
+                  "backend/analytics.py:121-136"
+                ]
+              },
+              {
+                "aspect": "What-if устойчивость сети",
+                "implementation": "frontend/app.py предоставляет эксперимент с исключением top-N узлов, а backend/core/resilience.py пересчитывает компоненты, оставшиеся пары и затронутый оборот без публикации изменённого bundle.",
+                "value": "Это добавляет аналитический вопрос о структурной зависимости сети, а не только статическую карту или список топов.",
+                "verification": "source",
+                "evidence": [
+                  "backend/core/resilience.py:7-61",
+                  "frontend/app.py:52-92",
+                  "frontend/app.py:273-281"
+                ]
+              }
+            ],
+            "scoreReasoning": "Полный балл оправдан: подход сочетает explainable rule-based роли, независимое структурное ранжирование, weighted communities и what-if анализ. Отсутствие LLM не является недостатком для этого кейса и не должно искусственно снижать оценку."
+          },
+          {
+            "name": "Потенциал развития и масштабирования",
+            "score": 20,
+            "max": 20,
+            "awarded": "Архитектура уже разделяет расчёт, валидатор, immutable результаты, API, worker и UI; это создаёт понятный путь от MVP к новым временным признакам, профилям данных и фоновой обработке.",
+            "deductions": "Снятий нет.",
+            "evidence": [
+              "F-BUNDLE-003",
+              "backend/worker.py:74-105",
+              "backend/api.py:163-218",
+              "Dockerfile:1-37",
+              "docs/architecture.md",
+              "docs/methodology.md"
+            ],
+            "deductionItems": [],
+            "awardedDetails": [
+              {
+                "aspect": "Контракт и независимый валидатор",
+                "implementation": "contracts.py задаёт versioned schemas и weights, pipeline публикует только после отдельного subprocess-вызова validate.py, а bundle_io проверяет manifest и SHA256.",
+                "value": "Новые вычислительные стратегии можно проверять тем же контрактом; пользовательский API не обязан доверять произвольному набору CSV.",
+                "verification": "source",
+                "evidence": [
+                  "backend/core/contracts.py:10-99",
+                  "backend/pipeline.py:95-129",
+                  "backend/core/bundle_io.py:106-120"
+                ]
+              },
+              {
+                "aspect": "Разделение API и фонового worker",
+                "implementation": "API регистрирует datasets и runs, SQLite Store поддерживает idempotency, активный run constraint, heartbeat и lease, а worker claim/recover завершает расчёт и публикацию.",
+                "value": "Переход от локального CLI к очереди расчётов уже заложен без смешивания HTTP и тяжёлого анализа в одном обработчике.",
+                "verification": "source",
+                "evidence": [
+                  "backend/store.py:29-48",
+                  "backend/store.py:96-161",
+                  "backend/worker.py:47-105"
+                ]
+              },
+              {
+                "aspect": "Локальная контейнеризация и ресурсно-предсказуемый расчёт",
+                "implementation": "Dockerfile разделяет runtime и tests targets, зависимости закреплены в requirements.lock, pipeline фиксирует seed, thresholds, версии библиотек и stage runtimes в run.json.",
+                "value": "Для следующего набора данных можно воспроизвести метод, сравнить версии и понять, где тратится время; это хороший фундамент для профилирования и шардинга на больших графах.",
+                "verification": "source",
+                "evidence": [
+                  "Dockerfile:1-37",
+                  "backend/pipeline.py:63-90",
+                  "backend/core/bundle_io.py:65-103"
+                ]
+              },
+              {
+                "aspect": "Расширяемый аналитический слой",
+                "implementation": "В features уже присутствуют transaction counts, amounts, PageRank, betweenness, bridge metrics, seed distance, component/cluster IDs и per-role support, а API отдаёт detail с role_support и contribution приоритетов.",
+                "value": "Следующие версии могут добавлять temporal patterns, route recurrence или external review labels без переписывания базового ingestion/export контракта.",
+                "verification": "source",
+                "evidence": [
+                  "backend/core/engine.py:59-105",
+                  "backend/analytics.py:87-98",
+                  "backend/core/contracts.py:71-90"
+                ]
+              }
+            ],
+            "scoreReasoning": "Полный балл отражает не обещание production-масштаба, а уже присутствующие seams для него: контракт, immutable runs, lease-aware worker, API и фиксированные метаданные. Пять часов не требуют реализации temporal/ML-функций, поэтому их отсутствие не штрафуется."
+          },
+          {
+            "name": "Презентация, демо и ответы на вопросы",
+            "score": 19,
+            "max": 20,
+            "awarded": "Устного выступления не было, поэтому оценены README, demo guide, методология и возможность воспроизвести сценарий из репозитория. Документация даёт команды запуска, роли, ограничения, примеры gid и пошаговый пятиминутный сценарий.",
+            "deductions": "Снято 1 балл за ту же конкретную проблему самодостаточности короткого evidence, но не за отсутствие публичной ссылки, слайдов, видео или устного выступления.",
+            "evidence": [
+              "README.md",
+              "docs/demo.md",
+              "docs/methodology.md",
+              "docs/qa.md",
+              "D-EVIDENCE-001",
+              "BUILD-DOCKER-001",
+              "CASE-PIPELINE-001"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "D-EVIDENCE-001",
+                "reason": "В демо аналитик может понять успешные роли, но для peripheral должен дополнительно обращаться к порогам и коду, поскольку CSV evidence не называет конкретный провалившийся gate."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "README ведёт от установки к двум режимам запуска",
+                "implementation": "README описывает make setup/demo/run, прямые Python-команды, Docker Compose, порты сервисов, структуру каталогов и назначение outputs.",
+                "value": "Жюри может понять основной сценарий и выбрать воспроизводимый локальный путь без устных пояснений.",
+                "verification": "source",
+                "evidence": [
+                  "README.md: локальный запуск и Docker-разделы",
+                  "README.md: структура и аудит документации"
+                ]
+              },
+              {
+                "aspect": "Демо-сценарий конкретен",
+                "implementation": "docs/demo.md перечисляет несколько gid для distributor, transit, coordinator, boundary и isolated seed, описывает тайминг, проверку evidence, графа и CSV.",
+                "value": "Документ помогает показать не абстрактный экран, а последовательность вопросов и ожидаемых наблюдений.",
+                "verification": "source",
+                "evidence": [
+                  "docs/demo.md: подготовка, timeline и примеры gid"
+                ]
+              },
+              {
+                "aspect": "Методология объясняет ограничения",
+                "implementation": "docs/methodology.md и docs/qa.md фиксируют six-role model, thresholds, depth boundary, seed caveat, отсутствие ground truth и правила воспроизводимых проверок.",
+                "value": "Материалы защищают от чрезмерных утверждений и позволяют отличить наблюдаемую сеть от полной истории счетов.",
+                "verification": "source",
+                "evidence": [
+                  "docs/methodology.md",
+                  "docs/qa.md",
+                  "docs/evidence-audit.md:5-19"
+                ]
+              },
+              {
+                "aspect": "Документация согласуется с запуском",
+                "implementation": "Рекомендуемые в README pipeline/validate-команды были фактически применены к предоставленному набору; Docker test image собрался, 182 non-browser tests прошли, pipeline и validator вернули pass.",
+                "value": "Это подтверждает, что README не только декларативен: основная последовательность действительно исполнима в чистом контейнерном runtime.",
+                "verification": "observed",
+                "evidence": [
+                  "BUILD-DOCKER-001",
+                  "TEST-UNIT-001",
+                  "CASE-PIPELINE-001",
+                  "CASE-VALIDATE-001"
+                ]
+              }
+            ],
+            "scoreReasoning": "19/20: README и demo guide заметно выше минимального хакатонного уровня, а запуск подтверждён. Один балл удержан только за конкретное evidence-упущение; отсутствие live URL и устного выступления по правилам этого ревью само по себе баллы не уменьшает."
+          }
+        ],
+        "total": 96
+      },
+      "case": {
+        "criteria": [
+          {
+            "name": "Соответствие задаче и работоспособность",
+            "score": 24,
+            "max": 25,
+            "awarded": "Все обязательные артефакты и основной локальный сценарий фактически получены на предоставленном графе; небольшое снижение связано только с неполным текстовым объяснением peripheral.",
+            "deductions": "Снято 1 балл за то, что evidence для одной роли не раскрывает конкретную причину непрохождения gates.",
+            "evidence": [
+              "F-PIPELINE-001",
+              "CASE-VALIDATE-001",
+              "CASE-OUTPUT-AUDIT-001",
+              "D-EVIDENCE-001"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "D-EVIDENCE-001",
+                "reason": "Требование объяснимых ролей выполнено не одинаково глубоко для всех шести ролей: peripheral формально получает evidence, но без перечисления конкретного проваленного условия."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Три входных Parquet-файла обработаны как единый контракт",
+                "implementation": "backend/core/data.py проверяет schema, int64 IDs, bool seed, даты июля 2026, диапазон depth, суммы и согласование агрегированных transactions с edges.",
+                "value": "Решение реализует не только загрузку, но и защиту от рассинхронизированного входа, что является базой для достоверных ролей.",
+                "verification": "source",
+                "evidence": [
+                  "backend/core/data.py:17-119",
+                  "CASE-PIPELINE-001",
+                  "CASE-VALIDATE-001"
+                ]
+              },
+              {
+                "aspect": "Все 2248 узлов сохранены в nodes_roles.csv",
+                "implementation": "make_outputs формирует roles из полного metrics frame, validator требует точное one-to-one покрытие input nodes, а фактический output audit насчитал 2248 строк.",
+                "value": "Изолированные и граничные узлы не исчезают из результата, поэтому очередь и проверка не ограничены только участниками рёбер.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/core/reporting.py:39-53",
+                  "backend/validate.py:84-100",
+                  "CASE-OUTPUT-AUDIT-001"
+                ]
+              },
+              {
+                "aspect": "Шесть ролей и три требуемые выгрузки присутствуют",
+                "implementation": "contracts.py фиксирует consolidator, distributor, transit, terminal, coordinator и peripheral; output audit подтвердил 1495 peripheral, 364 consolidator, 143 distributor, 138 terminal, 106 transit и 2 coordinator, а также clusters.csv и top_nodes.csv.",
+                "value": "Результат покрывает не только демонстрационный top-list, но и полную классификацию с кластерным обзором.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/core/contracts.py:19-23",
+                  "CASE-VALIDATE-001",
+                  "CASE-OUTPUT-AUDIT-001"
+                ]
+              },
+              {
+                "aspect": "Направленный граф и поиск gid реализованы",
+                "implementation": "frontend/app.py нормализует введённый gid, ищет его по полному nodes frame независимо от текущих фильтров и передаёт выбранный gid в cached_ego; backend analytics graph строит directed response с hops и limits.",
+                "value": "Основной пользовательский вопрос «кого проверить и с кем он связан» имеет отдельный путь, а не только статическую картинку.",
+                "verification": "source",
+                "evidence": [
+                  "frontend/app.py:184-186",
+                  "frontend/app.py:224-272",
+                  "backend/analytics.py:121-136",
+                  "API-SCENARIO-001"
+                ]
+              }
+            ],
+            "scoreReasoning": "24/25: все существенные must-have подтверждены на данных организаторов, включая глубину 4, шесть ролей, выгрузки, граф и скорость. Один балл удержан за неодинаковую объяснимость отрицательного результата peripheral, а не за непроверенную визуальную часть."
+          },
+          {
+            "name": "Техническая реализация",
+            "score": 24,
+            "max": 25,
+            "awarded": "Реализация хорошо разделена на ingestion, graph engine, role scoring, reporting, validator, API/worker и frontend; 182 non-browser теста и HTTP-сценарии прошли.",
+            "deductions": "Снято 1 балл за техническое ограничение слоя коротких explanations: он сохраняет недостаточно конкретную информацию о неуспешных gates для peripheral.",
+            "evidence": [
+              "F-EXPLAIN-002",
+              "F-BUNDLE-003",
+              "F-TESTS-006",
+              "D-EVIDENCE-001",
+              "captures/20261001T100039952702-test.stdout.log"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "D-EVIDENCE-001",
+                "reason": "Слой explanations.py для peripheral намеренно возвращает агрегированное сообщение без причин по каждому gate. Для технически объяснимого AML-прототипа это измеримое ограничение output contract, хотя role support в расширенном node detail остаётся доступным."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Детерминированный графовый engine",
+                "implementation": "engine.py сохраняет все nodes в DiGraph, агрегирует вход/выход по edges, считает PageRank, betweenness, seed distance, components, Louvain clusters и cross-cluster bridge metrics с RANDOM_SEED=42.",
+                "value": "Расчёт повторяем и соответствует направленной природе денег; seed и isolated nodes не теряются.",
+                "verification": "source",
+                "evidence": [
+                  "backend/core/engine.py:34-105",
+                  "backend/core/contracts.py:10-17"
+                ]
+              },
+              {
+                "aspect": "Role scoring и priority не смешаны",
+                "implementation": "score_roles сначала применяет eligibility gates и role scores, выбирает роль с alternative/margin, затем отдельно собирает priority contributions по structure, seed proximity, magnitude и role support.",
+                "value": "Система объясняет, почему узел попал в очередь, не выдавая priority за вероятность нарушения.",
+                "verification": "source",
+                "evidence": [
+                  "backend/core/engine.py:109-203",
+                  "backend/core/contracts.py:25-30",
+                  "backend/analytics.py:87-98"
+                ]
+              },
+              {
+                "aspect": "Independent validation перед публикацией",
+                "implementation": "Pipeline пишет staging candidate, запускает backend.validate отдельным процессом, проверяет status passed и runtime<300 секунд и только затем атомарно переименовывает candidate в runs и обновляет current.json.",
+                "value": "Плохой или частично записанный bundle не становится пользовательским current result; это существенная инженерная гарантия.",
+                "verification": "source",
+                "evidence": [
+                  "backend/pipeline.py:53-61",
+                  "backend/pipeline.py:95-129",
+                  "backend/core/bundle_io.py:106-120"
+                ]
+              },
+              {
+                "aspect": "HTTP contract и resilience покрыты тестами",
+                "implementation": "Тестовый target содержит backend, HTTP, bundle, CSV, role semantics, validation и resilience suites; фактический запуск выбранного non-browser набора завершился 182 passed.",
+                "value": "Проверены не только функции расчёта, но и формы API, ошибки, инварианты bundle и сценарии удаления узлов.",
+                "verification": "observed",
+                "evidence": [
+                  "TEST-UNIT-001",
+                  "captures/20261001T100039952702-test.stdout.log",
+                  "tests/test_backend_http.py",
+                  "tests/test_resilience.py"
+                ]
+              }
+            ],
+            "scoreReasoning": "24/25: техническая реализация существенно выше минимального прототипа, а проверка подтвердила её работу. Один балл удержан за узкое, но реальное несоответствие идее полной explainability в compact evidence для peripheral."
+          },
+          {
+            "name": "README и воспроизводимость",
+            "score": 25,
+            "max": 25,
+            "awarded": "Документация описывает локальный запуск, Docker, структуру, методологию, API, demo и QA; этот путь был воспроизведён на case-data.",
+            "deductions": "Снятий нет.",
+            "evidence": [
+              "README.md",
+              "docs/demo.md",
+              "docs/methodology.md",
+              "docs/qa.md",
+              "BUILD-DOCKER-001",
+              "CASE-PIPELINE-001",
+              "CASE-VALIDATE-001"
+            ],
+            "deductionItems": [],
+            "awardedDetails": [
+              {
+                "aspect": "Команды запуска описаны на нескольких уровнях",
+                "implementation": "README содержит make.cmd/make команды, прямые python-команды и Docker Compose; Dockerfile и compose.yaml связывают runtime, pipeline, validator, API, worker и UI.",
+                "value": "Ревьюер может выбрать путь от простого CLI до сервисного режима, не восстанавливая архитектуру по догадкам.",
+                "verification": "source",
+                "evidence": [
+                  "README.md: разделы Локальный запуск и Docker",
+                  "Dockerfile:1-37",
+                  "compose.yaml:1-111"
+                ]
+              },
+              {
+                "aspect": "Документы объясняют метод, а не только интерфейс",
+                "implementation": "docs/methodology.md фиксирует признаки, gates, пороги, веса priority и границы интерпретации; docs/architecture.md и docs/backend.md описывают потоки и контракты.",
+                "value": "Пользователь понимает, как из Parquet получается роль и почему результат является гипотезой, а не обвинением.",
+                "verification": "source",
+                "evidence": [
+                  "docs/methodology.md",
+                  "docs/architecture.md",
+                  "docs/backend.md"
+                ]
+              },
+              {
+                "aspect": "Воспроизводимый demo guide",
+                "implementation": "docs/demo.md даёт последовательность показа, конкретные примеры узлов и ожидаемые ограничения; starter и case README были прочитаны для сверки схем и требований.",
+                "value": "Демо можно повторить на локальных outputs и объяснить жюри на фактах, включая boundary и isolated seed.",
+                "verification": "source",
+                "evidence": [
+                  "docs/demo.md",
+                  "cases/2/case-data/README.md: параметры и схемы",
+                  "cases/2/case-data/starter/README.md: контракт starter"
+                ]
+              },
+              {
+                "aspect": "Фактическая проверка воспроизводимости",
+                "implementation": "Образ собрался, non-browser tests прошли, pipeline на трёх предоставленных Parquet опубликовал run, validator проверил bundle, а отдельный output audit подтвердил обязательные количества и depth semantics.",
+                "value": "Документированный сценарий подтверждён исполнением, а не принят на веру.",
+                "verification": "observed",
+                "evidence": [
+                  "BUILD-DOCKER-001",
+                  "TEST-UNIT-001",
+                  "CASE-PIPELINE-001",
+                  "CASE-VALIDATE-001",
+                  "CASE-OUTPUT-AUDIT-001"
+                ]
+              }
+            ],
+            "scoreReasoning": "Полный балл: документация достаточно подробна для понимания и локального повторения, а критический путь подтверждён запуском на организаторском наборе. Известное ограничение evidence относится к удобству интерпретации результата, а не к воспроизводимости."
+          },
+          {
+            "name": "Ценность и применимость решения",
+            "score": 14,
+            "max": 15,
+            "awarded": "Подход применим как локальный инструмент triage: он связывает структуру, суммы, роли, clusters, priority и граф связей с ручным review.",
+            "deductions": "Снято 1 балл за необходимость дополнительной интерпретации generic peripheral evidence в реальном рабочем процессе.",
+            "evidence": [
+              "F-PIPELINE-001",
+              "F-API-004",
+              "D-EVIDENCE-001",
+              "frontend/app.py:238-272",
+              "backend/analytics.py:62-70"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "D-EVIDENCE-001",
+                "reason": "Для большой группы peripheral пользователей приходится открывать подробности или обращаться к методологии, чтобы понять, какие именно правила не выполнены. Это небольшое трение для применимости, но не блокирующий дефект."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Ориентация на реальный analyst workflow",
+                "implementation": "UI разделяет workspace проверки клиентов и workspace сети/сообществ, показывает очередь, карточку, directed ego graph, таблицы связей и выгрузки.",
+                "value": "Артефакт отвечает практической задаче первичного отбора и последующего ручного изучения, а не только исследовательскому графовому визуализатору.",
+                "verification": "source",
+                "evidence": [
+                  "frontend/app.py:238-272",
+                  "frontend/app.py:273-301"
+                ]
+              },
+              {
+                "aspect": "Поддержка группового обзора",
+                "implementation": "clusters.csv содержит размер, seed count, внутренний оборот, top_gids и гипотезу; API и UI также показывают компоненты и isolated nodes.",
+                "value": "Аналитик может перейти от отдельного клиента к структуре сообщества и понять, где находятся связанные фрагменты.",
+                "verification": "source",
+                "evidence": [
+                  "backend/core/reporting.py:72-93",
+                  "backend/analytics.py:105-111",
+                  "CASE-VALIDATE-001"
+                ]
+              },
+              {
+                "aspect": "Применимость без внешней инфраструктуры",
+                "implementation": "Расчёт и UI работают локально, входы — Parquet, результаты — CSV/Parquet/JSON, API — FastAPI, без обязательного внешнего LLM/API ключа.",
+                "value": "Для чувствительных финансовых данных это снижает интеграционный и privacy барьер раннего прототипа.",
+                "verification": "observed",
+                "evidence": [
+                  "Dockerfile:1-37",
+                  "CASE-PIPELINE-001",
+                  "API-HEALTH-001"
+                ]
+              },
+              {
+                "aspect": "Честная граница применимости",
+                "implementation": "UI и evidence говорят только о наблюдаемых переводах, четырёх коленах и неполной seed inflow; код не использует персональные атрибуты и не маркирует terminal на depth=4.",
+                "value": "Пользователь получает инструмент формирования гипотез для проверки, а не опасную автоматическую квалификацию клиента.",
+                "verification": "source",
+                "evidence": [
+                  "frontend/app.py:208-210",
+                  "backend/core/engine.py:73-76",
+                  "backend/validate.py:99-107"
+                ]
+              }
+            ],
+            "scoreReasoning": "14/15: прикладной workflow и ограничения хорошо сбалансированы. Один балл удержан за то, что одна из шести ролей не объясняет отказ конкретными условиями прямо в compact evidence."
+          },
+          {
+            "name": "Потенциал развития и оригинальность подхода",
+            "score": 10,
+            "max": 10,
+            "awarded": "Для пятичасового MVP есть и оригинальный аналитический слой, и инженерные точки расширения: temporal features, route analysis, review labels и новые profiles могут добавляться поверх существующего bundle/API contract.",
+            "deductions": "Снятий нет.",
+            "evidence": [
+              "F-EXPLAIN-002",
+              "F-BUNDLE-003",
+              "backend/core/resilience.py:7-61",
+              "docs/methodology.md",
+              "docs/architecture.md"
+            ],
+            "deductionItems": [],
+            "awardedDetails": [
+              {
+                "aspect": "Расширение в temporal analytics",
+                "implementation": "transactions.parquet валидируется и нормализуется как отдельная таблица, а текущий engine уже хранит in_tx/out_tx; это оставляет естественную точку для временных маршрутов и burst features.",
+                "value": "Следующий этап может отличать простой оборот от синхронного или повторяющегося транзита без разрушения текущей схемы.",
+                "verification": "source",
+                "evidence": [
+                  "backend/core/data.py:42-119",
+                  "backend/core/engine.py:64-76",
+                  "docs/methodology.md"
+                ]
+              },
+              {
+                "aspect": "Расширение в analyst feedback",
+                "implementation": "API Store уже хранит selections по run_id, а detail возвращает role_support, alternative_role, margin и priority contributions.",
+                "value": "В будущем ручная разметка и обратная связь могут стать отдельным слоем review, не меняя исходный bundle.",
+                "verification": "source",
+                "evidence": [
+                  "backend/store.py:187-198",
+                  "backend/api.py:266-279",
+                  "backend/analytics.py:87-98"
+                ]
+              },
+              {
+                "aspect": "Расширение к большим графам",
+                "implementation": "Контейнер, stage timings, immutable runs, worker lease/recovery и API pagination уже разделяют вычисление и чтение результатов.",
+                "value": "Для роста объёма понятны следующие инженерные шаги: профилирование, более эффективные centrality/community алгоритмы и вынесение больших таблиц в специализированное хранилище.",
+                "verification": "source",
+                "evidence": [
+                  "backend/pipeline.py:63-86",
+                  "backend/worker.py:47-105",
+                  "backend/models.py:1-180"
+                ]
+              },
+              {
+                "aspect": "Оригинальность what-if вопроса",
+                "implementation": "Resilience layer моделирует удаление top-N узлов и сравнивает компоненты, пары и суммы, при этом не изменяет опубликованные роли и CSV.",
+                "value": "Это превращает приоритет из статического рейтинга в проверяемую структурную гипотезу и даёт хорошее направление развития аналитического продукта.",
+                "verification": "source",
+                "evidence": [
+                  "backend/core/resilience.py:7-61",
+                  "frontend/app.py:52-92"
+                ]
+              }
+            ],
+            "scoreReasoning": "Полный балл: текущий MVP уже содержит осмысленные seams для временных признаков, feedback и масштаба, а resilience experiment является самостоятельным нестандартным расширением. Не требуется штрафовать за то, что опциональные temporal/ML-функции не были реализованы за пять часов."
+          }
+        ],
+        "total": 97
+      },
+      "judgeScore": 96.5,
+      "caseRequirements": [
+        {
+          "requirement": "Загрузить и проверить nodes.parquet, edges.parquet и transactions.parquet с сохранением схем, типов, дат и согласованных сумм.",
+          "status": "met",
+          "explanation": "backend/core/data.py проверяет обязательные колонки и типы, диапазон depth, seed consistency, даты июля 2026, суммы не ниже 5000 KZT и равенство агрегации transactions агрегированным edges. Запуск на предоставленных данных завершился публикацией, а validator — passed.",
+          "evidence": [
+            "backend/core/data.py:17-119",
+            "CASE-PIPELINE-001",
+            "CASE-VALIDATE-001"
+          ]
+        },
+        {
+          "requirement": "Сформировать nodes_roles.csv для всех 2248 узлов с role, score, cluster, priority и evidence.",
+          "status": "met",
+          "explanation": "Output audit подтвердил 2248 строк nodes_roles.csv и 2248 строк node_metrics.parquet; validator отдельно требует точное one-to-one покрытие входных gid, роли из шестиэлементного словаря, диапазон score/priority и непустое числовое evidence.",
+          "evidence": [
+            "backend/core/reporting.py:39-53",
+            "backend/validate.py:89-98",
+            "CASE-OUTPUT-AUDIT-001"
+          ]
+        },
+        {
+          "requirement": "Назначать шесть базовых ролей и делать правила/пороги объяснимыми.",
+          "status": "partial",
+          "explanation": "Все шесть ролей фактически присутствуют, thresholds и role-specific positive explanations сохранены в manifest/evidence, а role_support доступен через API detail. Однако для peripheral compact evidence говорит только, что пять основных ролей не выполнены, без перечисления конкретных failed gates.",
+          "evidence": [
+            "backend/core/contracts.py:19-23",
+            "backend/core/engine.py:109-170",
+            "backend/core/explanations.py:4-9",
+            "D-EVIDENCE-001"
+          ]
+        },
+        {
+          "requirement": "Сформировать clusters.csv с размером, seed count, оборотом, top_gids и гипотезой.",
+          "status": "met",
+          "explanation": "make_outputs формирует все перечисленные поля, а output audit и validator подтвердили 105 согласованных кластеров.",
+          "evidence": [
+            "backend/core/reporting.py:72-93",
+            "backend/validate.py:108-132",
+            "CASE-VALIDATE-001"
+          ]
+        },
+        {
+          "requirement": "Сформировать top_nodes.csv минимум на 20 узлов с ранжированием и объяснением.",
+          "status": "met",
+          "explanation": "Результат содержит 20 строк, rank идёт от 1, порядок проверяется по priority_score desc и числовому gid asc, а why включает evidence и две главные priority contributions.",
+          "evidence": [
+            "backend/core/reporting.py:53-71",
+            "backend/validate.py:133-142",
+            "CASE-OUTPUT-AUDIT-001"
+          ]
+        },
+        {
+          "requirement": "Предоставить направленную визуализацию графа с поиском по gid.",
+          "status": "partial",
+          "explanation": "Исходники содержат Streamlit search по gid, независимый от фильтров, и directed ego/overview graph; UI process прошёл HTTP health-check, а API graph для конкретного gid вернул nodes, edges и truncation. Визуальное поведение страницы намеренно не открывалось и не проверялось браузерными средствами.",
+          "evidence": [
+            "frontend/app.py:184-186",
+            "frontend/app.py:224-272",
+            "backend/analytics.py:121-136",
+            "API-SCENARIO-001",
+            "UI-HEALTH-001"
+          ]
+        },
+        {
+          "requirement": "Уложить полный пересчёт в пять минут.",
+          "status": "met",
+          "explanation": "Pipeline на полном предоставленном графе завершился за 6,4 секунды по capture; его собственный guard также запрещает публикацию при total >=300 секунд.",
+          "evidence": [
+            "backend/pipeline.py:69-73",
+            "backend/pipeline.py:101-111",
+            "CASE-PIPELINE-001"
+          ]
+        },
+        {
+          "requirement": "Корректно обработать глубину 4: отсутствие исходящих рёбер там не доказывает terminal.",
+          "status": "met",
+          "explanation": "На case-data было 444 узла depth=4 и 0 терминалов depth=4; engine исключает boundary из ratio_usable, terminal gate требует depth<4, а evidence добавляет оговорку о неизвестном продолжении.",
+          "evidence": [
+            "backend/core/engine.py:73-76",
+            "backend/core/engine.py:152-153",
+            "backend/core/reporting.py:28-30",
+            "CASE-OUTPUT-AUDIT-001"
+          ]
+        },
+        {
+          "requirement": "Не использовать hardcoded gid, внешние атрибуты личности или вымышленные внешние данные; формулировать выводы как гипотезы.",
+          "status": "met",
+          "explanation": "Ролевые и priority значения вычисляются из входных таблиц и графовых признаков; поиск принимает произвольный gid из nodes, а код не содержит hardcoded analyst answer list. UI и cluster hypothesis используют язык наблюдений и гипотез, а входной профиль различает official и synthetic.",
+          "evidence": [
+            "backend/core/engine.py:34-203",
+            "frontend/app.py:224-240",
+            "backend/pipeline.py:88-95",
+            "rg-аудит исходников: совпадений hardcoded answer gid в backend/frontend нет"
+          ]
+        }
+      ],
+      "testData": {
+        "provided": [
+          "cases/2/case-data/README.md",
+          "cases/2/case-data/data/edges.parquet",
+          "cases/2/case-data/data/nodes.parquet",
+          "cases/2/case-data/data/transactions.parquet",
+          "cases/2/case-data/starter/README.md",
+          "cases/2/case-data/starter/requirements.txt",
+          "cases/2/case-data/starter/starter.py",
+          "cases/2/case-data/ТЗ Финансы Граф денег_ восстановление финансовой структуры организованной группы по транзакционной сети.md"
+        ],
+        "used": [
+          "cases/2/case-data/data/edges.parquet — подан в pipeline как вход edges",
+          "cases/2/case-data/data/nodes.parquet — подан в pipeline как вход nodes",
+          "cases/2/case-data/data/transactions.parquet — подан в pipeline как вход transactions",
+          "cases/2/case-data/README.md — сверены размеры, schema и параметры набора",
+          "cases/2/case-data/starter/README.md — сверены обязательные выходы и ловушки задания",
+          "cases/2/case-data/starter/starter.py — прочитан как baseline, не использован вместо решения",
+          "cases/2/case-data/ТЗ Финансы Граф денег_ восстановление финансовой структуры организованной группы по транзакционной сети.md — сверены must-have и optional directions"
+        ],
+        "checks": [
+          {
+            "input": "Три предоставленных Parquet-файла организаторского графа: 2248 nodes, 3119 aggregated edges, 4840 transactions, 81 seeds, глубины 0..4.",
+            "method": "Запуск python -m backend.pipeline --data /case-data --out /results в изолированном Docker runtime; pipeline сам вызвал независимый validator перед публикацией.",
+            "result": "Процесс завершился с кодом 0 и опубликовал run; в capture зафиксирован status published, elapsed около 6,4 секунды.",
+            "conclusion": "Входной формат и полный расчёт на предоставленном графе поддержаны."
+          },
+          {
+            "input": "Bundle, созданный предыдущей проверкой на тех же трёх case-data Parquet.",
+            "method": "Запуск python -m backend.validate --data /case-data --out /results.",
+            "result": "status passed; n_nodes=2248; n_edges=3119; n_seed=81; n_clusters=105; n_top=20; n_components=35; n_isolates=19; warnings=[]; bundle=ok.",
+            "conclusion": "Все инварианты schema, ролей, кластеров, top-list, evidence, terminal и boundary прошли."
+          },
+          {
+            "input": "Файлы outputs внутри опубликованного run, полученного из case-data.",
+            "method": "Статический audit в контейнере: чтение nodes_roles.csv, clusters.csv, top_nodes.csv и node_metrics.parquet, подсчёт depth=4 и terminal.",
+            "result": "2248/105/20 строк соответственно, metrics=2248, depth4_nodes=444, depth4_terminals=0; все шесть ролей имеют ненулевую выборку.",
+            "conclusion": "Выходы покрывают полный граф и корректно сохраняют boundary semantics."
+          },
+          {
+            "input": "cases/2/case-data/starter/ и case README/TЗ.",
+            "method": "Прочитаны README, starter README, starter.py и ТЗ; starter не подменял проверяемый проект.",
+            "result": "Сверены схема трёх входов, обязательные три CSV, шесть ролей, top>=20, depth=4 caveat и ограничения по отсутствию ground truth.",
+            "conclusion": "Проверка применяла именно требования кейса, а не starter output."
+          }
+        ],
+        "limitations": [
+          "Независимой разметки правильных AML-ролей в case-data нет, поэтому проверены контракты, объяснимость и согласованность вычислений, но не истинность гипотез для реальных клиентов.",
+          "Визуальная интеракция Streamlit не проверялась; подтверждены только запуск процесса и HTTP health endpoint."
+        ]
+      },
+      "runtime": {
+        "status": "working",
+        "build": "Docker test image собран успешно; build target использовал Python 3.12.12 и requirements.lock.",
+        "start": "API и Streamlit UI стартовали в изолированном runtime; API application startup завершился успешно, UI health endpoint ответил 200 ok.",
+        "scenario": "Основной сценарий воспроизведён на case-data через pipeline и validator; отдельно API вернул summary, node page, detail, directed graph и CSV export для опубликованного run.",
+        "environment": "Изолированный Docker runtime без секретов и внешних API; ресурсы контейнеров ограничены 3 GB RAM и 2 CPU; браузеры и UI automation не использовались.",
+        "summary": "Сборка pass; 182 non-browser pytest passed с одним предупреждением о deprecated Starlette/httpx adapter; case pipeline pass; case validator pass; API health/scenario pass; UI HTTP health pass.",
+        "checks": [
+          {
+            "command": "docker build --target tests .",
+            "result": "Код 0; образ собран за 209,2 секунды.",
+            "id": "BUILD-DOCKER-001",
+            "stage": "build",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Проект и закреплённые зависимости должны собраться в Docker image."
+          },
+          {
+            "command": "python -m pytest -q tests/test_a_verification.py tests/test_backend.py tests/test_backend_http.py tests/test_backend_scenarios.py tests/test_bundle_protocol.py tests/test_csv_downloads.py tests/test_evidence_audit.py tests/test_graph_ui.py tests/test_resilience.py tests/test_role_semantics.py tests/test_validation.py",
+            "result": "182 passed, 1 warning in 191,18 секунды; browser_* и test_ui.py не запускались из-за запрета на browser/UI automation.",
+            "id": "TEST-UNIT-001",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Non-browser unit, domain, HTTP, bundle, CSV, graph-logic и resilience tests должны пройти."
+          },
+          {
+            "command": "python -m backend.pipeline --data /case-data --out /results",
+            "result": "Код 0; status published; опубликован новый UUID run; stderr пуст.",
+            "id": "CASE-PIPELINE-001",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Полный расчёт на трёх предоставленных Parquet должен создать candidate, пройти validator и опубликовать run менее чем за 300 секунд."
+          },
+          {
+            "command": "python -m backend.validate --data /case-data --out /results",
+            "result": "Код 0; status passed; 2248 nodes, 3119 edges, 105 clusters, 20 top nodes, warnings=[] и bundle=ok.",
+            "id": "CASE-VALIDATE-001",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Validator должен подтвердить schema, SHA256, counts, роли, кластеры, top-list, evidence и boundary constraints."
+          },
+          {
+            "command": "Статический output audit: чтение CSV и node_metrics.parquet",
+            "result": "Код 0; rows 2248/105/20, metrics 2248, depth4 444, depth4 terminal 0, роли распределены по всем шести значениям.",
+            "id": "CASE-OUTPUT-AUDIT-001",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Опубликованные три выгрузки и расширенные метрики должны содержать полный граф и корректную depth=4 semantics."
+          },
+          {
+            "command": "python -m uvicorn backend.api:create_app --factory --host 0.0.0.0 --port 8000",
+            "result": "Приложение стартовало; lifespan bootstrap зарегистрировал official dataset и seeded succeeded run.",
+            "id": "API-START-001",
+            "stage": "start",
+            "status": "pass",
+            "cause": "none",
+            "expected": "FastAPI application должна запуститься и подготовить состояние из входных data и seed-results."
+          },
+          {
+            "command": "GET /api/v1/health",
+            "result": "HTTP 200; body status=ok.",
+            "id": "API-HEALTH-001",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Health endpoint должен вернуть успешный ответ после старта API."
+          },
+          {
+            "command": "GET /api/v1/runs/{run_id}/summary; GET /api/v1/runs/{run_id}/nodes; GET /api/v1/runs/{run_id}/nodes/{gid}; GET /api/v1/runs/{run_id}/nodes/{gid}/graph; GET /api/v1/runs/{run_id}/exports/top_nodes.csv",
+            "result": "Все запросы вернули HTTP 200; summary и node detail содержали counts/roles/warnings/metrics, graph вернул directed nodes/edges/truncation, CSV export — text/csv и 5734 bytes.",
+            "id": "API-SCENARIO-001",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Опубликованный run должен поддерживать основной API-сценарий поиска gid, объяснения, связей и выгрузки."
+          },
+          {
+            "command": "python -m streamlit run frontend/app.py --server.address=0.0.0.0 --server.port=8501 --server.headless=true -- --outputs /results",
+            "result": "Процесс стартовал; GET /_stcore/health вернул HTTP 200 и body ok.",
+            "id": "UI-HEALTH-001",
+            "stage": "start",
+            "status": "pass",
+            "cause": "none",
+            "expected": "UI process должен подняться и отвечать на технический health endpoint; визуальная проверка в этот check не входит."
+          }
+        ],
+        "limitations": [
+          "Визуальный браузерный сценарий, поиск в настоящем браузере и внешний вид графа не проверялись: это пользовательская часть верификации по условиям ревью.",
+          "Публичная live URL в репозитории не подтверждалась; локальный сервисный сценарий подтверждён HTTP/CLI."
+        ]
+      },
+      "liveDemo": {
+        "status": "none",
+        "url": null,
+        "notes": "Публичная live-ссылка в материалах репозитория не подтверждена. Локальные API и UI были запущены и проверены техническими HTTP-запросами; отсутствие публичного URL не использовано как причина снижения."
+      },
+      "fiveHourContext": "Оценка учитывает пятичасовой hackathon MVP: не требуется production AML, ground truth, внешнее обогащение, temporal ML или облачная инфраструктура. В этом контексте команда успела сделать не только базовый граф, но и объяснимые роли, кластеры, priority queue, resilience experiment, API/worker протокол, валидатор, Docker и документацию. Полный расчёт на заданном графе занял около 6,4 секунды; сборка зависимостей отдельно заняла около 209 секунд и не относится к runtime pipeline.",
+      "strengths": [
+        "Проверенный локальный pipeline от трёх Parquet до immutable validated bundle на всех 2248 узлах.",
+        "Корректная направленная и weighted graph model с шестью ролями, data-derived thresholds и role-specific explanations.",
+        "Явное различение seed, depth=4 boundary, isolated nodes и наблюдаемых, а не полных денежных потоков.",
+        "Сильный контрактный слой: независимый validator, SHA256 manifest, atomic publication, API, worker lease/recovery и CSV exports.",
+        "README, methodology, demo и QA документы согласуются с фактическим Docker/CLI запуском.",
+        "Интерактивный пользовательский путь поиска gid и directed graph дополнен what-if resilience analysis."
+      ],
+      "gaps": [
+        "D-EVIDENCE-001: compact evidence для роли peripheral возвращает только «5 основных ролей не выполнены»; конкретные failed gates и числовые сравнения не перечислены в одной строке, поэтому объяснение этой роли менее самодостаточно, чем объяснения substantive roles."
+      ],
+      "futureAdvice": [
+        {
+          "principle": "Каждое отрицательное решение должно быть объяснимо тем же уровнем конкретики, что и положительное.",
+          "why": "D-EVIDENCE-001 показывает, что peripheral сохраняет факты потоков, но не говорит, какие из пяти gates не прошли; это заставляет аналитика восстанавливать причину из методологии или расширенной карточки.",
+          "how": "В reporting.py сформировать для peripheral компактный список failed gates с фактическим значением и порогом, например «out_deg=2<3; in_deg=1<2; depth=4»; для близкой альтернативы добавить role_margin/alternative_role в why или отдельное поле. Затем обновить audit на representative nodes каждой роли.",
+          "findingIds": [
+            "D-EVIDENCE-001"
+          ],
+          "successCheck": "Для каждого из 2248 evidence можно определить хотя бы одно прошедшее или не прошедшее role condition без чтения исходного кода; audit проверяет positive gate для пяти substantive roles и конкретную failure reason для peripheral.",
+          "timeboxMinutes": 35
+        }
+      ],
+      "uncertainties": [
+        "Ground truth для правильных AML-ролей отсутствует по условиям кейса, поэтому нельзя измерить precision/recall ролей; оценены вычислительная корректность и объяснимость.",
+        "Неполная входящая история seed и обрыв на depth=4 являются свойствами предоставленного графа, а не подтверждёнными дефектами проекта.",
+        "Визуальное расположение элементов, фактический drag/zoom и браузерное взаимодействие не подтверждены; подтверждены source-level graph construction, UI process startup и HTTP health.",
+        "Устной презентации, вопросов жюри и публичной live-ссылки не было в доступном контексте; это не использовалось как штраф."
+      ],
+      "reviewPolicyVersion": 2,
+      "assessmentStatus": "ready",
+      "findings": [
+        {
+          "id": "F-PIPELINE-001",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Основной pipeline воспроизводимо обработал предоставленные организаторами три Parquet-файла и опубликовал валидированный bundle.",
+          "expected": "Расчёт должен принять вход, создать три обязательные выгрузки и опубликовать результат только после независимой валидации.",
+          "actual": "CASE-PIPELINE-001 завершился status published и кодом 0; CASE-VALIDATE-001 вернул status passed с 2248 nodes, 3119 edges, 105 clusters и 20 top nodes.",
+          "evidence": [
+            "captures/20261001T100438405449-case_pipeline.stdout.log",
+            "captures/20261001T100458612333-case_validate.stdout.log",
+            "backend/pipeline.py:33-130"
+          ],
+          "checkIds": [
+            "CASE-PIPELINE-001",
+            "CASE-VALIDATE-001"
+          ]
+        },
+        {
+          "id": "F-EXPLAIN-002",
+          "kind": "strength",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Роли и priority вычисляются детерминированно из наблюдаемых графовых признаков, а manifest сохраняет thresholds и weights.",
+          "expected": "Результат должен иметь понятные правила и не зависеть от hardcoded gid или скрытого внешнего сервиса.",
+          "actual": "engine.py считает признаки и gates из nodes/edges; contracts.py фиксирует роли, seed и priority weights; explanations.py формирует role-specific текст.",
+          "evidence": [
+            "backend/core/engine.py:34-203",
+            "backend/core/contracts.py:10-30",
+            "backend/core/explanations.py:4-38"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "F-BUNDLE-003",
+          "kind": "strength",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Публикация отделена от вычисления и защищена независимой проверкой, manifest и SHA256.",
+          "expected": "Пользовательский current result не должен указывать на частично записанный или несогласованный bundle.",
+          "actual": "Pipeline пишет staging, запускает validate.py, затем делает candidate.replace и атомарно обновляет current.json; bundle_io перепроверяет hashes и run_id.",
+          "evidence": [
+            "backend/pipeline.py:53-61",
+            "backend/pipeline.py:95-129",
+            "backend/core/bundle_io.py:106-120"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "F-TESTS-006",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Широкий non-browser набор проверок прошёл в контейнерном runtime.",
+          "expected": "Unit/domain/HTTP/bundle/CSV/role/resilience проверки должны завершиться без ошибок проекта.",
+          "actual": "182 passed, 1 warning; warning относится к deprecated Starlette/httpx adapter и не стал ошибкой тестов.",
+          "evidence": [
+            "captures/20261001T100039952702-test.stdout.log",
+            "Dockerfile:20-37"
+          ],
+          "checkIds": [
+            "TEST-UNIT-001"
+          ]
+        },
+        {
+          "id": "F-API-004",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "FastAPI реализует рабочий сервисный путь от health и dataset/run registry до detail, directed graph и CSV export.",
+          "expected": "После старта API опубликованный run должен быть читаем по основным endpoints.",
+          "actual": "Health, summary, nodes, node detail, graph и top_nodes.csv ответили HTTP 200; datasets bootstrap вернул official dataset с 2248 nodes.",
+          "evidence": [
+            "captures/20261001T100727737540-api_checks2.stdout.log",
+            "captures/20261001T100737000838-api_checks3.stdout.log",
+            "captures/20261001T100749173905-api_scenario.stdout.log",
+            "backend/api.py:149-296"
+          ],
+          "checkIds": [
+            "API-START-001",
+            "API-HEALTH-001",
+            "API-SCENARIO-001"
+          ]
+        },
+        {
+          "id": "F-UI-005",
+          "kind": "strength",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "UI-сценарий содержит поиск gid независимо от фильтров, directed ego graph, таблицы связей и downloads.",
+          "expected": "Пользователь должен иметь путь от очереди к конкретному узлу и его направленным связям.",
+          "actual": "app.py нормализует gid, сообщает о найденном узле вне текущих фильтров, строит cached_ego и отображает граф/связи; UI process прошёл технический health-check.",
+          "evidence": [
+            "frontend/app.py:184-186",
+            "frontend/app.py:224-272",
+            "frontend/app.py:293-303",
+            "captures/20261001T100815076032-ui_health.stdout.log"
+          ],
+          "checkIds": [
+            "UI-HEALTH-001"
+          ]
+        },
+        {
+          "id": "D-EVIDENCE-001",
+          "kind": "defect",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Compact evidence не сообщает конкретные failed gates для роли peripheral и не связывает каждое числовое наблюдение с итоговым отказом правила.",
+          "expected": "Для всех шести ролей поле evidence должно позволять аналитику понять не только наблюдаемые числа, но и правило/порог, на основании которого роль выбрана или отклонена.",
+          "actual": "reporting.py вызывает role_gate(..., compact=True), а explanations.py для peripheral возвращает только «Правила 5 основных ролей не выполнены». Для substantive roles compact text содержит роль-специфический порог, но обычно не пишет фактическое сравнение в одной фразе.",
+          "evidence": [
+            "backend/core/reporting.py:12-36",
+            "backend/core/explanations.py:4-9",
+            "docs/evidence-audit.md:27-33",
+            "CASE-OUTPUT-AUDIT-001"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "L-VISUAL-001",
+          "kind": "limitation",
+          "verification": "unverified",
+          "responsibility": "review_environment",
+          "claim": "Визуальное поведение Streamlit graph/search не подвергалось браузерной проверке.",
+          "expected": "Полная визуальная проверка должна включать открытие UI и ручное взаимодействие с поиском, графом и фильтрами.",
+          "actual": "Проверены исходники, запуск процесса и GET /_stcore/health=200; браузер, screenshot и UI automation намеренно не использовались.",
+          "evidence": [
+            "UI-HEALTH-001",
+            "frontend/app.py:224-285"
+          ],
+          "checkIds": [
+            "UI-HEALTH-001"
+          ]
+        },
+        {
+          "id": "L-DATA-002",
+          "kind": "limitation",
+          "verification": "source",
+          "responsibility": "unknown",
+          "claim": "Кейс не содержит ground truth, полной истории seed inflow, внешних рёбер за глубиной 4 и атрибутов личности.",
+          "expected": "Для оценки истинности AML-гипотез нужна независимая разметка и более полный контекст транзакций.",
+          "actual": "Проект корректно маркирует boundary/seed ограничения и строит только наблюдаемые гипотезы; проверить фактическую точность ролей по этому набору невозможно.",
+          "evidence": [
+            "frontend/app.py:208-210",
+            "backend/core/reporting.py:28-35",
+            "docs/methodology.md"
+          ],
+          "checkIds": []
+        }
+      ],
+      "gapFindingIds": [
+        "D-EVIDENCE-001"
+      ]
+    }
+  ],
+  "score": 96.5,
+  "status": "complete",
+  "expectedJudges": 1
+}

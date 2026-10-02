@@ -1,0 +1,944 @@
+{
+  "methodVersion": 4,
+  "repoId": "hack-866564aa-pairadox",
+  "repoUrl": "https://github.com/BAITC-Hacks/hack-866564aa-pairadox",
+  "caseId": 5,
+  "snapshot": "477f849f6f9b3251516f3ed1d6703ba8548d4e15",
+  "judges": [
+    {
+      "methodVersion": 4,
+      "repoId": "hack-866564aa-pairadox",
+      "caseId": 5,
+      "model": "GPT-5.6 Luna",
+      "snapshot": "477f849f6f9b3251516f3ed1d6703ba8548d4e15",
+      "overallSummary": "Pairadox — рабочий локальный прототип закупочного расчёта для набора IEK: backend загружает Excel, строит прогноз и рекомендацию по SKU, учитывает остаток, товары в пути, сезонность, тренд, stockout, выбросы и кратность заказа, а frontend показывает объяснимую таблицу, детализацию, сценарное сравнение и экспорт. Runtime-проверка на данных репозитория прошла: pipeline загрузил 2851 рекомендацию, API вернул детали SKU, сценарий и CSV. Оценка удержана ниже максимума из-за подтверждённого ограничения области только IEK, отсутствия обработки категорий и клиентского измерения, суммирования transit без проверки даты прибытия и отсутствия явного approve/edit workflow перед экспортом. Отдельной шкалы кейса нет, поэтому итог равен общей оценке 84/100.",
+      "global": {
+        "criteria": [
+          {
+            "name": "Ценность решения",
+            "score": 22,
+            "max": 25,
+            "awarded": "Решение заметно сокращает ручную работу менеджера закупа и делает рекомендацию проверяемой по составляющим.",
+            "deductions": "Снижение за работу только с IEK вместо полного набора поставленных наборов данных и за отсутствие категории как измерения расчёта.",
+            "evidence": [
+              "README.md:5",
+              "backend/main.py:221",
+              "http-basic",
+              "http-detail"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "F-IEK-SCOPE",
+                "reason": "Для практического пользователя покрыт один набор IEK: backend и интерфейс явно ограничены IEK, а Systeme Electric не попадает в расчёт, поэтому польза для полного сценария поставщиков уже уже заявленной области."
+              },
+              {
+                "points": 1,
+                "findingId": "F-NO-CATEGORY",
+                "reason": "Входное требование включает категории товаров, но нормализованный каталог строится только из SKU, product_name и unit; категорийный срез и его влияние на заказ отсутствуют."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Попадание в реальную боль закупок",
+                "implementation": "README описывает рабочее пространство закупщика: список SKU, прогноз, текущий остаток, goods in transit, safety stock, кратность, приоритет и риск. Backend рассчитывает полный список, а не только демонстрационный набор строк.",
+                "value": "Это непосредственно заменяет ручное сведение нескольких Excel-выгрузок и даёт менеджеру число заказа вместе с основаниями для проверки.",
+                "verification": "observed",
+                "evidence": [
+                  "README.md:5",
+                  "backend/main.py:557",
+                  "http-basic: health=ok, recommendation_count=2851"
+                ]
+              },
+              {
+                "aspect": "Экономическая логика пополнения",
+                "implementation": "Рекомендация собирается из спроса на lead time, safety stock, current_stock и goods_in_transit; затем применяется order multiple. В реально возвращённой строке SKU 010400925 видны forecast 19.43, stock 1, transit 11 и order 16.",
+                "value": "Пользователь может понять, почему система не заказывает весь прогноз поверх уже ожидаемой поставки, что снижает риск лишнего запаса.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/services/replenishment.py:213",
+                  "backend/services/replenishment.py:641",
+                  "http-basic: SKU 010400925"
+                ]
+              },
+              {
+                "aspect": "Объяснимый результат для менеджера",
+                "implementation": "Backend возвращает explanation с формулой, факторами тренда и сезонности, demand corrections, inventory factors и округлением; frontend показывает breakdown и reason для выбранного товара.",
+                "value": "Рекомендация не является непрозрачным числом: её можно сверить с остатком, transit, forecast, страховым запасом и кратностью перед решением.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/services/explanations.py:53",
+                  "frontend/src/App.tsx:65",
+                  "http-basic: first recommendation содержит calculation и forecast_factors"
+                ]
+              },
+              {
+                "aspect": "Проверяемость чувствительности",
+                "implementation": "Для чистой функции replenishment проведено сравнение одинакового спроса и остатка: при goods_in_transit=0 заказ 90, при goods_in_transit=30 заказ 60. На реальном pipeline также найдены 284 SKU с transit > 0.",
+                "value": "Это подтверждает, что ключевой источник данных влияет на решение, а не просто отображается в интерфейсе.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/services/replenishment.py:243",
+                  "domain-transit: no_transit=90.0, with_30_transit=60.0",
+                  "http-basic: 284 SKU с goods_in_transit > 0"
+                ]
+              }
+            ],
+            "scoreReasoning": "22 балла заслужены за прямое попадание в операционную задачу, полный для IEK расчёт и объяснимый результат, подтверждённый runtime. Максимум удерживают не абстрактные production-требования, а границы самого прототипа: второй предоставленный поставщик не обрабатывается, а категория не участвует в модели. Для пятичасового MVP это существенное, но локализованное ограничение области, поэтому снято 3 балла."
+          },
+          {
+            "name": "Результат и качество решения",
+            "score": 16,
+            "max": 20,
+            "awarded": "Основной сценарий воспроизводится локально от Excel до API/CSV результата, но workflow остаётся расчётно-экспортным и не доведён до редактирования и явного утверждения заказа.",
+            "deductions": "Снижение за неполное покрытие входного набора и отсутствие отдельного состояния ручного подтверждения/корректировки заказа.",
+            "evidence": [
+              "frontend-build",
+              "frontend-start",
+              "http-basic",
+              "http-detail",
+              "http-export"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "F-IEK-SCOPE",
+                "reason": "Целостный сценарий доказан только для IEK; в интерфейсе второй набор данных прямо помечен как pending, поэтому результат не является целостным для всех предоставленных поставщиков."
+              },
+              {
+                "points": 2,
+                "findingId": "F-NO-APPROVAL",
+                "reason": "Кейс описывает проверку, возможную корректировку и утверждение заказа, но в UI есть только расчёт сценария и экспорт CSV, без редактирования строки, approve-состояния или подтверждения перед выгрузкой."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Воспроизводимый backend-сценарий",
+                "implementation": "FastAPI startup загружает шесть IEK workbook-файлов и кеширует pipeline. /health сообщает status=ok, pipeline_loaded=true и 2851 рекомендацию.",
+                "value": "Система реально доходит до содержательного результата, а не только запускает пустой сервер.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/main.py:406",
+                  "backend/main.py:458",
+                  "backend/config.py:9",
+                  "http-basic: health=ok, recommendation_count=2851"
+                ]
+              },
+              {
+                "aspect": "Детализация товара",
+                "implementation": "GET /recommendations/010300005 вернул recommendation и отдельные массивы forecasts (3 точки), anomalies (39), anomaly_corrections (16), stockout_periods (33) и structural_shifts (44).",
+                "value": "Менеджер получает трассировку расчёта по SKU и может отделить базовый заказ от диагностических сигналов.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/main.py:718",
+                  "http-detail: status=200, keys и counts ответа"
+                ]
+              },
+              {
+                "aspect": "Сценарное сравнение",
+                "implementation": "POST /counterfactual для SKU 010300005 с отключёнными anomaly, stockout, seasonality и growth вернул scenario flags и comparison: custom monthly_forecast=93.0, recommended_qty=32.0 против default 297.60 и 236.0.",
+                "value": "Заявленные аналитические модули можно включать и выключать, а результат сравнивается с базовым, что помогает проверить чувствительность модели.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/main.py:2070",
+                  "frontend/src/App.tsx:56",
+                  "http-counterfactual: status=200, difference=-204.0"
+                ]
+              },
+              {
+                "aspect": "Пользовательский экспорт и устойчивые состояния",
+                "implementation": "Frontend build проходит, Vite отдаёт index.html по HTTP, backend /export?format=csv&only_requiring_order=true вернул 200 и CSV размером 501651 байт; код frontend содержит loading/error/retry и отсутствие mock-подмены при недоступном backend.",
+                "value": "Результат можно локально показать и вынести из интерфейса для дальнейшей работы закупщика; ошибка подключения не маскируется демо-данными.",
+                "verification": "observed",
+                "evidence": [
+                  "frontend/src/App.tsx:95",
+                  "frontend/src/App.tsx:106",
+                  "http-export: status=200, content_type=text/csv",
+                  "frontend-start: root status=200"
+                ]
+              }
+            ],
+            "scoreReasoning": "16 баллов отражают подтверждённый работающий путь от исходных workbook до рекомендаций, детализации, сценария и CSV. До максимума не хватает части бизнес-потока: нет явного редактирования/утверждения заказа, а второй набор поставщика не подключён. Эти недостатки влияют на завершённость пользовательского результата, но не отменяют работающий IEK MVP."
+          },
+          {
+            "name": "Инновационность",
+            "score": 13,
+            "max": 15,
+            "awarded": "Сильная сторона — сочетание нескольких корректировок спроса и прозрачного counterfactual-сравнения вместо простого среднего продаж.",
+            "deductions": "Снижение за то, что важная часть заявленного кейсом client-specific anomaly detection заменена документным proxy.",
+            "evidence": [
+              "backend/services/anomaly_detection.py:267",
+              "backend/services/structural_shift.py:194",
+              "http-counterfactual"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "F-NO-CLIENT-SIGNAL",
+                "reason": "Команда сама фиксирует, что source data не содержит client_id, поэтому крупная продажа одному клиенту не может быть проверена как клиентская концентрация; используется document_number proxy."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Многоступенчатое выявление выбросов",
+                "implementation": "anomaly_detection объединяет IQR-границы, отношение к медианному заказу и долю документа в недельном спросе; potential_one_off требует минимум двух сигналов.",
+                "value": "Это заметно сильнее наивного удаления любого максимума и уменьшает риск превратить устойчивый рост в выброс.",
+                "verification": "source",
+                "evidence": [
+                  "backend/services/anomaly_detection.py:112",
+                  "backend/services/anomaly_detection.py:172",
+                  "backend/services/anomaly_detection.py:209"
+                ]
+              },
+              {
+                "aspect": "Защита устойчивого роста",
+                "implementation": "Перед коррекцией выбросов pipeline выделяет structural shifts; potential_one_off исправляется только если неделя не входит в подтверждённый structural shift, а persistent growth сохраняется.",
+                "value": "Прототип пытается различать одноразовый всплеск и новый устойчивый уровень спроса — содержательное преимущество для закупочной задачи.",
+                "verification": "source",
+                "evidence": [
+                  "backend/services/pipeline.py:595",
+                  "backend/services/pipeline.py:605",
+                  "backend/services/pipeline.py:613",
+                  "backend/services/structural_shift.py:194"
+                ]
+              },
+              {
+                "aspect": "Counterfactual как инструмент объяснения",
+                "implementation": "Пользователь может отдельно выключить исключение аномалий, stockout correction, сезонность и growth trend, после чего API возвращает custom/default значения и разницы.",
+                "value": "Это даёт не только прогноз, но и способ понять вклад конкретного допущения в заказ.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/main.py:2082",
+                  "frontend/src/App.tsx:71",
+                  "http-counterfactual: custom 32 против default 236"
+                ]
+              },
+              {
+                "aspect": "Сквозная объяснимость формулы",
+                "implementation": "Расчёт разделён на lead-time demand, safety stock, inventory position, raw requirement, supplier constraints, coverage, urgency и risk, а итог сопровождается структурированным explanation.",
+                "value": "Для короткого MVP это нестандартно высокий уровень трассировки, полезный при ручном контроле закупочного решения.",
+                "verification": "source",
+                "evidence": [
+                  "backend/services/replenishment.py:598",
+                  "backend/services/replenishment.py:641",
+                  "backend/services/replenishment.py:701",
+                  "backend/services/explanations.py:287"
+                ]
+              }
+            ],
+            "scoreReasoning": "13 баллов заслужены собственной комбинацией anomaly detection, structural shift, stockout reconstruction, seasonality, growth и counterfactual UI. Удержание от максимума связано с конкретной границей, а не с отсутствием AI API: source data не содержит клиента, и реализация честно использует документную концентрацию как proxy, поэтому требование про одного клиента не доказано полностью."
+          },
+          {
+            "name": "Потенциал развития и масштабирования",
+            "score": 14,
+            "max": 20,
+            "awarded": "Модульная структура pipeline и нормализованные загрузчики дают понятную основу для добавления источников и поставщиков.",
+            "deductions": "Снижение за IEK-only архитектуру на уровне конфигурации/endpoint, единый hardcoded supplier, фиксированный lead time и отсутствие временной привязки transit к сроку поставки.",
+            "evidence": [
+              "backend/services/preprocessing.py:1286",
+              "backend/services/pipeline.py:554",
+              "backend/main.py:1894",
+              "frontend/src/App.tsx:113"
+            ],
+            "deductionItems": [
+              {
+                "points": 4,
+                "findingId": "F-IEK-SCOPE",
+                "reason": "Расширение на Systeme Electric или нескольких поставщиков не является настройкой: config и loaders wired только к IEK, /suppliers принудительно присваивает всем рекомендациям IEK, а frontend показывает IEK dataset."
+              },
+              {
+                "points": 2,
+                "findingId": "F-TRANSIT-TIMING",
+                "reason": "Все распознанные transit-колонки суммируются в одну величину без проверки даты поступления относительно lead time; это ограничивает безопасное масштабирование на реальные поставки с разными датами."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Разделение загрузки и расчёта",
+                "implementation": "preprocessing нормализует transaction sales, monthly sales, inventory, MOQ, transit и seasonality, а pipeline принимает единые DataFrame и последовательно запускает этапы.",
+                "value": "Новые форматы данных можно подключать отдельным loader, не переписывая весь расчёт; это хорошая база для следующего итерационного шага.",
+                "verification": "source",
+                "evidence": [
+                  "backend/services/preprocessing.py:1286",
+                  "backend/services/preprocessing.py:1318",
+                  "backend/services/pipeline.py:2866"
+                ]
+              },
+              {
+                "aspect": "Готовые точки расширения",
+                "implementation": "Есть отдельные prepare_in_transit, prepare_moq и prepare_lead_times, а counterfactual flags вынесены в параметры run_procurement_pipeline.",
+                "value": "Поставщик-специфические ограничения и новые сценарии могут развиваться через существующие интерфейсы функций.",
+                "verification": "source",
+                "evidence": [
+                  "backend/services/pipeline.py:491",
+                  "backend/services/pipeline.py:515",
+                  "backend/services/pipeline.py:554",
+                  "backend/services/pipeline.py:2866"
+                ]
+              },
+              {
+                "aspect": "API и frontend разделены",
+                "implementation": "FastAPI отдаёт health, recommendations, SKU details, analytics, suppliers, counterfactual и export; Vite proxy и TypeScript adapter изолируют UI от backend-формата.",
+                "value": "Такой контракт позволяет заменить локальные Excel на иной ingestion слой и сохранить пользовательское рабочее пространство.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/main.py:458",
+                  "backend/main.py:557",
+                  "backend/main.py:1890",
+                  "frontend/src/services/api.ts:1",
+                  "frontend-start: root status=200"
+                ]
+              },
+              {
+                "aspect": "Честно заявленные ограничения",
+                "implementation": "README и Data quality page явно перечисляют IEK-only scope, snapshot nature, default one-month lead time, summed transit, incomplete latest month, heuristic risk и отсутствие forecast accuracy evaluation.",
+                "value": "Это облегчает безопасное развитие: следующие шаги видны пользователю и не маскируются под production certainty.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:145",
+                  "frontend/src/App.tsx:112"
+                ]
+              }
+            ],
+            "scoreReasoning": "14 баллов — за аккуратные модульные границы, API-контракт и честно перечисленные точки расширения. Потенциал не максимальный, потому что второй датасет фактически не подключён, поставщик hardcoded в endpoint, lead time остаётся единым допущением, а transit теряет даты прибытия. Для хакатонного прототипа это разумная основа, но не доказанная multi-supplier масштабируемость."
+          },
+          {
+            "name": "Презентация, демо и ответы на вопросы",
+            "score": 19,
+            "max": 20,
+            "awarded": "README достаточно ясно объясняет назначение, архитектуру, запуск, API, проверку и ограничения; локальное демо воспроизводимо по репозиторию.",
+            "deductions": "Небольшое снижение за отсутствие описанного в интерфейсе финального approval шага, из-за чего демонстрационный путь заканчивается экспортом результата.",
+            "evidence": [
+              "README.md:1",
+              "README.md:68",
+              "README.md:95",
+              "frontend-build",
+              "http-basic",
+              "http-export"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "F-NO-APPROVAL",
+                "reason": "README показывает выбор SKU, сценарий и экспорт, но не демонстрирует отдельный ручной approve/edit шаг; это оставляет часть ключевого бизнес-сценария недораскрытой."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Ясное описание сценария",
+                "implementation": "README последовательно описывает загрузку Excel, pipeline, GET /recommendations, выбор SKU, POST /counterfactual и CSV export, а также содержит пошаговую локальную проверку.",
+                "value": "Другой проверяющий может понять, что запускать и какой пользовательский результат искать, без устной презентации.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:20",
+                  "README.md:68",
+                  "README.md:95"
+                ]
+              },
+              {
+                "aspect": "Документированная интерпретация результата",
+                "implementation": "README объясняет, какие факторы видны в UI, а отдельный раздел ограничений предупреждает про snapshot, lead time, transit, risk и forecast accuracy.",
+                "value": "Это делает демонстрацию убедительной и не создаёт ложного впечатления калиброванного production-прогноза.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:5",
+                  "README.md:145",
+                  "frontend/src/App.tsx:112"
+                ]
+              },
+              {
+                "aspect": "Воспроизводимое локальное демо",
+                "implementation": "Frontend production build завершился успешно; dev server вернул index.html по HTTP; backend с исходными workbook сообщил 2851 рекомендацию, а export и detail endpoints вернули содержательные ответы.",
+                "value": "Для данного режима оценки это заменяет недоступную устную презентацию фактическим, воспроизводимым артефактом.",
+                "verification": "observed",
+                "evidence": [
+                  "frontend-build: exitCode=0, vite built",
+                  "frontend-start: status=200, text/html",
+                  "http-basic",
+                  "http-detail",
+                  "http-export"
+                ]
+              },
+              {
+                "aspect": "Качество обратной связи об ошибках",
+                "implementation": "UI имеет loading/error/retry состояния, backend health exposes pipeline error, а проверка неправильного urgency вернула HTTP 400 с понятным допустимым списком.",
+                "value": "Во время демонстрации сбой подключения или плохой фильтр не превращается в молча неверный результат.",
+                "verification": "observed",
+                "evidence": [
+                  "frontend/src/App.tsx:95",
+                  "backend/main.py:492",
+                  "http-export: invalid_filter_status=400"
+                ]
+              }
+            ],
+            "scoreReasoning": "19 баллов соответствуют ясному README и реально воспроизводимому локальному пути, который можно показать без браузерной автоматизации. Снятый 1 балл — только за отсутствие финального approval/edit шага в описанном пользовательском потоке; отсутствие публичной ссылки или устного выступления баллы не уменьшало."
+          }
+        ],
+        "total": 84
+      },
+      "case": null,
+      "judgeScore": 84,
+      "caseRequirements": [
+        {
+          "requirement": "Расчёт базовой потребности по артикулам с историей продаж, текущим остатком, товарами в пути, ростом и ограничением заказа",
+          "status": "partial",
+          "explanation": "Для IEK requirement реализован и воспроизведён: pipeline вернул 2851 строку, формула включает lead-time demand, safety stock, stock и transit, а transit чувствителен к изменению входа. Категории товаров не загружаются и не участвуют, а Systeme Electric не подключён.",
+          "evidence": [
+            "backend/services/replenishment.py:213",
+            "backend/services/pipeline.py:1950",
+            "backend/config.py:9",
+            "http-basic",
+            "domain-transit"
+          ]
+        },
+        {
+          "requirement": "Учёт сезонности и устойчивого роста спроса",
+          "status": "met",
+          "explanation": "Есть рассчитанные SKU/global/provided seasonality factors, growth factor и trend class; результат API содержит seasonal_factor, seasonality_source, growth_factor и trend_class. Counterfactual позволяет отключить оба влияния и сравнить результат.",
+          "evidence": [
+            "backend/services/seasonality.py:558",
+            "backend/services/seasonality.py:621",
+            "backend/services/forecasting.py:345",
+            "http-basic",
+            "http-counterfactual"
+          ]
+        },
+        {
+          "requirement": "Оценка и компенсация упущенного спроса при stockout",
+          "status": "partial",
+          "explanation": "Stockout reconstruction встроена до seasonality и forecast, а реальные ответы содержат stockout_correction и stockout_periods; для SKU 010400925 API вернул correction 9.0 и 21 stockout period. Отдельного эталонного теста с известной истинной потерей спроса нет, поэтому численная корректность компенсации полностью не доказана.",
+          "evidence": [
+            "backend/services/stockout.py:315",
+            "backend/services/stockout.py:494",
+            "http-basic: SKU 010400925",
+            "http-detail"
+          ]
+        },
+        {
+          "requirement": "Выявление и исключение разовых крупных заказов, включая крупную продажу одному клиенту",
+          "status": "partial",
+          "explanation": "IQR, median ratio, document concentration и structural-shift protection реализованы; в ответе SKU 010300005 видны excluded_outlier_qty=356.0 и anomaly_count=16. Но входной IEK workbook не содержит client_id, и код сознательно использует document_number как proxy, поэтому сценарий одного клиента не проверен как клиентский.",
+          "evidence": [
+            "backend/services/anomaly_detection.py:32",
+            "backend/services/anomaly_detection.py:112",
+            "backend/services/anomaly_detection.py:267",
+            "http-basic: SKU 010300005"
+          ]
+        },
+        {
+          "requirement": "Итоговый список с объяснением по каждой позиции",
+          "status": "met",
+          "explanation": "Каждая recommendation содержит explanation/reason, а detail endpoint добавляет диагностические массивы. Реальный first recommendation включал формулу, forecast_factors, demand_corrections, inventory_factors и rounding_explanation.",
+          "evidence": [
+            "backend/services/explanations.py:287",
+            "frontend/src/App.tsx:65",
+            "http-basic",
+            "http-detail"
+          ]
+        },
+        {
+          "requirement": "Группировка по поставщикам",
+          "status": "partial",
+          "explanation": "GET /suppliers работает и вернул агрегат IEK: 2851 SKU, 333 requiring order, total recommended 17677.0. Однако endpoint присваивает supplier='IEK' всем строкам и не поддерживает Systeme Electric или справочник нескольких поставщиков.",
+          "evidence": [
+            "backend/main.py:1894",
+            "backend/main.py:1935",
+            "http-basic: suppliers"
+          ]
+        },
+        {
+          "requirement": "Заказ не отправляется без ручного подтверждения",
+          "status": "met",
+          "explanation": "В проекте нет endpoint или UI-действия автоматической отправки поставщику: доступны расчёт, counterfactual и экспорт. Поэтому автоматической отправки без подтверждения не происходит. При этом отдельный workflow approve/edit не реализован и оценён отдельно в результате качества.",
+          "evidence": [
+            "backend/main.py:2070",
+            "backend/main.py:2489",
+            "frontend/src/App.tsx:80"
+          ]
+        },
+        {
+          "requirement": "Данные клиентов должны быть обезличены и не утекать в вывод",
+          "status": "partial",
+          "explanation": "В предоставленной IEK истории в заголовках нет client_id, а API выводит SKU/товарные и расчётные поля, не клиентские записи. Но проект не реализует отдельную проверку или обработчик anonymization; client-specific requirement фактически недоступен этому входу.",
+          "evidence": [
+            "backend/services/preprocessing.py:169",
+            "backend/services/anomaly_detection.py:38",
+            "http-detail"
+          ]
+        },
+        {
+          "requirement": "Проверка чувствительности к transit, seasonality, stockout и выбросам",
+          "status": "partial",
+          "explanation": "Transit проверен прямым сравнением функции и реальными строками с transit; все четыре переключателя присутствуют в counterfactual, а API-сценарий с отключёнными модулями изменил результат. Полного автоматизированного набора независимых synthetic perturbation tests или золотых ожидаемых значений в репозитории нет.",
+          "evidence": [
+            "domain-transit",
+            "http-counterfactual",
+            "backend/main.py:2082",
+            "backend/services/pipeline.py:2866"
+          ]
+        },
+        {
+          "requirement": "Экспорт результата в пригодном для работы формате",
+          "status": "met",
+          "explanation": "Backend export поддерживает CSV/XLSX, а frontend формирует CSV отфильтрованного списка. Реальная CSV-проверка вернула 200, text/csv и непустой результат.",
+          "evidence": [
+            "backend/main.py:2489",
+            "frontend/src/App.tsx:80",
+            "http-export"
+          ]
+        }
+      ],
+      "testData": {
+        "provided": [
+          "cases/5/case-data/HackAlem AI_ Автоматизация формирования заказов поставщикам.docx.md",
+          "cases/5/case-data/IEK/MOQ  ИЭК.xlsx",
+          "cases/5/case-data/IEK/Динамика продаж_2025-2026.xlsx",
+          "cases/5/case-data/IEK/Ежемесячные остатки продукции за последние 2 года  ИЭК.xlsx",
+          "cases/5/case-data/IEK/Ежемесячные продажи в количественном выражении за последние 2 года.xlsx",
+          "cases/5/case-data/IEK/Путь ИЭК 22.09.2026.xlsx",
+          "cases/5/case-data/IEK/Сезонность ИЭК.xlsx",
+          "cases/5/case-data/Systeme electric/MOQ SystemElectric.xlsx",
+          "cases/5/case-data/Systeme electric/Динамика продаж_Syseme Electric_2025-2026.xlsx",
+          "cases/5/case-data/Systeme electric/Ежемесячные остатки SystemElectric 2024-2026.xlsx",
+          "cases/5/case-data/Systeme electric/Ежемесячные продажи в кол-м выражении SystemElectric 2024-2026.xlsx",
+          "cases/5/case-data/Systeme electric/Сезонность SystemElectric 2024-2026.xlsx",
+          "cases/5/case-data/Systeme electric/Товар в пути_SystemElectric на 22.09.2026.xlsx"
+        ],
+        "used": [
+          "cases/5/case-data/IEK/MOQ  ИЭК.xlsx",
+          "cases/5/case-data/IEK/Динамика продаж_2025-2026.xlsx",
+          "cases/5/case-data/IEK/Ежемесячные остатки продукции за последние 2 года  ИЭК.xlsx",
+          "cases/5/case-data/IEK/Ежемесячные продажи в количественном выражении за последние 2 года.xlsx",
+          "cases/5/case-data/IEK/Путь ИЭК 22.09.2026.xlsx",
+          "cases/5/case-data/IEK/Сезонность ИЭК.xlsx"
+        ],
+        "checks": [
+          {
+            "input": "Все 12 предоставленных XLSX были открыты для сверки листов, размеров и заголовков; в IEK видны transaction sales, monthly sales, inventory, MOQ, transit с датами поступления и seasonality, в Systeme Electric — отдельные аналогичные наборы и поле Категория 2026 в transit workbook.",
+            "method": "Открытие workbook read-only и просмотр первых строк/заголовков; затем сопоставление с loader-ами проекта.",
+            "result": "Структура входов подтверждена без публикации полных датасетов. Backend config подключает только шесть IEK файлов.",
+            "conclusion": "IEK-путь применим к данным и воспроизведён; Systeme Electric проверен как предоставленный, но проектом не использован."
+          },
+          {
+            "input": "Шесть IEK workbook-файлов из used были поданы штатному backend pipeline через пути из backend/config.py.",
+            "method": "Запуск FastAPI и GET /health, GET /recommendations?limit=3.",
+            "result": "HTTP 200; health status=ok, pipeline_loaded=true, recommendation_count=2851; первая запись SKU 010300005 содержит forecast, inventory, transit, risk, explanation.",
+            "conclusion": "Основной расчёт на реальных предоставленных IEK данных работает."
+          },
+          {
+            "input": "SKU 010400925 из результата с current_stock=1.0 и goods_in_transit=11.0.",
+            "method": "Проверка фактической recommendation строки и отдельный вызов calculate_recommendation с одинаковыми спросом/остатком при transit 0 и 30.",
+            "result": "Реальная строка: monthly_forecast=19.428, transit=11, recommended_qty=16.0. Изолированная чувствительность: no_transit=90.0, with_30_transit=60.0.",
+            "conclusion": "Transit участвует в формуле и уменьшает заказ; дата прибытия при этом не моделируется."
+          },
+          {
+            "input": "SKU 010300005 с переключателями apply_anomaly_exclusion=false, apply_stockout_correction=false, apply_seasonality=false, apply_growth_trend=false.",
+            "method": "POST /counterfactual?sku=010300005 с указанными query-параметрами и сравнением с default.",
+            "result": "HTTP 200; custom monthly_forecast=93.0, recommended_qty=32.0, default_monthly_forecast=297.596, default_recommended_qty=236.0, difference=-204.0.",
+            "conclusion": "Сценарное отключение модулей действительно меняет выход и возвращает сравнение, а не только флаги."
+          },
+          {
+            "input": "GET /recommendations/010300005 и GET /export?format=csv&only_requiring_order=true.",
+            "method": "HTTP/API проверка detail и export.",
+            "result": "Detail HTTP 200: forecasts=3, anomalies=39, anomaly_corrections=16, stockout_periods=33, structural_shifts=44. Export HTTP 200, text/csv, 501651 bytes; неверный urgency вернул HTTP 400 с сообщением допустимых значений.",
+            "conclusion": "Пользовательский результат и выгрузка содержательны; визуальное отображение не проверялось."
+          }
+        ],
+        "limitations": [
+          "В runtime подключены и применены только шесть IEK workbook-файлов; шесть Systeme Electric workbook-файлов открыты для проверки структуры, но не подключаются кодом проекта.",
+          "В provided data нет отдельного client_id в IEK sales workbook, поэтому client-specific one-off проверен только как документный proxy по исходникам, не как реальный клиентский сценарий.",
+          "Визуальное поведение браузера и пиксельная доступность не проверялись согласно заданному запрету; проверены build, старт и HTTP/API.",
+          "В репозитории нет automated tests или контрольного набора с золотыми ожидаемыми forecast/order значениями."
+        ]
+      },
+      "runtime": {
+        "status": "working",
+        "build": "Backend compile/import и frontend production build успешны; npm lint успешен с двумя предупреждениями react(set-state-in-effect), без ошибок.",
+        "start": "Backend успешно стартовал и завершил startup pipeline; Vite dev server отдал index.html по HTTP 200.",
+        "scenario": "Основной сценарий воспроизведён на IEK workbook: 2851 рекомендация, detail SKU, counterfactual с изменившимися числами и CSV export.",
+        "environment": "Проверка выполнена в изолированных контейнерах с Python 3.11 и Node 22; внешние API и ключи не требовались.",
+        "summary": "Приложение working для заявленного IEK локального сценария. Это не утверждение о визуальной корректности или production-интеграции с несколькими поставщиками.",
+        "checks": [
+          {
+            "command": "python -m compileall -q backend",
+            "result": "exitCode=0; backend Python files compiled without syntax errors.",
+            "id": "pycompile",
+            "stage": "build",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Backend source compiles successfully."
+          },
+          {
+            "command": "python -X utf8 -c \"import backend.main; print('import ok')\"",
+            "result": "exitCode=0; import ok.",
+            "id": "python-import",
+            "stage": "build",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Application module imports with declared Python dependencies."
+          },
+          {
+            "command": "npm ci",
+            "result": "exitCode=0; 27 packages installed, audit found 0 vulnerabilities.",
+            "id": "npm-ci",
+            "stage": "build",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Frontend lockfile dependencies install successfully."
+          },
+          {
+            "command": "npm run build",
+            "result": "exitCode=0; tsc -b and vite build passed, 18 modules transformed, production assets emitted.",
+            "id": "frontend-build",
+            "stage": "build",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Frontend TypeScript and Vite production build complete."
+          },
+          {
+            "command": "npm run lint",
+            "result": "exitCode=0; oxlint passed with two react(set-state-in-effect) warnings in App.tsx:31 and App.tsx:95.",
+            "id": "frontend-lint",
+            "stage": "build",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Frontend lint command completes without lint errors."
+          },
+          {
+            "command": "python -m uvicorn backend.main:app --host 0.0.0.0 --port 8000",
+            "result": "Server started, application startup completed after reading Excel files, and Uvicorn began serving the API.",
+            "id": "backend-start",
+            "stage": "start",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Backend starts and completes its data-loading startup path."
+          },
+          {
+            "command": "npm run dev -- --host 0.0.0.0 --port 5173",
+            "result": "Vite dev server started; GET / returned HTTP 200, Content-Type text/html and 628 bytes.",
+            "id": "frontend-start",
+            "stage": "start",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Frontend dev server starts and serves the built application shell."
+          },
+          {
+            "command": "GET /health; GET /recommendations?limit=3; GET /suppliers",
+            "result": "HTTP 200. health status=ok, pipeline_loaded=true, recommendation_count=2851; three recommendation records returned; supplier summary returned IEK with sku_count=2851 and skus_requiring_order=333.",
+            "id": "http-basic",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "API exposes a populated, coherent recommendation list and supplier aggregate after startup."
+          },
+          {
+            "command": "GET /recommendations/{sku}",
+            "result": "For SKU 010300005 HTTP 200; recommendation plus 3 forecast points, 39 anomaly rows, 16 corrections, 33 stockout periods and 44 structural-shift rows returned.",
+            "id": "http-detail",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Selected SKU returns a recommendation and explainability/diagnostic details."
+          },
+          {
+            "command": "POST /counterfactual?sku={sku}&apply_anomaly_exclusion=false&apply_stockout_correction=false&apply_seasonality=false&apply_growth_trend=false",
+            "result": "For SKU 010300005 HTTP 200; custom order 32.0 versus default 236.0 and forecast 93.0 versus 297.596, with scenario flags echoed.",
+            "id": "http-counterfactual",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Counterfactual flags change the computed result and return a default comparison."
+          },
+          {
+            "command": "GET /export?format=csv&only_requiring_order=true",
+            "result": "HTTP 200; text/csv response, 501651 bytes, header starts with sku, monthly_forecast, lead_time_months and goods_in_transit.",
+            "id": "http-export",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Filtered recommendations export as a non-empty CSV."
+          },
+          {
+            "command": "calculate_recommendation with goods_in_transit=0 and goods_in_transit=30",
+            "result": "Same monthly forecast=100 and current_stock=10 produced recommended_qty 90.0 without transit and 60.0 with 30 transit.",
+            "id": "domain-transit",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Increasing goods in transit reduces the new order by the received quantity under the documented formula."
+          }
+        ],
+        "limitations": [
+          "Визуальная проверка интерфейса запрещена пользовательской инструкцией; подтверждены только build, HTTP startup и API.",
+          "Проверка не включала внешнюю deployed-версию: README её не заявляет, live URL отсутствует.",
+          "Scenario endpoint пересчитывает полный набор и может быть долгим; это заявлено самим UI и не является ошибкой при успешном HTTP 200."
+        ]
+      },
+      "liveDemo": {
+        "status": "none",
+        "url": null,
+        "notes": "Публичная live demo-ссылка в репозитории не заявлена. Локальный запуск и HTTP-сценарий воспроизведены; отсутствие публичного URL само по себе не уменьшало оценку."
+      },
+      "fiveHourContext": "Для пятичасового хакатона объём реализации сильный: команда успела собрать рабочий FastAPI/React вертикальный срез, загрузку реальных Excel, несколько аналитических корректировок, объяснения, counterfactual и экспорт. Ожидания production-ERP, реального online inventory, калибровки прогноза и полноценной multi-supplier интеграции здесь не применялись. Снижение оставлено только за видимые границы заявленного кейса: IEK-only, отсутствующие категории/client signal, transit без сроков прибытия и отсутствие явного approval/edit workflow.",
+      "strengths": [
+        "Рабочий вертикальный сценарий от IEK Excel до 2851 API-рекомендации и CSV.",
+        "Прозрачная формула заказа с forecast, stock, transit, safety stock, MOQ/order multiple и объяснением.",
+        "Содержательная комбинация anomaly detection, structural shift, stockout correction, seasonality и growth.",
+        "Counterfactual API/UI реально меняет расчёт и показывает разницу с default.",
+        "README и Data quality честно документируют допущения и ограничения, не подменяя backend mock-данными."
+      ],
+      "gaps": [
+        "Покрытие данных ограничено IEK, а Systeme Electric не подключён к runtime и supplier grouping hardcoded: F-IEK-SCOPE.",
+        "Категории товаров отсутствуют в нормализованном расчёте: F-NO-CATEGORY.",
+        "Goods in transit суммируется по колонкам без проверки даты прибытия относительно lead time: F-TRANSIT-TIMING.",
+        "Один клиент не может быть выделен: используется document_number proxy при отсутствии client_id: F-NO-CLIENT-SIGNAL.",
+        "Нет явного edit/approve workflow перед экспортом заказа: F-NO-APPROVAL."
+      ],
+      "futureAdvice": [
+        {
+          "principle": "Сначала нормализуйте многопоставочный контур, затем масштабируйте модель",
+          "why": "F-IEK-SCOPE показывает, что /suppliers присваивает всем строкам IEK и frontend ограничен IEK, поэтому добавление второго набора сейчас потребует отдельного wiring, а не только новой строки данных.",
+          "how": "Для следующего хакатона в начале выделите единый supplier_id/dataset adapter contract; подключите IEK и Systeme Electric к одному loader interface, сохраните supplier и lead_time в normalized tables и добавьте один cross-supplier fixture.",
+          "findingIds": [
+            "F-IEK-SCOPE"
+          ],
+          "successCheck": "Один запуск возвращает отдельные supplier groups для IEK и Systeme Electric, а изменение строки второго workbook меняет только соответствующие SKU и aggregate.",
+          "timeboxMinutes": 45
+        },
+        {
+          "principle": "Временные признаки поставки должны жить до расчёта inventory position",
+          "why": "F-TRANSIT-TIMING подтверждает, что текущий loader складывает все transit quantities, даже если разные даты прибытия выходят за lead time.",
+          "how": "Сохраните transit как SKU × expected_arrival_date × quantity, отфильтруйте arrival_date <= planning_date + lead_time и покажите в explanation, какая поставка покрывает спрос.",
+          "findingIds": [
+            "F-TRANSIT-TIMING"
+          ],
+          "successCheck": "Для одной SKU перенос части поставки за lead-time boundary увеличивает заказ ровно на перенесённое количество, а ближайшая поставка остаётся в inventory position.",
+          "timeboxMinutes": 35
+        },
+        {
+          "principle": "Закрывайте аналитическую рекомендацию явным human-in-the-loop состоянием",
+          "why": "F-NO-APPROVAL показывает, что UI заканчивает путь на counterfactual/export и не хранит edit или approval state, хотя кейсовый пользователь должен проверить и утвердить заказ.",
+          "how": "Добавьте draft table с editable quantity, reason for override, status draft/approved/exported и disabled send/export until explicit approval; сохраняйте исходное default рядом с ручным значением.",
+          "findingIds": [
+            "F-NO-APPROVAL"
+          ],
+          "successCheck": "Изменённое количество не уходит в export до approve, а CSV содержит default quantity, approved quantity и audit reason для каждой изменённой строки.",
+          "timeboxMinutes": 40
+        }
+      ],
+      "uncertainties": [
+        "Визуальный layout, responsive-поведение и браузерная доступность не проверялись из-за прямого запрета на браузерную/CUA-автоматизацию.",
+        "Нет контрольного набора с истинным demand/order, поэтому нельзя подтвердить экономическую точность прогноза или калибровку heuristic risk по численным метрикам.",
+        "Клиентский one-off сценарий не наблюдаем на предоставленном IEK входе: в workbook отсутствует client_id; вывод основан на коде документного proxy.",
+        "Публичной deployed demo и внешней инфраструктуры нет; локальная воспроизводимость подтверждена отдельно."
+      ],
+      "reviewPolicyVersion": 2,
+      "assessmentStatus": "ready",
+      "findings": [
+        {
+          "id": "S-RUNTIME",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "IEK backend и frontend действительно запускаются, а основной локальный сценарий выдаёт содержательные результаты.",
+          "expected": "После запуска на предоставленных IEK workbook health должен быть ok, а recommendations/detail/export должны вернуть данные.",
+          "actual": "health=ok, pipeline_loaded=true, recommendation_count=2851; detail SKU 010300005 и CSV export вернули HTTP 200.",
+          "evidence": [
+            "http-basic",
+            "http-detail",
+            "http-export",
+            "frontend-start"
+          ],
+          "checkIds": [
+            "backend-start",
+            "http-basic",
+            "http-detail",
+            "http-export",
+            "frontend-start"
+          ]
+        },
+        {
+          "id": "S-EXPLAINABLE-PIPELINE",
+          "kind": "strength",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Pipeline связывает прогноз, stockout/anomaly/structural analysis, inventory, transit, MOQ и explanation в единый результат.",
+          "expected": "Каждый recommendation должен иметь вычислимый состав и диагностические причины.",
+          "actual": "Код последовательно строит pipeline, валидирует результат и добавляет структурированное explanation с формулой и факторами.",
+          "evidence": [
+            "backend/services/pipeline.py:2866",
+            "backend/services/pipeline.py:3255",
+            "backend/services/explanations.py:287"
+          ],
+          "checkIds": [
+            "http-basic",
+            "http-detail"
+          ]
+        },
+        {
+          "id": "S-COUNTERFACTUAL",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Отключение аналитических модулей через counterfactual изменяет фактическую рекомендацию и возвращает сравнение с default.",
+          "expected": "При выключении всех четырёх флагов custom output должен отличаться от full model, а flags должны быть отражены в ответе.",
+          "actual": "Для 010300005 custom order=32.0, default order=236.0, forecast difference=-204.596; HTTP 200.",
+          "evidence": [
+            "http-counterfactual",
+            "backend/main.py:2070"
+          ],
+          "checkIds": [
+            "http-counterfactual"
+          ]
+        },
+        {
+          "id": "S-TRANSIT-SENSITIVITY",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Goods in transit реально входит в inventory position и влияет на recommended_qty.",
+          "expected": "Добавление transit при прочих равных должно уменьшать новый заказ на соответствующее количество.",
+          "actual": "Чистая функция дала 90.0 без transit и 60.0 при transit=30; реальные рекомендации содержат 284 SKU с transit > 0.",
+          "evidence": [
+            "domain-transit",
+            "backend/services/replenishment.py:183"
+          ],
+          "checkIds": [
+            "domain-transit",
+            "http-basic"
+          ]
+        },
+        {
+          "id": "F-IEK-SCOPE",
+          "kind": "defect",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Проект не подключает Systeme Electric и не поддерживает реальное multi-supplier grouping: runtime wired только к IEK, а supplier endpoint присваивает всем строкам IEK.",
+          "expected": "Для предоставленного кейса расчёт должен быть применим к доступным наборам IEK и Systeme Electric и группировать результат по фактическому поставщику.",
+          "actual": "config.py содержит только IEK paths; load_all_core_data принимает один набор; frontend пишет IEK only/Systeme Electric pending; /suppliers делает recommendations['supplier']='IEK'. Runtime подтвердил только 2851 IEK SKU и один supplier aggregate.",
+          "evidence": [
+            "backend/config.py:9",
+            "backend/services/preprocessing.py:1286",
+            "backend/main.py:1935",
+            "frontend/src/App.tsx:113",
+            "http-basic"
+          ],
+          "checkIds": [
+            "http-basic"
+          ]
+        },
+        {
+          "id": "F-NO-CATEGORY",
+          "kind": "defect",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Категория товара не является входом или фактором расчёта.",
+          "expected": "Категория должна участвовать в формировании потребности/правил либо быть сохранена в normalized recommendation для фильтрации и объяснения.",
+          "actual": "build_product_catalog агрегирует только product_name и optional unit; pipeline base/RecommendationOut не добавляет category и в исходниках нет category join/filter.",
+          "evidence": [
+            "backend/services/preprocessing.py:1258",
+            "backend/services/preprocessing.py:1265",
+            "backend/services/pipeline.py:1950",
+            "backend/models/schemas.py:10"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "F-TRANSIT-TIMING",
+          "kind": "defect",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Loader суммирует все распознанные transit quantity columns в один goods_in_transit и не использует сроки поступления для фильтра по lead time.",
+          "expected": "В inventory position должны попадать только поставки, которые релевантны горизонту расчёта, либо каждая поставка должна быть объяснима по expected arrival.",
+          "actual": "load_in_transit_table находит все columns с transit word/date и суммирует их по строке/ SKU; затем pipeline использует единую величину в формуле.",
+          "evidence": [
+            "backend/services/preprocessing.py:656",
+            "backend/services/preprocessing.py:697",
+            "backend/services/preprocessing.py:791",
+            "backend/services/pipeline.py:491",
+            "frontend/src/App.tsx:116"
+          ],
+          "checkIds": [
+            "domain-transit"
+          ]
+        },
+        {
+          "id": "F-NO-CLIENT-SIGNAL",
+          "kind": "defect",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Требование о крупной продаже одному клиенту не реализовано как клиентский сигнал; document concentration — только proxy.",
+          "expected": "При наличии обезличенного client_id система должна уметь отделить крупную продажу одного клиента от обычной концентрации документов и показать это в объяснении.",
+          "actual": "Код прямо сообщает, что IEK source data не содержит client_id, и группирует document_number; результат не позволяет подтвердить one-customer anomaly.",
+          "evidence": [
+            "backend/services/anomaly_detection.py:38",
+            "backend/services/anomaly_detection.py:53",
+            "backend/services/anomaly_detection.py:146",
+            "backend/services/anomaly_detection.py:284"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "F-NO-APPROVAL",
+          "kind": "defect",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Отдельный human approval/edit workflow перед экспортом заказа отсутствует.",
+          "expected": "Пользователь должен иметь возможность проверить/скорректировать draft и явно утвердить его до экспорта или отправки поставщику.",
+          "actual": "UI рассчитывает default, сравнивает scenario и экспортирует отфильтрованные строки; approve state, edited quantity и audit reason отсутствуют, send endpoint также отсутствует.",
+          "evidence": [
+            "frontend/src/App.tsx:58",
+            "frontend/src/App.tsx:71",
+            "frontend/src/App.tsx:80",
+            "backend/main.py:2489"
+          ],
+          "checkIds": [
+            "http-export"
+          ]
+        },
+        {
+          "id": "L-NO-ACCURACY-BENCHMARK",
+          "kind": "limitation",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "В репозитории нет контрольного набора и метрик точности прогноза или калибровки risk.",
+          "expected": "Для утверждения экономической точности нужен отдельный holdout/benchmark с ожидаемым спросом и order outcomes.",
+          "actual": "README прямо указывает, что forecast accuracy и economic effect не оцениваются; тестов в dossier нет.",
+          "evidence": [
+            "README.md:157",
+            "project dossier: tests нет"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "L-VISUAL-UNVERIFIED",
+          "kind": "limitation",
+          "verification": "unverified",
+          "responsibility": "review_environment",
+          "claim": "Пиксельное и визуальное поведение UI не подтверждено.",
+          "expected": "Для визуальной оценки нужен пользовательский осмотр в браузере.",
+          "actual": "Проверены build, dev-server root и HTTP/API, но браузерная визуальная проверка запрещена инструкцией пользователя.",
+          "evidence": [
+            "frontend-build",
+            "frontend-start",
+            "runtime limitations"
+          ],
+          "checkIds": [
+            "frontend-build",
+            "frontend-start"
+          ]
+        }
+      ],
+      "gapFindingIds": [
+        "F-IEK-SCOPE",
+        "F-NO-CATEGORY",
+        "F-TRANSIT-TIMING",
+        "F-NO-CLIENT-SIGNAL",
+        "F-NO-APPROVAL"
+      ]
+    }
+  ],
+  "score": 84.0,
+  "status": "complete",
+  "expectedJudges": 1
+}

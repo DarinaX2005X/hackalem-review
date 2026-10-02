@@ -1,0 +1,1242 @@
+{
+  "methodVersion": 4,
+  "repoId": "hack-109052e5-itshich",
+  "repoUrl": "https://github.com/BAITC-Hacks/hack-109052e5-itshich",
+  "caseId": 6,
+  "snapshot": "1ed76f32d61463ecd15f825a2b57e5fd3ffedc03",
+  "judges": [
+    {
+      "methodVersion": 4,
+      "repoId": "hack-109052e5-itshich",
+      "caseId": 6,
+      "model": "GPT-5.6 Luna",
+      "snapshot": "1ed76f32d61463ecd15f825a2b57e5fd3ffedc03",
+      "overallSummary": "Цельный локально воспроизводимый сервис подбора event-подрядчиков: фильтрация по городу, дате, формату, категории, бюджету и опциональным языку/длительности; детерминированное ранжирование; до трёх карточек с индивидуальными объяснениями; три различимых пустых исхода. Ключевой сценарий проверен через реально запущенный Uvicorn/FastAPI, API-проверки, шесть демо-запросов и организаторский CSV из 66 профилей. Сильная сторона — разделение решения и формулировки: код выбирает кандидатов и кодовые причины, LLM получает ограниченные факты и проходит grounding validation. Высокая оценка удерживается не отсутствием внешнего ключа или визуальной проверки, а тремя конкретными проблемами воспроизводимости: Unicode-вывод default CLI в Windows cp1251, несовпадение переносов строк генератора synthetic CSV с сохранённым файлом и устаревший опубликованный test_report.json.",
+      "global": {
+        "criteria": [
+          {
+            "name": "Ценность решения",
+            "score": 25,
+            "max": 25,
+            "awarded": "Полный балл: сервис решает ясную задачу заказчика — быстро выбрать небольшой пригодный список подрядчиков из каталога с учётом доступности и объяснений.",
+            "deductions": "Подтверждённых дефектов, уменьшающих ценность основного пользовательского сценария, не установлено.",
+            "evidence": [
+              "README.md:1-7",
+              "cases/6/task.txt",
+              "R-HTTP-REAL",
+              "R-CASE-DATA"
+            ],
+            "deductionItems": [],
+            "awardedDetails": [
+              {
+                "aspect": "Сокращение длинного каталога",
+                "implementation": "matcher/service.py:78-106 строит пул категории/города, фильтрует его и берёт максимум MAX_CARDS; плотный внешний запрос из 10 профилей дал 5 eligible и три карточки.",
+                "value": "Результат соответствует бизнес-проблеме: пользователь видит короткий список, уже проверенный по обязательным условиям.",
+                "verification": "observed",
+                "evidence": [
+                  "matcher/service.py:78-106",
+                  "matcher/model.py:25-26",
+                  "R-CASE-DATA"
+                ]
+              },
+              {
+                "aspect": "Пригодность для события",
+                "implementation": "matcher/filtering.py:38-59 отдельно проверяет busy_dates, бюджет, формат, язык и длительность; занятому профилю сохраняются все применимые причины.",
+                "value": "Для event-заказа нельзя рекомендовать занятого или несовместимого исполнителя; это делает результат применимым, а не декоративным.",
+                "verification": "observed",
+                "evidence": [
+                  "matcher/filtering.py:38-59",
+                  "R-DATE-PAIR",
+                  "R-CASE-DATA"
+                ]
+              },
+              {
+                "aspect": "Объяснения и честные отказы",
+                "implementation": "matcher/reasons.py формирует доказуемые коды причин, explain.py валидирует числа/имя/дату и service.py агрегирует причины отказа с именами и числами.",
+                "value": "Ценность решения именно в ответе «почему этот» и «почему остальные не попали», что было главным акцентом кейса.",
+                "verification": "source",
+                "evidence": [
+                  "matcher/reasons.py:19-21",
+                  "matcher/explain.py:212-272",
+                  "matcher/service.py:48-75"
+                ]
+              },
+              {
+                "aspect": "Крайние случаи",
+                "implementation": "service.py:82-100 различает matched, no_category_in_city и none_eligible; для отсутствующей категории добавляются близкие категории и другие города, для нулевого результата — причины.",
+                "value": "Пользователь получает следующий шаг вместо неинформативного пустого экрана.",
+                "verification": "observed",
+                "evidence": [
+                  "matcher/service.py:26-41, 82-100",
+                  "R-HTTP-REAL",
+                  "R-CASE-DATA"
+                ]
+              }
+            ],
+            "scoreReasoning": "Полный балл заслужен: на организаторском CSV проверены нормальный, редкий, пустой, отсутствующий и меняющийся по дате сценарии; проект не выдаёт случайные замены и явно раскрывает ограничения цены «от» и календаря."
+          },
+          {
+            "name": "Результат и качество решения",
+            "score": 19,
+            "max": 20,
+            "awarded": "Почти полный балл: основной HTTP/API результат целостен и стабилен; один балл удержан за хрупкость сопровождающих команд в default Windows-консоли.",
+            "deductions": "Снятие 1 балла по D-CLI-ENCODING: run_demo/run_cases/test_report печатают Unicode без безопасной настройки stdout и падают в стандартном cp1251 stream.",
+            "evidence": [
+              "R-START-HTTP",
+              "R-CORE-TESTS",
+              "R-CLI-DEFAULT",
+              "R-CASES-DEFAULT"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "D-CLI-ENCODING",
+                "reason": "Непроходящие документированные команды ухудшают целостность воспроизводимого результата, хотя сам /api/match работает."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Работающий HTTP seam",
+                "implementation": "app.py:65-79 принимает DTO, запускает pipeline и преобразует RequestError в 422; реальный Uvicorn получил GET /api/meta=200 и POST /api/match=200.",
+                "value": "Проект является работающим сервисным прототипом, а не набором непроверенных функций.",
+                "verification": "observed",
+                "evidence": [
+                  "app.py:65-79",
+                  "R-START-HTTP"
+                ]
+              },
+              {
+                "aspect": "Стабильность результата",
+                "implementation": "ranking.py сортирует по score и id; run_demo и внешний harness вызывают одинаковые запросы дважды, а explanation cache ключуется по карточкам и версии prompt.",
+                "value": "Повторяемость позволяет доверять демо и сравнивать результат при изменении даты.",
+                "verification": "observed",
+                "evidence": [
+                  "matcher/ranking.py:41-80",
+                  "matcher/explain.py:381-413",
+                  "R-DEMO",
+                  "R-CASE-DATA"
+                ]
+              },
+              {
+                "aspect": "Отдельные исходы и HTTP-ошибка",
+                "implementation": "DTO отдаёт разные русские titles, shortfall_note и rejections; дата за окном возвращает 422, а не недоказанный подбор.",
+                "value": "Качество результата включает правильную коммуникацию отказа и ошибки входа.",
+                "verification": "observed",
+                "evidence": [
+                  "matcher/service.py:82-100",
+                  "matcher/api_types.py:172-181",
+                  "R-HTTP-REAL",
+                  "R-HTTP-422"
+                ]
+              },
+              {
+                "aspect": "Offline boundary",
+                "implementation": "pipeline.py откатывает embeddings к lexical, explain.py — невалидный/недоступный LLM-ответ к template; DTO помечает backend и source.",
+                "value": "Сервис остаётся демонстрируемым без ключа и не притворяется, что получил ответ провайдера.",
+                "verification": "source",
+                "evidence": [
+                  "matcher/pipeline.py:36-49, 67-81",
+                  "matcher/explain.py:415-440",
+                  "README.md:30-38"
+                ]
+              }
+            ],
+            "scoreReasoning": "19/20: сборка, старт, API и основной набор domain/API тестов проходят; дефект относится к командному выводу и не наблюдался в подборе. Это небольшая, но реальная потеря качества воспроизводимого прототипа."
+          },
+          {
+            "name": "Инновационность",
+            "score": 15,
+            "max": 15,
+            "awarded": "Полный балл: оригинальность выражена в контролируемом контракте объяснений, линейной атрибуции причин и разделении детерминированного выбора от LLM-рендеринга.",
+            "deductions": "Подтверждённых дефектов, уменьшающих оригинальность подхода, не установлено.",
+            "evidence": [
+              "README.md:90-114",
+              "matcher/reasons.py",
+              "matcher/explain.py",
+              "tests/test_reasons.py",
+              "tests/test_explain.py"
+            ],
+            "deductionItems": [],
+            "awardedDetails": [
+              {
+                "aspect": "Код принимает решение, LLM формулирует",
+                "implementation": "pipeline.py вызывает service/ranking до explainer; CardFacts и Reason являются единственным разрешённым источником текста.",
+                "value": "Модель не переставляет кандидатов и не может незаметно заменить бизнес-условие красивой фразой.",
+                "verification": "source",
+                "evidence": [
+                  "matcher/model.py:54-92",
+                  "matcher/pipeline.py:67-81"
+                ]
+              },
+              {
+                "aspect": "Числовая атрибуция",
+                "implementation": "reasons.py рассчитывает вклад признака относительно eligible-пула, а ranking.py задаёт category priors; в evidence попадают цена, бюджет, дата и аспекты.",
+                "value": "«Почему этот» связан с конкретным вкладом и переносится на новые признаки лучше, чем общий LLM-score.",
+                "verification": "source",
+                "evidence": [
+                  "matcher/reasons.py:19-21",
+                  "matcher/ranking.py:27-38",
+                  "README.md:90-100"
+                ]
+              },
+              {
+                "aspect": "Grounding и swap-test",
+                "implementation": "explain.py:212-272 проверяет допустимые числа, имена, формат, дату, лимит предложений, чужие карточки и пригодность текста именно данной карточке.",
+                "value": "Это самостоятельный защитный механизм, а не заявление о «разумности» модели.",
+                "verification": "source",
+                "evidence": [
+                  "matcher/explain.py:212-272",
+                  "tests/test_explain.py"
+                ]
+              },
+              {
+                "aspect": "Разные первичные причины",
+                "implementation": "reasons.assign подбирает primary-коды с diversity, а validator запрещает повтор без diversity_limited; в демо карточки получают разные акценты.",
+                "value": "Карточки не превращаются в три одинаковых рекламных абзаца.",
+                "verification": "observed",
+                "evidence": [
+                  "README.md:90-100",
+                  "R-DEMO",
+                  "tests/test_service.py:97-105"
+                ]
+              }
+            ],
+            "scoreReasoning": "15/15: подход заметно отличается от обычного «отправить каталог в LLM» и подтверждён исходниками и тестами."
+          },
+          {
+            "name": "Потенциал развития и масштабирования",
+            "score": 20,
+            "max": 20,
+            "awarded": "Полный балл для пятичасового MVP: интерфейсы заменяемых scorer/reason/explain частей, кэширование и property-based инварианты дают ясный путь к новым категориям и хранилищу.",
+            "deductions": "Подтверждённых дефектов, блокирующих заявленное развитие, нет; отсутствие бронирования, персонализации и production-базы явно обозначено как scope.",
+            "evidence": [
+              "matcher/model.py:165-177",
+              "matcher/embeddings.py:70-155",
+              "tests/test_properties.py",
+              "README.md:148-163, 225-262"
+            ],
+            "deductionItems": [],
+            "awardedDetails": [
+              {
+                "aspect": "Заменяемый semantic backend",
+                "implementation": "SemanticScorer Protocol связывает EmbeddingScorer и LexicalScorer, а pipeline выбирает backend и обрабатывает SemanticUnavailable.",
+                "value": "Добавление нового scorer не требует менять HTTP-контракт.",
+                "verification": "source",
+                "evidence": [
+                  "matcher/model.py:165-177",
+                  "matcher/pipeline.py:36-59"
+                ]
+              },
+              {
+                "aspect": "Кэш и стоимость",
+                "implementation": "embeddings.py использует content hash и anchors, explain.py — durable cache по фактам/версии prompt.",
+                "value": "Подготовка каталога отделена от запроса, а offline повторяемость уже работает.",
+                "verification": "source",
+                "evidence": [
+                  "matcher/embeddings.py:35-40, 115-155",
+                  "matcher/explain.py:381-413"
+                ]
+              },
+              {
+                "aspect": "Инварианты расширенного каталога",
+                "implementation": "Property-based tests генерируют профили и проверяют busy/date, budget, ordering и max_hours=None; synthetic layer отделён флагом.",
+                "value": "Новые профили можно добавлять с защитой от регрессий, а не только через ручное демо.",
+                "verification": "source",
+                "evidence": [
+                  "tests/test_properties.py:150-180",
+                  "matcher/data.py:62-77",
+                  "tests/test_synthetic.py:38-93"
+                ]
+              },
+              {
+                "aspect": "Честный следующий этап",
+                "implementation": "README называет отзывы, персональные предпочтения, новые языки, реальные календари и смену хранилища направлениями, не выдавая их за готовые функции.",
+                "value": "Есть ясная дорожная карта без ложного production-обещания.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:148-163",
+                  "README.md:225-262",
+                  "DESIGN.md"
+                ]
+              }
+            ],
+            "scoreReasoning": "20/20: архитектура и ограничения позволяют расширять MVP, а функции вне кейса не использованы как основание для штрафа."
+          },
+          {
+            "name": "Презентация, демо и ответы на вопросы",
+            "score": 18,
+            "max": 20,
+            "awarded": "README и репозиторное демо сильные; два балла удержаны за stale test report и default CLI, ухудшающие воспроизводимость материалов. Публичный URL/устное выступление не штрафовались.",
+            "deductions": "Снятие 1 балла по D-CLI-ENCODING и 1 по D-STALE-TEST-REPORT.",
+            "evidence": [
+              "README.md:9-54, 56-146, 165-213",
+              "R-DEMO",
+              "data/test_report.json:2-8",
+              "R-PUBLISHED-REPORT"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "D-CLI-ENCODING",
+                "reason": "Команды из README требуют ручного UTF-8 режима в проверенной Windows-консоли."
+              },
+              {
+                "points": 1,
+                "findingId": "D-STALE-TEST-REPORT",
+                "reason": "Опубликованный тестовый артефакт ссылается на старый SHA и не доказывает состояние текущего снапшота."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "README",
+                "implementation": "README.md:9-54 описывает установку, .env, Uvicorn, offline fallback и команды; :56-146 раскрывает pipeline и роль AI.",
+                "value": "Документ объясняет и запуск, и устройство, а не только продаёт идею.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:9-146",
+                  "pyproject.toml",
+                  ".env.example"
+                ]
+              },
+              {
+                "aspect": "Шесть сценариев демо",
+                "implementation": "demo/queries.json фиксирует dense, rare, no-category, none-eligible и date pair; run_demo.py повторяет запросы и сравнивает ID/outcome/backend.",
+                "value": "Репозиторий содержит самостоятельный материал демонстрации без необходимости верить устной защите.",
+                "verification": "observed",
+                "evidence": [
+                  "demo/queries.json",
+                  "scripts/run_demo.py:24-51",
+                  "R-DEMO"
+                ]
+              },
+              {
+                "aspect": "Честные границы",
+                "implementation": "README раскрывает цену «от», 100-дневный календарь, fallback-шаблон, отсутствие персонализации и бронирования; код реализует calendar validation.",
+                "value": "Ожидания от MVP сформированы корректно.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:148-163",
+                  "matcher/filtering.py:12-37"
+                ]
+              },
+              {
+                "aspect": "Несинхронизированный артефакт",
+                "implementation": "data/test_report.json:2-8 имеет generated_at 2026-09-23 и git_sha 9effe72, а проверяется snapshot 1ed76f32; текущий запуск выявил иные результаты.",
+                "value": "Читателю приходится запускать тесты заново для достоверной картины.",
+                "verification": "observed",
+                "evidence": [
+                  "data/test_report.json:2-8",
+                  "R-PUBLISHED-REPORT",
+                  "R-TEST-SUITE"
+                ]
+              }
+            ],
+            "scoreReasoning": "18/20: документация и демо существенно выше минимального уровня, а 6/6 и 18/18 сценариев воспроизводятся в UTF-8 режиме. Снижение касается только подтверждённых артефактных дефектов."
+          }
+        ],
+        "total": 97
+      },
+      "case": {
+        "criteria": [
+          {
+            "name": "Соответствие задаче и работоспособность",
+            "score": 25,
+            "max": 25,
+            "awarded": "Полный балл: существенные требования кейса покрыты и проверены на организаторском CSV.",
+            "deductions": "Подтверждённых дефектов обязательного сценария нет.",
+            "evidence": [
+              "matcher/filtering.py:38-59",
+              "matcher/service.py:78-106",
+              "R-CASE-DATA",
+              "R-START-HTTP"
+            ],
+            "deductionItems": [],
+            "awardedDetails": [
+              {
+                "aspect": "Контракт входа",
+                "implementation": "MatchRequest в matcher/model.py:36-44 и MatchRequestDTO принимают город, дату, формат, категорию, бюджет, опциональные часы и язык.",
+                "value": "Контракт соответствует заданию, а не урезанному демо.",
+                "verification": "source",
+                "evidence": [
+                  "matcher/model.py:36-44",
+                  "matcher/api_types.py:30-80"
+                ]
+              },
+              {
+                "aspect": "Фильтры",
+                "implementation": "filter_pool проверяет дату, стартовую цену, формат, язык и max_hours; max_hours=None не отклоняется по длительности.",
+                "value": "Непригодные профили не попадают в карточки.",
+                "verification": "source",
+                "evidence": [
+                  "matcher/filtering.py:38-59",
+                  "tests/test_filtering.py",
+                  "tests/test_properties.py:161-164"
+                ]
+              },
+              {
+                "aspect": "Карточки",
+                "implementation": "ranking строит CardFacts, API переносит цену, город, flags, facts, reasons и explanation; лимит задаётся MAX_CARDS=3.",
+                "value": "Каждая карточка объяснима и пригодна для следующего решения заказчика.",
+                "verification": "observed",
+                "evidence": [
+                  "matcher/ranking.py:41-80",
+                  "matcher/api_types.py:150-181",
+                  "R-HTTP-REAL"
+                ]
+              },
+              {
+                "aspect": "Дата и крайние исходы",
+                "implementation": "04.10 и 05.10 дали разные тройки; rare дал две карточки; no-category и none-eligible получили разные статусы и объяснения.",
+                "value": "Проверены именно требования кейса, включая крайние случаи.",
+                "verification": "observed",
+                "evidence": [
+                  "R-DATE-PAIR",
+                  "R-CASE-DATA",
+                  "matcher/service.py:82-100"
+                ]
+              }
+            ],
+            "scoreReasoning": "25/25: основной сценарий и все указанные в кратком задании проверки наблюдались на данных организатора."
+          },
+          {
+            "name": "Техническая реализация",
+            "score": 24,
+            "max": 25,
+            "awarded": "Сильная сквозная реализация; один балл удержан за synthetic CSV reproducibility defect.",
+            "deductions": "Снятие 1 балла по D-SYN-LINE-ENDINGS: generator test обнаружил LF/CRLF mismatch.",
+            "evidence": [
+              "matcher/model.py",
+              "matcher/data.py",
+              "matcher/filtering.py",
+              "matcher/ranking.py",
+              "matcher/reasons.py",
+              "R-START-HTTP",
+              "R-SYNTHETIC"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "D-SYN-LINE-ENDINGS",
+                "reason": "Проверяемый детерминированный data-building шаг не воспроизводит включённый CSV побайтно."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Явные domain types",
+                "implementation": "Frozen Contractor, MatchRequest, CardFacts и MatchResult задают контракты между loader, service и API.",
+                "value": "Данные и исходы проверяемы на границах модулей.",
+                "verification": "source",
+                "evidence": [
+                  "matcher/model.py:29-177",
+                  "matcher/api_types.py:1-181"
+                ]
+              },
+              {
+                "aspect": "Порядок обработки",
+                "implementation": "pipeline выбирает scorer, service фильтрует, ranking считает только eligible, reasons назначает доказательства, explainer формирует текст.",
+                "value": "Источник истины не смешан с презентационным слоем.",
+                "verification": "source",
+                "evidence": [
+                  "matcher/pipeline.py:67-81",
+                  "matcher/service.py:78-106",
+                  "matcher/ranking.py:41-80"
+                ]
+              },
+              {
+                "aspect": "Fallback и внешняя интеграция",
+                "implementation": "EmbeddingScorer валидирует cache/anchors; SemanticUnavailable ведёт к lexical; LLM JSON и grounding проверяются, затем используется template.",
+                "value": "Отсутствие провайдера не уничтожает core и не маскируется mock-ответом.",
+                "verification": "source",
+                "evidence": [
+                  "matcher/embeddings.py:70-140",
+                  "matcher/pipeline.py:36-49",
+                  "matcher/explain.py:415-440"
+                ]
+              },
+              {
+                "aspect": "Тестовые слои",
+                "implementation": "Есть tests/test_filtering.py, test_ranking.py, test_reasons.py, test_explain.py, test_api.py, test_properties.py, test_cases.py и live-case runner; core-группа прошла.",
+                "value": "Критические бизнес-инварианты закреплены не одним demo happy path.",
+                "verification": "observed",
+                "evidence": [
+                  "tests/",
+                  "R-CORE-TESTS"
+                ]
+              }
+            ],
+            "scoreReasoning": "24/25: domain/API/scenario путь качественный и фактически работает; вычет ограничен вспомогательным mismatch артефакта синтетических данных."
+          },
+          {
+            "name": "README и воспроизводимость",
+            "score": 22,
+            "max": 25,
+            "awarded": "README подробный, но три подтверждённых проблемы последней мили снижают чистоту воспроизведения.",
+            "deductions": "Снятие по 1 баллу за D-CLI-ENCODING, D-SYN-LINE-ENDINGS и D-STALE-TEST-REPORT.",
+            "evidence": [
+              "README.md:9-54, 56-146, 165-213",
+              "R-BUILD",
+              "R-DEMO",
+              "R-CASE-RUN",
+              "R-TEST-SUITE"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "D-CLI-ENCODING",
+                "reason": "Default команды из README падают при выводе Unicode."
+              },
+              {
+                "points": 1,
+                "findingId": "D-SYN-LINE-ENDINGS",
+                "reason": "Генератор и сохранённый synthetic CSV имеют различающиеся bytes."
+              },
+              {
+                "points": 1,
+                "findingId": "D-STALE-TEST-REPORT",
+                "reason": "data/test_report.json относится к предыдущему SHA."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Быстрый старт",
+                "implementation": "README описывает Python/uv, .env, Uvicorn, API routes, offline режим и команды.",
+                "value": "Проверяющий понимает путь от установки к работающему API.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:9-54",
+                  "pyproject.toml",
+                  ".env.example"
+                ]
+              },
+              {
+                "aspect": "Архитектура и роль AI",
+                "implementation": "README раскрывает шаги загрузки, filter, rank, reasons, aspects, explanation и отличия cache/template/LLM.",
+                "value": "Документация объясняет решение технически и пользовательски.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:56-146",
+                  "DESIGN.md"
+                ]
+              },
+              {
+                "aspect": "Демо",
+                "implementation": "README и demo/queries.json фиксируют шесть запросов, исходы и ожидаемые IDs; runner повторяет каждый запрос.",
+                "value": "Сценарий можно показать и проверить из репозитория.",
+                "verification": "observed",
+                "evidence": [
+                  "README.md:165-213",
+                  "demo/queries.json",
+                  "R-DEMO"
+                ]
+              },
+              {
+                "aspect": "Синхронизация отчётов",
+                "implementation": "Опубликованный report имеет старый SHA, а полный non-e2e прогон выявил 3 ошибки, которых он не показывает.",
+                "value": "Артефакт тестов требует повторной проверки и не является точным свидетельством снапшота.",
+                "verification": "observed",
+                "evidence": [
+                  "data/test_report.json:2-8",
+                  "R-PUBLISHED-REPORT",
+                  "R-TEST-SUITE"
+                ]
+              }
+            ],
+            "scoreReasoning": "22/25: документация и сценарии сильные, но воспроизводимость команд и проверочных артефактов не полностью герметична."
+          },
+          {
+            "name": "Ценность и применимость решения",
+            "score": 15,
+            "max": 15,
+            "awarded": "Полный балл: API-результат пригоден для выбора подрядчика и раскрывает качество данных и ограничения.",
+            "deductions": "Подтверждённых дефектов кейсовой применимости нет.",
+            "evidence": [
+              "matcher/api_types.py:145-181",
+              "web/qalau/app.mjs:118-140",
+              "README.md:148-163",
+              "R-CASE-DATA"
+            ],
+            "deductionItems": [],
+            "awardedDetails": [
+              {
+                "aspect": "Карточка для принятия решения",
+                "implementation": "CardDTO содержит имя, категорию, город, цену, flags, explanation, reasons и facts: бюджет, формат, языки, часы, дату.",
+                "value": "Заказчик может сравнить конкретные условия, а не только рейтинг.",
+                "verification": "source",
+                "evidence": [
+                  "matcher/api_types.py:145-181"
+                ]
+              },
+              {
+                "aspect": "Информативный дефицит",
+                "implementation": "shortfall_note и rejections объясняют малый/нулевой результат и дают действия — изменить дату, бюджет, категорию или формат.",
+                "value": "Сезонная занятость и тонкий каталог превращаются в понятную диагностику.",
+                "verification": "observed",
+                "evidence": [
+                  "matcher/service.py:82-100",
+                  "R-CASE-DATA"
+                ]
+              },
+              {
+                "aspect": "Флаги качества данных",
+                "implementation": "price_imputed, city_imputed и synthetic сохраняются в Contractor, caveats и DTO.",
+                "value": "Подготовленные и синтетические значения не скрываются от пользователя.",
+                "verification": "source",
+                "evidence": [
+                  "matcher/model.py:29-35",
+                  "matcher/ranking.py:65-80",
+                  "matcher/api_types.py:154-168"
+                ]
+              },
+              {
+                "aspect": "Scope соответствует кейсу",
+                "implementation": "README заявляет recommendation-only и явно не обещает booking/notifications.",
+                "value": "Ресурс MVP направлен на обязательный выбор и объяснение.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:148-163",
+                  "cases/6/case-data/HackAlem AI_ Хакатон-задача_ умный подбор подрядчиков.md"
+                ]
+              }
+            ],
+            "scoreReasoning": "15/15: все необходимые поля и исходы присутствуют, а функции вне кейса не использованы как штраф."
+          },
+          {
+            "name": "Потенциал развития и оригинальность подхода",
+            "score": 10,
+            "max": 10,
+            "awarded": "Полный балл: structured reasons, scorer protocol, caches и расширяемые профили дают конкретное продолжение решения.",
+            "deductions": "Подтверждённых дефектов, блокирующих развитие, нет.",
+            "evidence": [
+              "README.md:225-262",
+              "matcher/model.py:165-177",
+              "matcher/embeddings.py:115-155",
+              "matcher/explain.py:328-353"
+            ],
+            "deductionItems": [],
+            "awardedDetails": [
+              {
+                "aspect": "Новые сигналы",
+                "implementation": "FEATURES, category weights и ReasonFamily отделены; новый сигнал может иметь score contribution, code и evidence.",
+                "value": "Подход переносится на отзывы, скорость ответа и портфолио без потери explainability.",
+                "verification": "source",
+                "evidence": [
+                  "matcher/model.py:89-107",
+                  "matcher/ranking.py:27-38",
+                  "matcher/reasons.py:15-21"
+                ]
+              },
+              {
+                "aspect": "Каталог и хранилище",
+                "implementation": "Embedding cache скрыт за SemanticScorer, README описывает замену файла таблицей профилей без изменения pipeline.",
+                "value": "Есть реалистичный путь от локального MVP к большему каталогу.",
+                "verification": "source",
+                "evidence": [
+                  "matcher/embeddings.py:115-155",
+                  "README.md:129-146, 225-262"
+                ]
+              },
+              {
+                "aspect": "Безопасная генеративная формулировка",
+                "implementation": "LLM получает коды/факты, validator отклоняет лишние числа и чужие имена, template сохраняет контракт.",
+                "value": "Это переносимый паттерн для других marketplace/hackathon задач.",
+                "verification": "source",
+                "evidence": [
+                  "matcher/explain.py:212-272, 328-353, 415-440"
+                ]
+              },
+              {
+                "aspect": "Расширяемая тестовая база",
+                "implementation": "Synthetic layer и property-based tests позволяют добавлять профили и проверять инварианты.",
+                "value": "Рост каталога поддержан тестовыми механизмами, а не только ручным списком демо.",
+                "verification": "source",
+                "evidence": [
+                  "scripts/make_synthetic.py:99-115",
+                  "tests/test_properties.py",
+                  "tests/test_synthetic.py:38-93"
+                ]
+              }
+            ],
+            "scoreReasoning": "10/10: оригинальность и развитие опираются на реальные интерфейсы. Двойной штраф за line endings здесь не добавляется: он уже отражён в техническом и README критериях."
+          }
+        ],
+        "total": 96
+      },
+      "judgeScore": 96.5,
+      "caseRequirements": [
+        {
+          "requirement": "Принимать город, дату, формат, категорию, бюджет и опциональные язык/длительность.",
+          "status": "met",
+          "explanation": "MatchRequest/DTO содержат весь набор; filtering валидирует обязательные ограничения, а реальный POST с часами прошёл.",
+          "evidence": [
+            "matcher/model.py:36-44",
+            "matcher/filtering.py:12-37",
+            "R-HTTP-REAL"
+          ]
+        },
+        {
+          "requirement": "Возвращать до трёх карточек из каталога.",
+          "status": "met",
+          "explanation": "MAX_CARDS=3, dense/date-pair дали три карточки, rare — две.",
+          "evidence": [
+            "matcher/model.py:25-26",
+            "matcher/service.py:78-82",
+            "R-CASE-DATA"
+          ]
+        },
+        {
+          "requirement": "Исключать занятых на дату.",
+          "status": "met",
+          "explanation": "busy_on_date является жёстким фильтром; внешняя date-pair проверка показала разные доступные тройки.",
+          "evidence": [
+            "matcher/filtering.py:45-47",
+            "R-DATE-PAIR",
+            "tests/test_properties.py:150-180"
+          ]
+        },
+        {
+          "requirement": "Учитывать формат, категорию, город и стартовую цену в бюджете.",
+          "status": "met",
+          "explanation": "Пул строится по city/category, формат и price_from_kzt проверяются до ranking; empty result показал обе причины.",
+          "evidence": [
+            "matcher/filtering.py:38-59",
+            "R-CASE-DATA",
+            "matcher/service.py:48-75"
+          ]
+        },
+        {
+          "requirement": "Учитывать язык и длительность, если переданы; max_hours=null не отсекать.",
+          "status": "met",
+          "explanation": "Проверки условны по наличию параметра, None не даёт duration rejection; это закреплено тестами.",
+          "evidence": [
+            "matcher/filtering.py:49-56",
+            "tests/test_filtering.py",
+            "tests/test_properties.py:161-164"
+          ]
+        },
+        {
+          "requirement": "Давать конкретное объяснение каждой карточке.",
+          "status": "met",
+          "explanation": "CardFacts/Reason и template/LLM explainer формируют 1–2 grounded предложения; API возвращает explanation, facts и reasons.",
+          "evidence": [
+            "matcher/ranking.py:66-80",
+            "matcher/explain.py:275-317",
+            "R-DEMO",
+            "R-HTTP-REAL"
+          ]
+        },
+        {
+          "requirement": "Повторяемый запрос сохраняет порядок, другая дата может его менять.",
+          "status": "met",
+          "explanation": "Повторы внешних запросов совпали без timing, а 04.10 и 05.10 дали разные ID.",
+          "evidence": [
+            "R-CASE-DATA",
+            "R-DATE-PAIR",
+            "matcher/ranking.py:74-80"
+          ]
+        },
+        {
+          "requirement": "Различать matched, отсутствие категории и кандидатов, не прошедших фильтры.",
+          "status": "met",
+          "explanation": "Outcome enum и API titles реализуют три исхода; все три наблюдались через HTTP.",
+          "evidence": [
+            "matcher/model.py:130-136",
+            "matcher/service.py:82-88",
+            "R-HTTP-REAL"
+          ]
+        },
+        {
+          "requirement": "Объяснять малый или пустой результат.",
+          "status": "met",
+          "explanation": "Rare сообщает размер пула, no-category предлагает альтернативы и город, none-eligible перечисляет занятость/бюджет/формат.",
+          "evidence": [
+            "matcher/service.py:26-41, 89-100",
+            "R-CASE-DATA"
+          ]
+        },
+        {
+          "requirement": "Работать с предоставленными CSV и HTML preview.",
+          "status": "met",
+          "explanation": "CSV реально загружен и подан в pipeline как 66 профилей; HTML preview прочитан статически, подтверждены lang=ru, заголовок, 66 профилей и категории. Визуальный запуск не выполнялся.",
+          "evidence": [
+            "cases/6/case-data/hackathon dataset anonymized .csv",
+            "cases/6/case-data/hackathon dataset preview.html",
+            "R-CSV-LOAD",
+            "R-CASE-DATA"
+          ]
+        }
+      ],
+      "testData": {
+        "provided": [
+          "cases/6/case-data/HackAlem AI_ Хакатон-задача_ умный подбор подрядчиков.md",
+          "cases/6/case-data/hackathon dataset anonymized .csv",
+          "cases/6/case-data/hackathon dataset preview.html"
+        ],
+        "used": [
+          "hackathon dataset anonymized .csv: прочитан и реально подан в pipeline; загружено 66 профилей.",
+          "hackathon dataset preview.html: прочитан статически, без browser-control; проверены заголовок, lang=ru, число профилей и список категорий.",
+          "case task/brief и criteries.md: использованы как спецификация оценки."
+        ],
+        "checks": [
+          {
+            "input": "Организаторский CSV; csv.DictReader, количество строк и поля.",
+            "method": "Статическая проверка и запуск pipeline с временным DATA_PATH на этот CSV.",
+            "result": "66 строк; поля совпали; города Алматы=50, Астана=15, Зарубежье=1.",
+            "conclusion": "Формат совместим с loader проекта."
+          },
+          {
+            "input": "Алматы / Ведущий / корпоратив / 04.10.2026 / 2 000 000 / 4 часа.",
+            "method": "Проектный pipeline на внешнем CSV, embeddings cache, повтор запроса.",
+            "result": "matched; pool=10, eligible=5; IDs HK-75012, HK-35215, HK-27222; повтор без timing совпал.",
+            "conclusion": "Плотный основной сценарий работает."
+          },
+          {
+            "input": "Та же заявка на 05.10.2026.",
+            "method": "То же, изменена только event_date.",
+            "result": "matched; eligible=4; IDs HK-77838, HK-44733, HK-88430; занятые профили исключены.",
+            "conclusion": "Дата реально влияет на выдачу."
+          },
+          {
+            "input": "Алматы / Флорист / свадьба / 04.10.2026 / 250 000.",
+            "method": "Проектный pipeline и повтор.",
+            "result": "matched; pool=2, eligible=2; IDs HK-39372, HK-90001; note «2 из 3»; повтор совпал.",
+            "conclusion": "Редкий малый результат корректно объяснён."
+          },
+          {
+            "input": "Астана / Декоратор / свадьба / 04.10.2026 / 1 000 000.",
+            "method": "Проектный pipeline на внешнем CSV.",
+            "result": "no_category_in_city; note предлагает Подарки и сувениры/Флорист в Астане и сообщает 3 профиля в Алматы.",
+            "conclusion": "Отсутствие категории различено от фильтрационного провала."
+          },
+          {
+            "input": "Алматы / Ведущий / корпоратив / 02.10.2026 / 500 000.",
+            "method": "Проектный pipeline и повтор.",
+            "result": "none_eligible; pool=10, eligible=0; note содержит 8 busy, 9 over_budget и 1 format_not_supported; cards=[]; повтор совпал.",
+            "conclusion": "Пустой результат объяснён реальными причинами."
+          },
+          {
+            "input": "HTML preview из case-data.",
+            "method": "Статическое чтение исходника, без визуальной проверки.",
+            "result": "lang=ru, заголовок датасета, 66 профилей и кнопки категорий присутствуют.",
+            "conclusion": "Структура preview согласуется с CSV; visual/UI оставлен пользователю."
+          }
+        ],
+        "limitations": [
+          "Внешний OpenAI API не вызывался: credentialsProvided=false; использованы кэш и fallback.",
+          "Visual browser testing не выполнялось по пользовательской политике.",
+          "Проект дополнительно загружает data/synthetic_extra.csv в основной конфигурации; внешний CSV был проверен отдельно без этого sibling-файла."
+        ]
+      },
+      "runtime": {
+        "status": "partial",
+        "build": "uv sync успешно собрал contractor-matcher на CPython 3.12.10. Системный Python 3.10 отдельно остановил pytest на отсутствующем hypothesis; после uv sync проверка выполнена в заявленном окружении.",
+        "start": "Uvicorn реально поднят в контролируемом процессе; GET /api/meta и POST /api/match ответили успешно.",
+        "scenario": "API, demo, live cases и внешний CSV прошли; partial означает только 3 ошибки вспомогательных/reproducibility тестов.",
+        "environment": "Python 3.12.10 через uv, без OPENAI_API_KEY; кэш embeddings/explanations и template/lexical fallback доступны. UI automation запрещена.",
+        "summary": "Core runtime working; полный non-e2e suite не зелёный из-за CLI Unicode и synthetic/report artifacts.",
+        "checks": [
+          {
+            "command": "uv sync",
+            "result": "pass; окружение собранo, зависимости установлены.",
+            "id": "R-BUILD",
+            "stage": "build",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Установить заявленные зависимости и собрать проект."
+          },
+          {
+            "command": "pytest --ignore=tests/e2e --ignore=tests/test_report.py --ignore=tests/test_synthetic.py",
+            "result": "pass; 421 passed, 1 skipped.",
+            "id": "R-CORE-TESTS",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Основные unit/property/API/domain проверки проходят."
+          },
+          {
+            "command": "pytest --ignore=tests/e2e",
+            "result": "fail; 421 passed, 3 failed, 1 skipped. Два test_report CLI case упали на UnicodeEncodeError; synthetic generator test — на b'\\n' против b'\\r'.",
+            "id": "R-TEST-SUITE",
+            "stage": "scenario",
+            "status": "fail",
+            "cause": "project",
+            "expected": "Полный non-e2e набор проходит после установки зависимостей."
+          },
+          {
+            "command": "python scripts/run_demo.py",
+            "result": "fail; run_demo.py:35 не смог напечатать U+2009 в cp1251. С -X utf8 — pass.",
+            "id": "R-CLI-DEFAULT",
+            "stage": "scenario",
+            "status": "fail",
+            "cause": "project",
+            "expected": "README-команда demo завершается успешно."
+          },
+          {
+            "command": "python scripts/run_cases.py",
+            "result": "fail; run_cases.py:178 не смог напечатать U+2192. С -X utf8 — 18/18 pass.",
+            "id": "R-CASES-DEFAULT",
+            "stage": "scenario",
+            "status": "fail",
+            "cause": "project",
+            "expected": "README-команда live cases завершается успешно."
+          },
+          {
+            "command": "python -X utf8 scripts/run_demo.py",
+            "result": "pass; 6/6, ожидаемые IDs/outcomes/backend и повторный порядок совпали.",
+            "id": "R-DEMO",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Шесть demo cases воспроизводимы и детерминированы."
+          },
+          {
+            "command": "python -X utf8 scripts/run_cases.py",
+            "result": "pass; 18/18 live cases passed.",
+            "id": "R-CASE-RUN",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Сохранённые проектные cases проходят."
+          },
+          {
+            "command": "GET /api/meta; POST /api/match",
+            "result": "pass; real Uvicorn: 200/200, matched, IDs HK-75012/HK-35215/HK-27222, backend=embeddings.",
+            "id": "R-START-HTTP",
+            "stage": "start",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Запущенный сервер отдаёт meta и основной результат."
+          },
+          {
+            "command": "POST /api/match",
+            "result": "pass; matched, none_eligible и no_category_in_city вернули 200 с cards/rejections/shortfall_note.",
+            "id": "R-HTTP-REAL",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Три исхода различимы и объяснены."
+          },
+          {
+            "command": "POST /api/match",
+            "result": "pass; 2027-01-01 вернула 422 с сообщением о календаре.",
+            "id": "R-HTTP-422",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Дата вне 23.09.2026—31.12.2026 отклоняется."
+          },
+          {
+            "command": "python -X utf8 external CSV scenario harness",
+            "result": "pass; 66 профилей, dense/rare/no-category/empty/repeat/date-pair пройдены.",
+            "id": "R-CASE-DATA",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Организаторский CSV проходит проектный pipeline."
+          },
+          {
+            "command": "python -X utf8 external CSV date-pair harness",
+            "result": "pass; the same request on 04.10.2026 and 05.10.2026 produced different eligible sets and different top-three IDs; repeated calls for each date matched without timing.",
+            "id": "R-DATE-PAIR",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Changing only event_date changes availability-sensitive results when a candidate is busy."
+          },
+          {
+            "command": "python -X utf8 synthetic CSV generator test",
+            "result": "fail; tests/test_synthetic.py сравнил generated output и committed CSV и нашёл line-ending mismatch.",
+            "id": "R-SYNTHETIC",
+            "stage": "build",
+            "status": "fail",
+            "cause": "project",
+            "expected": "Генератор воспроизводит сохранённый synthetic_extra.csv."
+          },
+          {
+            "command": "python -X utf8 published report inspection",
+            "result": "fail as freshness evidence; data/test_report.json содержит git_sha=9effe72, snapshot=1ed76f32d61463ecd15f825a2b57e5fd3ffedc03.",
+            "id": "R-PUBLISHED-REPORT",
+            "stage": "scenario",
+            "status": "fail",
+            "cause": "project",
+            "expected": "Опубликованный report относится к текущему snapshot."
+          },
+          {
+            "command": "pytest tests/e2e",
+            "result": "not_run; browser-control/Playwright запрещены условиями ревью.",
+            "id": "R-VISUAL-POLICY",
+            "stage": "scenario",
+            "status": "not_run",
+            "cause": "review_environment",
+            "expected": "Визуальную часть проверяет пользователь."
+          },
+          {
+            "command": "OpenAI chat/embeddings runtime",
+            "result": "blocked; credentialsProvided=false. Offline cache/fallback и source path проверены.",
+            "id": "R-EXTERNAL-CREDENTIALS",
+            "stage": "scenario",
+            "status": "blocked",
+            "cause": "external_service",
+            "expected": "Провайдерский runtime доступен при выданных credentials."
+          }
+        ],
+        "limitations": [
+          "API-ключи намеренно не предоставлены; это не defect и не deduction.",
+          "UI visual behavior не подтверждён по явному запрету browser automation.",
+          "Вспомогательные тестовые ошибки не были перенесены на core /api/match."
+        ]
+      },
+      "liveDemo": {
+        "status": "none",
+        "url": null,
+        "notes": "Публичная Live-ссылка не заявлена. Локальное демо есть в demo/queries.json и scripts/run_demo.py; отсутствие URL не штрафовалось."
+      },
+      "fiveHourContext": "Для пятичасового MVP объём реалистичен: команда сосредоточилась на календаре, фильтрах, объяснениях, offline fallback и демонстрационных данных. Бронирование, уведомления, production storage и персонализация не требовались и явно вынесены в ограничения. Выявленные проблемы относятся к последней миле артефактов, а не к обязательному пользовательскому результату.",
+      "strengths": [
+        "Основной API-сценарий реально работает на организаторском CSV и через Uvicorn.",
+        "Дата меняет состав выдачи, повтор сохраняет порядок, а пустые состояния различаются.",
+        "Кодовые причины, grounding validator, cache и template fallback ограничивают галлюцинации LLM.",
+        "README, demo/live cases и property-based tests дают сильную проверочную основу."
+      ],
+      "gaps": [
+        "Default CLI-команды падают на Unicode-выводе в Windows cp1251; D-CLI-ENCODING.",
+        "Generator synthetic_extra.csv не совпадает побайтно с tracked CSV по LF/CRLF; D-SYN-LINE-ENDINGS.",
+        "data/test_report.json относится к предыдущему SHA; D-STALE-TEST-REPORT."
+      ],
+      "futureAdvice": [
+        {
+          "principle": "Сделать CLI UTF-8-safe.",
+          "why": "D-CLI-ENCODING показывает падения run_demo/run_cases/test_report только при печати Unicode.",
+          "how": "Настроить stdout/stderr на UTF-8 с fallback или заменить декоративные символы на ASCII и прогнать опубликованные команды в чистом окружении.",
+          "findingIds": [
+            "D-CLI-ENCODING"
+          ],
+          "successCheck": "Все три README-команды завершаются без ручного -X utf8.",
+          "timeboxMinutes": 20
+        },
+        {
+          "principle": "Зафиксировать единый newline format.",
+          "why": "D-SYN-LINE-ENDINGS и R-SYNTHETIC показывают рассинхрон generator и сохранённого CSV.",
+          "how": "Выбрать LF или CRLF, закрепить lineterminator и нормализовать committed file, сохранив byte-equality test.",
+          "findingIds": [
+            "D-SYN-LINE-ENDINGS"
+          ],
+          "successCheck": "Два запуска generator и tracked CSV идентичны по bytes.",
+          "timeboxMinutes": 15
+        },
+        {
+          "principle": "Публиковать отчёт последним шагом.",
+          "why": "D-STALE-TEST-REPORT показывает git_sha старого коммита в data/test_report.json.",
+          "how": "Перед финальным commit запускать report generator и проверять совпадение SHA и summary с текущим checkout.",
+          "findingIds": [
+            "D-STALE-TEST-REPORT"
+          ],
+          "successCheck": "report.git_sha совпадает с snapshot и повторяется опубликованной командой.",
+          "timeboxMinutes": 15
+        }
+      ],
+      "uncertainties": [
+        "Online OpenAI runtime не запускался без credentials; source path и offline path проверены.",
+        "Visual layout/focus/responsive UI не подтверждены из-за запрета browser automation.",
+        "Системный Python 3.10 без hypothesis не использован для итоговой оценки; uv Python 3.12 собран и проверен."
+      ],
+      "reviewPolicyVersion": 2,
+      "assessmentStatus": "ready",
+      "findings": [
+        {
+          "id": "S-CORE-SCENARIO",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Основной сценарий работает от HTTP-входа до структурированного ответа.",
+          "expected": "POST /api/match возвращает до трёх карточек, outcome, причины и facts.",
+          "actual": "Реальный Uvicorn вернул 200, matched, backend=embeddings и IDs HK-75012/HK-35215/HK-27222; остальные исходы также прошли.",
+          "evidence": [
+            "app.py:65-79",
+            "R-START-HTTP",
+            "R-HTTP-REAL"
+          ],
+          "checkIds": [
+            "R-START-HTTP",
+            "R-HTTP-REAL"
+          ]
+        },
+        {
+          "id": "S-CASE-DATA",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Внешний организаторский CSV реально применим.",
+          "expected": "66 профилей должны загрузиться и пройти сценарии кейса.",
+          "actual": "Загружено 66; dense/rare/no-category/empty/repeat/date-pair дали содержательные ответы.",
+          "evidence": [
+            "cases/6/case-data/hackathon dataset anonymized .csv",
+            "R-CSV-LOAD",
+            "R-CASE-DATA",
+            "R-DATE-PAIR"
+          ],
+          "checkIds": [
+            "R-CASE-DATA",
+            "R-DATE-PAIR"
+          ]
+        },
+        {
+          "id": "S-GROUNDED-EXPLANATIONS",
+          "kind": "strength",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "LLM формулирует ограниченные доказательства карточки, а не принимает бизнес-решение.",
+          "expected": "Explanation строится из CardFacts/Reason и проходит grounding.",
+          "actual": "pipeline ранжирует до explain; prompt содержит codes/evidence; validator проверяет numbers/names/date/swap-test; fallback template сохраняет контракт.",
+          "evidence": [
+            "matcher/pipeline.py:67-81",
+            "matcher/explain.py:212-272, 328-353, 415-440"
+          ],
+          "checkIds": [
+            "R-CORE-TESTS",
+            "R-DEMO"
+          ]
+        },
+        {
+          "id": "S-DETERMINISTIC-DATES",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Повторяемость и изменение по дате наблюдаются.",
+          "expected": "Идентичный запрос сохраняет порядок, другая дата меняет его при занятом профиле.",
+          "actual": "Повторы совпали без timing; 04.10 дал HK-75012/HK-35215/HK-27222, 05.10 — HK-77838/HK-44733/HK-88430.",
+          "evidence": [
+            "R-CASE-DATA",
+            "R-DATE-PAIR",
+            "tests/test_service.py:135-143"
+          ],
+          "checkIds": [
+            "R-CASE-DATA",
+            "R-DATE-PAIR"
+          ]
+        },
+        {
+          "id": "S-TESTING-DEPTH",
+          "kind": "strength",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Критические инварианты покрыты несколькими слоями тестов.",
+          "expected": "Filtering/ranking/reasons/explain/API/properties/cases должны иметь проверки.",
+          "actual": "Все перечисленные наборы присутствуют; core-группа прошла.",
+          "evidence": [
+            "tests/test_filtering.py",
+            "tests/test_ranking.py",
+            "tests/test_reasons.py",
+            "tests/test_explain.py",
+            "tests/test_properties.py",
+            "R-CORE-TESTS"
+          ],
+          "checkIds": [
+            "R-CORE-TESTS"
+          ]
+        },
+        {
+          "id": "L-OPENAI-CREDENTIALS",
+          "kind": "limitation",
+          "verification": "unverified",
+          "responsibility": "external_service",
+          "claim": "Online OpenAI ветка не получила фактического провайдерского ответа.",
+          "expected": "При credentials можно дополнительно проверить embeddings/chat runtime.",
+          "actual": "credentialsProvided=false; online вызов не выполнялся, но cache/fallback и source path проверены.",
+          "evidence": [
+            ".env.example:1-5",
+            "matcher/config.py:10-16",
+            "matcher/embeddings.py:115-140",
+            "matcher/explain.py:415-440",
+            "R-EXTERNAL-CREDENTIALS"
+          ],
+          "checkIds": [
+            "R-EXTERNAL-CREDENTIALS"
+          ]
+        },
+        {
+          "id": "L-VISUAL-UI",
+          "kind": "limitation",
+          "verification": "unverified",
+          "responsibility": "review_environment",
+          "claim": "Визуальное поведение web UI не установлено.",
+          "expected": "Проверить layout, focus и responsive rendering.",
+          "actual": "Browser-control/Playwright/screenshot запрещены; HTTP/static assets проверены, visual оставлен пользователю.",
+          "evidence": [
+            "tests/e2e/test_browser.py:44-60",
+            "R-VISUAL-POLICY"
+          ],
+          "checkIds": [
+            "R-VISUAL-POLICY"
+          ]
+        },
+        {
+          "id": "D-CLI-ENCODING",
+          "kind": "defect",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Документированные CLI-команды с Unicode-выводом не проходят в стандартной Windows cp1251-консоли.",
+          "expected": "run_demo, run_cases и test_report должны печатать summary и завершаться успешно.",
+          "actual": "run_demo.py:35 падает на U+2009, run_cases.py:178 на U+2192, test_report.py:85 аналогично; -X utf8 исправляет запуск.",
+          "evidence": [
+            "README.md:40-51",
+            "scripts/run_demo.py:33-36",
+            "scripts/run_cases.py:176-179",
+            "scripts/test_report.py:84-85",
+            "R-CLI-DEFAULT",
+            "R-CASES-DEFAULT",
+            "R-TEST-SUITE"
+          ],
+          "checkIds": [
+            "R-CLI-DEFAULT",
+            "R-CASES-DEFAULT",
+            "R-TEST-SUITE"
+          ]
+        },
+        {
+          "id": "D-SYN-LINE-ENDINGS",
+          "kind": "defect",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Детерминированный synthetic CSV generator не совпадает побайтно с tracked artifact.",
+          "expected": "Generator output должен быть идентичен data/synthetic_extra.csv.",
+          "actual": "tests/test_synthetic.py::test_generator_is_deterministic_and_matches_committed_csv упал на b'\\n' против b'\\r'; generator задаёт lineterminator='\\n' в строках 103-104.",
+          "evidence": [
+            "scripts/make_synthetic.py:99-115",
+            "tests/test_synthetic.py:30-35",
+            "R-SYNTHETIC"
+          ],
+          "checkIds": [
+            "R-SYNTHETIC",
+            "R-TEST-SUITE"
+          ]
+        },
+        {
+          "id": "D-STALE-TEST-REPORT",
+          "kind": "defect",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "data/test_report.json не синхронизирован с оцениваемым snapshot.",
+          "expected": "Опубликованный report должен ссылаться на текущий snapshot или быть отмечен историческим.",
+          "actual": "data/test_report.json:2-8 указывает generated_at=2026-09-23 и git_sha=9effe72, тогда как snapshot=1ed76f32d61463ecd15f825a2b57e5fd3ffedc03.",
+          "evidence": [
+            "data/test_report.json:2-8",
+            "R-PUBLISHED-REPORT",
+            "R-TEST-SUITE"
+          ],
+          "checkIds": [
+            "R-PUBLISHED-REPORT",
+            "R-TEST-SUITE"
+          ]
+        }
+      ],
+      "gapFindingIds": [
+        "D-CLI-ENCODING",
+        "D-SYN-LINE-ENDINGS",
+        "D-STALE-TEST-REPORT"
+      ]
+    }
+  ],
+  "score": 96.5,
+  "status": "complete",
+  "expectedJudges": 1
+}

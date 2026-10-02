@@ -1,0 +1,895 @@
+{
+  "methodVersion": 4,
+  "repoId": "hack-0d60a011-horseaters",
+  "repoUrl": "https://github.com/BAITC-Hacks/hack-0d60a011-horseaters",
+  "caseId": 5,
+  "snapshot": "3cb2dc8737e9be7aa69a6875665b5f700affe81f",
+  "judges": [
+    {
+      "methodVersion": 4,
+      "repoId": "hack-0d60a011-horseaters",
+      "caseId": 5,
+      "model": "GPT-5.6 Luna",
+      "snapshot": "3cb2dc8737e9be7aa69a6875665b5f700affe81f",
+      "overallSummary": "Проект реализует содержательный прототип пополнения склада: доменная цепочка отделяет подготовку спроса, прогноз, пополнение и заказ, а расчёт сохраняет объяснение, аномалии и источники данных. Статические, unit/domain, API-контрактные проверки и production-сборки прошли. Основное ограничение результата подтверждено на реальных файлах кейса: предоставленные широкие Excel-выгрузки не проходят текущий импорт из-за многострочных заголовков, несовпадающих псевдонимов и пропусков количества; кроме того, основной экран намеренно показывает отдельный in-memory набор рекомендаций, а не результат импорта или последнего расчёта. Поэтому решение заслуживает сильной оценки как MVP-архитектура и алгоритмическая основа, но не максимума за воспроизводимый бизнес-сценарий на выданных данных.",
+      "global": {
+        "criteria": [
+          {
+            "name": "Ценность решения",
+            "score": 21,
+            "max": 25,
+            "awarded": "Да, проблема и пользовательская польза убедительно покрыты.",
+            "deductions": "4 балла сняты за подтверждённый разрыв между форматом реальных файлов кейса и импортом, а также за то, что видимый основной список рекомендаций остаётся демонстрационным набором.",
+            "evidence": [
+              "cases/5/case-data/HackAlem AI_ Автоматизация формирования заказов поставщикам.docx.md: проблема, пользователь и must have",
+              "backend/domain/services/replenishment.py:19-78",
+              "backend/infrastructure/api/routers/procurement.py:53-316",
+              "frontend/src/pages-flat/inventory/ui/inventory-page.tsx:55-68"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "D1",
+                "reason": "Реальный месячный файл кейса не превращается в факты продаж: повторные строки заголовка приводят к 422. Это напрямую снижает практическую ценность автоматизации Excel для закупщика."
+              },
+              {
+                "points": 2,
+                "findingId": "D3",
+                "reason": "Основной экран получает рекомендации из заранее заполненного in-memory хранилища, поэтому пользователь может увидеть убедительный список, не связанный с загруженной партией или последним расчётом."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Понятная боль менеджера закупа",
+                "implementation": "README и материалы кейса описывают ручное сведение продаж, остатков и поставок, а код предлагает отдельный pipeline для этой цепочки. В API есть явные операции импорта, запуска расчёта, списка рекомендаций и формирования заказа.",
+                "value": "Решение адресует конкретную операционную проблему, а не абстрактную аналитику: пользователь получает количество к заказу, поставщика, риск и объяснение.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:1-20",
+                  "cases/5/case-data/HackAlem AI_ Автоматизация формирования заказов поставщикам.docx.md: проблема, пользователь, вход → выход",
+                  "backend/infrastructure/api/routers/calculation_runs.py:21-53"
+                ]
+              },
+              {
+                "aspect": "Экономический эффект от очистки спроса",
+                "implementation": "clean_transactions применяет IQR к положительным продажам и отдельно проверяет концентрацию по обезличенному клиенту и месяцу; замена выполняется только в копии расчёта, исходные факты не переписываются.",
+                "value": "Устранение разовых крупных продаж снижает риск завышать регулярный заказ и тем самым соответствует заявленной экономии на избыточном запасе.",
+                "verification": "source",
+                "evidence": [
+                  "backend/domain/services/anomaly.py:14-83",
+                  "tests/test_algorithm_acceptance.py:78-85",
+                  "tests/test_alg_06_09.py:196-212"
+                ]
+              },
+              {
+                "aspect": "Риск дефицита превращён в действие",
+                "implementation": "calculate_replenishment учитывает прогноз на горизонт плюс lead time, остаток, in_transit, safety stock и material requirement, после чего округляет к MOQ и package_size.",
+                "value": "Для закупщика это не только отчёт о запасах, а конкретное количество поставщику с понятным ограничением кратности.",
+                "verification": "source",
+                "evidence": [
+                  "backend/domain/services/replenishment.py:19-78",
+                  "tests/test_algorithm_acceptance.py:119-127",
+                  "tests/test_alg_06_09.py:133-148"
+                ]
+              },
+              {
+                "aspect": "Реальный предел применимости",
+                "implementation": "Проверка 12 выданных XLSX показала, что два наиболее релевантных файла не проходят текущую загрузку: monthly_sales получает 24 ошибки sku, sales — 19 строк без quantity.",
+                "value": "Снятие не связано с отсутствием платного сервиса: это наблюдаемая несовместимость с теми входами, которые должны дать ценность кейсу.",
+                "verification": "observed",
+                "evidence": [
+                  "case-xlsx-structure",
+                  "case-monthly-import",
+                  "case-sales-import",
+                  "captures/20261002T055633870203-case-xlsx-structure-2.stdout.log"
+                ]
+              }
+            ],
+            "scoreReasoning": "Пользовательская проблема выбрана точно и основные источники пользы отражены в расчёте: выбросы не раздувают потребность, stockout компенсируется, товары в пути уменьшают заказ, а результат можно объяснить и экспортировать. До 25 баллов не хватает не идеи, а доказанной связи с реальными входами кейса и единого источника данных на главном экране. 21 балл соответствует сильной ценности прототипа при заметном интеграционном разрыве."
+          },
+          {
+            "name": "Результат и качество решения",
+            "score": 14,
+            "max": 20,
+            "awarded": "Алгоритмический и workflow-результат качественно собран, но воспроизводимость на данных кейса частичная.",
+            "deductions": "6 баллов сняты за отказ импорта реальных продаж и месячных продаж и за рассинхрон демонстрационного endpoint с расчётным workflow.",
+            "evidence": [
+              "backend-tests: 226 тестов завершились OK, пропущены только 2 PostgreSQL-only теста",
+              "frontend-build: Next.js production build, lint и typecheck прошли",
+              "tests/test_api_workflows.py:119-246",
+              "backend/application/use_cases/run_calculation.py:22-75"
+            ],
+            "deductionItems": [
+              {
+                "points": 3,
+                "findingId": "D1",
+                "reason": "Месячная выданная таблица не импортируется из-за повторных строк заголовка, поэтому сценарий на периодических продажах нельзя довести от XLSX до расчёта."
+              },
+              {
+                "points": 2,
+                "findingId": "D2",
+                "reason": "История продаж из IEK завершается ошибкой валидации всей партии из-за 19 строк без quantity; строгая ошибка всей загрузки оставляет ноль импортированных строк."
+              },
+              {
+                "points": 1,
+                "findingId": "D3",
+                "reason": "GET /api/v1/procurement/recommendations возвращает отдельный in-memory набор, тогда как импорт и расчёт работают через БД и /api/calculation-runs; целостный пользовательский результат разделён на два источника."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Исполняемая доменная цепочка",
+                "implementation": "RunCalculation сначала фиксирует импортированные партии и параметры запуска, затем CalculationPipeline загружает товары, продажи, stockout, остатки, seasonality, growth, in-transit и material requirements, сохраняет forecasts, anomalies и recommendations.",
+                "value": "Это полноценный серверный результат с состояниями запуска, а не только расчёт в компоненте интерфейса; ошибки запуска также сохраняются как FAILED.",
+                "verification": "source",
+                "evidence": [
+                  "backend/application/use_cases/run_calculation.py:22-75",
+                  "backend/application/services/calculation_pipeline.py:60-229"
+                ]
+              },
+              {
+                "aspect": "Объяснимый результат",
+                "implementation": "Recommendation получает calculation_details с supplier_selection, demand components, stockout evidence, anomaly IDs и forecast breakdown; отдельный endpoint explanation читает сохранённый результат.",
+                "value": "Закупщик может проверить, откуда взялось количество, и отличить входное решение от ручной корректировки.",
+                "verification": "source",
+                "evidence": [
+                  "backend/application/services/calculation_pipeline.py:156-227",
+                  "backend/domain/services/explanation.py:12-84",
+                  "tests/test_api_workflows.py:162-175"
+                ]
+              },
+              {
+                "aspect": "Контролируемый заказный workflow",
+                "implementation": "CreateOrders создаёт draft из accepted recommendations, ApproveOrder переводит его в approved с актором, ExportOrder требует approval и сохраняет XLSX-артефакт и checksum; GET export только скачивает уже созданный файл.",
+                "value": "Ручное подтверждение встроено в переходы состояния и проверено на ошибках, поэтому результат ближе к рабочему процессу закупщика.",
+                "verification": "observed",
+                "evidence": [
+                  "tests/test_order_use_cases.py:299-365",
+                  "tests/test_api_workflows.py:206-246",
+                  "backend/infrastructure/api/routers/orders.py:21-54"
+                ]
+              },
+              {
+                "aspect": "Репродуцируемость сборки",
+                "implementation": "Backend image собран, frontend image собран из package-lock; production build завершился после компиляции, lint/typecheck и генерации маршрутов. В отдельном контейнере выполнены migrations и весь unittest suite.",
+                "value": "Основная техническая поверхность прототипа не только заявлена README, но и реально стартует после подготовки PostgreSQL.",
+                "verification": "observed",
+                "evidence": [
+                  "backend-build-2",
+                  "frontend-build",
+                  "postgres-migrate-2",
+                  "backend-tests"
+                ]
+              }
+            ],
+            "scoreReasoning": "Подтверждён работающий доменный слой и большая контрактная поверхность: 226 тестов прошли, production-сборки прошли, PostgreSQL и health endpoint работают. Однако пользовательский результат на исходных XLSX не воспроизведён: две релевантные партии отклонены до записи, а dashboard показывает отдельный демонстрационный store. Поэтому качество реализации выше среднего, но целостный сценарий кейса пока частичный."
+          },
+          {
+            "name": "Инновационность",
+            "score": 13,
+            "max": 15,
+            "awarded": "Есть обоснованный нестандартный слой обработки спроса и объяснения.",
+            "deductions": "2 балла сняты за то, что наиболее интересные алгоритмические идеи не доведены до реального пакета входных данных.",
+            "evidence": [
+              "backend/domain/services/anomaly.py:14-83",
+              "backend/domain/services/stockout.py:14-101",
+              "backend/domain/services/growth.py:11-45",
+              "tests/test_algorithm_acceptance.py:78-127"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "D1",
+                "reason": "Инновационная обработка широких месячных входов остаётся недоказанной на реальном workbook: адаптер не переживает повторные заголовки, хотя именно такие файлы выданы кейсом."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Двухуровневое удаление выбросов",
+                "implementation": "Сначала применяется IQR по транзакциям, затем отдельный IQR по месячной сумме одного anonymous_customer_id; крупная серия документов одного клиента распределённо заменяется на устойчивый уровень.",
+                "value": "Это заметно точнее простого удаления максимального значения: учитывается бизнес-смысл крупной покупки и сохраняется связь с отдельной транзакцией для аудита.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/domain/services/anomaly.py:35-83",
+                  "tests/test_algorithm_acceptance.py:78-85"
+                ]
+              },
+              {
+                "aspect": "Консервативная реконструкция stockout",
+                "implementation": "Компенсация выбирает явные периоды, иначе может вывести stockout из двух подряд нулевых снимков, а затем использует медиану сопоставимых донорских периодов и сохраняет evidence IDs.",
+                "value": "Подход не переписывает исходные факты и не подменяет отсутствие данных без достаточного числа наблюдений; это хорошая защита от чрезмерного прогноза.",
+                "verification": "source",
+                "evidence": [
+                  "backend/domain/services/stockout.py:14-101",
+                  "backend/domain/services/demand_preparation.py:174-212",
+                  "tests/test_algorithm_acceptance.py:87-99"
+                ]
+              },
+              {
+                "aspect": "Устойчивый рост вместо слепого тренда",
+                "implementation": "estimate_growth сравнивает два окна, требует направления минимум в двух третях последних месяцев, ограничивает фактор и записывает reason/clamped/details.",
+                "value": "Алгоритм избегает реакции на единичный скачок, но сохраняет объяснение, почему рост принят или отклонён.",
+                "verification": "source",
+                "evidence": [
+                  "backend/domain/services/growth.py:11-45",
+                  "backend/domain/services/demand_preparation.py:190-210",
+                  "tests/test_alg_06_09.py:118-130"
+                ]
+              },
+              {
+                "aspect": "Детерминированное объяснение формулы",
+                "implementation": "Forecast явно хранит formula, baseline, growth_multiplier, seasonality_index и forecast_quantity; затем recommendation добавляет поставщика, запас, транзит и supplier selection.",
+                "value": "Нестандартность не спрятана в непрозрачной модели: решение можно повторить и объяснить аудитору.",
+                "verification": "source",
+                "evidence": [
+                  "backend/domain/services/forecasting.py:27-83",
+                  "backend/domain/services/recommendation.py:18-91"
+                ]
+              }
+            ],
+            "scoreReasoning": "Для пятичасового MVP это сильный набор: выбросы по клиенту, вывод упущенного спроса из stockout, устойчивый рост и сохранённая формула дают осмысленное отличие от среднего по истории. Снижение небольшое и относится к недоведённому входному адаптеру, а не к отсутствию алгоритмической идеи."
+          },
+          {
+            "name": "Потенциал развития и масштабирования",
+            "score": 15,
+            "max": 20,
+            "awarded": "Модульная архитектура и контроль состояния создают хороший фундамент.",
+            "deductions": "5 баллов сняты за раздельные legacy и calculation контуры и за отсутствие доказанной адаптации к фактическим выгрузкам партнёра.",
+            "evidence": [
+              "backend/application/ports/unit_of_work.py:1-40",
+              "backend/infrastructure/persistence/migrations/versions/0001_initial_schema.py:1-30",
+              "backend/infrastructure/api/routers/procurement.py:53-316",
+              "frontend/src/pages-flat/inventory/ui/inventory-page.tsx:58,66-69"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "D1",
+                "reason": "Для масштабирования на новые выгрузки нужен отдельный слой нормализации реального формата; текущая проверка первой строки и reshape не покрывает выданные multi-row Excel sheets."
+              },
+              {
+                "points": 3,
+                "findingId": "D3",
+                "reason": "Два источника рекомендаций усложняют дальнейшее развитие: legacy endpoint и in-memory adjustments живут отдельно от DB-backed calculation, поэтому добавление нового источника легко оставит UI со старыми данными."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Разделение домена и инфраструктуры",
+                "implementation": "Доменный слой использует entities, value objects и pure services, application слой — use cases и ports, инфраструктура — SQLAlchemy repositories, Excel reader/exporter и FastAPI routers.",
+                "value": "Новые источники данных или другой интерфейс можно добавлять без переписывания формул; для пятичасового прототипа это хороший масштабируемый каркас.",
+                "verification": "source",
+                "evidence": [
+                  "backend/domain/services",
+                  "backend/application/ports/unit_of_work.py:18-40",
+                  "backend/application/services/calculation_pipeline.py:1-229"
+                ]
+              },
+              {
+                "aspect": "Миграции и транзакционные границы",
+                "implementation": "Alembic содержит начальную схему и отдельные credentials, UoW явно коммитит переходы запуска/заказа, repositories не коммитят самостоятельно, экспорт откатывается при ошибке записи или commit.",
+                "value": "Это снижает стоимость перехода от MVP к нескольким складами и повторяемым deployment-процедурам.",
+                "verification": "observed",
+                "evidence": [
+                  "postgres-migrate-2",
+                  "tests/test_unit_of_work.py:1-110",
+                  "tests/test_order_use_cases.py:332-365",
+                  "README.md:42-72"
+                ]
+              },
+              {
+                "aspect": "Контрактный API",
+                "implementation": "FastAPI разделяет health, imports, calculation-runs, recommendations, orders, auth и AI; Pydantic схемы валидируют UUID, version, quantity, роли и безопасные ошибки.",
+                "value": "Стабильные границы позволяют подключить другой frontend, batch job или интеграцию с 1С без доступа к доменным объектам.",
+                "verification": "source",
+                "evidence": [
+                  "backend/infrastructure/api/main.py:40-131",
+                  "backend/infrastructure/api/routers/calculation_runs.py:21-53",
+                  "tests/test_api_workflows.py:119-160"
+                ]
+              },
+              {
+                "aspect": "Ограничение для следующего этапа",
+                "implementation": "Legacy procurement router хранит INITIAL_RECOMMENDATIONS и _recommendations_store в памяти, тогда как новый pipeline пишет рекомендации в PostgreSQL; frontend прямо помечает основной список как предварительно загруженный.",
+                "value": "Факт хорошо локализован и исправим без переделки доменного слоя: единый query/read model может связать уже существующие расчётные рекомендации с dashboard.",
+                "verification": "source",
+                "evidence": [
+                  "backend/infrastructure/api/routers/procurement.py:53-69,307-316",
+                  "frontend/src/pages-flat/inventory/ui/inventory-page.tsx:55-68"
+                ]
+              }
+            ],
+            "scoreReasoning": "Ports, repositories, миграции, UoW и immutable order snapshots дают хорошую основу для роста. Потенциал ограничен не монолитностью, а тем, что legacy demo-контур не соединён с расчётным контуром и реальные партнёрские форматы не проходят адаптер. 15 баллов признают сильный фундамент, но не приписывают готовность к масштабированию, которой проверка не доказала."
+          },
+          {
+            "name": "Презентация, демо и ответы на вопросы",
+            "score": 15,
+            "max": 20,
+            "awarded": "README и локальное демо достаточно объясняют архитектуру, но показ результата на реальном пакете остаётся неполным.",
+            "deductions": "5 баллов сняты за демонстрационный static data path и отказ выданных файлов на импорте; устная презентация не проводилась и отдельно не штрафуется.",
+            "evidence": [
+              "README.md:1-72",
+              "frontend-build",
+              "backend-tests",
+              "backend/infrastructure/api/routers/procurement.py:53-316",
+              "case-monthly-import",
+              "case-sales-import"
+            ],
+            "deductionItems": [
+              {
+                "points": 3,
+                "findingId": "D3",
+                "reason": "Главный экран прямо сообщает, что его таблица — предварительно загруженный серверный набор, не результат последнего импорта; такой demo path может создать неверное впечатление о данных пользователя."
+              },
+              {
+                "points": 2,
+                "findingId": "D1",
+                "reason": "Репозиторий не даёт воспроизвести обещанный Excel-сценарий на месячном workbook из кейса, поэтому локальная демонстрация не замыкается на предоставленном материале."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "README с воспроизводимой подготовкой",
+                "implementation": "README описывает Python, PostgreSQL, .env, миграции, health check, запуск API, тесты и отдельные PostgreSQL integration checks.",
+                "value": "Участнику или проверяющему понятно, какие зависимости нужны и где заканчивается локальная проверка; это лучше, чем только визуальный mockup.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:1-72"
+                ]
+              },
+              {
+                "aspect": "Собранный интерфейсный прототип",
+                "implementation": "Next.js build прошёл компиляцию, lint/typecheck, генерацию страниц и выдал маршруты /, /analytics, /orders, /sandbox и API proxy. В коде есть импорт Excel, запуск расчёта, фильтры, explanation, approval и export.",
+                "value": "Даже без визуального осмотра пользователя видна связная структура демо и предусмотрены состояния загрузки и ошибок.",
+                "verification": "observed",
+                "evidence": [
+                  "frontend-build",
+                  "frontend/src/widgets/app-shell/ui/app-shell.tsx:17-56",
+                  "frontend/src/features/import-data/ui/import-data-action.tsx:137-165"
+                ]
+              },
+              {
+                "aspect": "Проверяемые backend-сценарии",
+                "implementation": "Тесты отдельно проверяют explicit demand source, pagination, sanitized errors, accepted recommendation, draft order, role-based approval и binary export.",
+                "value": "README подкреплён конкретными исполняемыми контрактами, которые можно использовать для демо ответа на вопросы.",
+                "verification": "observed",
+                "evidence": [
+                  "backend-tests",
+                  "tests/test_api_workflows.py:119-160,206-286"
+                ]
+              },
+              {
+                "aspect": "Честное отображение незавершённой части",
+                "implementation": "UI сообщает, что выбор отдельных строк пока не поддерживается, а список на /api/v1/procurement/recommendations не является последним импортом; это снижает риск скрыть ограничение.",
+                "value": "Презентационная честность заслуживает баллов, хотя сам разрыв остаётся недостатком результата.",
+                "verification": "source",
+                "evidence": [
+                  "frontend/src/pages-flat/inventory/ui/inventory-page.tsx:58,62",
+                  "frontend/src/features/approve-order/ui/approve-action.tsx:30-34"
+                ]
+              }
+            ],
+            "scoreReasoning": "README, production build и тесты дают материал для локального показа и объяснения. Устных ответов и публичной live-ссылки не было, но это не основание для снятия. Снижение вызвано только содержательным фактом: demo table отделена от реального импорта/расчёта, а выданные Excel-файлы не проходят загрузку."
+          }
+        ],
+        "total": 78
+      },
+      "case": null,
+      "judgeScore": 78,
+      "caseRequirements": [
+        {
+          "requirement": "Базовый расчёт по истории продаж, текущим остаткам, товарам в пути, категориям, росту и материальной потребности с выдачей количества.",
+          "status": "partial",
+          "explanation": "По коду pipeline принимает все перечисленные источники, объединяет их по SKU/складу и передаёт в forecast/replenishment. Domain/API tests показывают изменение результата при in_transit, current_stock, seasonality и material requirement. Но выданные реальные sales/monthly workbooks не импортировались, а категории и material requirements не представлены отдельными пригодными для импорта файлами кейса.",
+          "evidence": [
+            "backend/application/services/calculation_pipeline.py:78-229",
+            "backend/domain/services/replenishment.py:19-78",
+            "tests/test_algorithm_acceptance.py:119-132",
+            "case-monthly-import",
+            "case-sales-import"
+          ]
+        },
+        {
+          "requirement": "Учёт сезонности и устойчивого роста в прогнозе.",
+          "status": "partial",
+          "explanation": "Сезонность выбирается с приоритетом SKU над категорией, рост оценивается по устойчивости направления и оба фактора входят в формулу прогноза. Это подтверждено тестами. Реальные сезонные книги из пакета имеют служебные пустые строки и агрегированную структуру без очевидного generic sku/category header, поэтому импорт на них не доказан.",
+          "evidence": [
+            "backend/domain/services/seasonality.py:15-42",
+            "backend/domain/services/growth.py:11-45",
+            "backend/domain/services/forecasting.py:49-66",
+            "tests/test_alg_06_09.py:73-130",
+            "case-xlsx-structure"
+          ]
+        },
+        {
+          "requirement": "Компенсация упущенного спроса в периоды stockout.",
+          "status": "partial",
+          "explanation": "Реализована консервативная компенсация по явным или выведенным из нулевых снимков периодам и медиане сопоставимых периодов; тест проверяет увеличение подготовленного спроса. В предоставленных 12 файлах нет отдельной пригодной stockout-выгрузки, поэтому end-to-end на данных партнёра не доказан.",
+          "evidence": [
+            "backend/domain/services/stockout.py:14-101",
+            "backend/domain/services/demand_preparation.py:174-212",
+            "tests/test_algorithm_acceptance.py:87-99",
+            "testData.provided: 12 XLSX перечень"
+          ]
+        },
+        {
+          "requirement": "Выявление и исключение разовых крупных продаж, в том числе одного клиента.",
+          "status": "partial",
+          "explanation": "IQR по транзакциям и отдельная customer-period проверка реализованы; тест с серией документов anonymous-17 подтверждает метод customer_period_iqr. Reader запрещает прямые идентификаторы и принимает только opaque pseudonym. В реальном IEK sales workbook обезличенный ID клиента отсутствует, поэтому customer-level часть на поставленном файле не могла быть применена.",
+          "evidence": [
+            "backend/domain/services/anomaly.py:35-83",
+            "backend/infrastructure/excel/readers.py:130-136,301-307",
+            "tests/test_algorithm_acceptance.py:78-85",
+            "case-xlsx-structure"
+          ]
+        },
+        {
+          "requirement": "Список рекомендаций с поставщиком, количеством, кратким объяснением и группировкой по поставщикам.",
+          "status": "met",
+          "explanation": "Recommendation содержит supplier_id, recommended/effective quantity, urgency и explanation/calculation_details; создание orders группирует принятые рекомендации по supplier_id, а frontend показывает результат запуска и карточки заказов. Проверка API workflow и order use cases прошла.",
+          "evidence": [
+            "backend/domain/entities/recommendation.py:1-91",
+            "backend/application/use_cases/create_orders.py:1-92",
+            "tests/test_api_workflows.py:206-246",
+            "tests/test_order_use_cases.py:400-416"
+          ]
+        },
+        {
+          "requirement": "Заказ нельзя отправить поставщику без ручного подтверждения.",
+          "status": "met",
+          "explanation": "Создание draft отделено от admin approval, ExportOrder отвергает draft и сохраняет артефакт только после approved; отдельные тесты проверяют export_before_approval и approval actor.",
+          "evidence": [
+            "backend/infrastructure/api/routers/orders.py:34-45",
+            "backend/application/use_cases/export_order.py:1-90",
+            "tests/test_order_use_cases.py:299-307",
+            "tests/test_api_workflows.py:206-220"
+          ]
+        },
+        {
+          "requirement": "Клиентские данные обезличены и прямые идентификаторы не попадают в расчёт.",
+          "status": "met",
+          "explanation": "Reader отвергает заголовки ФИО, телефон, email и клиентские поля, а customer logic работает только с anonymous_customer_id и дополнительно отбрасывает значения, похожие на телефон. API sanitizes validation messages and tests verify no secret/source values leak.",
+          "evidence": [
+            "backend/infrastructure/excel/readers.py:130-136,151-157,301-307",
+            "tests/test_excel_import_reader.py:1-220",
+            "tests/test_api_workflows.py:109-117,270-281"
+          ]
+        },
+        {
+          "requirement": "Экспорт совместим с заказным форматом и доступен после approval.",
+          "status": "met",
+          "explanation": "XlsxOrderExporter строит workbook, export metadata хранит checksum, GET отдаёт XLSX с content type, filename и ETag. Тесты проверяют байты, checksum, повторное скачивание и rollback при ошибке записи.",
+          "evidence": [
+            "backend/infrastructure/excel/exporter.py:1-140",
+            "backend/infrastructure/api/routers/orders.py:40-54",
+            "tests/test_excel_order_export.py:1-220",
+            "tests/test_order_use_cases.py:306-365"
+          ]
+        },
+        {
+          "requirement": "Предоставленные Excel-таблицы должны быть пригодны для заявленного сценария или иметь проверяемый путь преобразования.",
+          "status": "missing",
+          "explanation": "Структура всех 12 файлов была прочитана, но два релевантных входа реально отклонены API. Месячный файл содержит повторные строки «Количество» и пропуски SKU, а история продаж содержит 19 строк без quantity; текущий reader не пропускает такие служебные/пустые строки и не завершает batch частично.",
+          "evidence": [
+            "case-xlsx-structure",
+            "case-monthly-import",
+            "case-sales-import",
+            "backend/infrastructure/excel/readers.py:143-193,216-247"
+          ]
+        },
+        {
+          "requirement": "Локально воспроизводимая демонстрация запуска и результата.",
+          "status": "partial",
+          "explanation": "Backend/frontend production builds, migration, health HTTP checks и 226 тестов воспроизведены. Основной расчётный endpoint имеет полноценный путь по исходникам, но на выданных workbook результат не был создан; UI также разделяет legacy seeded recommendations и DB-backed run result.",
+          "evidence": [
+            "backend-build-2",
+            "frontend-build",
+            "postgres-migrate-2",
+            "backend-tests",
+            "GET /api/v1/health",
+            "GET /health",
+            "backend/infrastructure/api/routers/procurement.py:307-316",
+            "frontend/src/pages-flat/inventory/ui/inventory-page.tsx:58,66-69"
+          ]
+        }
+      ],
+      "testData": {
+        "provided": [
+          "cases/5/case-data/HackAlem AI_ Автоматизация формирования заказов поставщикам.docx.md",
+          "cases/5/case-data/IEK/MOQ  ИЭК.xlsx",
+          "cases/5/case-data/IEK/Динамика продаж_2025-2026.xlsx",
+          "cases/5/case-data/IEK/Ежемесячные остатки продукции за последние 2 года  ИЭК.xlsx",
+          "cases/5/case-data/IEK/Ежемесячные продажи в количественном выражении за последние 2 года.xlsx",
+          "cases/5/case-data/IEK/Путь ИЭК 22.09.2026.xlsx",
+          "cases/5/case-data/IEK/Сезонность ИЭК.xlsx",
+          "cases/5/case-data/Systeme electric/MOQ SystemElectric.xlsx",
+          "cases/5/case-data/Systeme electric/Динамика продаж_Syseme Electric_2025-2026.xlsx",
+          "cases/5/case-data/Systeme electric/Ежемесячные остатки SystemElectric 2024-2026.xlsx",
+          "cases/5/case-data/Systeme electric/Ежемесячные продажи в кол-м выражении SystemElectric 2024-2026.xlsx",
+          "cases/5/case-data/Systeme electric/Сезонность SystemElectric 2024-2026.xlsx",
+          "cases/5/case-data/Systeme electric/Товар в пути_SystemElectric на 22.09.2026.xlsx"
+        ],
+        "used": [
+          "Все 12 XLSX: проверка листов, размеров и первых строк через openpyxl в case-xlsx-structure.",
+          "cases/5/case-data/Systeme electric/Ежемесячные продажи в кол-м выражении SystemElectric 2024-2026.xlsx: POST /api/imports с source_type=monthly_sales.",
+          "cases/5/case-data/IEK/Динамика продаж_2025-2026.xlsx: POST /api/imports с source_type=sales.",
+          "cases/5/case-data/HackAlem AI_ Автоматизация формирования заказов поставщикам.docx.md: сверка входов, must have, ограничений и ожидаемого workflow."
+        ],
+        "checks": [
+          {
+            "input": "Все 12 XLSX из пакета кейса",
+            "method": "Открыть каждый workbook read-only, перечислить листы, размеры и первые три строки без публикации полного содержимого.",
+            "result": "Найдены 12 файлов. Продажи IEK имеют плоский заголовок и 171605 строк; месячные книги содержат широкие месяцы и повторные строки «Количество»/служебные пустые строки; путь в пути содержит составные накладные; сезонность начинается со служебных строк.",
+            "conclusion": "Форматы существенно отличаются от минимального однострочного generic шаблона reader; это проверенный входной риск, а не предположение."
+          },
+          {
+            "input": "Systeme electric/Ежемесячные продажи в кол-м выражении SystemElectric 2024-2026.xlsx, source_type=monthly_sales",
+            "method": "Авторизованный HTTP POST /api/imports с исходным XLSX и последующей проверкой batch в PostgreSQL.",
+            "result": "HTTP 422, status=failed, row_count=0, 24 validation errors вида sku is required на служебных строках; batch сохранён как failed.",
+            "conclusion": "Заявленный месячный Excel-вход не импортируется текущим reader; подтверждает D1."
+          },
+          {
+            "input": "IEK/Динамика продаж_2025-2026.xlsx, source_type=sales",
+            "method": "Авторизованный HTTP POST /api/imports с исходным XLSX; batch проверен в PostgreSQL после завершения серверной обработки.",
+            "result": "HTTP-клиент истёк по 150-секундному лимиту ожидания, но сервер завершил batch как failed; error_details содержал ExcelImportValidationError, message=19 invalid row(s) found и 19 ошибок quantity is required, row_count=0.",
+            "conclusion": "Вся большая партия отклонена из-за пропусков количества; подтверждает D2 и ограничивает end-to-end проверку реальными продажами."
+          },
+          {
+            "input": "Синтетические доменные сценарии из tests/test_algorithm_acceptance.py и tests/test_alg_06_09.py",
+            "method": "Запустить полный unittest suite внутри собранного backend image.",
+            "result": "Ran 226 tests in 131.872s; OK (skipped=2). Проверены customer-period IQR, stockout recovery, seasonality, growth, in-transit, MOQ/package rounding, calculation API contracts и order/export workflow.",
+            "conclusion": "Основной алгоритмический и контрактный слой воспроизводим на тестовых моделях проекта; это не заменяет импорт реальных XLSX."
+          },
+          {
+            "input": "Production backend/frontend images и PostgreSQL",
+            "method": "Собрать Docker images, применить Alembic upgrade head, запустить сервисы с ограниченными ресурсами и выполнить GET health endpoints.",
+            "result": "Backend build pass; frontend build pass с compile/lint/typecheck и генерацией 6 Next routes; migration 0001→0002 pass; GET /api/v1/health вернул 200 {status:ok, service:procurement-backend}; frontend GET /health в ожидаемой compose-сети вернул 200 {status:ok}.",
+            "conclusion": "Сборка, старт и HTTP readiness воспроизводимы. Пользовательский расчёт на реальном пакете остаётся частичным из-за импортов выше."
+          }
+        ],
+        "limitations": [
+          "В пакете нет отдельной готовой generic-выгрузки stockout, growth или material_requirements; соответствующие участки проверены кодом и синтетическими тестами, но не реальным файлом партнёра.",
+          "OPENAI_API_KEY намеренно не предоставлялся. AI endpoints и fallback проверены тестами и исходниками; вызов внешнего провайдера с реальным ключом не выполнялся.",
+          "Визуальная проверка запрещена пользовательской инструкцией; браузерное поведение, пиксельный layout и фактическая доступность элементов UI не заявляются как проверенные."
+        ]
+      },
+      "runtime": {
+        "status": "partial",
+        "build": "Backend и frontend production images собраны успешно. Frontend build прошёл компиляцию, lint, typecheck и генерацию страниц.",
+        "start": "После миграций PostgreSQL backend стартовал и health endpoint отвечал 200; frontend стартовал и через внутренний backend alias отдавал /health с 200.",
+        "scenario": "Алгоритмы, API-контракты и order/export workflow воспроизведены тестами. Реальный кейсовый сценарий остановился на импорте двух релевантных XLSX: monthly_sales отклонён на 24 служебных строках, sales — на 19 строках без quantity.",
+        "environment": "Изолированные Docker-контейнеры с PostgreSQL 16, Python 3.11 backend и Node 20 frontend; внешние API credentials не использовались.",
+        "summary": "Старт и серверная готовность подтверждены, но основной результат на предоставленных workbook только частичный. Статус partial относится к сценарию, а не к отсутствию ключей или к визуальной проверке.",
+        "checks": [
+          {
+            "command": "docker build -f backend/Dockerfile backend",
+            "result": "Exit 0; image собран, зависимости установлены, итоговый образ получил review tag.",
+            "id": "backend-build",
+            "stage": "build",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Backend image собирается из зафиксированного checkout без ошибок."
+          },
+          {
+            "command": "npm run build",
+            "result": "Exit 0; Next.js 15.5.26 compiled successfully, lint/type validity passed, static pages generated and routes collected.",
+            "id": "frontend-build",
+            "stage": "build",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Frontend production build завершается успешно."
+          },
+          {
+            "command": "alembic upgrade head",
+            "result": "Exit 0; PostgreSQL migration 0001 initial schema and 0002 user credentials applied.",
+            "id": "postgres-migrate",
+            "stage": "start",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Пустая PostgreSQL база получает актуальную схему."
+          },
+          {
+            "command": "python -m unittest discover -s tests -v",
+            "result": "Exit 0; 226 tests OK, skipped=2 because MIGRATION_TEST_DATABASE_URL and TEST_DATABASE_URL were not provided.",
+            "id": "backend-tests",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Unit/domain/API/order tests проходят без внешних credentials."
+          },
+          {
+            "command": "GET /api/v1/health",
+            "result": "HTTP 200; {status: ok, service: procurement-backend}.",
+            "id": "backend-health",
+            "stage": "start",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Backend liveness endpoint отвечает 200 после старта."
+          },
+          {
+            "command": "GET /health",
+            "result": "HTTP 200; {status: ok} через Next rewrite в compose-подобной сети.",
+            "id": "frontend-health",
+            "stage": "start",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Frontend production server стартует и проксирует health route."
+          },
+          {
+            "command": "POST /api/imports",
+            "result": "HTTP 422; batch failed, row_count=0, 24 ошибки sku is required на повторных служебных строках.",
+            "id": "case-monthly-import",
+            "stage": "scenario",
+            "status": "fail",
+            "cause": "project",
+            "expected": "Исходный monthly_sales XLSX из пакета принимается, создаёт completed batch и строки фактов."
+          },
+          {
+            "command": "POST /api/imports",
+            "result": "Клиентское ожидание истекло через 150 секунд; сервер завершил batch failed с ExcelImportValidationError и 19 ошибками quantity is required, row_count=0.",
+            "id": "case-sales-import",
+            "stage": "scenario",
+            "status": "fail",
+            "cause": "project",
+            "expected": "Исходный sales XLSX из IEK принимается и создаёт completed batch с историей продаж."
+          },
+          {
+            "command": "read 12 XLSX with openpyxl",
+            "result": "Exit 0; структура всех 12 файлов прочитана, листы и sample headers сохранены в capture.",
+            "id": "case-xlsx-structure",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Перед применением API известна фактическая структура каждого выданного входа."
+          }
+        ],
+        "limitations": [
+          "Два PostgreSQL integration tests пропущены, потому что для них нужны отдельные TEST_DATABASE_URL и MIGRATION_TEST_DATABASE_URL; это ограничение проверки и не основание для снятия баллов.",
+          "В runtime не выполнялась визуальная проверка браузером; frontend подтверждён сборкой и HTTP health only.",
+          "Live demo URL отсутствует; локальная HTTP-проверка достаточна для оценки запуска, а отсутствие публичной ссылки не трактуется как дефект."
+        ]
+      },
+      "liveDemo": {
+        "status": "none",
+        "url": null,
+        "notes": "Публичная live-ссылка в материалах не предоставлена. Локально production backend и frontend были запущены и проверены только HTTP/CLI, без браузерной визуальной проверки."
+      },
+      "fiveHourContext": "Для пятичасового хакатона объём доменной работы высок: команда собрала слоистую модель, миграции, импорт, расчёт с несколькими корректировками спроса, роли, optimistic versioning, draft/approval/export workflow, frontend и тесты. В этом контексте отсутствие production-операторских деталей и полноценной интеграции с каждым форматом Excel само по себе не требовалось бы. Но отказ двух ключевых выданных файлов и разделение seeded demo data с расчётным контуром уже влияют на демонстрацию именно заявленного кейса, поэтому отражены в баллах.",
+      "strengths": [
+        "Сильный pure-domain слой: формулы прогноза и пополнения детерминированы и хорошо покрыты тестами.",
+        "Выбросы обрабатываются на уровне транзакции и обезличенного клиента/месяца, а исходные факты не переписываются.",
+        "Stockout, seasonality, growth, in-transit, MOQ, package size и material requirement сохраняются как объяснимые компоненты результата.",
+        "Ручное подтверждение встроено в order state machine; экспорт до approval запрещён и аудируется.",
+        "API безопасно валидирует роли, версии, файлы и ошибки; прямые customer identifiers запрещены.",
+        "226 тестов, backend/frontend production builds, PostgreSQL migration и health checks прошли в изолированном runtime."
+      ],
+      "gaps": [
+        "Реальный monthly_sales workbook из кейса не импортируется из-за повторных служебных заголовков и пропущенных SKU: см. D1.",
+        "Реальный IEK sales workbook целиком отклоняется из-за 19 строк без quantity, поэтому истории продаж нет в БД: см. D2.",
+        "Основной dashboard endpoint использует seeded in-memory recommendations, не связанные с импортом/последним расчётом: см. D3."
+      ],
+      "futureAdvice": [
+        {
+          "principle": "Сначала нормализуйте реальную выгрузку, затем запускайте доменную математику.",
+          "why": "D1 показывает, что multi-row Excel headers из партнёрского файла доходят до row validation как данные и блокируют весь monthly batch.",
+          "how": "На следующем кейсе выделите адаптер формата отдельно: найдите строку с canonical headers, отбросьте служебные строки до/после неё, нормализуйте «Код 1с» и повторите reshape только после фильтрации SKU. Добавьте один fixture на каждый фактический лист.",
+          "findingIds": [
+            "D1"
+          ],
+          "successCheck": "Два исходных широких monthly workbooks проходят POST /api/imports со статусом completed, а число импортированных фактов и первый/последний месяц совпадают с исходной таблицей.",
+          "timeboxMinutes": 45
+        },
+        {
+          "principle": "Не делайте одну плохую строку причиной отказа всей большой партии без явной политики качества.",
+          "why": "D2 показывает, что 19 пропусков quantity в 171605-строчной выгрузке дали row_count=0 и не позволили использовать остальные корректные строки.",
+          "how": "Для другого хакатона задайте режимы strict и tolerant: в tolerant режиме сохраняйте valid rows, отдельно записывайте rejected row count и диапазон строк, а расчёт блокируйте только при нарушении минимального quality threshold.",
+          "findingIds": [
+            "D2"
+          ],
+          "successCheck": "Партия с известными пропусками создаёт completed или явно partial batch с числом принятых строк, списком отклонённых строк и воспроизводимым quality summary.",
+          "timeboxMinutes": 35
+        },
+        {
+          "principle": "После появления реального расчётного контура удалите демонстрационный источник из главного пользовательского пути.",
+          "why": "D3 подтверждает, что UI сам сообщает о предварительно загруженном наборе, тогда как DB-backed recommendations живут в другом endpoint.",
+          "how": "Сделайте один read model для dashboard: после успешного расчёта сохраняйте run_id в сессии, запрашивайте его recommendations и оставьте seeded data только как явный sandbox fixture. Ручное изменение должно идти через тот же persisted entity.",
+          "findingIds": [
+            "D3"
+          ],
+          "successCheck": "После импорта и запуска расчёта первая таблица dashboard показывает те же SKU, quantities и run_id, что и GET /api/calculation-runs/{id}/recommendations; seeded values не появляются без sandbox режима.",
+          "timeboxMinutes": 50
+        }
+      ],
+      "uncertainties": [
+        "End-to-end расчёт на реальных workbook не оценён численно, потому что импорт остановился до создания completed batches; это ограничение входного адаптера, а не доказательство неверности domain formula.",
+        "В пакете нет отдельного stockout/growth/material-requirements файла в формате, который можно было бы однозначно связать с каждым SKU; эти источники подтверждены кодом и synthetic tests.",
+        "Внешний OpenAI provider не вызывался без credentials; статический путь, fallback и schema проверены тестами.",
+        "Визуальная доступность, responsive layout и пользовательское ощущение интерфейса не подтверждены, поскольку визуальную проверку выполняет пользователь."
+      ],
+      "reviewPolicyVersion": 2,
+      "assessmentStatus": "ready",
+      "findings": [
+        {
+          "id": "S1",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Доменный алгоритмический и API-контрактный слой воспроизводим: 226 тестов завершились успешно.",
+          "expected": "Unit/domain и API workflow tests должны проходить без внешних credentials.",
+          "actual": "backend-tests завершил 226 tests с OK; пропущены только 2 теста, явно требующие отдельные PostgreSQL URLs.",
+          "evidence": [
+            "backend-tests",
+            "tests/test_algorithm_acceptance.py:78-132",
+            "tests/test_api_workflows.py:119-286"
+          ],
+          "checkIds": [
+            "backend-tests"
+          ]
+        },
+        {
+          "id": "S2",
+          "kind": "strength",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Расчёт объединяет историю, очистку, stockout, рост, сезонность, запасы, in-transit, материальную потребность и условия поставщика в объяснимую recommendation.",
+          "expected": "Каждый переданный источник должен влиять на forecast/replenishment и сохранять объяснение.",
+          "actual": "CalculationPipeline загружает все перечисленные источники, forecasting сохраняет формулу, а recommendation сохраняет component details и supplier selection.",
+          "evidence": [
+            "backend/application/services/calculation_pipeline.py:78-229",
+            "backend/domain/services/forecasting.py:49-83",
+            "backend/domain/services/replenishment.py:51-78"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "S3",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Заказный workflow не позволяет экспортировать draft и сохраняет approval/export audit.",
+          "expected": "Создание заказа допускается до ручного подтверждения, но экспорт должен требовать approved.",
+          "actual": "API/use cases и tests подтверждают draft → approved → export, actor/version checks и rollback при ошибке.",
+          "evidence": [
+            "backend/infrastructure/api/routers/orders.py:21-54",
+            "tests/test_order_use_cases.py:299-365",
+            "tests/test_api_workflows.py:206-246"
+          ],
+          "checkIds": [
+            "backend-tests"
+          ]
+        },
+        {
+          "id": "S4",
+          "kind": "strength",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Импорт и API защищают приватность: прямые customer identifiers запрещены, а сообщения об ошибках не раскрывают исходные секреты.",
+          "expected": "В расчёт проходят только обезличенные IDs; внешнему клиенту не должны уходить пути, email или диагностические секреты.",
+          "actual": "Reader проверяет запрещённые заголовки и opaque pseudonym, API заменяет validation messages на безопасные, tests проверяют отсутствие secret.",
+          "evidence": [
+            "backend/infrastructure/excel/readers.py:130-136,151-157,301-307",
+            "backend/infrastructure/api/errors.py:25-71",
+            "tests/test_api_workflows.py:109-117,270-281"
+          ],
+          "checkIds": [
+            "backend-tests"
+          ]
+        },
+        {
+          "id": "S5",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Production сборки, миграции и readiness endpoints реально проходят в изолированном runtime.",
+          "expected": "Собранные сервисы должны стартовать после миграции и отвечать на health.",
+          "actual": "Backend/frontend builds, Alembic upgrade head, backend GET /api/v1/health и frontend GET /health прошли с exit/HTTP 0/200.",
+          "evidence": [
+            "backend-build-2",
+            "frontend-build",
+            "postgres-migrate-2",
+            "backend-health",
+            "frontend-health"
+          ],
+          "checkIds": [
+            "backend-build",
+            "frontend-build",
+            "postgres-migrate",
+            "backend-health",
+            "frontend-health"
+          ]
+        },
+        {
+          "id": "D1",
+          "kind": "defect",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "ExcelImportReader не поддерживает фактическую структуру выданного широкого monthly_sales workbook с повторными служебными строками и не отбрасывает их до row validation.",
+          "expected": "Systeme electric monthly sales workbook должен импортироваться как набор месячных SKU-фактов или получать конкретную понятную ошибку структуры до записи.",
+          "actual": "POST /api/imports вернул 422, row_count=0; batch error_details содержит 24 ошибки sku is required для строк с «Количество». Reader читает pandas frame с первой строкой заголовка, затем melt-ит все датированные колонки и валидирует служебные строки как факты.",
+          "evidence": [
+            "case-monthly-import",
+            "case-xlsx-structure",
+            "backend/infrastructure/excel/readers.py:143-193,195-247",
+            "captures/20261002T055633870203-case-xlsx-structure-2.stdout.log"
+          ],
+          "checkIds": [
+            "case-xlsx-structure",
+            "case-monthly-import"
+          ]
+        },
+        {
+          "id": "D2",
+          "kind": "defect",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Импорт sales отклоняет весь выданный IEK workbook из-за 19 строк без quantity вместо обработки пригодных строк с явным quality report.",
+          "expected": "Большой sales workbook должен либо принять валидные факты и отдельно показать rejected rows, либо заранее сообщить детерминированную несовместимость формата.",
+          "actual": "Сервер завершил batch failed с ExcelImportValidationError, message=19 invalid row(s) found, 19 quantity is required и row_count=0; корректные строки не записаны.",
+          "evidence": [
+            "case-sales-import",
+            "docker exec PostgreSQL query captured after import",
+            "backend/infrastructure/excel/readers.py:177-193",
+            "backend/infrastructure/api/errors.py:49-61"
+          ],
+          "checkIds": [
+            "case-sales-import"
+          ]
+        },
+        {
+          "id": "D3",
+          "kind": "defect",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Основной procurement endpoint и dashboard используют отдельный заранее заполненный in-memory набор, не связанный с DB-backed import/calculation workflow.",
+          "expected": "После загрузки и запуска расчёта основной список рекомендаций должен читать persisted results текущего run/import.",
+          "actual": "INITIAL_RECOMMENDATIONS и _recommendations_store создаются при импорте модуля, GET /api/v1/procurement/recommendations возвращает их напрямую, а frontend прямо пишет «не результат последнего импорта»; расчётный результат отображается отдельным блоком по run_id.",
+          "evidence": [
+            "backend/infrastructure/api/routers/procurement.py:53-69,307-316",
+            "frontend/src/pages-flat/inventory/ui/inventory-page.tsx:55-68"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "L1",
+          "kind": "limitation",
+          "verification": "unverified",
+          "responsibility": "external_service",
+          "claim": "Вызов OpenAI provider в runtime не проверялся, потому что credentials намеренно не предоставлялись.",
+          "expected": "При наличии ключа внешний provider должен отвечать в схеме AI endpoint.",
+          "actual": "Проверены source path, fallback и tests, но живого provider response нет.",
+          "evidence": [
+            "backend/infrastructure/ai/service.py:28-236",
+            "tests/test_ai_service.py:1-110",
+            "runtime limitations"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "L2",
+          "kind": "limitation",
+          "verification": "unverified",
+          "responsibility": "review_environment",
+          "claim": "Визуальное поведение frontend не проверялось.",
+          "expected": "Browser visual and responsive review должна быть выполнена пользователем.",
+          "actual": "Проверены только production build, static source and HTTP health; browser/CUA/headless checks не выполнялись.",
+          "evidence": [
+            "frontend-build",
+            "AGENTS.md visual verification policy",
+            "runtime limitations"
+          ],
+          "checkIds": [
+            "frontend-build"
+          ]
+        }
+      ],
+      "gapFindingIds": [
+        "D1",
+        "D2",
+        "D3"
+      ]
+    }
+  ],
+  "score": 78.0,
+  "status": "complete",
+  "expectedJudges": 1
+}

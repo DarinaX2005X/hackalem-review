@@ -1,0 +1,921 @@
+{
+  "methodVersion": 4,
+  "repoId": "hack-bcc2386c-toilab",
+  "repoUrl": "https://github.com/BAITC-Hacks/hack-bcc2386c-toilab",
+  "caseId": 10,
+  "snapshot": "2ca8f96aa5b5367b35aa1c9586a62f2e6d77fddd",
+  "judges": [
+    {
+      "methodVersion": 4,
+      "repoId": "hack-bcc2386c-toilab",
+      "caseId": 10,
+      "model": "GPT-5.6 Luna",
+      "snapshot": "2ca8f96aa5b5367b35aa1c9586a62f2e6d77fddd",
+      "overallSummary": "Проект представляет хорошо собранный локальный MVP консультанта: каталог, отдельный ассистент, виджет, серверное предложение покупки и безопасная корзина соединены в воспроизводимый сценарий. В контейнерном прогоне 44 теста прошли, HTTP-сервисы запускаются, каталог и корзина дают ожидаемый результат. Наиболее сильная часть — fail-closed подтверждение: история клиента не создаёт pending-action, количество и товар сверяются сервером, остаток проверяется под lock, а prompt injection не приводит к добавлению. Оценка удержана ниже максимума из-за подтверждённых ограничений самого проекта: вложения фото/Excel/Word/PDF/JPEG не имеют входного контракта, правила оплаты/доставки/минимальной партии отсутствуют в данных, а корзина является локальной SQLite-корзиной прототипа, не записью в checkout ekt.kz. Реальный LLM и live API партнёра не запускались из-за отсутствия предоставленных credentials; это отражено как ограничение проверки, а не как штраф.",
+      "global": {
+        "criteria": [
+          {
+            "name": "Ценность решения",
+            "score": 22,
+            "max": 25,
+            "awarded": "22/25 — понятная коммерческая проблема и полезный путь от вопроса о товаре до контролируемой корзины",
+            "deductions": "Снято 3 балла: не покрыты вложения из задания, нет содержательного источника условий покупки, а checkout остаётся локальным прототипом.",
+            "evidence": [
+              "README.md:1-3",
+              "README.md:174-191",
+              "case brief/task.txt: разделы 2-7"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "D-ATTACH",
+                "reason": "Отсутствие входа для фото и офисных/PDF-файлов уменьшает охват закупочного сценария и ценность для клиента со спецификацией."
+              },
+              {
+                "points": 1,
+                "findingId": "D-CONDITIONS",
+                "reason": "Без доверенных оплаты, доставки и минимальной партии ассистент не закрывает одну из причин обращения к менеджеру."
+              },
+              {
+                "points": 1,
+                "findingId": "D-PARTNER-CART",
+                "reason": "Локальная корзина демонстрирует UX, но не сокращает путь до реальной корзины ekt.kz без отдельной интеграции checkout."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Решает конкретную задержку консультации",
+                "implementation": "README связывает продукт с вопросами о характеристиках, остатках, аналогах и корзине; в пользовательском потоке виджет отправляет вопрос в Assistant, а Assistant получает данные через Catalog вместо ответа из памяти модели.",
+                "value": "Это непосредственно сокращает однотипную переписку для частного покупателя или закупщика и создаёт измеримый пользовательский результат — ответ с товаром либо предложение добавить его.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:86-103",
+                  "README.md:109-119",
+                  "chat-widget/public/app.js:49-65"
+                ]
+              },
+              {
+                "aspect": "Остаток и аналог связаны с реальным каталогом прототипа",
+                "implementation": "Для demo-каталога есть существующая позиция DEMO-C16 со stock 24 и нулевая DEMO-C16-OLD; при нулевом остатке Assistant принудительно запрашивает аналоги, а Catalog ранжирует позиции той же категории по совпадению specs.",
+                "value": "Клиент получает не общий совет, а объяснимую замену с ценой и наличием из согласованного источника данных.",
+                "verification": "observed",
+                "evidence": [
+                  "catalog-service/catalog/demo.json:2-30",
+                  "assistant-service/assistant/service.py:104-115",
+                  "CHK-SCENARIO-TEST"
+                ]
+              },
+              {
+                "aspect": "Корзина превращает консультацию в следующий шаг",
+                "implementation": "После подтверждённого добавления сервис возвращает cart_url, а HTML-страница показывает позицию, количество, цену и итог; в smoke-проверке 2 шт. DEMO-C16 дали итог 3 780 ₸.",
+                "value": "Даже без реального checkout прототип показывает полный пользовательский результат и позволяет проверить, что консультация не заканчивается текстовым ответом.",
+                "verification": "observed",
+                "evidence": [
+                  "catalog-service/catalog/api.py:68-81",
+                  "CHK-HTTP-CATALOG",
+                  "CHK-SCENARIO-TEST"
+                ]
+              },
+              {
+                "aspect": "Безопасная деградация сохраняет доверие",
+                "implementation": "При отсутствии модели Assistant возвращает явное сообщение о неподключённом ИИ, а demo-витрина прямо помечает цены и остатки как синтетические; неизвестные условия направляются к менеджеру.",
+                "value": "Для торгового ассистента отказ от выдуманной цены или наличия важнее псевдо-полноты и снижает риск ошибочного решения о покупке.",
+                "verification": "source",
+                "evidence": [
+                  "assistant-service/assistant/service.py:41-50",
+                  "README.md:7-8",
+                  "README.md:151"
+                ]
+              }
+            ],
+            "scoreReasoning": "Большая часть ценности доказана целостным каталог→ответ→предложение→корзина сценарием и честной маркировкой synthetic/live режимов. До 25 не хватает не из-за отсутствия production-функций, а из-за конкретных границ кейса: нет работы с вложениями, нет доверенных условий покупки и нет записи в партнёрскую корзину. Для пятичасового MVP это существенные, но локализованные ограничения."
+          },
+          {
+            "name": "Результат и качество решения",
+            "score": 17,
+            "max": 20,
+            "awarded": "17/20 — воспроизводимый и хорошо защищённый основной сценарий, но не все обязательные входы и внешние бизнес-операции доведены до продукта",
+            "deductions": "Снято 3 балла за текстовый-only контракт, отсутствие подтверждённых условий и локальную вместо партнёрской корзины.",
+            "evidence": [
+              "CHK-BUILD-TEST",
+              "CHK-TEST",
+              "CHK-HTTP-CATALOG",
+              "CHK-SCENARIO-TEST",
+              "assistant-service/assistant/service.py:19-119"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "D-ATTACH",
+                "reason": "Основной API Message принимает только text/history, поэтому часть заявленного вход→выход сценария не может быть выполнена."
+              },
+              {
+                "points": 1,
+                "findingId": "D-CONDITIONS",
+                "reason": "Качество пользовательского результата неполно для вопроса об оплате, доставке и минимальной партии: сервис может только честно отправить к менеджеру."
+              },
+              {
+                "points": 1,
+                "findingId": "D-PARTNER-CART",
+                "reason": "Проверенный результат — локальная корзина; актуальное состояние реальной корзины ekt.kz и оформление заказа не реализованы."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Сборка и тестовый контур",
+                "implementation": "Dockerfile.test устанавливает pinned FastAPI, Uvicorn, httpx, Pydantic и pytest, копирует оба сервиса, fixtures и запускает run_tests.py.",
+                "value": "Результат не ограничен декларацией README: из чистого образа команда тестов завершилась 44 passed, что подтверждает работоспособность контрактов и orchestration в изолированном окружении.",
+                "verification": "observed",
+                "evidence": [
+                  "Dockerfile.test:1-9",
+                  "requirements.txt:1-5",
+                  "CHK-BUILD-TEST",
+                  "CHK-TEST"
+                ]
+              },
+              {
+                "aspect": "Fail-closed подтверждение",
+                "implementation": "may_execute требует серверное pending-предложение, возраст не более 300 секунд, confirmed=true, отсутствие injection_detected и точное совпадение product_id/qty. Pending очищается до выполнения запроса.",
+                "value": "Это защищает от подмены client history, изменения количества в подтверждении и повторного автоматического добавления; отказ не меняет корзину.",
+                "verification": "source",
+                "evidence": [
+                  "assistant-service/assistant/service.py:19-23",
+                  "assistant-service/assistant/service.py:53-67",
+                  "tests/test_assistant.py:82-123",
+                  "CHK-SCENARIO-TEST"
+                ]
+              },
+              {
+                "aspect": "Атомарная бизнес-проверка корзины",
+                "implementation": "CatalogService проверяет confirmed, существование товара и qty<=stock внутри store.lock, затем устанавливает абсолютное количество через SQLite upsert; отказ возвращает success=false.",
+                "value": "Проверенный контракт не допускает добавление сверх остатка и является идемпотентным при повторном запросе с тем же количеством.",
+                "verification": "observed",
+                "evidence": [
+                  "catalog-service/catalog/services.py:24-40",
+                  "catalog-service/catalog/data.py:29-34",
+                  "tests/test_catalog.py:34-49",
+                  "CHK-HTTP-CATALOG"
+                ]
+              },
+              {
+                "aspect": "Корректная деградация и privacy-фильтр",
+                "implementation": "Платёжные номера, CVV/CVC/PIN и IBAN отсекаются до сохранения истории и вызова LLM; ошибки LLM или Catalog переводятся в безопасный текст без фиктивного ответа.",
+                "value": "Пользователь не получает ложное подтверждение, а чувствительные данные не попадают в server history или model boundary в проверенном сценарии.",
+                "verification": "observed",
+                "evidence": [
+                  "assistant-service/assistant/privacy.py:1-7",
+                  "assistant-service/assistant/service.py:35-50",
+                  "tests/test_assistant.py:126-130",
+                  "CHK-TEST"
+                ]
+              },
+              {
+                "aspect": "HTTP-результат отдельного запуска",
+                "implementation": "Catalog, Assistant и widget были собраны как отдельные образы, запущены с demo-конфигурацией и проверены через /health, catalog endpoints, /cart/add, /cart/view, /assistant/message и /config.js.",
+                "value": "Основные сервисные границы действительно поднимаются и отвечают, а не только проходят in-process тесты.",
+                "verification": "observed",
+                "evidence": [
+                  "CHK-START-CATALOG",
+                  "CHK-START-ASSISTANT",
+                  "CHK-HTTP-CATALOG",
+                  "CHK-HTTP-ASSISTANT",
+                  "CHK-HTTP-WIDGET"
+                ]
+              }
+            ],
+            "scoreReasoning": "Качество основного сценария высокое: контейнерный тестовый набор и реальные HTTP-контракты подтвердили каталог, остаток, аналоги, защиту подтверждения и корзину. Снижение ограничено тремя функциональными разрывами, которые видны в коде и документации, а не отсутствием доступа к внешним ключам. Поэтому результат существенно выше среднего, но не полный."
+          },
+          {
+            "name": "Инновационность",
+            "score": 12,
+            "max": 15,
+            "awarded": "12/15 — нестандартная для MVP серверная схема согласия и grounded tool-calling дают заметное преимущество над чатовой заглушкой",
+            "deductions": "Снято 3 балла: инновационный слой не распространяется на вложения, policy-ответы и реальный partner checkout.",
+            "evidence": [
+              "README.md:123-133",
+              "assistant-service/assistant/llm.py:54-68",
+              "assistant-service/assistant/ollama_adapter.py:6-53"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "D-ATTACH",
+                "reason": "Для заявленного multimodal/документного входа нет собственного решения: нестандартный tool flow работает только с текстом."
+              },
+              {
+                "points": 1,
+                "findingId": "D-CONDITIONS",
+                "reason": "В части условий нет доменной базы знаний или объяснимого policy retrieval, поэтому преимущество заканчивается на товарном каталоге."
+              },
+              {
+                "points": 1,
+                "findingId": "D-PARTNER-CART",
+                "reason": "Инновационная защита ведёт к локальной корзине, но не демонстрирует нестандартное решение интеграции с реальным checkout партнёра."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Серверное предложение вместо доверия клиенту",
+                "implementation": "Модель лишь вызывает propose_add_to_cart; сервер заново читает товар, формирует собственный текст с именем, SKU, qty и ценой, хранит pending на стороне сессии и вызывает add только в следующем ходе.",
+                "value": "Это более сильный и объяснимый подход, чем проверка слова «да» в JavaScript или прямой tool add, и он сохраняет границу между намерением и изменением состояния.",
+                "verification": "source",
+                "evidence": [
+                  "assistant-service/assistant/service.py:69-82",
+                  "README.md:123-129"
+                ]
+              },
+              {
+                "aspect": "Отдельная строгая модель классификации согласия",
+                "implementation": "LLM.classify передаёт untrusted current_message и offered_action в отдельный system prompt и требует JSON Schema Decision с confirmed, exact product_id/qty и injection_detected; локальный Ollama adapter передаёт native tools и schema format.",
+                "value": "Решение учитывает естественные формулировки, но не превращает LLM в единственный авторитет: результат проходит структурную серверную проверку.",
+                "verification": "source",
+                "evidence": [
+                  "assistant-service/assistant/llm.py:54-68",
+                  "assistant-service/assistant/ollama_adapter.py:30-53",
+                  "tests/test_ollama.py:45-65"
+                ]
+              },
+              {
+                "aspect": "Grounded-ответы и обязательный поиск аналогов",
+                "implementation": "System prompt запрещает использовать память модели для цены/остатка/характеристик, требует get_analogs для stock=0 и заставляет сообщать отличия; код добавляет analog lookup даже если модель забыла его вызвать.",
+                "value": "Это даёт прикладное преимущество в торговом домене: объяснение строится на полях товара, а не на красивом, но непроверяемом тексте.",
+                "verification": "source",
+                "evidence": [
+                  "assistant-service/prompts/system.md:3-12",
+                  "assistant-service/assistant/service.py:104-115",
+                  "tests/test_assistant.py:61-65"
+                ]
+              },
+              {
+                "aspect": "Защита от prompt injection в tool loop",
+                "implementation": "История клиента не используется как источник pending state, prompt injection помечается классификатором, а may_execute отказывает при injection_detected даже при confirmed=true.",
+                "value": "Для ассистента, который может менять корзину, это значимое отличие от обычного RAG-чатбота; оно покрыто отдельным тестом, а не заявлено только в prompt.",
+                "verification": "observed",
+                "evidence": [
+                  "assistant-service/assistant/service.py:56-67",
+                  "tests/test_assistant.py:82-94",
+                  "CHK-TEST"
+                ]
+              }
+            ],
+            "scoreReasoning": "Собственная идея проекта — не просто подключить LLM к каталогу, а разделить предложение, классификацию согласия и серверное выполнение. Native Ollama boundary и обязательный analog lookup усиливают решение. До максимума не хватает доменной инновации в расширенных входах, условиях и партнёрском checkout; эти части прямо отмечены командой как не реализованные."
+          },
+          {
+            "name": "Потенциал развития и масштабирования",
+            "score": 17,
+            "max": 20,
+            "awarded": "17/20 — модульная архитектура, адаптер внешнего каталога и заменяемые границы LLM создают хороший путь роста",
+            "deductions": "Снято 3 балла за отсутствие document pipeline, доверенного policy source и реального partner write/identity контура.",
+            "evidence": [
+              "README.md:86-103",
+              "README.md:135-151",
+              "README.md:184-193",
+              "assistant-service/assistant/storage.py:1-33"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "D-ATTACH",
+                "reason": "Без отдельного upload/OCR/антивирусного контура масштабирование на закупочные спецификации и фото невозможно."
+              },
+              {
+                "points": 1,
+                "findingId": "D-CONDITIONS",
+                "reason": "Масштабирование на другие организации и регионы потребует версионируемых правил покупки, которых сейчас нет в доменной модели."
+              },
+              {
+                "points": 1,
+                "findingId": "D-PARTNER-CART",
+                "reason": "Переход от demo к нескольким пользователям требует partner API, авторизации корзины и checkout-контракта; текущий SQLite URL этого не заменяет."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Чёткое разделение сервисов",
+                "implementation": "Catalog отвечает за нормализацию, поиск, аналоги, sync и cart; Assistant — за tool loop, sessions и confirmation; widget — за UI и ссылку. Их HTTP-контракты описаны в README.",
+                "value": "Такой разрез позволяет независимо заменить LLM, источник каталога или frontend, не переписывая весь сценарий, и подходит для расширения на другие товарные категории.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:86-103",
+                  "README.md:109-121"
+                ]
+              },
+              {
+                "aspect": "Адаптер и атомарная синхронизация",
+                "implementation": "PartnerSync поддерживает пагинацию, detail-запросы с ограниченной concurrency, retries/backoff и сохраняет предыдущий snapshot при ошибке; adapter изолирует варианты полей ekt.kz и отбрасывает неполные данные.",
+                "value": "Это уже полезный каркас для нового поставщика или другой схемы API, а не жёстко зашитый demo JSON в ассистенте.",
+                "verification": "source",
+                "evidence": [
+                  "catalog-service/catalog/sync.py:8-65",
+                  "catalog-service/catalog/adapter.py:57-124",
+                  "tests/test_ekt.py:39-64",
+                  "CHK-TEST"
+                ]
+              },
+              {
+                "aspect": "Заменяемые LLM и storage boundaries",
+                "implementation": "LLM поддерживает облачный Chat Completions и native Ollama, а MemorySessions выделен как SessionRepository-подобный слой с documented path to Redis/DB; tool schemas и CatalogClient отделены от orchestration.",
+                "value": "Команда оставила понятные точки для локального, облачного и последующего распределённого запуска без подмены модели ключевыми словами.",
+                "verification": "source",
+                "evidence": [
+                  "assistant-service/assistant/llm.py:9-52",
+                  "assistant-service/assistant/storage.py:1-33",
+                  "assistant-service/README.md:18-28"
+                ]
+              },
+              {
+                "aspect": "Ограничения масштабирования задокументированы",
+                "implementation": "README отдельно описывает single-worker MemorySessions, TTL, SQLite, bearer-capability session ID, необходимость пользовательской auth, rate limits и TLS, а также лимиты tool loop и timeouts.",
+                "value": "Документация снижает риск ложного production-обещания и даёт следующему разработчику конкретную карту расширения.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:131-133",
+                  "README.md:184-193"
+                ]
+              }
+            ],
+            "scoreReasoning": "Архитектура уже пригодна для роста: внешний API спрятан за adapter/sync, LLM и storage заменяемы, а ограничения не скрыты. Снижение связано с отсутствием трёх расширяемых доменных подсистем — файлового ingestion, policy-данных и партнёрской корзины/идентичности. Для хакатонного срока это сильный результат."
+          },
+          {
+            "name": "Презентация, демо и ответы на вопросы",
+            "score": 18,
+            "max": 20,
+            "awarded": "18/20 — README даёт ясную архитектуру, сценарий из трёх сообщений, команды запуска и честную карту ограничений",
+            "deductions": "Снято 2 балла за то, что описанный пользовательский охват в README явно не включает вложения и условия покупки остаются незавершённым сценарием.",
+            "evidence": [
+              "README.md:30-45",
+              "README.md:86-133",
+              "README.md:153-193",
+              "VERIFICATION.md:1-39"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "D-ATTACH",
+                "reason": "Даже при ясной документации демонстрация не может показать входы фото/Excel/Word/PDF/JPEG, которые перечислены в кейсе."
+              },
+              {
+                "points": 1,
+                "findingId": "D-CONDITIONS",
+                "reason": "README корректно предупреждает о пропуске условий, но из-за этого один из быстрых demo-вопросов заканчивается эскалацией, а не содержательным ответом."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Воспроизводимый трёхходовый demo",
+                "implementation": "README задаёт конкретные вопросы для наличия, нулевого остатка/аналога и подтверждения, ожидаемые значения, пустую корзину до подтверждения и итог 3 780 ₸ после него.",
+                "value": "Это позволяет жюри воспроизвести именно бизнес-сценарий, а не только открыть страницу или увидеть архитектурную схему.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:174-182",
+                  "CHK-SCENARIO-TEST"
+                ]
+              },
+              {
+                "aspect": "Документированы контракты и границы",
+                "implementation": "Таблица маршрутов перечисляет health, search, product, analogs, cart и assistant endpoints; отдельно объяснены confirmation, idempotency, ошибки и ограничения live/demo.",
+                "value": "Описание помогает проверить результат и правильно интерпретировать отсутствие реального partner API, не выдавая synthetic каталог за production.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:105-133",
+                  "README.md:135-151"
+                ]
+              },
+              {
+                "aspect": "Доказательная дисциплина проекта",
+                "implementation": "VERIFICATION.md разделяет выполненные проверки и непроверенные области, указывает 44 теста, fixture mapping, отсутствие реальной LLM и HTTP ekt.kz, а также визуальный QA.",
+                "value": "Такое разделение делает демо убедительнее: известные ограничения не маскируются под успех и не перекладываются на пользователя.",
+                "verification": "source",
+                "evidence": [
+                  "VERIFICATION.md:1-39"
+                ]
+              },
+              {
+                "aspect": "Понятная инструкция запуска",
+                "implementation": "Есть быстрый локальный Ollama путь, облачный Docker путь, demo/live режимы, переменные среды, health endpoints и отдельный Dockerfile.test.",
+                "value": "Локально воспроизводимый запуск компенсирует отсутствие публичной live-ссылки, которая по условиям этого разбора сама по себе не является обязательной.",
+                "verification": "observed",
+                "evidence": [
+                  "README.md:30-84",
+                  "Dockerfile.test:1-9",
+                  "CHK-BUILD-TEST",
+                  "CHK-START-WIDGET"
+                ]
+              }
+            ],
+            "scoreReasoning": "Для оценки без устного выступления README и репозиторий дают unusually конкретный маршрут проверки: команды, входы, ожидаемый результат и известные ограничения. Полный балл не ставлю, потому что документация не может продемонстрировать отсутствующие части кейса — вложения и содержательные условия. Публичной live-ссылки нет, но это не использовалось как штраф."
+          }
+        ],
+        "total": 86
+      },
+      "case": null,
+      "judgeScore": 86,
+      "caseRequirements": [
+        {
+          "requirement": "Ответ по существующему товару: цена, наличие, характеристики и сертификат из каталога",
+          "status": "partial",
+          "explanation": "Для товара из demo и live-адаптера путь get_product/search передаёт цену, stock и specs; certificate_url поддерживается. В предоставленной синтетической выборке сертификатов нет, поэтому содержательную ссылку/файл сертификата проверить нельзя, а ассистент должен честно сообщать об отсутствии.",
+          "evidence": [
+            "assistant-service/prompts/system.md:3-4",
+            "catalog-service/catalog/models.py:3-11",
+            "tests/test_assistant.py:53-59",
+            "tests/test_ekt.py:14-27",
+            "CHK-SCENARIO-TEST"
+          ]
+        },
+        {
+          "requirement": "При нулевом остатке предложить релевантный аналог с объяснением",
+          "status": "met",
+          "explanation": "Код автоматически вызывает analogs для stock=0, Catalog ограничивает кандидатов той же категорией и ранжирует совпадения specs. Сценарий DEMO-C16-OLD → DEMO-C16 проверен до изменения корзины.",
+          "evidence": [
+            "assistant-service/assistant/service.py:104-115",
+            "catalog-service/catalog/services.py:16-23",
+            "tests/test_assistant.py:61-65",
+            "CHK-SCENARIO-TEST"
+          ]
+        },
+        {
+          "requirement": "Ответить об оплате, доставке и минимальной партии",
+          "status": "missing",
+          "explanation": "System prompt запрещает выдумывать условия и направляет к менеджеру, но в demo-каталоге нет policy-данных или другого доверенного источника. Это правильная безопасная деградация, но не содержательный ответ на must-have.",
+          "evidence": [
+            "assistant-service/prompts/system.md:8",
+            "README.md:151",
+            "catalog-service/catalog/demo.json:1-60"
+          ]
+        },
+        {
+          "requirement": "Изменять корзину только после явного подтверждения и не превышать остаток",
+          "status": "met",
+          "explanation": "Pending action хранится на сервере; подтверждение сверяется с товаром и количеством, injection/refusal/mismatch отклоняются, а Catalog под lock проверяет stock и confirmed. Unit/integration и HTTP smoke подтвердили пустую корзину до подтверждения, 2 шт. после и отказ на 999.",
+          "evidence": [
+            "assistant-service/assistant/service.py:19-23",
+            "assistant-service/assistant/service.py:56-64",
+            "catalog-service/catalog/services.py:26-40",
+            "tests/test_catalog.py:41-49",
+            "CHK-HTTP-CATALOG",
+            "CHK-SCENARIO-TEST"
+          ]
+        },
+        {
+          "requirement": "После добавления дать ссылку на актуальное состояние корзины/оформление",
+          "status": "partial",
+          "explanation": "Для корзины прототипа возвращается cart_url, ссылка ведёт на HTML с текущей SQLite-корзиной и итогом. Партнёрская корзина ekt.kz и оформление заказа не подключены, поэтому это не является реальным checkout URL.",
+          "evidence": [
+            "assistant-service/assistant/service.py:61-64",
+            "catalog-service/catalog/api.py:70-81",
+            "README.md:191",
+            "CHK-HTTP-CATALOG"
+          ]
+        },
+        {
+          "requirement": "Не выдумывать цену/наличие, защищать платёжные данные и не менять заказ без подтверждения",
+          "status": "met",
+          "explanation": "Prompt требует grounded tool results, demo-витрина маркирует synthetic данные, платежные шаблоны фильтруются до истории/LLM, а прямой cart add требует confirmed=true и проверку остатка. Заказы и оплата в прототипе не выполняются.",
+          "evidence": [
+            "assistant-service/prompts/system.md:3-10",
+            "assistant-service/assistant/privacy.py:4-7",
+            "assistant-service/assistant/service.py:35-37",
+            "catalog-service/catalog/services.py:31-39",
+            "tests/test_assistant.py:126-130",
+            "CHK-TEST"
+          ]
+        },
+        {
+          "requirement": "Принимать фото, Excel, Word, PDF и JPEG как входные материалы",
+          "status": "missing",
+          "explanation": "POST /assistant/message содержит только session_id, text и history; multipart/upload, размерные ограничения, OCR, безопасный разбор таблиц/документов и передача извлечённого контекста отсутствуют. README прямо называет это нереализованным ограничением.",
+          "evidence": [
+            "assistant-service/assistant/models.py:7-11",
+            "assistant-service/assistant/api.py:30-31",
+            "README.md:189"
+          ]
+        },
+        {
+          "requirement": "Объяснимость, приватность, совместимость с сайтом и demo для desktop/mobile",
+          "status": "partial",
+          "explanation": "Объяснение аналогов, предупреждений и privacy-фильтр есть; статический responsive widget и HTTP config собраны. Визуальный и мобильный QA намеренно не выполнялся, а partner write/identity контур для production отсутствует.",
+          "evidence": [
+            "assistant-service/prompts/system.md:4,12",
+            "chat-widget/public/index.html:2-11",
+            "chat-widget/public/app.js:28-36,49-65",
+            "README.md:186-193",
+            "CHK-HTTP-WIDGET"
+          ]
+        }
+      ],
+      "testData": {
+        "provided": [
+          "cases/10/task.txt",
+          "cases/10/case-data/HackAlem AI_ ИИ-ассистент для чата на сайте ekt.kz.md",
+          "cases/10/case-data/ИИ-ассистент для чата на сайте ekt.kz ДАННЫЕ.docx.md"
+        ],
+        "used": [
+          "cases/10/task.txt",
+          "cases/10/case-data/HackAlem AI_ ИИ-ассистент для чата на сайте ekt.kz.md",
+          "cases/10/case-data/ИИ-ассистент для чата на сайте ekt.kz ДАННЫЕ.docx.md",
+          "tests/fixtures/ekt_page.json",
+          "tests/fixtures/ekt_detail.json",
+          "catalog-service/catalog/demo.json"
+        ],
+        "checks": [
+          {
+            "input": "tests/fixtures/ekt_detail.json: товар id 515291, SKU 200300285_, price 64920, quantity 23, свойства и склады",
+            "method": "Нормализация через catalog.adapter.normalize в tests/test_ekt.py; запуск в Docker-тесте",
+            "result": "Получены id 515291, SKU 200300285_, price 64920, stock 23; зафиксировано противоречие 160 А в названии и 250 А в свойстве; CML2/RECOMMEND и склады исключены из matching_specs.",
+            "conclusion": "Фикстура применена к адаптеру; отображение существенных полей и безопасное предупреждение подтверждены."
+          },
+          {
+            "input": "tests/fixtures/ekt_page.json: list payload из 20 строк без quantity/detail",
+            "method": "unpack и попытка normalize первой строки в tests/test_ekt.py",
+            "result": "unpack дал 20 строк и не интерпретировал count как число страниц; normalize списка без обязательного stock завершился ValueError.",
+            "conclusion": "Код не подменяет неполный list payload остатком; для каждой позиции предусмотрен detail-запрос."
+          },
+          {
+            "input": "catalog-service/catalog/demo.json: DEMO-C16 stock 24 и DEMO-C16-OLD stock 0, совпадающие характеристики",
+            "method": "tests/test_assistant.py и tests/test_integration.py с FakeLLM на границе модели",
+            "result": "Наличие и цена 1890/24 переданы из Catalog; zero-stock вызвал analogs; до подтверждения cart items=[]; после «Ок беру» добавлено product 101 qty 2 и cart_url.",
+            "conclusion": "Основной сценарий кейса воспроизведён детерминированно без подмены каталога; качество реального LLM этим тестом не измеряется."
+          },
+          {
+            "input": "HTTP demo API: product 101, analogs 102, cart session, confirmed=false/true и qty=999",
+            "method": "Запущенные контейнеры и GET/POST HTTP smoke checks без браузера",
+            "result": "Catalog /health сообщил 4 cached items; not_confirmed не изменил корзину; confirmed=true дал 2 шт. и ссылку; qty=999 дал qty_exceeds_stock; HTML-корзина показала 2 шт. и 3 780 ₸.",
+            "conclusion": "Сервисные контракты и пользовательский результат корзины подтверждены отдельно от in-process тестов."
+          }
+        ],
+        "limitations": [
+          "Файл с данными кейса содержит API-адреса и credentials, но credentials намеренно не использовались и не попали в отчёт.",
+          "Реальный ekt.kz API не вызывался: применены предоставленные/репозиторные JSON-фикстуры и локальный HTTP smoke; это не доказывает live payload и запись в партнёрскую корзину.",
+          "Свободный диалог с настоящей LLM не запускался без предоставленного ключа/локальной модели; scripted FakeLLM проверяет orchestration, а не семантическое качество генерации."
+        ]
+      },
+      "runtime": {
+        "status": "partial",
+        "build": "Dockerfile.test и три Dockerfile сервисов собраны успешно; зависимости из requirements.txt установлены без ошибок.",
+        "start": "Catalog, Assistant и widget стартовали в отдельных ограниченных контейнерах; Catalog и Assistant /health вернули HTTP 200, Assistant сообщил catalog_service_reachable=true, widget вернул HTML HTTP 200.",
+        "scenario": "Детерминированный основной сценарий прошёл в 44 тестах и HTTP smoke. Свободный сценарий реального LLM заблокирован отсутствием credentials/локальных весов и потому не объявляется проверенным.",
+        "environment": "Контейнерный Python 3.12-slim с pinned FastAPI 0.115.12, Uvicorn 0.34.2, httpx 0.28.1, Pydantic 2.11.4 и pytest 8.3.5; UI проверен только HTTP, без браузера.",
+        "summary": "Статус partial означает: приложение реально собирается и стартует, а основной сценарий доказан scripted/unit/domain и HTTP-проверками, но end-to-end с настоящей моделью и партнёрским API не выполнен. Это ограничение доступов и внешней инфраструктуры, не автоматический дефект проекта.",
+        "checks": [
+          {
+            "command": "docker build -f Dockerfile.test",
+            "result": "Образ тестов собран с exit code 0; полный build log сохранён в captures/20261002T123546785030-build.stderr.log.",
+            "id": "CHK-BUILD-TEST",
+            "stage": "build",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Собирается переносимый тестовый образ с зависимостями и исходниками проекта."
+          },
+          {
+            "command": "docker build -f catalog-service/Dockerfile; docker build -f assistant-service/Dockerfile; docker build -f chat-widget/Dockerfile",
+            "result": "Все три сервисных образа собраны с exit code 0; логи сборки сохранены в captures/20261002T123701262209-catalog-build.stderr.log, captures/20261002T123701280211-assistant-build.stderr.log и captures/20261002T123701313598-widget-build.stderr.log.",
+            "id": "CHK-BUILD-SERVICES",
+            "stage": "build",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Каждый Dockerfile собирается и содержит исполняемый сервис."
+          },
+          {
+            "command": "python run_tests.py",
+            "result": "44 passed, 1 warning in 2.70s; exit code 0. Полный stdout сохранён в captures/20261002T123630264884-test.stdout.log.",
+            "id": "CHK-TEST",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Unit, contract, integration, ekt fixture и Ollama boundary tests проходят без внешних ключей."
+          },
+          {
+            "command": "uvicorn catalog.api:app --host 0.0.0.0 --port 8001",
+            "result": "GET /health вернул HTTP 200 и {status:ok,catalog_items_cached:4}; demo.sqlite инициализирован.",
+            "id": "CHK-START-CATALOG",
+            "stage": "start",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Catalog стартует в demo-режиме и загружает 4 синтетические позиции."
+          },
+          {
+            "command": "uvicorn assistant.api:app --host 0.0.0.0 --port 8002",
+            "result": "GET /health вернул HTTP 200 и catalog_service_reachable=true после старта Catalog.",
+            "id": "CHK-START-ASSISTANT",
+            "stage": "start",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Assistant стартует, видит Catalog и отвечает health без LLM-ключа."
+          },
+          {
+            "command": "python server.py",
+            "result": "GET / вернул HTTP 200, GET /config.js вернул конфигурацию без credentials; visual/browser QA не выполнялся.",
+            "id": "CHK-START-WIDGET",
+            "stage": "start",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Статический widget поднимается и отдаёт HTML/config через HTTP."
+          },
+          {
+            "command": "GET /health; GET /catalog/product/{id}; GET /catalog/analogs/{id}; POST /cart/add; GET /cart/view/{session}",
+            "result": "HTTP smoke: product 101 price 1890 stock 24; analogs для 102 включили 101; confirmed=false вернул not_confirmed; confirmed=true добавил qty 2; qty 999 вернул qty_exceeds_stock; cart HTML показал 3 780 ₸.",
+            "id": "CHK-HTTP-CATALOG",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Каталог и cart API отвечают по контракту, не меняют корзину без подтверждения и не превышают stock."
+          },
+          {
+            "command": "GET /health; POST /assistant/message",
+            "result": "Health HTTP 200 с reachable=true; POST без LLM key вернул reply_text о неподключённом ИИ, proposed_action=null, needs_confirmation=false, cart_url=null.",
+            "id": "CHK-HTTP-ASSISTANT",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Assistant безопасно стартует без ключа и не притворяется доступным LLM."
+          },
+          {
+            "command": "POST /assistant/message через integration tests с scripted LLM",
+            "result": "Трёхходовый flow availability → zero-stock analog/offer → confirmation прошёл; до подтверждения cart пуст, после cart содержит product 101 qty 2, HTML total 3780.",
+            "id": "CHK-SCENARIO-TEST",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Основной бизнес-сценарий воспроизводится через оба ASGI-контракта без побочных изменений до подтверждения."
+          },
+          {
+            "command": "POST /assistant/message с реальным LLM provider",
+            "result": "Не запускался: credentials не предоставлены, локальные Ollama weights не загружались; проект вместо падения возвращает понятную деградацию.",
+            "id": "CHK-REAL-LLM",
+            "stage": "scenario",
+            "status": "blocked",
+            "cause": "review_environment",
+            "expected": "Проверить семантическое качество tool-calling и естественного подтверждения на реальной модели."
+          },
+          {
+            "command": "GET /products и GET /products/detail?id=... у партнёра",
+            "result": "Не запускался: credentials/доступ к настоящему API не предоставлены; применены локальные case fixtures и тестовый partner-shape внутри tests.",
+            "id": "CHK-LIVE-PARTNER",
+            "stage": "scenario",
+            "status": "blocked",
+            "cause": "external_service",
+            "expected": "Подтвердить live response shape, sync и запись в партнёрский checkout."
+          }
+        ],
+        "limitations": [
+          "Не проверялись семантика реальной LLM, adversarial prompt injection на конкретной модели и latency локальной qwen3:4b.",
+          "Не проверялась авторизованная live-синхронизация ekt.kz и реальная запись в checkout; API кейса использован только как описание доступа, без публикации credentials.",
+          "Визуальную, desktop/mobile и browser accessibility проверку выполняет пользователь; здесь проверены только HTTP-ответы и статические исходники."
+        ]
+      },
+      "liveDemo": {
+        "status": "none",
+        "url": null,
+        "notes": "Публичная live-ссылка в материалах не подтверждена. Локальный widget и backend были проверены HTTP, но визуальный просмотр и внешний URL намеренно не использовались; отсутствие публичной ссылки не снижало баллы."
+      },
+      "fiveHourContext": "Для пятичасового хакатона это сильный, сфокусированный MVP: команда успела разделить сервисы, сделать реальный tool boundary, серверную защиту корзины, адаптер каталога, demo/live режимы и подробную верификацию. Отсутствие production checkout, распределённого storage и полноценного ingestion само по себе не штрафуется. Снижение оставлено только за прямо заявленные пропуски требований кейса — вложения, содержательные условия и partner cart — а не за недоступные внешние credentials или визуальную проверку.",
+      "strengths": [
+        "S1: fail-closed серверное подтверждение с точным product_id/qty, TTL, session lock и защитой от injection.",
+        "S2: каталог отделён от ассистента; адаптер, detail-sync, retry, atomic snapshot и аналоговый поиск покрыты fixture-тестами.",
+        "S3: 44 теста, отдельная проверка native Ollama boundary, интеграционный сценарий и реальный HTTP smoke согласованы между собой.",
+        "S4: честные demo/live labels, отсутствие выдуманных условий, фильтр платёжных данных и подробная документация ограничений.",
+        "S5: Dockerfile и три сервиса дают воспроизводимый локальный запуск без frontend build step."
+      ],
+      "gaps": [
+        "D-ATTACH: отсутствует обработка фото и Excel/Word/PDF/JPEG — текущий Message принимает только текстовую историю.",
+        "D-CONDITIONS: отсутствует доверенный источник условий оплаты, доставки и минимальной партии; ассистент может только эскалировать к менеджеру.",
+        "D-PARTNER-CART: cart хранится в локальной SQLite-корзине прототипа, а write/checkout API ekt.kz не подключён."
+      ],
+      "futureAdvice": [
+        {
+          "principle": "Сначала формализовать безопасный ingestion документов",
+          "why": "D-ATTACH показывает, что заявленные закупочные материалы не входят в API, поэтому клиент со спецификацией не может пройти тот же grounded flow.",
+          "how": "Для следующего хакатона зафиксировать multipart/upload контракт, whitelist форматов, лимит размера, антивирусную проверку и извлечение текста/таблиц в отдельный untrusted context; binary не передавать напрямую в tool arguments, а результаты цитировать в ответе.",
+          "findingIds": [
+            "D-ATTACH"
+          ],
+          "successCheck": "Есть отдельные тесты для JPEG, PDF и XLSX: корректный товарный контекст достигает поиска, повреждённый/слишком большой файл отклоняется, а исходные bytes не сохраняются в истории или логах.",
+          "timeboxMinutes": 60
+        },
+        {
+          "principle": "Хранить бизнес-правила в версионируемом доверенном policy source",
+          "why": "D-CONDITIONS подтверждает, что безопасная честность уже есть, но клиент не получает содержательного ответа об оплате, доставке и минимальной партии.",
+          "how": "Добавить отдельный policy endpoint или versioned JSON/DB с регионами, способами оплаты, сроками доставки и минимальной партией; tool должен возвращать источник/дату, а при отсутствии записи — эскалировать без догадки.",
+          "findingIds": [
+            "D-CONDITIONS"
+          ],
+          "successCheck": "Три scripted запроса на оплату, доставку и минимальную партию возвращают актуальные policy-поля с source id; неизвестный регион даёт явную эскалацию и не создаёт cart action.",
+          "timeboxMinutes": 45
+        },
+        {
+          "principle": "Разделить demo cart и авторизованный partner checkout контрактом",
+          "why": "D-PARTNER-CART показывает, что текущая ссылка доказывает пользовательский UX, но не меняет реальную корзину ekt.kz.",
+          "how": "Сначала согласовать read/write контракт партнёра и ownership сессии, затем сделать отдельный adapter с обязательным server-side token, idempotency key и повторной проверкой цены/остатка при checkout; локальную корзину оставить как explicit fallback/demo.",
+          "findingIds": [
+            "D-PARTNER-CART"
+          ],
+          "successCheck": "Контрактный e2e-тест на тестовом partner endpoint показывает: до confirmation нет write, после — ровно одна idempotent операция, ссылка открывает принадлежащую пользователю корзину, а stale price/stock блокирует checkout.",
+          "timeboxMinutes": 75
+        }
+      ],
+      "uncertainties": [
+        "Не измерено качество семантического подтверждения реальной qwen3:4b или облачной модели и не выполнен adversarial eval всех естественных формулировок.",
+        "Не подтверждён фактический live payload ekt.kz и не проверена запись в его корзину; case data credentials намеренно не применялись.",
+        "Не оценивались визуальная точность, мобильная клавиатура, доступность и поведение браузера; проверка ограничена исходниками и HTTP.",
+        "Публичный deployment и производительность на полном каталоге не проверялись; README сам ограничивает demo выборку и описывает будущий bounded sync."
+      ],
+      "reviewPolicyVersion": 2,
+      "assessmentStatus": "ready",
+      "findings": [
+        {
+          "id": "S1-CONFIRMATION",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Изменение корзины проходит через серверное pending-предложение и точную проверку согласия, товара и количества.",
+          "expected": "Отдельное явное подтверждение должно быть единственным триггером изменения и не должно доверять client history.",
+          "actual": "may_execute требует exact match, TTL, confirmed=true и injection_detected=false; integration и unit tests подтверждают пустую корзину до подтверждения и отсутствие bypass.",
+          "evidence": [
+            "assistant-service/assistant/service.py:19-23",
+            "assistant-service/assistant/service.py:53-67",
+            "tests/test_assistant.py:67-123",
+            "CHK-SCENARIO-TEST"
+          ],
+          "checkIds": [
+            "CHK-TEST",
+            "CHK-SCENARIO-TEST"
+          ]
+        },
+        {
+          "id": "S2-CATALOG-CART",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Catalog API корректно валидирует подтверждение и остаток и отдаёт актуальную ссылку на HTML-корзину.",
+          "expected": "Не добавлять без confirmed, не принимать qty выше stock и возвращать состояние после успешной операции.",
+          "actual": "HTTP smoke получил not_confirmed, success с 2 шт., qty_exceeds_stock на 999 и страницу с 2 шт./3 780 ₸.",
+          "evidence": [
+            "catalog-service/catalog/services.py:24-40",
+            "catalog-service/catalog/api.py:68-81",
+            "CHK-HTTP-CATALOG"
+          ],
+          "checkIds": [
+            "CHK-HTTP-CATALOG"
+          ]
+        },
+        {
+          "id": "S3-ADAPTER",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Адаптер применён к предоставленным list/detail fixtures и безопасно обрабатывает неполные данные, склады и противоречивые характеристики.",
+          "expected": "Не выдумывать stock из list, не удваивать quantity складами и не скрывать противоречие 160 А/250 А.",
+          "actual": "44 теста прошли; normalize дал stock 23, warning о конфликте, а list без stock отклонён.",
+          "evidence": [
+            "catalog-service/catalog/adapter.py:57-110",
+            "catalog-service/catalog/sync.py:35-65",
+            "tests/test_ekt.py:14-64",
+            "CHK-TEST"
+          ],
+          "checkIds": [
+            "CHK-TEST"
+          ]
+        },
+        {
+          "id": "S4-PRIVACY",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Платёжные шаблоны отсекаются до истории и LLM, а ошибки внешних границ не превращаются в выдуманные ответы.",
+          "expected": "Не хранить и не отправлять платежные данные и честно деградировать при недоступном LLM/Catalog.",
+          "actual": "Платёжный тест не записал history и не вызвал FakeLLM; HTTP без ключа вернул безопасный reply с null action.",
+          "evidence": [
+            "assistant-service/assistant/privacy.py:1-7",
+            "assistant-service/assistant/service.py:35-50",
+            "tests/test_assistant.py:126-130",
+            "CHK-HTTP-ASSISTANT"
+          ],
+          "checkIds": [
+            "CHK-TEST",
+            "CHK-HTTP-ASSISTANT"
+          ]
+        },
+        {
+          "id": "S5-DOCUMENTATION",
+          "kind": "strength",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "README и VERIFICATION.md связывают архитектуру, demo-входы, ожидаемые ответы, команды и ограничения.",
+          "expected": "Репозиторий должен позволять воспроизвести MVP и отличать проверенные факты от непроверенных внешних интеграций.",
+          "actual": "Есть отдельные demo/live инструкции, contracts, сценарий из трёх сообщений, 44-test summary и явное описание отсутствующих вложений/checkout.",
+          "evidence": [
+            "README.md:30-45",
+            "README.md:105-193",
+            "VERIFICATION.md:1-39"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "D-ATTACH",
+          "kind": "defect",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Обещанные входы фото и Excel/Word/PDF/JPEG не реализованы.",
+          "expected": "Чат должен иметь безопасный upload/attachment contract и использовать извлечённые сведения в консультации.",
+          "actual": "Message содержит только session_id, text и history; upload, multipart, OCR и document parser отсутствуют, README прямо помечает функцию как не реализованную.",
+          "evidence": [
+            "assistant-service/assistant/models.py:7-11",
+            "assistant-service/assistant/api.py:30-31",
+            "README.md:189"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "D-CONDITIONS",
+          "kind": "defect",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "В продукте нет доверенных данных для содержательных ответов об оплате, доставке и минимальной партии.",
+          "expected": "На вопрос об условиях ассистент должен вернуть данные партнёра или явно цитируемое policy-правило.",
+          "actual": "System prompt разрешает только честно сказать, что условия неизвестны, и README подтверждает отсутствие условий в synthetic выборке; отдельного policy source нет.",
+          "evidence": [
+            "assistant-service/prompts/system.md:8",
+            "README.md:151",
+            "catalog-service/catalog/demo.json:1-60"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "D-PARTNER-CART",
+          "kind": "defect",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Корзина и checkout не интегрированы с ekt.kz и реализованы как локальная SQLite-корзина прототипа.",
+          "expected": "После подтверждения пользователь должен получить актуальное состояние корзины/checkout партнёра, если это заявляется как интеграция ekt.kz.",
+          "actual": "Store пишет локальную таблицу cart, cart_url ведёт на локальный /cart/view, а README прямо сообщает, что partner write/checkout API отсутствует.",
+          "evidence": [
+            "catalog-service/catalog/data.py:16-34",
+            "catalog-service/catalog/api.py:70-81",
+            "README.md:191"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "L-REAL-LLM",
+          "kind": "limitation",
+          "verification": "observed",
+          "responsibility": "review_environment",
+          "claim": "Реальный свободный LLM-сценарий не был выполнен без ключа или локальных весов.",
+          "expected": "Для полной проверки модель должна вызвать tools, сформировать предложение и классифицировать естественное подтверждение.",
+          "actual": "Без ключа Assistant отвечает безопасной ошибкой; scripted FakeLLM проверяет orchestration, но не семантическую точность модели.",
+          "evidence": [
+            "CHK-REAL-LLM",
+            "README.md:41",
+            "VERIFICATION.md:15-18"
+          ],
+          "checkIds": [
+            "CHK-REAL-LLM"
+          ]
+        },
+        {
+          "id": "L-LIVE-API",
+          "kind": "limitation",
+          "verification": "unverified",
+          "responsibility": "external_service",
+          "claim": "Фактическая форма live API и partner checkout не проверены сетевым вызовом.",
+          "expected": "Live basic-auth API должен подтвердить list/detail payload и, если существует, write contract.",
+          "actual": "Проверены case fixtures и код adapter/sync; реальный endpoint и credentials не использовались.",
+          "evidence": [
+            "CHK-LIVE-PARTNER",
+            "catalog-service/catalog/adapter.py:1",
+            "README.md:147-151"
+          ],
+          "checkIds": [
+            "CHK-LIVE-PARTNER"
+          ]
+        },
+        {
+          "id": "L-VISUAL-QA",
+          "kind": "limitation",
+          "verification": "unverified",
+          "responsibility": "review_environment",
+          "claim": "Визуальный и мобильный browser QA не выполнялся.",
+          "expected": "Responsive layout, keyboard behavior и accessibility должны быть подтверждены ручным просмотром.",
+          "actual": "Проверены только статические исходники и HTTP 200 widget; visual/browser inspection намеренно оставлена пользователю.",
+          "evidence": [
+            "CHK-START-WIDGET",
+            "chat-widget/public/index.html:2-11",
+            "chat-widget/public/app.js:41-70"
+          ],
+          "checkIds": [
+            "CHK-START-WIDGET"
+          ]
+        }
+      ],
+      "gapFindingIds": [
+        "D-ATTACH",
+        "D-CONDITIONS",
+        "D-PARTNER-CART"
+      ]
+    }
+  ],
+  "score": 86.0,
+  "status": "complete",
+  "expectedJudges": 1
+}

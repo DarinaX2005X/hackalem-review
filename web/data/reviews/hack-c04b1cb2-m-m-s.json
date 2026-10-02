@@ -1,0 +1,1089 @@
+{
+  "methodVersion": 4,
+  "repoId": "hack-c04b1cb2-m-m-s",
+  "repoUrl": "https://github.com/BAITC-Hacks/hack-c04b1cb2-m-m-s",
+  "caseId": 1,
+  "snapshot": "3ba5780a2f3d5fc7f205e621ef2e9d385324703c",
+  "judges": [
+    {
+      "methodVersion": 4,
+      "repoId": "hack-c04b1cb2-m-m-s",
+      "caseId": 1,
+      "model": "GPT-5.6 Luna",
+      "snapshot": "3ba5780a2f3d5fc7f205e621ef2e9d385324703c",
+      "overallSummary": "Проект представляет цельный прототип прогнозирования на 48 часов: две отдельные эмпирические кривые мощности, архивная погода на исторический момент, строгая проверка хронологии, ограниченный tool-calling агент, веб-API и проверяемые JSON/CSV-артефакты. На закреплённом срезе успешно прошли компиляция, 56 автоматических тестов, применение обоих предоставленных CSV и локальная численная выдача; HTTP-сценарий просмотра также воспроизведён. Максимум ограничивают подтверждённые ограничения самого решения: predictor остаётся одномерной сглаженной кривой без интервалов неопределённости, результат нормализован и усредняется при допущении равных мощностей, а веб-сервер не предназначен для многопользовательского production-развёртывания. Глобальная оценка — 89/100, кейсовая — 91/100, итог судьи — 90.0/100.",
+      "global": {
+        "criteria": [
+          {
+            "name": "Ценность решения",
+            "score": 23,
+            "max": 25,
+            "awarded": "Практическая ценность высокая: аналитик получает помеченный по времени 48-часовой прогноз двух турбин, происхождение погоды, проверки и выгружаемый февральский ряд.",
+            "deductions": "2 балла сняты за ограниченную переводимость результата в операционное решение: наружу отдаётся нормализованная мощность 0..1 и среднее при предположении равных мощностей, без МВт/МВт·ч.",
+            "evidence": [
+              "README.md:5",
+              "README.md:16-18",
+              "run_forecast.py:65-75",
+              "captures/20261002T210636196609-start.stdout.log"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "defect-normalized-output",
+                "reason": "Для диспетчерской или финансовой аудитории результат нельзя непосредственно интерпретировать как абсолютную выработку: код явно сохраняет только normalized active power и считает farm mean при equal-capacity assumption. Это снижает прикладную ценность, хотя соответствует нормализованной целевой колонке предоставленных данных."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Понятная бизнес-задача",
+                "implementation": "README связывает продукт с аналитиком ВЭС и показывает сценарий получения почасового прогноза двух турбин на 48 часов с сохранением погодного выпуска, границы обучения и почасовых значений.",
+                "value": "Пользователь получает не только число, но и проверяемый контекст расчёта; это делает прогноз пригодным для анализа ожидаемых провалов и скачков мощности.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:1-18",
+                  "README.md:20-28"
+                ]
+              },
+              {
+                "aspect": "Операционный горизонт",
+                "implementation": "run_forecast.combine собирает 48 последовательных часов, рассчитывает mean/min/max, резкий ramp и low-power hours, а web.py отдаёт сохранённый forecast через API.",
+                "value": "Такой результат уже можно использовать как ежедневный просмотр ожидаемой динамики, а не только как демонстрационный single-point prediction.",
+                "verification": "observed",
+                "evidence": [
+                  "run_forecast.py:25-77",
+                  "captures/20261002T210654152025-scenario.stdout.log",
+                  "captures/20261002T210636196609-start.stdout.log"
+                ]
+              },
+              {
+                "aspect": "Проверяемая полезность",
+                "implementation": "Результаты содержат decision_time, weather_run, training_cutoff, request URLs и анализ; export_results выбирает последний уже доступный decision для каждого февральского часа.",
+                "value": "Пользователь может отличить свежий исторический выпуск от поздней фактической погоды и получить полный ряд 672 часов без скрытого смешения горизонтов.",
+                "verification": "observed",
+                "evidence": [
+                  "export_results.py:19-81",
+                  "results/2026-02-01-forecast.json:1-76",
+                  "captures/20261002T210724282808-results.stdout.log"
+                ]
+              },
+              {
+                "aspect": "Граница применения",
+                "implementation": "README прямо предупреждает, что номинальные мощности неизвестны, среднее предполагает равную мощность, а точность февраля не доказана отсутствием февральского факта.",
+                "value": "Честное обозначение границ не создаёт ложного обещания коммерческой точности; баллы сняты только за фактическое ограничение непосредственной интерпретации результата.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:230-250"
+                ]
+              }
+            ],
+            "scoreReasoning": "Сценарий адресует реальную задачу планирования ВЭС и даёт аудитируемый ежедневный результат, поэтому заслуживает почти полного балла. До максимума не хватает абсолютной мощности и capacity-aware агрегации: текущий контракт вывода ограничен нормализованной целью исходных CSV и не превращается сам по себе в оценку МВт·ч."
+          },
+          {
+            "name": "Результат и качество решения",
+            "score": 17,
+            "max": 20,
+            "awarded": "Основной локальный сценарий работает и защищён множеством проверок данных, сохранения и восстановления; качество прогноза при этом ограничено простотой самой модели.",
+            "deductions": "3 балла сняты за одномерную эмпирическую модель без интервалов неопределённости и без использования температуры или временных признаков, что ограничивает доказанную точность и объяснимость ошибок.",
+            "evidence": [
+              "power_model.py:87-105",
+              "power_model.py:185-219",
+              "captures/20261002T210531283806-test.stdout.log",
+              "captures/20261002T210654152025-scenario.stdout.log"
+            ],
+            "deductionItems": [
+              {
+                "points": 3,
+                "findingId": "defect-model-scope",
+                "reason": "Качество расчёта опирается на сглаженное отображение wind->power по bins; температура только агрегируется для контроля, а доверительные интервалы, horizon-specific error и временная динамика не моделируются. Это не ломает MVP, но удерживает качество ниже максимума."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Корректная подготовка истории",
+                "implementation": "power_model.load_hourly читает исходные русские колонки, проверяет диапазоны и ten-minute boundaries, группирует ровно шесть наблюдений в полный час и отбрасывает строки после cutoff.",
+                "value": "Сырые десятиминутные записи не попадают в модель как нерегулярные точки; это уменьшает риск тихой ошибки агрегации.",
+                "verification": "observed",
+                "evidence": [
+                  "power_model.py:30-84",
+                  "captures/20261002T210611119602-dataset.stdout.log"
+                ]
+              },
+              {
+                "aspect": "Целостный прогнозный артефакт",
+                "implementation": "predict проверяет UTC decision time, модель до допустимой даты, units, длину 24/48 и последовательность timestamps; combine дополнительно проверяет совпадение двух турбин и диапазон 0..1.",
+                "value": "Сценарий не может случайно опубликовать неполный или разъехавшийся по времени прогноз.",
+                "verification": "source",
+                "evidence": [
+                  "power_model.py:148-219",
+                  "run_forecast.py:25-64"
+                ]
+              },
+              {
+                "aspect": "Проверенный пользовательский результат",
+                "implementation": "Запуск run_forecast.py с закреплённой моделью и свежей погодой завершился кодом 0 и сохранил прогноз на 48 часов со средним 0.248; HTTP просмотр сохранённого прогноза вернул 200.",
+                "value": "Результат воспроизводится как CLI-артефакт и как ответ приложения, а не существует только в README.",
+                "verification": "observed",
+                "evidence": [
+                  "captures/20261002T210654152025-scenario.stdout.log",
+                  "captures/20261002T210636196609-start.stdout.log"
+                ]
+              },
+              {
+                "aspect": "Надёжность изменений входов",
+                "implementation": "watch_forecast сравнивает canonical SHA-256 модели и погоды, не переписывает неизменённый результат, а при ошибке сохраняет последний успешный; forecast_agent сбрасывает устаревший расчёт после refresh.",
+                "value": "Повторная проверка и временный сбой не превращаются в потерю последнего рабочего результата.",
+                "verification": "observed",
+                "evidence": [
+                  "watch_forecast.py:45-75",
+                  "forecast_agent.py:211-243",
+                  "captures/20261002T210531283806-test.stdout.log"
+                ]
+              }
+            ],
+            "scoreReasoning": "Кодовая цепочка от CSV до JSON/HTTP результата фактически рабочая и хорошо защищена проверками, что соответствует сильному хакатонному MVP. Снижение относится не к поломке запуска, а к статистической глубине: эмпирическая сглаженная кривая даёт полезный baseline, но сама по себе не сообщает неопределённость и не использует доступные дополнительные сигналы."
+          },
+          {
+            "name": "Инновационность",
+            "score": 12,
+            "max": 15,
+            "awarded": "Нестандартность проявляется прежде всего в проверяемом agentic-контуре с инструментами и историческим replay; численное ядро намеренно детерминировано.",
+            "deductions": "3 балла сняты за то, что ML-ядро — достаточно стандартная сглаженная power curve, а agentic-логика ограничена заранее заданным набором инструментов и не демонстрирует самостоятельного выбора модели или источника.",
+            "evidence": [
+              "forecast_agent.py:43-75",
+              "forecast_agent.py:387-454",
+              "power_model.py:87-105",
+              "README.md:44,75"
+            ],
+            "deductionItems": [
+              {
+                "points": 3,
+                "findingId": "defect-model-scope",
+                "reason": "Собственное преимущество создано вокруг orchestration и audit trail, но не вокруг нового метода прогнозирования: predictor использует bins и Gaussian smoothing, а агент выбирает только заранее объявленные inspect/get/calculate/compare/publish действия."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Агент как управляемый контроллер",
+                "implementation": "forecast_agent объявляет строгие function tools, проверяет полный набор аргументов и типы, ограничивает turns/calls и возвращает ошибки инструментов обратно модели.",
+                "value": "Это более осмысленное применение LLM, чем генерация чисел текстом: агент планирует шаги, но численное значение остаётся в Python-коде.",
+                "verification": "source",
+                "evidence": [
+                  "forecast_agent.py:33-75",
+                  "forecast_agent.py:105-123",
+                  "forecast_agent.py:387-453"
+                ]
+              },
+              {
+                "aspect": "Исторический replay",
+                "implementation": "Для каждого дня код фиксирует 06:00 UTC, выбирает погодный run предыдущего дня 18:00 UTC, хранит provenance и последовательно обрабатывает даты кампании.",
+                "value": "Такой режим воспроизводит временную доступность входа и является содержательно подходящим agentic-приёмом для задачи, где leakage особенно опасен.",
+                "verification": "source",
+                "evidence": [
+                  "forecast_weather.py:61-83",
+                  "run_campaign.py:119-240",
+                  "README.md:20-28"
+                ]
+              },
+              {
+                "aspect": "Аналитический feedback",
+                "implementation": "Инструмент calculate_forecast выдаёт ramp/low-power analysis, а system prompt просит агента исследовать окно вокруг скачка через inspect_forecast и сравнивать с опубликованным baseline.",
+                "value": "Агент не сводится к одному вызову модели: он может проверить аномальный участок перед публикацией.",
+                "verification": "source",
+                "evidence": [
+                  "forecast_agent.py:61-75",
+                  "forecast_agent.py:226-251",
+                  "agent-examples/2026-02-01-report.json:1-150"
+                ]
+              },
+              {
+                "aspect": "Разделение LLM и расчёта",
+                "implementation": "README и реализация явно оставляют hourly values за power_model/run_forecast; LLM получает агрегаты и результаты tools, а не исходные CSV-строки.",
+                "value": "Архитектура снижает риск галлюцинации чисел и позволяет независимо проверить расчёт без OpenAI.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:11-18",
+                  "README.md:220-226",
+                  "forecast_agent.py:226-243"
+                ]
+              }
+            ],
+            "scoreReasoning": "Agentic-слой, bounded tools, replay и явный audit trail — хорошая оригинальная упаковка для пятичасового прототипа. При этом базовая модель и процесс принятия решений заранее заданы, а сама LLM не улучшает численный forecast; поэтому это сильная прикладная инновация orchestration, но не максимальная инновационность метода прогнозирования."
+          },
+          {
+            "name": "Потенциал развития и масштабирования",
+            "score": 17,
+            "max": 20,
+            "awarded": "Проект уже разделяет station profile, обучение, prepared models, кампанию и watcher, поэтому расширение на другую станцию предусмотрено архитектурно.",
+            "deductions": "3 балла сняты за ограничения демонстрационного HTTP-сервера: нет авторизации, HTTPS и многопользовательской очереди, есть общий лимит запусков и один рабочий слот.",
+            "evidence": [
+              "station_profile.py:22-58",
+              "run_campaign.py:38-82",
+              "web.py:41-57",
+              "README.md:241-250"
+            ],
+            "deductionItems": [
+              {
+                "points": 3,
+                "findingId": "defect-deployment-controls",
+                "reason": "Для масштабирования за пределы локального/демо-сервера подтверждены отсутствующие auth/HTTPS и shared in-process quota: web.py держит глобальные jobs/starts и один running slot. Это не требуется production для пяти часов, но ограничивает непосредственный рост пользователей."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Профиль станции вместо жёсткого UI-конфига",
+                "implementation": "station_profile валидирует id, name и две координаты, а run_campaign передаёт профиль в отдельное пространство models/cache/output и проверяет digest.",
+                "value": "Модель можно развивать на другой станции без копирования логики и без смешения артефактов разных профилей.",
+                "verification": "source",
+                "evidence": [
+                  "station_profile.py:22-58",
+                  "forecast_agent.py:126-174",
+                  "run_campaign.py:119-158"
+                ]
+              },
+              {
+                "aspect": "Возобновляемая месячная кампания",
+                "implementation": "run_campaign проверяет сохранённые дни, source hashes и модель, допускает повтор после ошибки и ведёт отдельные prepared/training outputs.",
+                "value": "Длинный 29-дневный проход не требует начинать с нуля после сбоя API или повреждённого результата.",
+                "verification": "source",
+                "evidence": [
+                  "run_campaign.py:64-117",
+                  "run_campaign.py:119-243",
+                  "captures/20261002T210531283806-test.stdout.log"
+                ]
+              },
+              {
+                "aspect": "Низкий инфраструктурный порог",
+                "implementation": "Основное приложение использует стандартную библиотеку Python, JSON/CSV и файловый cache без БД, Node или GPU; HTTP API и CLI разделяют одно ядро.",
+                "value": "Прототип легко перенести в контролируемую серверную среду и подключить к более устойчивому storage/queue позже.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:30-44",
+                  "README.md:62-73"
+                ]
+              },
+              {
+                "aspect": "Наблюдение за обновлением входов",
+                "implementation": "watch_forecast имеет deterministic и agent режимы, digest входов и state рядом с output; повторный запуск сохраняет последний хороший прогноз.",
+                "value": "Это естественная точка расширения к постоянному сервису, где погодный cache и модель будут приходить независимо.",
+                "verification": "source",
+                "evidence": [
+                  "watch_forecast.py:24-99",
+                  "README.md:161-176"
+                ]
+              }
+            ],
+            "scoreReasoning": "Архитектурные seams для station, campaign, watcher и подготовленных моделей действительно есть, а стандартная библиотека упрощает перенос. Снижение оставлено за подтверждённые эксплуатационные ограничения web.py, а не за отсутствие production-функций, которые кейс не требовал: для масштабирования потребуется вынести состояние, авторизацию и лимиты из процесса."
+          },
+          {
+            "name": "Презентация, демо и ответы на вопросы",
+            "score": 20,
+            "max": 20,
+            "awarded": "В рамках доступных материалов README даёт воспроизводимую демонстрацию, а фактические локальные CLI/HTTP проверки подтвердили заявленные сохранённые результаты. Устной презентации и Q&A не было, поэтому они не выдумываются.",
+            "deductions": "Подтверждённых дефектов по этому критерию не установлено; отсутствие браузерной визуальной проверки не является недостатком проекта.",
+            "evidence": [
+              "README.md:77-216",
+              "captures/20261002T210636196609-start.stdout.log",
+              "captures/20261002T210724282808-results.stdout.log",
+              "captures/20261002T210531283806-test.stdout.log"
+            ],
+            "deductionItems": [],
+            "awardedDetails": [
+              {
+                "aspect": "Быстрый старт",
+                "implementation": "README даёт одну команду python3 web.py, требования Python 3.10+, порт, offline режим для опубликованных результатов и отдельные варианты для численного/AI/campaign запуска.",
+                "value": "Проверяющий понимает, что доступно без ключа и какие внешние входы нужны для каждого уровня демонстрации.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:77-114"
+                ]
+              },
+              {
+                "aspect": "Сценарий демо по шагам",
+                "implementation": "Раздел для жюри описывает просмотр 1 и 28 февраля, provenance, 48 строк, CSV 672 часа, запись запуска и отличия нового расчёта от записи.",
+                "value": "Демо можно показывать из репозитория даже без OpenAI-ключа, не выдавая запись за новый LLM-вызов.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:178-192"
+                ]
+              },
+              {
+                "aspect": "Воспроизводимые проверки",
+                "implementation": "Документация содержит unittest, export_results и watch commands, ожидаемые 56 тестов/672 часа и объяснение того, какие тесты используют синтетические внешние API.",
+                "value": "Результат демонстрации имеет проверяемый путь, а не только скриншот или маркетинговое описание.",
+                "verification": "observed",
+                "evidence": [
+                  "README.md:194-216",
+                  "captures/20261002T210531283806-test.stdout.log",
+                  "captures/20261002T210724282808-results.stdout.log"
+                ]
+              },
+              {
+                "aspect": "Понятные ограничения",
+                "implementation": "README отдельно раскрывает отсутствие февральского ground truth, normalized output, неизвестный timezone/height, dependency on OpenAI и границы публичного demo server.",
+                "value": "Материал помогает отвечать на вопросы о том, что действительно измерено, а что является допущением.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:230-257"
+                ]
+              }
+            ],
+            "scoreReasoning": "Документация unusually complete для пятиичасового прототипа: описаны режимы, команды, входы, ограничения, артефакты и ожидаемые результаты, а локальная проверка подтвердила ключевые числа. Устное выступление и визуальный UI здесь не оцениваются как проведённые события; по доступному репозиторию критерий закрыт полностью."
+          }
+        ],
+        "total": 89
+      },
+      "case": {
+        "criteria": [
+          {
+            "name": "Соответствие задаче и работоспособность",
+            "score": 23,
+            "max": 25,
+            "awarded": "Требуемый 48-часовой replay для двух турбин реализован и локально воспроизведён; небольшой резерв оставлен за неполной независимой доказуемостью того, что выбранный архивный hindcast идентичен оперативному выпуску, доступному в прошлом.",
+            "deductions": "2 балла сняты за ограничение weather provenance: проект хранит run/decision и использует исторический endpoint, но сам документирует, что идентичность hindcast исходному оперативному выпуску и точное время исторической публикации независимо не подтверждены.",
+            "evidence": [
+              "task.txt:1-3",
+              "cases/1/case-data/HackAlem AI_ Agentic AI для прогнозирования выработки ВЭС:4-38",
+              "forecast_weather.py:61-138",
+              "README.md:224,247"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "defect-weather-provenance",
+                "reason": "Для требования 'архивный прогноз, доступный на соответствующий момент' код выбирает предыдущий ECMWF run и фиксирует 6-часовую publication-delay гипотезу, но репозиторий не подтверждает независимым источником, что hindcast полностью совпадает с operational forecast того момента. Это ограничивает доказанность соответствия, хотя chronology и отсутствие future target соблюдены."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Горизонт и две турбины",
+                "implementation": "forecast_weather строит 48 hourly records на turbine-1 и turbine-2, power_model считает отдельную кривую, а combine проверяет одинаковые timestamps и формирует farm output.",
+                "value": "Основной количественный сценарий кейса — две координаты и 24-48 часов — присутствует в исполнении, а не только в интерфейсе.",
+                "verification": "observed",
+                "evidence": [
+                  "forecast_weather.py:44-58",
+                  "run_forecast.py:25-39",
+                  "captures/20261002T210654152025-scenario.stdout.log"
+                ]
+              },
+              {
+                "aspect": "Историческая точка решения",
+                "implementation": "run_for фиксирует 06:00 UTC дня и run в 18:00 UTC предыдущего дня; URL включает model, run, timezone UTC и координаты.",
+                "value": "Решение не подменяет historical forecast фактической погодой после наступления дня и оставляет provenance для аудита.",
+                "verification": "source",
+                "evidence": [
+                  "forecast_weather.py:61-83",
+                  "forecast_weather.py:119-131",
+                  "results/2026-02-01-forecast.json:1-22"
+                ]
+              },
+              {
+                "aspect": "Agentic sequence",
+                "implementation": "TOOLS покрывает inspect inputs, get weather для обеих турбин, calculate, inspect, compare и publish; station campaign добавляет inspect_station/train_model.",
+                "value": "Заявленный цикл получения погоды, подготовки, модели, анализа и сохранения представлен инструментами с возможностью восстановиться после ошибки.",
+                "verification": "source",
+                "evidence": [
+                  "forecast_agent.py:43-59",
+                  "forecast_agent.py:147-285",
+                  "agent-examples/2026-02-01-report.json:1-150"
+                ]
+              },
+              {
+                "aspect": "Replay всей выдачи",
+                "implementation": "export_results проверяет 29 daily files, cutoff before day, 48 records, continuous UTC timestamps, [0,1] values and complete February coverage before writing 672 rows.",
+                "value": "Кейс проверяется не одним удачным днём: опубликованный месячный артефакт проходит целостную временную проверку.",
+                "verification": "observed",
+                "evidence": [
+                  "export_results.py:19-81",
+                  "captures/20261002T210724282808-results.stdout.log"
+                ]
+              }
+            ],
+            "scoreReasoning": "Ключевые требования горизонта, двух турбин, cutoff, per-day archived run, agentic tools, повторного расчёта и leakage guards покрыты. Снижение касается только provenance-риска, который сам README честно выделяет: наличие timestamp и hindcast endpoint ещё не является независимым доказательством исторической оперативной доступности."
+          },
+          {
+            "name": "Техническая реализация",
+            "score": 22,
+            "max": 25,
+            "awarded": "Компоненты хорошо разделены, входы валидируются, файловое состояние атомарно сохраняется, а агент ограничен строгим tool schema и лимитами.",
+            "deductions": "3 балла сняты за ограниченный predictor: он строит 0.5 m/s binned curve со сглаживанием и не моделирует uncertainty, temporal dependence или temperature feature.",
+            "evidence": [
+              "power_model.py:53-133",
+              "forecast_agent.py:33-75",
+              "storage.py:9-20",
+              "captures/20261002T210531283806-test.stdout.log"
+            ],
+            "deductionItems": [
+              {
+                "points": 3,
+                "findingId": "defect-model-scope",
+                "reason": "Техническая архитектура agent/controller качественная, но forecasting core остаётся простым one-dimensional empirical curve и явно признаёт sensor-vs-100m domain shift. Для максимума технического критерия не хватает количественной uncertainty/error pipeline."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Разделение слоёв",
+                "implementation": "forecast_weather отвечает за API/cache/provenance, power_model — за train/predict/validation, run_forecast — за aggregation/analysis, forecast_agent — за controller, web — за HTTP jobs.",
+                "value": "Границы компонентов позволяют отдельно тестировать chronology, модель, watcher и транспорт без скрытой связности.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:46-75",
+                  "forecast_weather.py:26-139",
+                  "run_forecast.py:25-77"
+                ]
+              },
+              {
+                "aspect": "Защита от leakage",
+                "implementation": "load_hourly фильтрует rows_after_cutoff, validate_model не принимает future trained-through, predict вызывает проверку до расчёта, а export_results проверяет cutoff относительно каждой decision date.",
+                "value": "Главный риск кейса проверяется в нескольких местах и не зависит только от добросовестности оператора.",
+                "verification": "observed",
+                "evidence": [
+                  "power_model.py:67-83",
+                  "power_model.py:148-183",
+                  "export_results.py:26-35",
+                  "captures/20261002T210531283806-test.stdout.log"
+                ]
+              },
+              {
+                "aspect": "Безопасный agent boundary",
+                "implementation": "Arguments проходят strict schema/type checks; произвольные tools, shell и свободные paths отсутствуют; turns/calls ограничены; upstream ошибки sanitised.",
+                "value": "LLM может управлять сценарием, но не подменяет расчёт и не получает неограниченный доступ к приложению.",
+                "verification": "source",
+                "evidence": [
+                  "forecast_agent.py:33-40",
+                  "forecast_agent.py:105-123",
+                  "forecast_agent.py:83-102",
+                  "tests/test_forecast_agent.py:130-180"
+                ]
+              },
+              {
+                "aspect": "Надёжная запись и восстановление",
+                "implementation": "storage.atomic_write пишет через временный файл и replace; watcher и campaign валидируют saved state, а tests покрывают повреждённые файлы, partial writes и restart.",
+                "value": "Сбой сети/записи не должен silently publish incomplete forecast и может быть исправлен повтором.",
+                "verification": "observed",
+                "evidence": [
+                  "storage.py:9-20",
+                  "tests/test_storage.py:1-80",
+                  "captures/20261002T210531283806-test.stdout.log"
+                ]
+              }
+            ],
+            "scoreReasoning": "Техническая реализация заметно выше минимального прототипа: на входе и выходе стоят реальные guards, агент не владеет численным ядром, а 56 тестов подтверждают error/restart paths. Недостающие 3 балла — за predictive depth и измерение uncertainty, а не за архитектурную поломку."
+          },
+          {
+            "name": "README и воспроизводимость",
+            "score": 25,
+            "max": 25,
+            "awarded": "README достаточно для понимания архитектуры, режимов, входов, команд, ограничений и локальной проверки; заявленные тесты и артефакты воспроизведены.",
+            "deductions": "Подтверждённых дефектов по этому критерию не установлено.",
+            "evidence": [
+              "README.md:1-75",
+              "README.md:77-216",
+              "captures/20261002T210944195248-build.stdout.log",
+              "captures/20261002T210531283806-test.stdout.log"
+            ],
+            "deductionItems": [],
+            "awardedDetails": [
+              {
+                "aspect": "Карта репозитория",
+                "implementation": "README связывает web, agent, weather, model, campaign, watcher, storage и результаты с конкретными файлами и показывает Mermaid architecture.",
+                "value": "Новый проверяющий может быстро найти точку входа и путь данных.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:46-75"
+                ]
+              },
+              {
+                "aspect": "Раздельные режимы и требования",
+                "implementation": "Таблица различает offline saved results, numerical, daily AI, campaign и tests; `.env`-переменные и серверное расположение CSV объяснены отдельно.",
+                "value": "Документация не скрывает, что ключ нужен только для живого AI/campaign, и не выдаёт fixture за live LLM запуск.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:92-159"
+                ]
+              },
+              {
+                "aspect": "Команды и ожидаемые ответы",
+                "implementation": "README содержит unittest/export/watch команды, ожидает 56 OK и 672 часа; проектный запуск `web.py` и CLI были реально выполнены в изолированной среде.",
+                "value": "Воспроизводимость подтверждается и текстом, и фактом исполнения.",
+                "verification": "observed",
+                "evidence": [
+                  "README.md:194-216",
+                  "captures/20261002T210531283806-test.stdout.log",
+                  "captures/20261002T210724282808-results.stdout.log"
+                ]
+              },
+              {
+                "aspect": "Ограничения без маркетингового сокрытия",
+                "implementation": "Разделы про данные, validation и limitations отдельно фиксируют normalized output, отсутствие февральского факта, timezone/height uncertainty и OpenAI dependency.",
+                "value": "Это позволяет воспроизводить именно заявленный MVP и корректно трактовать его доказательства.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:218-251"
+                ]
+              }
+            ],
+            "scoreReasoning": "Документация покрывает весь путь от offline просмотра до обучения другой станции и отдельно сообщает, что именно не проверяется. Сборка/компиляция и тесты прошли, а команды дают конкретный результат; оснований снижать воспроизводимость не установлено."
+          },
+          {
+            "name": "Ценность и применимость решения",
+            "score": 13,
+            "max": 15,
+            "awarded": "Для аналитического мониторинга решение применимо: показывает диапазон, ramp, low-power windows и 672-часовой экспорт с временным происхождением.",
+            "deductions": "2 балла сняты за то, что применимость остаётся аналитической: нет абсолютной мощности, цены/экономии, unequal-capacity aggregation или февральской фактической оценки.",
+            "evidence": [
+              "README.md:5,17,220,241-247",
+              "run_forecast.py:40-75",
+              "export_results.py:69-81"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "defect-normalized-output",
+                "reason": "Практическое применение ограничено контрактом normalized power (0..1) и equal-capacity mean; без номиналов из исходных материалов нельзя получить реальное производство или экономический эффект, а README прямо отмечает отсутствие февральского факта для оценки."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Понятные сигналы для аналитика",
+                "implementation": "combine рассчитывает среднее, min/max, first/second 24h means, largest hourly ramp и число часов ниже 0.1, а агент может исследовать окно вокруг ramp.",
+                "value": "Эти поля ближе к рабочей аналитике ВЭС, чем голый массив предсказаний.",
+                "verification": "source",
+                "evidence": [
+                  "run_forecast.py:40-64",
+                  "forecast_agent.py:239-251"
+                ]
+              },
+              {
+                "aspect": "Единый месячный продукт",
+                "implementation": "export_results перекрывает дневные 48-hour windows и выбирает newest forecast whose decision has passed, формируя ожидаемые 28*24 hours.",
+                "value": "Потребитель получает непрерывный февральский CSV, а не должен сам разрешать перекрытия прогнозов.",
+                "verification": "observed",
+                "evidence": [
+                  "export_results.py:1-5",
+                  "export_results.py:67-81",
+                  "captures/20261002T210724282808-results.stdout.log"
+                ]
+              },
+              {
+                "aspect": "Аудит входов",
+                "implementation": "JSON сохраняет weather request URLs, run UTC, decision UTC, cutoff и scales; model stores source CSV hashes/data quality.",
+                "value": "Аналитик может понять, какой вход породил цифру и обнаружить рассинхрон вместо слепого доверия результату.",
+                "verification": "source",
+                "evidence": [
+                  "run_forecast.py:65-75",
+                  "power_model.py:108-132",
+                  "results/2026-02-01-forecast.json:1-22"
+                ]
+              },
+              {
+                "aspect": "Честная граница применимости",
+                "implementation": "README не называет 48-hour validation доказательством февральской точности и отделяет operational limitations от успешного replay.",
+                "value": "Такой disclaimer важен для энергетики, где ложная уверенность опаснее отсутствия одного показателя.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:232-251"
+                ]
+              }
+            ],
+            "scoreReasoning": "Решение уже полезно как прозрачный аналитический инструмент мониторинга ожидаемой нормализованной мощности. До полного прикладного продукта нужны capacity-aware units, фактическая оценка и интеграция с operational metrics; эти пункты объясняют умеренное, но не критическое снижение."
+          },
+          {
+            "name": "Потенциал развития и оригинальность подхода",
+            "score": 8,
+            "max": 10,
+            "awarded": "Комбинация replay, bounded agent, station profile, resumable campaign и watcher даёт ясную основу для расширения.",
+            "deductions": "2 балла сняты за эксплуатационный потолок текущего demo-сервера и за то, что оригинальность в основном orchestration-уровня, тогда как predictor остаётся baseline curve.",
+            "evidence": [
+              "README.md:62-75",
+              "run_campaign.py:119-243",
+              "watch_forecast.py:24-99",
+              "web.py:41-57"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "defect-deployment-controls",
+                "reason": "Один in-process slot, шесть запусков в час, отсутствие auth/HTTPS и общий state делают текущую web-реализацию пригодной для demo, но не готовой к нескольким операторам или нескольким станциям одновременно."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Расширение на station profiles",
+                "implementation": "Профиль и digest входят в workspace path, campaign identity и проверку совместимости модели/CSV; координаты не угадываются агентом.",
+                "value": "Следующий хакатон может подключить новую станцию через данные и профиль, не переписывая core pipeline.",
+                "verification": "source",
+                "evidence": [
+                  "station_profile.py:22-58",
+                  "run_campaign.py:38-62",
+                  "README.md:134-159"
+                ]
+              },
+              {
+                "aspect": "Расширение agent policy",
+                "implementation": "Инструменты, лимиты, sanitised events и separate deterministic/AI modes отделяют управляющий слой от модели.",
+                "value": "Можно добавлять новые проверки или провайдеры без передачи LLM произвольного доступа к файловой системе.",
+                "verification": "source",
+                "evidence": [
+                  "forecast_agent.py:43-75",
+                  "forecast_agent.py:374-454",
+                  "watch_forecast.py:58-74"
+                ]
+              },
+              {
+                "aspect": "Перенос в потоковый сервис",
+                "implementation": "Watcher state, atomic files, retries и campaign resume уже задают точки для внешней очереди и persistent store.",
+                "value": "Система не застряла в notebook: у неё есть жизненный цикл входов, расчёта и публикации.",
+                "verification": "source",
+                "evidence": [
+                  "storage.py:9-20",
+                  "watch_forecast.py:45-75",
+                  "run_campaign.py:64-117"
+                ]
+              },
+              {
+                "aspect": "Оригинальность сдержанного AI",
+                "implementation": "LLM выбирает действия и формирует factual summary, но forecast numbers вычисляются проверяемым Python core; запись сохраняет tool trace и token usage.",
+                "value": "Это обоснованный способ применить agentic AI в задаче, где полностью генеративный числовой ответ был бы непрозрачным.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:11-18,224-226",
+                  "agent-examples/2026-02-01-report.json:1-150"
+                ]
+              }
+            ],
+            "scoreReasoning": "Для пятичасового MVP задел на profile/campaign/watch и bounded AI достаточно сильный. Потенциал не максимален из-за процесса веб-сервера и простого baseline predictor: дальнейшее развитие потребует вынести state/queue и добавить более богатую модель с калиброванной неопределённостью."
+          }
+        ],
+        "total": 91
+      },
+      "judgeScore": 90,
+      "caseRequirements": [
+        {
+          "requirement": "Почасовой прогноз двух турбин на горизонте 24–48 часов",
+          "status": "met",
+          "explanation": "Численное ядро формирует 48 последовательных UTC-часов по каждой из двух турбин, проверяет совпадение timestamps и возвращает агрегат фермы. Реальный запуск с моделью завершился с 48 часами.",
+          "evidence": [
+            "run_forecast.py:25-39",
+            "power_model.py:195-219",
+            "captures/20261002T210654152025-scenario.stdout.log"
+          ]
+        },
+        {
+          "requirement": "Обучение только на истории, доступной не позднее 31.01.2026",
+          "status": "met",
+          "explanation": "Оба предоставленных CSV заканчиваются 2026-01-31 23:50; training(cutoff=2026-01-31) обработал 0 rows_after_cutoff и создал валидную модель с этим cutoff. Дополнительные guards отвергают future model.",
+          "evidence": [
+            "power_model.py:67-84",
+            "power_model.py:148-183",
+            "captures/20261002T210611119602-dataset.stdout.log",
+            "captures/20261002T210531283806-test.stdout.log"
+          ]
+        },
+        {
+          "requirement": "Для каждого исторического дня получать погодный прогноз по координатам именно того момента",
+          "status": "partial",
+          "explanation": "Код для каждого дня строит URL с координатами, ECMWF run, UTC и 48 часами, а cache validation проверяет provenance. Однако README признаёт, что источник представляет hindcast и идентичность исходному operational forecast/точное время публикации независимо не подтверждены.",
+          "evidence": [
+            "forecast_weather.py:61-138",
+            "README.md:224,247",
+            "results/2026-02-01-forecast.json:1-22"
+          ]
+        },
+        {
+          "requirement": "Agentic-цикл: погода, подготовка, модель, прогноз, анализ, повторный расчёт при обновлении входа",
+          "status": "met",
+          "explanation": "TOOLS и _Cycle реализуют inspect/get/calculate/inspect/compare/publish, ошибки возвращаются модели, а изменение weather/model invalidates calculated/published revisions. Watcher повторяет расчёт только после изменения digest.",
+          "evidence": [
+            "forecast_agent.py:43-59",
+            "forecast_agent.py:211-295",
+            "watch_forecast.py:45-75",
+            "agent-examples/2026-02-01-report.json:1-150"
+          ]
+        },
+        {
+          "requirement": "Не смешивать фактическую будущую погоду или февральскую target power во вход прогноза",
+          "status": "met",
+          "explanation": "Prediction принимает только model и validated weather rows; CSV target используется в train до cutoff, но не передаётся agent и не читается в February forecast. Historical export дополнительно проверяет cutoff перед каждой decision date.",
+          "evidence": [
+            "power_model.py:185-219",
+            "forecast_agent.py:380-395",
+            "README.md:220-226",
+            "export_results.py:26-35"
+          ]
+        },
+        {
+          "requirement": "Проверяемая почасовая выдача и месячный February output",
+          "status": "met",
+          "explanation": "Репозиторий содержит ежедневные JSON и итоговый CSV; export_results сам проверяет 29 файлов, непрерывность, диапазон 0..1 и покрытие всех 672 февральских часов. Повторная сборка сохранила 672 часа.",
+          "evidence": [
+            "export_results.py:19-81",
+            "README.md:17,182-208",
+            "captures/20261002T210724282808-results.stdout.log"
+          ]
+        }
+      ],
+      "testData": {
+        "provided": [
+          "cases/1/case-data/Dataset HackAlemAI для участников 11.03.2023-28.02.2026 - turbine 1.csv",
+          "cases/1/case-data/Dataset HackAlemAI для участников 11.03.2023-28.02.2026 - turbine 2.csv",
+          "cases/1/case-data/HackAlem AI_ Agentic AI для прогнозирования выработки ВЭС.md"
+        ],
+        "used": [
+          "cases/1/case-data/Dataset HackAlemAI для участников 11.03.2023-28.02.2026 - turbine 1.csv",
+          "cases/1/case-data/Dataset HackAlemAI для участников 11.03.2023-28.02.2026 - turbine 2.csv",
+          "cases/1/case-data/HackAlem AI_ Agentic AI для прогнозирования выработки ВЭС.md"
+        ],
+        "checks": [
+          {
+            "input": "Оба организаторских CSV",
+            "method": "Прочитаны заголовки и все timestamps; проверены формат, десятиминутные границы, диапазон дат и уникальные часы.",
+            "result": "Turbine 1: 142360 строк, 2023-03-11 00:00:00..2026-01-31 23:50:00, 0 плохих timestamps; turbine 2: 149499 строк с тем же диапазоном и 0 плохих timestamps. Заголовки совпали с FIELDS проекта.",
+            "conclusion": "Структура и временной охват входов соответствуют парсеру; будущих февральских измерений в этих CSV нет."
+          },
+          {
+            "input": "Оба CSV, переименованные только внутри временного изолированного запуска в ожидаемые turbine-1.csv/turbine-2.csv",
+            "method": "Вызван power_model.train с cutoff=2026-01-31, затем power_model.validate_model.",
+            "result": "Успех: turbine-1 имеет 23667 complete hours, turbine-2 — 24785; invalid_rows=0 и rows_after_cutoff=0 для обеих; model cutoff=2026-01-31.",
+            "conclusion": "Предоставленная история реально применима к заявленному training path без leakage по дате; модельный артефакт проходит валидацию."
+          },
+          {
+            "input": "models/power-curve-2026-01-31.json и текущий archived-weather retrieval для 2026-02-01",
+            "method": "Запущен python run_forecast.py 2026-02-01 --model ... с временными cache/output каталогами.",
+            "result": "Код выхода 0; сохранён forecast на 48 часов, mean normalized power 0.248; внешний weather retrieval успешно вернул и провалидировал два набора по 48 часов.",
+            "conclusion": "Основной численный сценарий на 48 часов воспроизведён на живой погодной интеграции; это не является проверкой LLM-агента или февральской accuracy."
+          },
+          {
+            "input": "results/*.json и results/february-hourly.csv",
+            "method": "Запущен export_results.py --input-dir results --output <temporary CSV>; его встроенные проверки прошли.",
+            "result": "Код выхода 0, сообщение проекта: saved 672 February hours.",
+            "conclusion": "Опубликованный месячный набор покрывает все часы февраля и сохраняет newest-valid decision semantics."
+          },
+          {
+            "input": "Синтетические входы тестового набора проекта",
+            "method": "python -m unittest discover -s tests -v в изолированном Python 3.13 окружении.",
+            "result": "Ran 56 tests in 8.075s; OK.",
+            "conclusion": "Пройдены chronology, validation, agent error recovery, campaign resume, web jobs, storage и watcher checks; тесты сами используют mocks для внешних сервисов."
+          }
+        ],
+        "limitations": [
+          "Организаторские CSV не содержат фактической февральской target power, поэтому по ним нельзя проверить February MAE/accuracy.",
+          "Live OpenAI key намеренно не предоставлен; новый LLM agent/campaign не запускался, хотя численное ядро и HTTP просмотр проверены.",
+          "Историческая operational provenance Open-Meteo hindcast остаётся ограничением, которое README проекта раскрывает отдельно; наличие сохранённого run timestamp не доказывает идентичность архиву оператора."
+        ]
+      },
+      "runtime": {
+        "status": "partial",
+        "build": "Компиляция всех Python-файлов прошла без вывода и с кодом 0; отдельной сборки frontend/пакетов у проекта нет.",
+        "start": "web.py реально стартовал на локальном порту внутри изолированной среды; GET /, /api/agent/config, /api/agent/example и сохранённый /api/forecast вернули HTTP 200.",
+        "scenario": "Численный прогноз на 2026-02-01 реально получил архивную погоду, сформировал 48 часов и сохранил JSON. Живой OpenAI agent не запускался из-за отсутствующего ключа, поэтому полный agentic сценарий проверен по исходникам, тестам и сохранённой записи.",
+        "environment": "Проверка выполнена в Python 3.13 изолированной среде без переданных API credentials; визуальное поведение UI не проверялось согласно правилам проверки.",
+        "summary": "Проект deployable и working для offline/published и deterministic numerical paths, но runtime status partial по правилу кейса: live AI path заблокирован внешним credential.",
+        "checks": [
+          {
+            "command": "python -m compileall -q .",
+            "result": "Код выхода 0, stdout/stderr пусты.",
+            "id": "runtime-build-compile",
+            "stage": "build",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Все Python-модули проекта компилируются без синтаксических ошибок."
+          },
+          {
+            "command": "python -m unittest discover -s tests -v",
+            "result": "Ran 56 tests in 8.075s; OK. Покрыты chronology, agent, campaign, web, storage, station profile и watcher.",
+            "id": "runtime-unit-suite",
+            "stage": "build",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Автоматический набор проекта завершается успешно и не требует OpenAI credentials."
+          },
+          {
+            "command": "python -c \"from power_model import train,validate_model; ...\"",
+            "result": "С предоставленными двумя CSV: turbine-1 142360 строк/23667 complete hours, turbine-2 149499 строк/24785 complete hours; invalid_rows=0, rows_after_cutoff=0; train и validate_model завершились успешно на cutoff 2026-01-31.",
+            "id": "runtime-case-data",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Применить организаторские CSV к реальному training path и подтвердить отсутствие данных после cutoff."
+          },
+          {
+            "command": "python web.py --port 8000",
+            "result": "Процесс стартовал; GET / дал 200 и 42242 bytes, /api/agent/config — 200, /api/agent/example — 200, /api/forecast?date=2026-02-01&refresh=0 — 200. POST /api/agent без ключа дал ожидаемый 400 с сообщением о недоступности AI.",
+            "id": "runtime-http-start",
+            "stage": "start",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Приложение запускается и отдаёт опубликованный пользовательский результат без ключа."
+          },
+          {
+            "command": "python run_forecast.py 2026-02-01 --model models/power-curve-2026-01-31.json --cache-dir <temporary> --output-dir <temporary>",
+            "result": "Код выхода 0; 2026-02-01: 48 hours; mean normalized power 0.248; forecast JSON сохранён.",
+            "id": "runtime-numerical-scenario",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Без LLM-ключа получить свежий 48-часовой forecast на модели до 31.01.2026."
+          },
+          {
+            "command": "POST /api/agent с JSON {date: 2026-02-01}",
+            "result": "Запуск не выполнялся: проект корректно вернул HTTP 400, так как OPENAI_API_KEY отсутствует; это ограничение credential среды, а не ошибка старта приложения.",
+            "id": "runtime-live-agent",
+            "stage": "scenario",
+            "status": "blocked",
+            "cause": "review_environment",
+            "expected": "При серверном OPENAI_API_KEY создать job и завершить live tool-calling agent cycle."
+          }
+        ],
+        "limitations": [
+          "Полный live LLM/campaign запуск не подтверждён без OPENAI_API_KEY и квоты; сохранённый example не считается заменой этого запуска.",
+          "UI визуально не инспектировался; проверены только HTTP/API ответы и статические HTML/JS материалы.",
+          "Новый refresh weather path зависит от доступности внешнего Open-Meteo сервиса, хотя один численный запуск на момент проверки прошёл."
+        ]
+      },
+      "liveDemo": {
+        "status": "claimed",
+        "url": "https://hackalem.celestial.kz/",
+        "notes": "Ссылка заявлена в README, но в этой проверке не открывалась: визуальный/browser review запрещён, а локально проверен только HTTP/API сценарий из репозитория. Наличие URL не использовано как самостоятельное доказательство работы."
+      },
+      "fiveHourContext": "Для пятичасового hackathon MVP объём оправдан: команда успела сделать рабочий deterministic core, historical replay, bounded agent, resumable campaign, watcher, веб-API, сохранённые результаты и 56 тестов. Production auth, HTTPS, очередь и абсолютные MW/MWh здесь не требовались; они отмечены только как реальные границы масштабирования и применимости. Простая power curve является разумным baseline за такой срок, но отсутствие uncertainty и более богатой валидации объясняет удержанные баллы.",
+      "strengths": [
+        "Целостный и проверенный путь от двух организаторских CSV и архивной погоды до 48-часового результата и 672-часового February CSV.",
+        "Сильная защита chronology/leakage: cutoff, decision time, run time, units, timestamps и forecast range проверяются кодом и тестами.",
+        "Agentic-слой управляемый: strict tools, bounded turns/calls, sanitised errors, анализ скачков и обязательная публикация через Python core.",
+        "README и сохранённые артефакты позволяют воспроизвести offline demo без ключа и честно разделяют запись, deterministic расчёт и live AI.",
+        "Campaign/station/watcher/storage seams дают хороший фундамент для дальнейшего расширения."
+      ],
+      "gaps": [
+        "Прогнозирующая модель остаётся одномерной сглаженной эмпирической кривой и не предоставляет uncertainty или richer temporal/temperature modelling; это ограничивает качество и оригинальность.",
+        "Публичный результат нормализован и агрегируется через equal-capacity mean, поэтому без номиналов не выражает абсолютную выработку и экономический эффект.",
+        "Архивная погодная provenance сильна по timestamps и run selection, но exact identity с operational forecast исторического момента не подтверждена независимо.",
+        "Демо-web слой имеет один in-process слот, общий hourly limit, отсутствие auth и HTTPS; это ограничивает production-scale deployment."
+      ],
+      "futureAdvice": [
+        {
+          "principle": "Сначала калибруй качество и неопределённость по горизонту, затем усложняй agent.",
+          "why": "defect-model-scope: текущая curve даёт валидный численный baseline, но не объясняет uncertainty и явно оставляет domain shift sensor-vs-100m.",
+          "how": "В другом хакатоне за один timebox добавить holdout-таблицу MAE для 0–23 и 24–47 часов, простую quantile/error band и сравнение curve с сезонным baseline; агенту разрешить только выбор уже проверенных вариантов.",
+          "findingIds": [
+            "defect-model-scope"
+          ],
+          "successCheck": "В отчёте каждой даты есть horizon-specific MAE/coverage и сохранённый интервал, а основной прогноз по-прежнему проходит единый leakage check.",
+          "timeboxMinutes": 45
+        },
+        {
+          "principle": "Разделяй физический результат, нормализованный ML-target и capacity mapping.",
+          "why": "defect-normalized-output: текущий UI полезен для сравнения, но normalized 0..1 и equal-capacity mean не дают оператору MW/MWh.",
+          "how": "Для нового кейса вынести номинальную мощность и capacity weights в валидируемый station profile, оставить normalized value как audit field и добавить явный conversion layer с unit tests.",
+          "findingIds": [
+            "defect-normalized-output"
+          ],
+          "successCheck": "Один forecast содержит одновременно validated normalized outputs, capacity-weighted absolute output и проверяемую формулу преобразования.",
+          "timeboxMinutes": 30
+        },
+        {
+          "principle": "До масштабирования выноси состояние и лимиты из demo process.",
+          "why": "defect-deployment-controls: web.py хранит jobs/starts в памяти, допускает один running slot и не имеет auth/HTTPS.",
+          "how": "В другом проекте сначала добавить server-side auth, persistent job state и очередь с per-user quota; затем поставить TLS/reverse proxy и только после этого расширять число станций.",
+          "findingIds": [
+            "defect-deployment-controls"
+          ],
+          "successCheck": "Два параллельных пользователя получают изолированные job/status результаты после перезапуска процесса, а лимиты применяются по identity, не глобально ко всему серверу.",
+          "timeboxMinutes": 40
+        },
+        {
+          "principle": "Фиксируй provenance внешнего historical input как отдельный проверяемый контракт.",
+          "why": "defect-weather-provenance: run/decision timestamps и 6-hour assumption есть, но operational identity hindcast не доказана независимо.",
+          "how": "В новом кейсе сохранить raw response metadata, publication/availability evidence и маленькую replay fixture с ожидаемым URL, run, release cutoff и hash; пометить любой непроверенный upstream факт как limitation.",
+          "findingIds": [
+            "defect-weather-provenance"
+          ],
+          "successCheck": "Для каждой даты audit record содержит подтверждённый release cutoff и hash fixture, а код отклоняет погодный ответ, несовместимый с ним.",
+          "timeboxMinutes": 35
+        }
+      ],
+      "uncertainties": [
+        "Live OpenAI Responses API не проверен с реальным credential; статическая проверка покрывает request payload, tool schema, обработку ошибок и запись agent example, а не актуальную внешнюю квоту/модель.",
+        "Визуальное состояние HTML/SVG/JS и удобство интеракции не проверялись по прямому запрету на browser/CUA; HTTP маршруты и статические материалы проверены.",
+        "Февральская фактическая power target отсутствует в предоставленных CSV, поэтому нельзя сделать независимый вывод о forecast accuracy за February.",
+        "README указывает, что CSV timezone и sensor height не подтверждены; calibration использует явно помеченную UTC+5 hypothesis.",
+        "Проверка внешнего Open-Meteo запуска была успешной в одном сценарии, но долговременная доступность сервиса и точность его historical hindcast не являются свойствами, доказанными локальным тестом."
+      ],
+      "reviewPolicyVersion": 2,
+      "assessmentStatus": "ready",
+      "findings": [
+        {
+          "id": "strength-core-pipeline",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Основной deterministic forecast pipeline реально прошёл от модели и archived weather до 48-часового JSON, а web/API отдаёт сохранённый пользовательский результат.",
+          "expected": "Рабочий сценарий без LLM должен создать 48 валидных часов и быть доступен через приложение.",
+          "actual": "run_forecast завершился кодом 0 с 48 часами и mean 0.248; GET /api/forecast вернул HTTP 200.",
+          "evidence": [
+            "run_forecast.py:25-77",
+            "captures/20261002T210654152025-scenario.stdout.log",
+            "captures/20261002T210636196609-start.stdout.log"
+          ],
+          "checkIds": [
+            "runtime-http-start",
+            "runtime-numerical-scenario"
+          ]
+        },
+        {
+          "id": "strength-data-chronology",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Предоставленные CSV реально применены к training path без post-cutoff rows, а chronology guards и 56 тестов прошли.",
+          "expected": "История должна соответствовать проектным колонкам, завершаться до cutoff и порождать валидную модель.",
+          "actual": "Оба CSV успешно разобраны; invalid_rows=0, rows_after_cutoff=0, модели имеют cutoff 2026-01-31; тесты OK.",
+          "evidence": [
+            "power_model.py:53-84",
+            "power_model.py:148-183",
+            "captures/20261002T210611119602-dataset.stdout.log",
+            "captures/20261002T210531283806-test.stdout.log"
+          ],
+          "checkIds": [
+            "runtime-case-data",
+            "runtime-unit-suite"
+          ]
+        },
+        {
+          "id": "strength-agent-boundary",
+          "kind": "strength",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "LLM-agent ограничен строгими tools и лимитами, тогда как hourly forecast считает Python core; ошибки инструментов не превращаются в произвольный текстовый результат.",
+          "expected": "Agentic AI должен управлять проверяемым сценарием, а не свободно генерировать числовую выработку.",
+          "actual": "TOOLS используют strict schemas, _arguments валидирует типы, _Cycle требует обе погоды и publish, run_agent ограничивает turns/calls.",
+          "evidence": [
+            "forecast_agent.py:33-75",
+            "forecast_agent.py:105-123",
+            "forecast_agent.py:226-285",
+            "forecast_agent.py:387-454"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "strength-recovery-and-audit",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Состояние результатов защищено atomic writes, SHA-256/input validation и recovery paths для corrupted/changed inputs.",
+          "expected": "Повреждённый или изменившийся вход не должен тихо заменить последний хороший прогноз.",
+          "actual": "56 тестов завершились OK, включая storage partial write, watcher failures, future model, campaign resume и web busy/limit checks.",
+          "evidence": [
+            "storage.py:9-20",
+            "watch_forecast.py:45-75",
+            "run_campaign.py:64-117",
+            "captures/20261002T210531283806-test.stdout.log"
+          ],
+          "checkIds": [
+            "runtime-unit-suite"
+          ]
+        },
+        {
+          "id": "defect-model-scope",
+          "kind": "defect",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Прогнозирующая часть — сглаженная одномерная wind-to-power curve без uncertainty intervals, temporal features и использования температуры как признака.",
+          "expected": "Качество прогнозирования должно давать более полную характеристику неопределённости и причин ошибки, особенно на горизонтах 24–48 часов.",
+          "actual": "fit_curve агрегирует power по 0.5 m/s bins и сглаживает Gaussian weights; temperature лишь агрегируется для quality checks, а README указывает domain shift и отсутствие доказанной February accuracy.",
+          "evidence": [
+            "power_model.py:87-105",
+            "power_model.py:121-131",
+            "README.md:232-246"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "defect-normalized-output",
+          "kind": "defect",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Пользовательский output остаётся normalized active power 0..1, а farm value — arithmetic mean при equal-capacity assumption.",
+          "expected": "Для непосредственной энергетической применимости желательно иметь capacity-aware absolute generation или явно подключаемый conversion layer.",
+          "actual": "run_forecast записывает output_unit normalized active power и farm_equal_capacity_mean_normalized_power; README подтверждает отсутствие номинальных мощностей и MWh.",
+          "evidence": [
+            "run_forecast.py:65-75",
+            "README.md:5,241-245",
+            "results/2026-02-01-forecast.json:1-76"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "defect-weather-provenance",
+          "kind": "defect",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Historical weather chronology and run metadata are implemented, но exact identity Open-Meteo hindcast с operational forecast, доступным в прошлом, independently не подтверждена.",
+          "expected": "Для строгого replay кейса должна быть доказуема не только дата run, но и его историческая доступность/идентичность требуемому оперативному выпуску.",
+          "actual": "Код использует previous-day 18 UTC run, хранит assumed_publication_delay_hours=6, а README прямо оставляет operational identity и exact publication time as limitation.",
+          "evidence": [
+            "forecast_weather.py:61-83",
+            "forecast_weather.py:119-131",
+            "README.md:224,247"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "defect-deployment-controls",
+          "kind": "defect",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Web demo хранит job state и hourly starts в памяти процесса, допускает один running job и не содержит auth/HTTPS.",
+          "expected": "Для масштабирования на нескольких пользователей нужны изолированные identity, persistent queue/state и transport protection.",
+          "actual": "_reserve_job использует глобальные AGENT_JOBS/AGENT_STARTS, один running slot и общий лимит 6; README фиксирует отсутствие auth и HTTPS.",
+          "evidence": [
+            "web.py:36-57",
+            "web.py:289-320",
+            "README.md:248-250"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "limitation-openai-credential",
+          "kind": "limitation",
+          "verification": "observed",
+          "responsibility": "review_environment",
+          "claim": "Live OpenAI agent path нельзя было исполнить в этой проверке без намеренно не предоставленного OPENAI_API_KEY.",
+          "expected": "При credential окружение должно позволять POST /api/agent создать и завершить живой run.",
+          "actual": "Приложение успешно стартовало, но POST /api/agent без ключа корректно вернул HTTP 400; статический путь API и сохранённый example проверены отдельно.",
+          "evidence": [
+            "README.md:103-114",
+            "captures/20261002T210636196609-start.stdout.log"
+          ],
+          "checkIds": [
+            "runtime-live-agent"
+          ]
+        },
+        {
+          "id": "limitation-no-february-ground-truth",
+          "kind": "limitation",
+          "verification": "source",
+          "responsibility": "external_service",
+          "claim": "Предоставленный набор истории заканчивается 31.01.2026 и не содержит February actual target, поэтому February accuracy не может быть рассчитана по данным кейса.",
+          "expected": "Наличие февральского actual target позволило бы проверить MAE и calibration именно на тестовом периоде.",
+          "actual": "CSV checks показали последний timestamp 2026-01-31 23:50; README также явно сообщает отсутствие февральского факта.",
+          "evidence": [
+            "captures/20261002T210611119602-dataset.stdout.log",
+            "README.md:220,245"
+          ],
+          "checkIds": [
+            "runtime-case-data"
+          ]
+        }
+      ],
+      "gapFindingIds": [
+        "defect-model-scope",
+        "defect-normalized-output",
+        "defect-weather-provenance",
+        "defect-deployment-controls"
+      ]
+    }
+  ],
+  "score": 90.0,
+  "status": "complete",
+  "expectedJudges": 1
+}

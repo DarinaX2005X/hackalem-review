@@ -1,0 +1,1161 @@
+{
+  "methodVersion": 4,
+  "repoId": "hack-8732ded2-egin-ai",
+  "repoUrl": "https://github.com/BAITC-Hacks/hack-8732ded2-egin-ai",
+  "caseId": 1,
+  "snapshot": "d9e823da2d4193d849ef8f09d1e660e9f9cc564c",
+  "judges": [
+    {
+      "methodVersion": 4,
+      "repoId": "hack-8732ded2-egin-ai",
+      "caseId": 1,
+      "model": "GPT-5.6 Luna",
+      "snapshot": "d9e823da2d4193d849ef8f09d1e660e9f9cc564c",
+      "overallSummary": "WindCast Agent — цельный backend-прототип, который принимает два CSV, отделяет train до 31 января 2026 года, калибрует power curve, получает архивный почасовой прогноз Open-Meteo и переводит его в генерацию, выручку, риск и рекомендацию. Загрузка, калибровка, один реальный агентский цикл и двухтурбинный business-impact подтверждены на supplied CSV. Снижают оценку две проектные проблемы: шаг rerun только записывается в steps, а основной UI передаёт одни координаты обеим турбинам.",
+      "global": {
+        "criteria": [
+          {
+            "name": "Ценность решения",
+            "score": 22,
+            "max": 25,
+            "awarded": "Понятно связывает прогноз ветра с планом поставки, резервом и деньгами.",
+            "deductions": "Снято 3 балла: фиктивный rerun и единые координаты в UI.",
+            "evidence": [
+              "README.md:1-31",
+              "backend/src/business/impact.ts:25-71",
+              "CHK-BUSINESS"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "F-001",
+                "reason": "Без фактического rerun не закрывается обещание обновлять прогноз."
+              },
+              {
+                "points": 2,
+                "findingId": "F-002",
+                "reason": "Единые координаты могут ухудшить практическую точность для разных турбин."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Операционная проблема",
+                "implementation": "README описывает генерацию, выручку, риск дисбаланса и рекомендацию оператору.",
+                "value": "Результат понятен диспетчеру, а не только ML-разработчику.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:1-15",
+                  "docs/README.md:22-30"
+                ]
+              },
+              {
+                "aspect": "Денежный эффект",
+                "implementation": "business-impact считает MWh, revenue, отклонение, penalty и riskLevel.",
+                "value": "Прогноз становится основанием для плана и резерва.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/src/business/impact.ts:25-71",
+                  "CHK-BUSINESS"
+                ]
+              },
+              {
+                "aspect": "Две турбины",
+                "implementation": "Маршрут запускает два цикла и объединяет их по timestamp.",
+                "value": "Получается единый результат ветропарка с деталями по турбинам.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/src/routes/businessImpact.ts:131-147",
+                  "CHK-BUSINESS"
+                ]
+              },
+              {
+                "aspect": "Ограничение",
+                "implementation": "Форма имеет один latitude/longitude набор и копирует его в оба turbine config.",
+                "value": "На раздельных координатах это снижает точность основного UI-пути.",
+                "verification": "source",
+                "evidence": [
+                  "frontend/src/pages/dashboard/ui/DashboardPage.tsx:44-56",
+                  "F-002"
+                ]
+              }
+            ],
+            "scoreReasoning": "22 балла заслужены за ясную бизнес-пользу, коммерческие показатели и подтверждённый HTTP-результат. До максимума не хватает точного координатного ввода и реакции на обновление входа."
+          },
+          {
+            "name": "Результат и качество решения",
+            "score": 16,
+            "max": 20,
+            "awarded": "Основной backend-сценарий работает и выдаёт 24 почасовые точки для двух турбин, но rerun не исполняется.",
+            "deductions": "Снято 4 балла: 3 за rerun и 1 за координатный UI.",
+            "evidence": [
+              "backend/src/agent/loop.ts:95-150",
+              "CHK-AGENT",
+              "CHK-BUSINESS"
+            ],
+            "deductionItems": [
+              {
+                "points": 3,
+                "findingId": "F-001",
+                "reason": "После анализа нет второго weather/model/forecast прохода."
+              },
+              {
+                "points": 1,
+                "findingId": "F-002",
+                "reason": "Форма не даёт раздельный пользовательский результат для координат двух турбин."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Целостный API",
+                "implementation": "business-impact загружает datasets, запускает два agent cycle и собирает farm response.",
+                "value": "Это работающий сценарий от входа до результата.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/src/routes/businessImpact.ts:131-147",
+                  "CHK-BUSINESS"
+                ]
+              },
+              {
+                "aspect": "Почасовой output",
+                "implementation": "weather client фильтрует окно issueDate+24h; реальный run вернул 24 точки 1 февраля.",
+                "value": "Выход пригоден для графика и операционного просмотра.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/src/weather/client.ts:104-138",
+                  "CHK-AGENT"
+                ]
+              },
+              {
+                "aspect": "Fallback",
+                "implementation": "При отсутствии OpenAI ключа loop возвращает deterministic analysis и analysisSource.",
+                "value": "Необязательная LLM-часть не ломает основной расчёт.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/src/agent/loop.ts:85-92",
+                  "CHK-AGENT"
+                ]
+              },
+              {
+                "aspect": "Ложный шаг",
+                "implementation": "После analyzeForecast код только делает steps.push(\"rerun_triggered\") и сразу возвращает ответ.",
+                "value": "Заявленный обновляемый цикл не подтверждается фактическим поведением.",
+                "verification": "source",
+                "evidence": [
+                  "backend/src/agent/loop.ts:123-148",
+                  "F-001"
+                ]
+              }
+            ],
+            "scoreReasoning": "16 баллов отражают подтверждённый рабочий forecast/business путь. Существенное снижение связано с отсутствием реального повторного расчёта, который является требованием кейса."
+          },
+          {
+            "name": "Инновационность",
+            "score": 11,
+            "max": 15,
+            "awarded": "Комбинация archival weather run, power curve, AI/fallback explanation и business impact заметно шире простого прогноза мощности.",
+            "deductions": "Снято 4 балла за fake rerun и упрощённые координаты UI.",
+            "evidence": [
+              "backend/src/weather/client.ts:64-138",
+              "backend/src/agent/loop.ts:95-150",
+              "backend/src/business/impact.ts:123-150"
+            ],
+            "deductionItems": [
+              {
+                "points": 3,
+                "findingId": "F-001",
+                "reason": "Главное agentic-отличие не реализовано как итерация."
+              },
+              {
+                "points": 1,
+                "findingId": "F-002",
+                "reason": "Пространственная конфигурация в UI упрощена до одной точки."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Архивная погода",
+                "implementation": "URL фиксирует run=issueDateT00:00, ecmwf_ifs и высоту ветра, затем выбирает будущие часы.",
+                "value": "Это соответствует историческому воспроизведению входа.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/src/weather/client.ts:64-84",
+                  "CHK-AGENT"
+                ]
+              },
+              {
+                "aspect": "Объяснимый агент",
+                "implementation": "Prompt получает forecast, параметры и метрики; fallback объясняет ramps и nonlinear zones.",
+                "value": "Оператор получает причины и аномалии, а не только число.",
+                "verification": "source",
+                "evidence": [
+                  "backend/src/agent/prompts.ts:17-40",
+                  "backend/src/agent/loop.ts:68-92"
+                ]
+              },
+              {
+                "aspect": "Риск поверх прогноза",
+                "implementation": "confidence около cut-in/rated/cut-out участвует в riskLevel и recommendation.",
+                "value": "Неопределённость переводится в операционное действие.",
+                "verification": "source",
+                "evidence": [
+                  "backend/src/agent/loop.ts:14-33",
+                  "backend/src/business/impact.ts:44-71"
+                ]
+              },
+              {
+                "aspect": "Граница подхода",
+                "implementation": "rerunKey существует, но нового input или результата второй итерации нет.",
+                "value": "Пока это скорее orchestrated pipeline, чем полный agentic цикл.",
+                "verification": "source",
+                "evidence": [
+                  "backend/src/agent/loop.ts:135-149",
+                  "F-001"
+                ]
+              }
+            ],
+            "scoreReasoning": "11 баллов заслужены за осмысленную композицию компонентов. Верхняя часть шкалы требует наблюдаемой итеративности, а не только названия rerun."
+          },
+          {
+            "name": "Потенциал развития и масштабирования",
+            "score": 15,
+            "max": 20,
+            "awarded": "Модули dataset/weather/calibration/agent/impact и отдельные UI-экраны дают хороший каркас развития.",
+            "deductions": "Снято 5 баллов: 3 за rerun и 2 за жёсткий координатный UI.",
+            "evidence": [
+              "backend/src/index.ts:42-51",
+              "backend/src/routes/businessImpact.ts:46-128",
+              "frontend/src/app/router.tsx:8-19"
+            ],
+            "deductionItems": [
+              {
+                "points": 3,
+                "findingId": "F-001",
+                "reason": "Событийное обновление нельзя подключить к существующему rerun label без новой логики."
+              },
+              {
+                "points": 2,
+                "findingId": "F-002",
+                "reason": "Основной UI не масштабируется на разные координаты без прямого API."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Разделение слоёв",
+                "implementation": "Weather, dataset, calibration, agent и business impact вынесены в отдельные модули.",
+                "value": "Провайдер и доменные правила можно менять независимо.",
+                "verification": "source",
+                "evidence": [
+                  "backend/src/index.ts:5-11",
+                  "backend/src/agent/loop.ts:1-8"
+                ]
+              },
+              {
+                "aspect": "Обновляемые данные",
+                "implementation": "Multer сохраняет CSV по turbine_id в SQLite, затем loader читает и валидирует их.",
+                "value": "Есть путь от demo-файлов к обновляемому набору.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/src/routes/datasetUpload.ts:7-47",
+                  "backend/src/storage/datasetDb.ts:41-73",
+                  "CHK-DATA"
+                ]
+              },
+              {
+                "aspect": "Операционные экраны",
+                "implementation": "Есть forecast, data-quality, calibration routes и локализации ru/en/kk.",
+                "value": "Каркас подходит разным ролям и следующим итерациям продукта.",
+                "verification": "source",
+                "evidence": [
+                  "frontend/src/app/router.tsx:8-19",
+                  "frontend/src/shared/i18n/i18n.test.ts:26-42"
+                ]
+              },
+              {
+                "aspect": "Ограничения роста",
+                "implementation": "Турбины и файлы жёстко заданы как turbine-1/turbine-2; walk-forward повторно калибрует каждый дневной цикл.",
+                "value": "Для MVP приемлемо, но парк потребует конфигурации и кэширования.",
+                "verification": "source",
+                "evidence": [
+                  "backend/src/agent/tools/dataset.ts:57-60",
+                  "backend/src/services/walkForward.ts:55-77",
+                  "F-001"
+                ]
+              }
+            ],
+            "scoreReasoning": "15 баллов — сильная база пятичасового прототипа с API, upload, SQLite и операционными экранами. Снижение оставляет место для событийного обновления и роста числа турбин."
+          },
+          {
+            "name": "Презентация, демо и ответы на вопросы",
+            "score": 14,
+            "max": 20,
+            "awarded": "README/docs объясняют проблему, API и ожидаемый результат; backend-демо воспроизводимо по HTTP.",
+            "deductions": "Снято 6 баллов: 3 за fake rerun и 3 за упрощённую координатную форму.",
+            "evidence": [
+              "README.md:1-48",
+              "docs/README.md:13-70",
+              "CHK-AGENT",
+              "CHK-BUSINESS"
+            ],
+            "deductionItems": [
+              {
+                "points": 3,
+                "findingId": "F-001",
+                "reason": "Описанный agentic cycle не подтверждён фактическим повторным расчётом."
+              },
+              {
+                "points": 3,
+                "findingId": "F-002",
+                "reason": "Основная форма не показывает раздельную конфигурацию координат."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Документация",
+                "implementation": "README содержит назначение, технологии, запуск, адреса и endpoints; docs описывает шаги и поля ответа.",
+                "value": "Жюри быстро понимает продукт и ожидаемый результат.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:25-48",
+                  "docs/README.md:1-30"
+                ]
+              },
+              {
+                "aspect": "API-демо",
+                "implementation": "Проверены health, upload, dataset, calibration, agent и business-impact с HTTP 200/201.",
+                "value": "Есть серверное доказательство, а не только screenshot.",
+                "verification": "observed",
+                "evidence": [
+                  "CHK-HEALTH",
+                  "CHK-DATA",
+                  "CHK-CALIBRATE",
+                  "CHK-AGENT",
+                  "CHK-BUSINESS"
+                ]
+              },
+              {
+                "aspect": "Результат для показа",
+                "implementation": "UI содержит forecast/data-quality/calibration и график; backend response даёт generation, revenue, risk и recommendation.",
+                "value": "Материалы поддерживают понятную демонстрацию.",
+                "verification": "source",
+                "evidence": [
+                  "frontend/src/app/router.tsx:8-19",
+                  "frontend/src/widgets/forecast-dashboard/ui/WindFarmDashboard.tsx:40-84"
+                ]
+              },
+              {
+                "aspect": "Проверочная граница",
+                "implementation": "Браузерная визуальная проверка запрещена; frontend build также не подтверждён после зависшей установки dependencies.",
+                "value": "Визуальную убедительность нельзя выдавать за наблюдённый факт.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:13-23",
+                  "CHK-FRONTEND"
+                ]
+              }
+            ],
+            "scoreReasoning": "14 баллов отражают хорошие docs и реальное API-демо. До максимума не хватает честной демонстрации rerun и полной координатной формы; визуальная часть не штрафовалась за запрет проверки."
+          }
+        ],
+        "total": 78
+      },
+      "case": {
+        "criteria": [
+          {
+            "name": "Соответствие задаче и работоспособность",
+            "score": 17,
+            "max": 25,
+            "awarded": "Рабочий 24-часовой результат для двух турбин и серверные границы 24–48 подтверждены.",
+            "deductions": "Снято 8 баллов: 5 за отсутствие rerun и 3 за одинаковые координаты UI.",
+            "evidence": [
+              "backend/src/agent/loop.ts:95-150",
+              "backend/src/services/walkForward.ts:15-150",
+              "CHK-AGENT",
+              "CHK-BUSINESS"
+            ],
+            "deductionItems": [
+              {
+                "points": 5,
+                "findingId": "F-001",
+                "reason": "Rerun при обновлении входа является обязательной частью кейса, но только помечается."
+              },
+              {
+                "points": 3,
+                "findingId": "F-002",
+                "reason": "Кейс требует координаты двух турбин, а форма отправляет одну пару."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Горизонт",
+                "implementation": "Horizon ограничен 24/48 на сервере; weather client запрашивает 24+horizon и фильтрует окно.",
+                "value": "Основной диапазон кейса закреплён кодом и проверен тестами.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/src/config/forecast.ts:1-13",
+                  "backend/src/weather/client.ts:64-84",
+                  "CHK-AGENT"
+                ]
+              },
+              {
+                "aspect": "Две турбины",
+                "implementation": "business-impact принимает два config, запускает два цикла и объединяет их по timestamp.",
+                "value": "Соответствует задаче двух ВЭС.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/src/routes/businessImpact.ts:46-90",
+                  "CHK-BUSINESS"
+                ]
+              },
+              {
+                "aspect": "Нет утечки target",
+                "implementation": "runAgentCycle получает только train; actualByHour используется после forecast для prediction pairs.",
+                "value": "Будущая target power не становится входом прогноза.",
+                "verification": "source",
+                "evidence": [
+                  "backend/src/routes/businessImpact.ts:134-141",
+                  "backend/src/services/walkForward.ts:65-95"
+                ]
+              },
+              {
+                "aspect": "Неполный обязательный цикл",
+                "implementation": "После анализа нет нового weather fetch/model run/forecast.",
+                "value": "Повторный расчёт при обновлении не реализован.",
+                "verification": "source",
+                "evidence": [
+                  "backend/src/agent/loop.ts:105-135",
+                  "F-001"
+                ]
+              }
+            ],
+            "scoreReasoning": "17 баллов: forecast по двум турбинам и границы горизонта реально работают. Снижение основано только на подтверждённых несоответствиях rerun и координатного UI; пустой февральский split относится к supplied files."
+          },
+          {
+            "name": "Техническая реализация",
+            "score": 19,
+            "max": 25,
+            "awarded": "Typed REST, SQLite upload, CSV validation, calibration, archival weather и fallback разделены по слоям.",
+            "deductions": "Снято 6 баллов: 4 за rerun и 2 за координаты UI.",
+            "evidence": [
+              "backend/src/agent/tools/dataset.ts:129-356",
+              "backend/src/models/powerCurve.ts:98-147",
+              "backend/src/weather/client.ts:64-138",
+              "CHK-BUILD-BACKEND",
+              "CHK-DATA",
+              "CHK-CALIBRATE"
+            ],
+            "deductionItems": [
+              {
+                "points": 4,
+                "findingId": "F-001",
+                "reason": "Agentic-механизм не выполняет второй проход."
+              },
+              {
+                "points": 2,
+                "findingId": "F-002",
+                "reason": "Frontend отправляет одинаковые координаты, хотя backend поддерживает отдельные."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "CSV quality",
+                "implementation": "Loader распознаёт русские/английские headers, числовые диапазоны, duplicate, official window и gaps.",
+                "value": "Фактические входы защищены до калибровки.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/src/agent/tools/dataset.ts:62-185",
+                  "backend/src/agent/tools/dataset.ts:222-335",
+                  "CHK-DATA"
+                ]
+              },
+              {
+                "aspect": "Power curve",
+                "implementation": "Grid search подбирает Cp/ratedPower/cut-in/cut-out и predictPower клипует результат.",
+                "value": "Воспроизводимая и интерпретируемая модель достаточна для MVP.",
+                "verification": "source",
+                "evidence": [
+                  "backend/src/models/powerCurve.ts:24-33",
+                  "backend/src/models/powerCurve.ts:98-147"
+                ]
+              },
+              {
+                "aspect": "Validation metrics",
+                "implementation": "Последние 60 дней train отделены в validation, считаются MAE/RMSE; calibration HTTP 200 вернул метрики обеих турбин.",
+                "value": "Качество модели измеряется на данных, а не только заявляется.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/src/services/calibration.ts:24-78",
+                  "CHK-CALIBRATE"
+                ]
+              },
+              {
+                "aspect": "Внешние границы",
+                "implementation": "Weather client валидирует координаты, дату, ответ и HTTP status; LLM проверяет key/endpoint/shape и fallback.",
+                "value": "Интеграционные ошибки имеют понятный путь.",
+                "verification": "source",
+                "evidence": [
+                  "backend/src/weather/client.ts:15-29",
+                  "backend/src/agent/llm.ts:41-70"
+                ]
+              }
+            ],
+            "scoreReasoning": "19 баллов заслужены за аккуратный typed pipeline и проверенные domain calculations. Отсутствие OpenAI ключа не штрафуется, поскольку fallback предусмотрен; штрафуют только F-001 и F-002."
+          },
+          {
+            "name": "README и воспроизводимость",
+            "score": 20,
+            "max": 25,
+            "awarded": "Документация описывает запуск, архитектуру, API и смысл результата; backend на supplied CSV воспроизведён.",
+            "deductions": "Снято 5 баллов: 3 за отсутствие точного upload golden path и 2 за расхождение описанного цикла с кодом.",
+            "evidence": [
+              "README.md:25-48",
+              "docs/README.md:13-70",
+              "CHK-DATA",
+              "CHK-BUILD-BACKEND"
+            ],
+            "deductionItems": [
+              {
+                "points": 3,
+                "findingId": "F-010",
+                "reason": "Нет точного multipart-примера с полями turbine-1/turbine-2 и ожидаемым split."
+              },
+              {
+                "points": 2,
+                "findingId": "F-001",
+                "reason": "Docs говорят о полном agentic cycle, а код не запускает rerun."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Запуск",
+                "implementation": "README даёт команды frontend/backend, env examples и адреса.",
+                "value": "Минимальный порядок запуска понятен.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:25-45",
+                  "backend/.env.example:1-18"
+                ]
+              },
+              {
+                "aspect": "Архитектура",
+                "implementation": "docs последовательно описывает upload, calibration, Open-Meteo, forecast, confidence, agent и impact.",
+                "value": "Документация соответствует структуре исходников.",
+                "verification": "source",
+                "evidence": [
+                  "docs/README.md:13-20",
+                  "docs/README.md:66-70"
+                ]
+              },
+              {
+                "aspect": "API и поля",
+                "implementation": "Перечислены маршруты и generation/revenue/imbalance/penalty/risk/recommendation/hourly.",
+                "value": "Backend можно проверять без обязательного визуального осмотра.",
+                "verification": "source",
+                "evidence": [
+                  "docs/README.md:34-60"
+                ]
+              },
+              {
+                "aspect": "Case verification",
+                "implementation": "Два CSV реально загружены и прошли dataset/calibration quality path.",
+                "value": "Воспроизводимость подтверждена не синтетическим fixture.",
+                "verification": "observed",
+                "evidence": [
+                  "CHK-DATA",
+                  "CHK-CALIBRATE"
+                ]
+              },
+              {
+                "aspect": "Недостающий golden path",
+                "implementation": "Не указаны multipart field names и причина test=0 на supplied files.",
+                "value": "Проверяющему приходится выводить эти детали из кода.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:25-48",
+                  "backend/src/routes/datasetUpload.ts:11-14",
+                  "F-010"
+                ]
+              }
+            ],
+            "scoreReasoning": "20 баллов: docs сильнее минимального README, а ключевые backend-команды сработали на supplied CSV. Снятие связано с точностью recipe и fake rerun, не с внешними credentials."
+          },
+          {
+            "name": "Ценность и применимость решения",
+            "score": 13,
+            "max": 15,
+            "awarded": "Коммерческие параметры, confidence и рекомендации делают прогноз прикладным для оператора ВЭС.",
+            "deductions": "Снято 2 балла за одинаковые координаты в основном UI-сценарии.",
+            "evidence": [
+              "backend/src/business/impact.ts:25-71",
+              "backend/src/business/impact.ts:123-150",
+              "CHK-BUSINESS"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "F-002",
+                "reason": "Различные фактические координаты нельзя задать через основной экран."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Аудитория",
+                "implementation": "docs адресует оператора, которому нужно корректировать план, готовить reserve и контролировать imbalance.",
+                "value": "Проблема конкретна и имеет денежное последствие.",
+                "verification": "source",
+                "evidence": [
+                  "docs/README.md:3-11",
+                  "docs/README.md:62-64"
+                ]
+              },
+              {
+                "aspect": "Действие",
+                "implementation": "buildRecommendation выбирает действие для low/medium/high risk и high-risk недопоставки.",
+                "value": "Пользователь получает next step, а не только график.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/src/business/impact.ts:44-71",
+                  "CHK-BUSINESS"
+                ]
+              },
+              {
+                "aspect": "Параметризация",
+                "implementation": "Цена, penalty и committedPower приходят из request или env, а response выдаёт коммерческие aggregates.",
+                "value": "Прототип переносим между договорными условиями.",
+                "verification": "source",
+                "evidence": [
+                  "backend/src/routes/businessImpact.ts:93-128",
+                  "backend/src/business/impact.ts:123-143"
+                ]
+              },
+              {
+                "aspect": "Ограничение",
+                "implementation": "Dashboard строит оба config из одного coordinates набора.",
+                "value": "Это снижает прикладную точность на раздельных площадках.",
+                "verification": "source",
+                "evidence": [
+                  "frontend/src/pages/dashboard/ui/DashboardPage.tsx:44-56",
+                  "F-002"
+                ]
+              }
+            ],
+            "scoreReasoning": "13 из 15: бизнес-связь и действия подтверждены кодом и HTTP. Единственный существенный минус — географическое упрощение UI, при том что direct API поддерживает две конфигурации."
+          },
+          {
+            "name": "Потенциал развития и оригинальность подхода",
+            "score": 8,
+            "max": 10,
+            "awarded": "Есть перспективная комбинация archival weather, интерпретируемой calibration, agent explanation и business layer.",
+            "deductions": "Снято 2 балла за нереализованный итеративный механизм.",
+            "evidence": [
+              "backend/src/agent/loop.ts:36-150",
+              "backend/src/services/walkForward.ts:15-150",
+              "docs/README.md:13-20"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "F-001",
+                "reason": "Без реального rerun развитие к потоковым обновлениям остаётся заявленным."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Weather adapter",
+                "implementation": "Open-Meteo вынесен в client с координатами, hub height, model, run и horizon.",
+                "value": "Provider можно заменить без переписывания impact.",
+                "verification": "source",
+                "evidence": [
+                  "backend/src/weather/client.ts:64-138"
+                ]
+              },
+              {
+                "aspect": "Walk-forward",
+                "implementation": "Сервис формирует даты 31.01–28.02, запускает два цикла и собирает prediction pairs.",
+                "value": "Есть основа для backtest и drift monitoring.",
+                "verification": "source",
+                "evidence": [
+                  "backend/src/services/walkForward.ts:15-32",
+                  "backend/src/services/walkForward.ts:55-110"
+                ]
+              },
+              {
+                "aspect": "Explanation",
+                "implementation": "Prompt и fallback объясняют transition zones и ramps.",
+                "value": "Можно развить журналирование причин и audit trail.",
+                "verification": "source",
+                "evidence": [
+                  "backend/src/agent/prompts.ts:17-25",
+                  "backend/src/agent/loop.ts:68-82"
+                ]
+              },
+              {
+                "aspect": "Недостающая итерация",
+                "implementation": "rerunKey не сопровождается history input, diff или вторым result.",
+                "value": "Центральное отличие от batch endpoint пока недоказано.",
+                "verification": "source",
+                "evidence": [
+                  "backend/src/agent/loop.ts:135-149",
+                  "F-001"
+                ]
+              }
+            ],
+            "scoreReasoning": "8 из 10: каркас расширения хороший, но центральная claim об agentic update пока не превращена в работающую механику."
+          }
+        ],
+        "total": 77
+      },
+      "judgeScore": 77.5,
+      "caseRequirements": [
+        {
+          "requirement": "Почасовой прогноз двух ВЭС на горизонте 24–48 часов.",
+          "status": "met",
+          "explanation": "Сервер принимает только 24–48 часов, запускает два turbine cycle и объединяет почасовые точки. Реальный POST для двух турбин дал 24 точки; код также поддерживает 48.",
+          "evidence": [
+            "backend/src/config/forecast.ts:1-13",
+            "backend/src/routes/businessImpact.ts:131-142",
+            "CHK-BUSINESS"
+          ]
+        },
+        {
+          "requirement": "Калибровка только на истории до 31.01.2026.",
+          "status": "met",
+          "explanation": "TEST_START равен 2026-02-01, в runAgentCycle передаётся только train; последний train timestamp обоих CSV — 2026-01-31T23:50:00.000Z.",
+          "evidence": [
+            "backend/src/agent/tools/dataset.ts:45-47",
+            "backend/src/agent/tools/dataset.ts:191-201",
+            "CHK-DATA"
+          ]
+        },
+        {
+          "requirement": "Архивный forecast по координатам на каждую дату февраля.",
+          "status": "partial",
+          "explanation": "Walk-forward перебирает 31.01–28.02, client передаёт run=issueDateT00:00 и координаты; один вызов реально сработал, полный 29-дневный внешний прогон не выполнялся.",
+          "evidence": [
+            "backend/src/services/walkForward.ts:15-32",
+            "backend/src/weather/client.ts:64-84",
+            "CHK-AGENT"
+          ]
+        },
+        {
+          "requirement": "Не использовать будущую погоду или target power как вход.",
+          "status": "met",
+          "explanation": "Agent получает train и внешний weather response; actualByHour используется только после forecast для prediction pairs и не передаётся в prompt или predictPower.",
+          "evidence": [
+            "backend/src/routes/businessImpact.ts:134-141",
+            "backend/src/services/walkForward.ts:35-45",
+            "backend/src/services/walkForward.ts:86-95"
+          ]
+        },
+        {
+          "requirement": "Полный agentic цикл с rerun при обновлении входа.",
+          "status": "partial",
+          "explanation": "weather, preparation, model, forecast и analysis реализованы; rerun_triggered только записывается без второго получения погоды или пересчёта.",
+          "evidence": [
+            "backend/src/agent/loop.ts:103-135",
+            "CHK-AGENT",
+            "F-001"
+          ]
+        },
+        {
+          "requirement": "Использовать координаты обеих турбин.",
+          "status": "partial",
+          "explanation": "Backend принимает координаты отдельно, но DashboardPage строит оба объекта из одной пары latitude/longitude/hubHeight.",
+          "evidence": [
+            "backend/src/routes/businessImpact.ts:70-89",
+            "frontend/src/pages/dashboard/ui/DashboardPage.tsx:44-56",
+            "F-002"
+          ]
+        },
+        {
+          "requirement": "Проверять CSV, timestamps и gaps.",
+          "status": "met",
+          "explanation": "Оба supplied CSV распознаны, строки не отброшены, quality report сообщил gaps=31 и 68.",
+          "evidence": [
+            "backend/src/agent/tools/dataset.ts:129-185",
+            "backend/src/agent/tools/dataset.ts:241-325",
+            "CHK-DATA"
+          ]
+        },
+        {
+          "requirement": "Повторять расчёт по февралю и оценивать по фактам.",
+          "status": "partial",
+          "explanation": "Walk-forward содержит цикл дат и сбор prediction pairs, но supplied CSV заканчиваются 31 января, поэтому test arrays пусты и февральские метрики не формируются; это ограничение материалов.",
+          "evidence": [
+            "backend/src/services/walkForward.ts:27-32",
+            "backend/src/services/walkForward.ts:82-109",
+            "CHK-DATA"
+          ]
+        }
+      ],
+      "testData": {
+        "provided": [
+          "cases/1/case-data/Dataset HackAlemAI для участников 11.03.2023-28.02.2026 - turbine 1.csv",
+          "cases/1/case-data/Dataset HackAlemAI для участников 11.03.2023-28.02.2026 - turbine 2.csv",
+          "cases/1/case-data/HackAlem AI_ Agentic AI для прогнозирования выработки ВЭС.md"
+        ],
+        "used": [
+          "cases/1/case-data/Dataset HackAlemAI для участников 11.03.2023-28.02.2026 - turbine 1.csv",
+          "cases/1/case-data/Dataset HackAlemAI для участников 11.03.2023-28.02.2026 - turbine 2.csv"
+        ],
+        "checks": [
+          {
+            "input": "Оба CSV через POST /api/dataset/upload",
+            "method": "Multipart turbine-1 и turbine-2, затем GET /api/dataset.",
+            "result": "HTTP 201 upload; HTTP 200 dataset. turbine-1 totalRows=142360, train=142360, test=0, dropped=0, gaps=31. turbine-2 totalRows=149499, train=149499, test=0, dropped=0, gaps=68.",
+            "conclusion": "Парсер совместим с русскими заголовками; валидные строки попали в train, февральских строк в supplied files нет."
+          },
+          {
+            "input": "Временные границы обоих CSV",
+            "method": "loadDataset result; first/last timestamps, minutes и split.",
+            "result": "Обе таблицы начинаются 2023-03-11T00:00:00Z и заканчиваются 2026-01-31T23:50:00Z; исходная детализация 10 минут.",
+            "conclusion": "Граница обучения соблюдена; отсутствие February actual — свойство supplied files."
+          },
+          {
+            "input": "Загруженные CSV и GET /api/calibrate",
+            "method": "После upload проверены status, params, MAE и RMSE обеих турбин.",
+            "result": "HTTP 200. turbine-1 MAE≈0.038388/RMSE≈0.061238; turbine-2 MAE≈0.042533/RMSE≈0.087920, параметры curve возвращены.",
+            "conclusion": "Фактические case inputs проходят калибровку и дают metrics."
+          },
+          {
+            "input": "POST /api/agent/run для turbine-1 issueDate=2026-01-31 horizon=24",
+            "method": "Координаты 51.1694,71.4491, hubHeight=80; Open-Meteo без OpenAI key.",
+            "result": "HTTP 200, status=complete, 24 points от 2026-02-01T00:00Z до 23:00Z, deterministic-fallback.",
+            "conclusion": "Основной hourly forecast path работает; rerun наблюдался только как label F-001."
+          },
+          {
+            "input": "POST /api/wind-farm/business-impact для двух турбин horizon=24",
+            "method": "Два turbine config, price=50, penalty=100, committedPower=1500.",
+            "result": "HTTP 200, 24 farm points, expectedGenerationMWh=14.0199, expectedRevenue=700.995, riskLevel=high.",
+            "conclusion": "Целостный backend business сценарий подтверждён."
+          }
+        ],
+        "limitations": [
+          "CSV не содержат строк февраля 2026, поэтому февральское сравнение с actual power невозможно.",
+          "Полный 29-дневный walk-forward с внешними запросами не запускался; цикл проверен по исходникам.",
+          "Frontend npm test/build не подтверждены из-за незавершившейся установки и отсутствующего vitest; это ограничение среды.",
+          "Визуальный UI не проверялся по запрету browser/CUA automation."
+        ]
+      },
+      "runtime": {
+        "status": "partial",
+        "build": "Backend tsc прошёл внутри npm test; frontend build не подтверждён из-за установки dependencies.",
+        "start": "Backend ответил GET /api/health HTTP 200 {status:ok, service:backend}.",
+        "scenario": "После upload выполнены calibration, agent run с архивным Open-Meteo и business-impact для двух турбин; OpenAI перешёл в deterministic fallback.",
+        "environment": "Проверка в именованных Node.js 22 окружениях; OpenAI credentials намеренно не предоставлялись.",
+        "summary": "Backend подтверждён на основном сценарии; frontend и полный multi-day walk-forward частично не проверены.",
+        "checks": [
+          {
+            "command": "npm test",
+            "result": "tsc успешно; 8 tests passed, 0 failed, 3 suites.",
+            "id": "CHK-BUILD-BACKEND",
+            "stage": "build",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Backend компилируется и unit/domain tests проходят."
+          },
+          {
+            "command": "npm test && npm run build",
+            "result": "Frontend не стартовал: после незавершившейся установки команда сообщила vitest: not found.",
+            "id": "CHK-FRONTEND",
+            "stage": "build",
+            "status": "blocked",
+            "cause": "review_environment",
+            "expected": "Frontend tests и production build завершаются успешно."
+          },
+          {
+            "command": "GET /api/health",
+            "result": "HTTP 200; status=ok, service=backend.",
+            "id": "CHK-HEALTH",
+            "stage": "start",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Backend отвечает health endpoint."
+          },
+          {
+            "command": "POST /api/dataset/upload; GET /api/dataset",
+            "result": "HTTP 201 для обоих файлов; HTTP 200 dataset с train 142360/149499, test 0/0, dropped 0/0, gaps 31/68.",
+            "id": "CHK-DATA",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Два CSV сохраняются, читаются и проходят quality report."
+          },
+          {
+            "command": "GET /api/calibrate",
+            "result": "HTTP 200; обе turbine params, MAE и RMSE возвращены.",
+            "id": "CHK-CALIBRATE",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Калибровка использует train и возвращает metrics."
+          },
+          {
+            "command": "POST /api/agent/run",
+            "result": "HTTP 200; horizonHours=24, hourly length=24, timestamps 2026-02-01 00:00–23:00Z, deterministic-fallback.",
+            "id": "CHK-AGENT",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Issue date 2026-01-31 даёт 24 hourly forecasts."
+          },
+          {
+            "command": "POST /api/wind-farm/business-impact",
+            "result": "HTTP 200; success, 24 farm points, generation 14.0199 MWh, revenue 700.995, risk high.",
+            "id": "CHK-BUSINESS",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Два forecast объединяются в generation, revenue, risk, penalty и recommendation."
+          }
+        ],
+        "limitations": [
+          "OpenAI API не запускался без ключа; проверены request/parser и fallback.",
+          "Frontend build/test ограничены установкой и отсутствием vitest.",
+          "Визуальный UI не инспектировался."
+        ]
+      },
+      "liveDemo": {
+        "status": "none",
+        "url": null,
+        "notes": "Публичный live URL не заявлен. Локальный backend API подтверждён; browser demo не выполнялся по политике проверки."
+      },
+      "fiveHourContext": "Для пятичасового MVP объём реализации высокий: upload и quality report, calibration, archival weather integration, agent explanation, business-impact и три frontend-экрана. Production-надежность не требовалась. Rerun является обязательной частью задания, поэтому его отсутствие учитывается как проектный дефект; пустой февральский split и отсутствие OpenAI credentials относятся к материалам/среде.",
+      "strengths": [
+        "Проверенный backend pipeline от реальных CSV до двухтурбинного business-impact.",
+        "Issue-date archival weather request с фильтрацией 24–48-часового окна.",
+        "CSV validation с range/duplicate/gap checks и SQLite upload.",
+        "Интерпретируемая power curve calibration с MAE/RMSE.",
+        "Deterministic fallback без OpenAI credentials.",
+        "Связка generation → revenue → imbalance risk → recommendation."
+      ],
+      "gaps": [
+        "F-001: rerun_triggered добавляется в steps, но повторный расчёт не выполняется.",
+        "F-002: DashboardPage отправляет одну пару координат для обеих турбин.",
+        "F-010: README/docs не содержат точного upload golden path."
+      ],
+      "futureAdvice": [
+        {
+          "principle": "Событие обновления должно менять наблюдаемый результат, а не только label.",
+          "why": "F-001 показывает отсутствие второго weather/model/analysis прохода.",
+          "how": "Введите versioned weather input и rerunIfChanged; верните обе версии результата и причину rerun.",
+          "findingIds": [
+            "F-001"
+          ],
+          "successCheck": "Два разных weather snapshots дают два результата и два набора steps; без изменения input второй run не выполняется.",
+          "timeboxMinutes": 60
+        },
+        {
+          "principle": "Конфигурация должна отражать физические сущности домена.",
+          "why": "F-002: два turbine результата используют один coordinates набор.",
+          "how": "Сделайте формы keyed by turbineId и проверьте различия payload перед submit.",
+          "findingIds": [
+            "F-002"
+          ],
+          "successCheck": "Payload содержит разные coordinates для turbine-1 и turbine-2, weather client получает обе пары.",
+          "timeboxMinutes": 45
+        },
+        {
+          "principle": "Воспроизводимость начинается с копируемого golden path.",
+          "why": "F-010: field names и ожидания split приходится выводить из исходника.",
+          "how": "Добавьте multipart example, GET checks, calibration/business-impact и объяснение test=0 на supplied files.",
+          "findingIds": [
+            "F-010"
+          ],
+          "successCheck": "Новый проверяющий по README загружает оба файла, получает 201 и понимает quality report.",
+          "timeboxMinutes": 35
+        }
+      ],
+      "uncertainties": [
+        "Полный February walk-forward не выполнялся; цикл статически проверен, один issue-date run реально проверен.",
+        "CSV заканчиваются 31 января, accuracy февраля подтвердить нельзя.",
+        "OpenAI Responses API не проверялся с реальным ключом; проверены конфигурация, parser и fallback.",
+        "Визуальное соответствие UI не утверждается как наблюдённое.",
+        "Frontend test/build требуют повторной проверки после доступной установки dependencies."
+      ],
+      "reviewPolicyVersion": 2,
+      "assessmentStatus": "ready",
+      "findings": [
+        {
+          "id": "F-001",
+          "kind": "defect",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "runAgentCycle помечает rerun_triggered, но не выполняет повторный расчёт при обновлении входа.",
+          "expected": "После обновления входа агент повторно получает/подготавливает вход, пересчитывает forecast и возвращает обновлённый результат.",
+          "actual": "После analyzeForecast код добавляет только steps, затем возвращает первоначальные hourly, params и rerunKey.",
+          "evidence": [
+            "backend/src/agent/loop.ts:123-149",
+            "backend/src/agent/types.ts:5-11",
+            "CHK-AGENT"
+          ],
+          "checkIds": [
+            "CHK-AGENT",
+            "CHK-BUSINESS"
+          ]
+        },
+        {
+          "id": "F-002",
+          "kind": "defect",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Основной frontend flow отправляет одну пару координат для обеих турбин.",
+          "expected": "Пользовательский сценарий передаёт coordinates turbine-1 и turbine-2 независимо.",
+          "actual": "DashboardPage для обоих объектов использует values.latitude/longitude/hubHeight_m; форма содержит одну группу координат.",
+          "evidence": [
+            "frontend/src/pages/dashboard/ui/DashboardPage.tsx:44-56",
+            "frontend/src/features/forecast-run/ui/ForecastForm.tsx:65-76",
+            "backend/src/routes/businessImpact.ts:70-89"
+          ],
+          "checkIds": [
+            "CHK-BUSINESS"
+          ]
+        },
+        {
+          "id": "F-003",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Проект принимает supplied CSV и возвращает quality report.",
+          "expected": "Case files проходят parsing, split и upload без потери валидных строк.",
+          "actual": "HTTP 201 для двух файлов; HTTP 200 dataset, dropped=0, train=142360/149499, gaps=31/68.",
+          "evidence": [
+            "backend/src/agent/tools/dataset.ts:222-335",
+            "backend/src/routes/datasetUpload.ts:25-47",
+            "CHK-DATA"
+          ],
+          "checkIds": [
+            "CHK-DATA"
+          ]
+        },
+        {
+          "id": "F-004",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Backend выдаёт двухтурбинный почасовой business result.",
+          "expected": "После upload система возвращает forecast points и commercial aggregates.",
+          "actual": "HTTP 200, 24 farm points, generation 14.0199 MWh, revenue 700.995, risk high.",
+          "evidence": [
+            "backend/src/routes/businessImpact.ts:131-147",
+            "backend/src/business/impact.ts:130-150",
+            "CHK-BUSINESS"
+          ],
+          "checkIds": [
+            "CHK-BUSINESS"
+          ]
+        },
+        {
+          "id": "F-005",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Архивный weather path использует issue-date-specific Single Runs request.",
+          "expected": "Для 31 января run этой даты возвращает следующие 24 часа.",
+          "actual": "Agent response содержит 24 timestamps 1 февраля; unit test проверяет run и ecmwf_ifs.",
+          "evidence": [
+            "backend/src/weather/client.ts:64-84",
+            "backend/src/weather/client.ts:104-138",
+            "backend/src/tests/agent.test.ts:59-73",
+            "CHK-AGENT"
+          ],
+          "checkIds": [
+            "CHK-AGENT"
+          ]
+        },
+        {
+          "id": "F-006",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Calibration отделяет validation и возвращает MAE/RMSE.",
+          "expected": "На train rows появляются params и validation metrics.",
+          "actual": "GET /api/calibrate HTTP 200 вернул параметры и метрики обеих турбин.",
+          "evidence": [
+            "backend/src/services/calibration.ts:24-78",
+            "backend/src/models/metrics.ts:39-49",
+            "CHK-CALIBRATE"
+          ],
+          "checkIds": [
+            "CHK-CALIBRATE"
+          ]
+        },
+        {
+          "id": "F-007",
+          "kind": "limitation",
+          "verification": "observed",
+          "responsibility": "review_environment",
+          "claim": "OpenAI path не выполнялся из-за отсутствующих credentials.",
+          "expected": "При наличии ключа Responses API возвращает structured explanation.",
+          "actual": "Runtime использовал deterministic-fallback; исходники содержат request/parser/error path.",
+          "evidence": [
+            "backend/src/agent/llm.ts:41-70",
+            "backend/src/agent/loop.ts:85-92",
+            "CHK-AGENT"
+          ],
+          "checkIds": [
+            "CHK-AGENT"
+          ]
+        },
+        {
+          "id": "F-008",
+          "kind": "limitation",
+          "verification": "observed",
+          "responsibility": "review_environment",
+          "claim": "Поставленные CSV не содержат февральских actual rows.",
+          "expected": "Для February accuracy нужны target rows 2026-02-01…28.",
+          "actual": "Parser получил test=0 для обоих файлов и добавил note об отсутствии held-out February.",
+          "evidence": [
+            "CHK-DATA",
+            "backend/src/agent/tools/dataset.ts:320-322"
+          ],
+          "checkIds": [
+            "CHK-DATA"
+          ]
+        },
+        {
+          "id": "F-009",
+          "kind": "limitation",
+          "verification": "observed",
+          "responsibility": "review_environment",
+          "claim": "Frontend test/build не подтверждены.",
+          "expected": "vitest и TypeScript/Vite build доступны после установки dependencies.",
+          "actual": "Установка не завершилась; npm test сообщил vitest: not found.",
+          "evidence": [
+            "frontend/package.json:1-42",
+            "CHK-FRONTEND"
+          ],
+          "checkIds": [
+            "CHK-FRONTEND"
+          ]
+        },
+        {
+          "id": "F-010",
+          "kind": "defect",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "README/docs не дают точного golden path загрузки двух CSV.",
+          "expected": "Документация называет multipart fields turbine-1/turbine-2, upload/check sequence и ожидаемый test count.",
+          "actual": "Документы перечисляют endpoint, но не показывают field names или пример запроса; test=0 обнаруживается через source/runtime.",
+          "evidence": [
+            "README.md:25-48",
+            "docs/README.md:13-20",
+            "docs/README.md:34-47",
+            "backend/src/routes/datasetUpload.ts:11-14",
+            "CHK-DATA"
+          ],
+          "checkIds": [
+            "CHK-DATA"
+          ]
+        }
+      ],
+      "gapFindingIds": [
+        "F-001",
+        "F-002",
+        "F-010"
+      ]
+    }
+  ],
+  "score": 77.5,
+  "status": "complete",
+  "expectedJudges": 1
+}

@@ -1,0 +1,806 @@
+{
+  "methodVersion": 4,
+  "repoId": "hack-c8b7404d-agro-pulse",
+  "repoUrl": "https://github.com/BAITC-Hacks/hack-c8b7404d-agro-pulse",
+  "caseId": 5,
+  "snapshot": "9ebfadcf2ae399b4574f4a97872018c8750b1b50",
+  "judges": [
+    {
+      "methodVersion": 4,
+      "repoId": "hack-c8b7404d-agro-pulse",
+      "caseId": 5,
+      "model": "GPT-5.6 Luna",
+      "snapshot": "9ebfadcf2ae399b4574f4a97872018c8750b1b50",
+      "overallSummary": "Agro-Pulse — добротно собранный локальный Go MVP для расчёта пополнения: он читает реальные Excel двух поставщиков, сохраняет происхождение значений, нормализует SKU, считает устойчивый Theil–Sen тренд, сезонный прогноз, Tukey-визоризацию выбросов, incoming, MOQ и детерминированное объяснение. Изолированный demo-сценарий действительно воспроизведён и показал все пять заявленных чувствительностей: NORMAL DEMAND и LARGE OUTLIER дали одинаковый заказ 276, INCOMING GOODS снизил его до 72, GROWING DEMAND дал прогноз 720, а STOCKOUT добавил 310 единиц lost demand и дал заказ 312. Реальный прогон на всех 12 предоставленных XLSX также завершился успешно и сформировал 3185 записей IEK и 724 записи SystemElectric, но все 3909 записей остались needs_data с null-рекомендацией: это честно отражает неполный текущий остаток, неподтверждённую дату incoming, агрегатную, а не SKU-сезонность, неуточнённые правила MOQ и отсутствие подтверждённых длительностей stockout. Главные подтверждённые пробелы реализации — категория сохраняется, но не участвует в модели, выброс нельзя связать с одним клиентом, а пользовательский результат доступен только как JSON CLI без табличного/дашбордного слоя. Оценка готова: 80/100 по общим критериям; отдельной шкалы кейса нет, поэтому case=null и judgeScore=80.",
+      "global": {
+        "criteria": [
+          {
+            "name": "Ценность решения",
+            "score": 22,
+            "max": 25,
+            "awarded": "Решение адресует конкретную операционную проблему менеджера закупа: регулярный расчёт пополнения вместо ручной консолидации Excel, с защитой от выбросов и учётом уже заказанного товара.",
+            "deductions": "Снято 3 балла за подтверждённые ограничения ценности именно для пользователя: нельзя отделить крупную покупку одного клиента, а категория не влияет на прогноз и заказ.",
+            "evidence": [
+              "README.md:10-23",
+              "REQUIREMENTS.md:31-68",
+              "CHK-DEMO и CHK-PARTNER"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "F6",
+                "reason": "При доступной категории она лишь переносится в Recommendation, но не меняет расчёт; это ограничивает пользу для закупщика, работающего с разными товарными категориями."
+              },
+              {
+                "points": 2,
+                "findingId": "F7",
+                "reason": "Кейс требует защиты от разовой крупной покупки, в том числе одного клиента, но модель не содержит customer/client ID и не может подтвердить такой сценарий."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Понятная боль закупок",
+                "implementation": "README описывает ручную консолидацию Excel, редкий пересчёт, overstock, stockout и упущенные продажи. CLI принимает каталоги IEK и SystemElectric, дату среза и горизонт, а затем группирует результаты по поставщикам.",
+                "value": "Целевая аудитория и экономический эффект понятны: менеджер получает повторяемый черновик расчёта вместо ручного сведения нескольких таблиц.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:10-23",
+                  "cmd/app/main.go:17-25"
+                ]
+              },
+              {
+                "aspect": "Защита регулярного спроса от всплеска",
+                "implementation": "Для транзакций используется внешняя граница Tukey Q3+3×IQR и winsorization; затем регулярный месячный ряд проходит дополнительную границу в десезонализованном масштабе.",
+                "value": "Подход напрямую соответствует проблеме разовых крупных отгрузок и не превращает единичный всплеск в постоянную закупочную потребность.",
+                "verification": "observed",
+                "evidence": [
+                  "internal/analytics/outlier.go:34-64",
+                  "README.md:177-182",
+                  "CHK-DEMO: NORMAL DEMAND и LARGE OUTLIER дали заказ 276"
+                ]
+              },
+              {
+                "aspect": "Честное управление неопределённостью",
+                "implementation": "Pipeline начинает каждую рекомендацию со статуса needs_data, сохраняет причины, не подставляет opening stock как текущий и не превращает пустой incoming в ноль.",
+                "value": "Для коммерческих данных это полезнее правдоподобного, но неподтверждённого заказа: закупщик видит, какие поля нужно подтвердить перед покупкой.",
+                "verification": "observed",
+                "evidence": [
+                  "internal/pipeline/pipeline.go:38-119",
+                  "CHK-PARTNER: 3185 IEK и 724 SystemElectric, 0 draft"
+                ]
+              },
+              {
+                "aspect": "Безопасные границы MVP",
+                "implementation": "Числовые результаты реального режима блокируются при неподтверждённых входах; README отдельно указывает отсутствие автоматической отправки заказа и обработки клиентских данных.",
+                "value": "Решение не создаёт риск автоматической закупки на основании сомнительного среза, что соответствует ответственности менеджера закупа.",
+                "verification": "source",
+                "evidence": [
+                  "internal/pipeline/pipeline.go:13-21",
+                  "README.md:437-442"
+                ]
+              }
+            ],
+            "scoreReasoning": "22 балла заслужены за точную постановку проблемы, применимый расчётный конвейер и консервативное поведение на коммерческих данных. До максимума не хватает клиентской гранулярности и использования доступной категории как фактора модели; эти два пробела ограничивают адресность рекомендации, но не отменяют ценность уже воспроизведённого MVP."
+          },
+          {
+            "name": "Результат и качество решения",
+            "score": 15,
+            "max": 20,
+            "awarded": "Сценарий целостен на синтетической демонстрации и устойчив к неполным реальным источникам, но пользовательский результат остаётся CLI/JSON, а реальный прогон не дошёл до числового заказа ни для одного SKU.",
+            "deductions": "Снято 5 баллов за подтверждённые пробелы результата: категория не участвует в расчёте, клиентский выброс не различается, а отдельного табличного или дашбордного представления нет.",
+            "evidence": [
+              "CHK-BUILD-TEST",
+              "CHK-DEMO",
+              "CHK-PARTNER",
+              "REQUIREMENTS.md:54-68"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "F6",
+                "reason": "Требование учитывать категории выполнено только на уровне атрибута: категория не попадает в формулу Forecast/Calculate и не влияет на результат."
+              },
+              {
+                "points": 2,
+                "findingId": "F7",
+                "reason": "Сценарий крупной покупки одного клиента не реализуем в текущей модели Sale и потому не доказан end-to-end; Tukey работает только по количествам транзакций."
+              },
+              {
+                "points": 1,
+                "findingId": "F8",
+                "reason": "Обязательный пользовательский формат результата описан как таблица/дашборд, но фактически приложение экспортирует JSON и не предоставляет отдельного табличного слоя или интерфейса просмотра."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Рабочий демонстрационный конвейер",
+                "implementation": "go run ./cmd/app --demo формирует пять изолированных сценариев через один pipeline: нормальный спрос, гигантский выброс, рост, incoming и подтверждённый stockout.",
+                "value": "Это целостный пользовательский результат с количеством, объяснением, статусом и факторами, а не набор разрозненных unit-функций.",
+                "verification": "observed",
+                "evidence": [
+                  "CHK-DEMO: 5 сценариев; NORMAL=276, LARGE OUTLIER=276, GROWING forecast=720, INCOMING=72, STOCKOUT=312",
+                  "internal/demo/report.go:42-115"
+                ]
+              },
+              {
+                "aspect": "Проверенная загрузка реальных Excel",
+                "implementation": "Совместный CLI принимает два каталога, читает все 12 предоставленных workbook-файлов, строит рекомендации по каждому SKU и сохраняет quality/issues вместе с результатами.",
+                "value": "Реальная интеграция не маскируется demo-ответом: все SKU остаются в отчёте, а неподтверждённые поля получают null и причины needs_data.",
+                "verification": "observed",
+                "evidence": [
+                  "CHK-PARTNER: exit 0; IEK=3185 рекомендаций, SystemElectric=724; draft=0",
+                  "Agro-Pulse/IEK_RUN.md:19-58"
+                ]
+              },
+              {
+                "aspect": "Объяснимость каждой рекомендации",
+                "implementation": "Recommendation содержит forecast, current_stock, incoming, MOQ, raw order, quantity, urgency, warnings и explanation; Build формирует текст из тех же рассчитанных значений.",
+                "value": "Пользователь может связать итог с запасом, поставками, сезонностью, трендом, выбросами и MOQ, а при блокировке увидеть конкретную причину.",
+                "verification": "source",
+                "evidence": [
+                  "internal/explain/explain.go:9-30",
+                  "internal/model/model.go:134-188",
+                  "CHK-DEMO: metrics.explanation.value заполнено для всех 5 сценариев"
+                ]
+              },
+              {
+                "aspect": "Защита от недостоверных входов",
+                "implementation": "CurrentStock принимает только валидный snapshot на дату as-of, IncomingStock проверяет дату/количество и просрочку, а strict pipeline не вычисляет quantity при незакрытых данных.",
+                "value": "Система не выдаёт ложный нулевой заказ или заказ на основании исторического opening stock.",
+                "verification": "source",
+                "evidence": [
+                  "internal/calculator/inventory.go:12-68",
+                  "internal/pipeline/pipeline.go:72-119",
+                  "CHK-PARTNER: все реальные рекомендации needs_data"
+                ]
+              }
+            ],
+            "scoreReasoning": "15 баллов отражают сильную локальную демоверсию и аккуратный реальный аудит. Снижение существенно, потому что на предоставленных партнёрских данных нет ни одной числовой рекомендации, а три части результата — категории, клиентский выброс и табличный пользовательский слой — остаются неполными. Неполнота самих исходных семантик учтена как ограничение проверки, а не как отдельный штраф."
+          },
+          {
+            "name": "Инновационность",
+            "score": 11,
+            "max": 15,
+            "awarded": "Собственное преимущество MVP — в сочетании робастного прогноза, строгой provenance-модели и отказа от выдумывания недоступных бизнес-полей.",
+            "deductions": "Снято 4 балла за отсутствие клиентской аномальной аналитики и за то, что категории не дают отдельного модельного преимущества.",
+            "evidence": [
+              "internal/analytics/forecast.go:31-71",
+              "internal/analytics/outlier.go:34-64",
+              "internal/model/model.go:6-18",
+              "CHK-DEMO"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "F7",
+                "reason": "Выбор Tukey по размеру транзакции — полезная робастная эвристика, но не нестандартный анализ разовой покупки конкретного клиента, требуемый постановкой кейса."
+              },
+              {
+                "points": 2,
+                "findingId": "F6",
+                "reason": "Категория сохраняется без коэффициента или отдельной модели роста; поэтому заявленное преимущество не расширяется до категорий товаров."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Robust forecasting вместо среднего по сырым продажам",
+                "implementation": "Forecast сначала исключает будущие месяцы и нерасходные документы, строит transaction-level Tukey fence, корректирует месячный ряд и затем применяет дополнительную fence в десезонализованном масштабе.",
+                "value": "Для скошенного оптового спроса это обоснованный нестандартный для простого MVP выбор; он делает редкий гигантский заказ видимым, но не даёт ему раздувать базу.",
+                "verification": "source",
+                "evidence": [
+                  "internal/analytics/forecast.go:116-225",
+                  "internal/analytics/outlier.go:34-64"
+                ]
+              },
+              {
+                "aspect": "Theil–Sen с сезонным восстановлением",
+                "implementation": "История делится на сезонный профиль и десезонализованный уровень, тренд берётся медианой попарных наклонов, затем прогноз восстанавливает календарный масштаб и долю месяца.",
+                "value": "Подход устойчивее обычной линейной регрессии к отдельным всплескам и явно разделяет рост и сезонность.",
+                "verification": "observed",
+                "evidence": [
+                  "internal/analytics/forecast.go:228-295",
+                  "CHK-DEMO: GROWING DEMAND forecast=720 и seasonality_impact=330"
+                ]
+              },
+              {
+                "aspect": "Provenance и strict refusal",
+                "implementation": "Number хранит Valid и Source, demo-режим проверяет источник каждого числа, а partner pipeline блокирует числовой заказ при неопределённом источнике.",
+                "value": "Для закупочного решения это самостоятельное инженерное преимущество: невозможно незаметно смешать synthetic_demo и partner_data или заменить отсутствие поля нулём.",
+                "verification": "source",
+                "evidence": [
+                  "internal/model/model.go:6-18",
+                  "internal/pipeline/demo.go:13-91",
+                  "CHK-PARTNER: null quantity вместо выдуманных чисел"
+                ]
+              }
+            ],
+            "scoreReasoning": "11 баллов заслужены за хорошо обоснованные робастные методы и происхождение данных, которые заметно сильнее наивного среднего и склейки Excel. До максимума решение не доходит из-за отсутствия клиентской гранулярности и отсутствия category-aware модели; README прямо фиксирует оба предела."
+          },
+          {
+            "name": "Потенциал развития и масштабирования",
+            "score": 15,
+            "max": 20,
+            "awarded": "Архитектура уже разделяет адаптеры поставщиков, общее доменное ядро, аналитику, расчёт и объяснение, поэтому добавление нового источника возможно без переписывания формул.",
+            "deductions": "Снято 5 баллов за отсутствие category-aware/customer-aware расширений и пользовательского слоя утверждения результата.",
+            "evidence": [
+              "README.md:210-226",
+              "internal/loader/iek.go:5-15",
+              "internal/loader/systemelectric_core.go:11-79",
+              "cmd/app/main.go:17-109"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "F6",
+                "reason": "Без модели категорий и SKU-профиля сезонности масштабирование на разные ассортиментные сегменты ограничено сохранением атрибутов без их использования."
+              },
+              {
+                "points": 2,
+                "findingId": "F7",
+                "reason": "Без идентификатора клиента или заменяющего признака система не масштабируется на задачу различения B2B-отгрузки и регулярного спроса одного покупателя."
+              },
+              {
+                "points": 1,
+                "findingId": "F8",
+                "reason": "CLI JSON удобен для интеграции, но отсутствие слоя просмотра/утверждения оставляет масштабирование на закупочную команду без готового рабочего места."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Общее ядро для поставщиков",
+                "implementation": "IEK и SystemElectric приводятся к общей Dataset/Product модели; pipeline, analytics, calculator и explain не зависят от конкретного Excel-адаптера.",
+                "value": "Новый поставщик может быть добавлен отдельным loader/bridge, сохранив единые правила расчёта и формат отчёта.",
+                "verification": "source",
+                "evidence": [
+                  "internal/pipeline/pipeline.go:1-32",
+                  "internal/loader/iek.go:5-15",
+                  "internal/loader/systemelectric_core.go:11-79"
+                ]
+              },
+              {
+                "aspect": "Аудируемая модель данных",
+                "implementation": "Quality, SourceStats, DataIssue, Source и Number сохраняют проблемы, координаты и валидность; SKU с проблемами не выбрасываются молча.",
+                "value": "Это создаёт базу для последующей сверки с ERP/1С и для поэтапного включения SKU, когда бизнес подтвердит смысл полей.",
+                "verification": "source",
+                "evidence": [
+                  "internal/model/replenishment.go:15-61",
+                  "internal/model/model.go:6-18",
+                  "CHK-PARTNER: отчёт содержит quality/issues и все 3909 SKU"
+                ]
+              },
+              {
+                "aspect": "Расширяемая проверяемая демо-модель",
+                "implementation": "Demo fixtures изолированы от loader, имеют собственные источники, проверку provenance и тесты на перемещение входов, MOQ, сезонность, выброс и stockout.",
+                "value": "Команде проще добавлять регрессионные сценарии до подключения новых коммерческих источников.",
+                "verification": "source",
+                "evidence": [
+                  "internal/demo/scenarios.go:20-72",
+                  "internal/pipeline/demo.go:13-91",
+                  "CHK-DATA-TEST: полный suite pass"
+                ]
+              }
+            ],
+            "scoreReasoning": "15 баллов — это хороший потенциал для следующего этапа благодаря общей модели и адаптерам. Снижение связано не с отсутствием production-инфраструктуры, которой пятичасовой MVP не обязан иметь, а с конкретными отсутствующими расширениями: category/customer-aware расчёт и рабочий интерфейс согласования."
+          },
+          {
+            "name": "Презентация, демо и ответы на вопросы",
+            "score": 17,
+            "max": 20,
+            "awarded": "Устное выступление не оценивалось; по README и воспроизводимому локальному демо решение объяснено ясно, с формулами, ограничениями, примерами и командами запуска.",
+            "deductions": "Снято 3 балла за отсутствие отдельного табличного/дашбордного представления, из-за чего даже корректный JSON-результат менее непосредственно демонстрируем менеджеру закупа.",
+            "evidence": [
+              "README.md:47-112",
+              "README.md:341-389",
+              "Agro-Pulse/DEMO.md:1-100",
+              "CHK-DEMO",
+              "CHK-PARTNER"
+            ],
+            "deductionItems": [
+              {
+                "points": 3,
+                "findingId": "F8",
+                "reason": "Из репозитория можно показать JSON-файл и PowerShell-выборку, но нет готового табличного/дашбордного экрана для демонстрации менеджеру закупа; это ограничивает непосредственную убедительность показа."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Воспроизводимая локальная демонстрация",
+                "implementation": "README даёт одну короткую команду demo и точные проверки: сравнить NORMAL/LARGE OUTLIER, посмотреть рост, incoming и STOCKOUT, затем открыть metrics.explanation.",
+                "value": "Для условий без публичного URL это достаточный способ показать результат из репозитория; проверка действительно воспроизвела пять сценариев.",
+                "verification": "observed",
+                "evidence": [
+                  "README.md:341-363",
+                  "CHK-DEMO"
+                ]
+              },
+              {
+                "aspect": "Понятное раскрытие метода",
+                "implementation": "Документация содержит формулы сезонности, Theil–Sen, raw order, MOQ, urgency и отдельные ограничения по IEK/SystemElectric.",
+                "value": "Участнику или заказчику не нужно угадывать, почему заказ изменился; допущения отделены от требований.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:47-112",
+                  "REQUIREMENTS.md:157-186"
+                ]
+              },
+              {
+                "aspect": "Честная демонстрация границ",
+                "implementation": "README отдельно предупреждает, что partner-data может дать null, что числовая end-to-end демонстрация синтетическая, а real strict pipeline блокирует неподтверждённые правила.",
+                "value": "Это повышает доверие к демо: отсутствие реального заказа не скрыто за нулём и не выдано за production-ready поведение.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:420-435",
+                  "Agro-Pulse/IEK_RUN.md:19-67",
+                  "CHK-PARTNER"
+                ]
+              }
+            ],
+            "scoreReasoning": "17 баллов заслужены за сильную документацию, короткий reproducible demo и явные ограничения. До максимума не хватает пользовательского визуального слоя и real-data числового примера; отсутствие публичной ссылки или устной презентации не штрафовалось отдельно, как требует политика проверки."
+          }
+        ],
+        "total": 80
+      },
+      "case": null,
+      "judgeScore": 80,
+      "caseRequirements": [
+        {
+          "requirement": "Рассчитывать базовую потребность по каждому SKU",
+          "status": "partial",
+          "explanation": "Отчёт создаётся для каждого SKU и объясняет needs_data, но числовая базовая потребность появляется только в synthetic_demo; на реальных файлах все 3909 рекомендаций заблокированы неполными входами.",
+          "evidence": [
+            "internal/pipeline/pipeline.go:38-119",
+            "CHK-DEMO",
+            "CHK-PARTNER"
+          ]
+        },
+        {
+          "requirement": "Учитывать историю продаж",
+          "status": "met",
+          "explanation": "IEK и SystemElectric загружают месячные продажи и транзакции; прогноз использует завершённые месяцы до as-of, а диагностика сохраняется при неполном ряде.",
+          "evidence": [
+            "internal/analytics/forecast.go:116-225",
+            "internal/loader/iek.go:9-12",
+            "CHK-PARTNER"
+          ]
+        },
+        {
+          "requirement": "Учитывать текущие остатки",
+          "status": "partial",
+          "explanation": "Валидный snapshot на дату as-of учитывается, но исторические месячные остатки намеренно не подменяют current stock; в IEK и для части SystemElectric snapshot отсутствует.",
+          "evidence": [
+            "internal/calculator/inventory.go:12-36",
+            "internal/loader/systemelectric_core.go:50-54",
+            "CHK-PARTNER"
+          ]
+        },
+        {
+          "requirement": "Учитывать товары в пути",
+          "status": "partial",
+          "explanation": "Поступления с валидной датой внутри горизонта вычитаются, что доказано demo INCOMING GOODS; реальные даты SystemElectric взяты только из заголовка и IEK имеет неполные партии, поэтому строгий pipeline блокирует их.",
+          "evidence": [
+            "internal/calculator/inventory.go:39-68",
+            "internal/loader/systemelectric_sources.go:420-430",
+            "CHK-DEMO",
+            "CHK-PARTNER"
+          ]
+        },
+        {
+          "requirement": "Учитывать категории, если они есть",
+          "status": "partial",
+          "explanation": "Категория SystemElectric читается и попадает в Product/Recommendation, но не участвует в forecast или order formula.",
+          "evidence": [
+            "internal/loader/systemelectric_core.go:30-31",
+            "internal/loader/systemelectric.go:366-369",
+            "F6"
+          ]
+        },
+        {
+          "requirement": "Учитывать прогноз роста",
+          "status": "met",
+          "explanation": "Theil–Sen-тренд на десезонализованном ряде входит в прогноз; demo GROWING DEMAND дал trend около 21.667 и forecast 720 против плоского 310.",
+          "evidence": [
+            "internal/analytics/forecast.go:242-295",
+            "CHK-DEMO"
+          ]
+        },
+        {
+          "requirement": "Учитывать сезонность",
+          "status": "partial",
+          "explanation": "Ядро нормирует 12 коэффициентов и восстанавливает сезонный масштаб; в demo это изменило январский прогноз. В реальных файлах профиль имеет company_total scope и не назначается SKU.",
+          "evidence": [
+            "internal/analytics/forecast.go:16-28",
+            "internal/loader/systemelectric_sources.go:597-661",
+            "CHK-DEMO",
+            "CHK-PARTNER"
+          ]
+        },
+        {
+          "requirement": "Выявлять stockout и оценивать lost demand",
+          "status": "partial",
+          "explanation": "Подтверждённое число дней поддерживается и корректирует историю по медианной дневной ставке; demo STOCKOUT получил lost=310 и forecast=310. В partner data длительность не выводится из пустого или месячного остатка.",
+          "evidence": [
+            "internal/analytics/stockout.go:13-54",
+            "internal/analytics/forecast.go:49-71",
+            "CHK-DEMO",
+            "README.md:205-208"
+          ]
+        },
+        {
+          "requirement": "Выявлять крупные выбросы и не искажать ими регулярный прогноз",
+          "status": "partial",
+          "explanation": "Transaction-level и monthly Tukey-визоризация реализованы, а LARGE OUTLIER повторил заказ NORMAL. Отдельно одного клиента система не выделяет, потому что в модели нет customer ID.",
+          "evidence": [
+            "internal/analytics/outlier.go:34-64",
+            "internal/analytics/forecast.go:126-192",
+            "CHK-DEMO",
+            "F7"
+          ]
+        },
+        {
+          "requirement": "Формировать рекомендуемое количество и учитывать MOQ",
+          "status": "partial",
+          "explanation": "Calculate вычитает stock и incoming, округляет дискретные единицы и применяет minimum/multiple; demo подтверждает 276 и 72. На реальных файлах семантика MOQ и единиц не утверждена, поэтому числовой результат блокируется.",
+          "evidence": [
+            "internal/calculator/calculator.go:26-69",
+            "internal/pipeline/pipeline.go:97-119",
+            "CHK-DEMO",
+            "CHK-PARTNER"
+          ]
+        },
+        {
+          "requirement": "Определять поставщика и группировать рекомендации",
+          "status": "met",
+          "explanation": "Загрузка формирует отдельные SupplierReport для IEK и SystemElectric; каждая запись содержит supplier и SKU.",
+          "evidence": [
+            "cmd/app/main.go:76-89",
+            "CHK-PARTNER: suppliers=2, IEK=3185, SystemElectric=724"
+          ]
+        },
+        {
+          "requirement": "Давать объяснение, срочность, экспорт и результат для пользователя",
+          "status": "partial",
+          "explanation": "Explanation, urgency и JSON export реализованы. Срочность — demo-only, в реальном режиме unknown из-за неподтверждённой политики; отдельного table/dashboard UI нет, только JSON CLI.",
+          "evidence": [
+            "internal/explain/explain.go:9-30",
+            "internal/calculator/inventory.go:71-123",
+            "cmd/app/main.go:90-109",
+            "F8",
+            "CHK-DEMO"
+          ]
+        },
+        {
+          "requirement": "Не отправлять заказ автоматически и не использовать клиентские персональные данные",
+          "status": "met",
+          "explanation": "CLI только формирует draft/demo_recommendation или needs_data, в коде нет отправки поставщику; модель не содержит client ID и README фиксирует локальную обработку.",
+          "evidence": [
+            "internal/pipeline/pipeline.go:119-125",
+            "README.md:437-442",
+            "CHK-PARTNER"
+          ]
+        }
+      ],
+      "testData": {
+        "provided": [
+          "IEK/MOQ  ИЭК.xlsx",
+          "IEK/Динамика продаж_2025-2026.xlsx",
+          "IEK/Ежемесячные остатки продукции за последние 2 года  ИЭК.xlsx",
+          "IEK/Ежемесячные продажи в количественном выражении за последние 2 года.xlsx",
+          "IEK/Путь ИЭК 22.09.2026.xlsx",
+          "IEK/Сезонность ИЭК.xlsx",
+          "Systeme electric/MOQ SystemElectric.xlsx",
+          "Systeme electric/Динамика продаж_Syseme Electric_2025-2026.xlsx",
+          "Systeme electric/Ежемесячные остатки SystemElectric 2024-2026.xlsx",
+          "Systeme electric/Ежемесячные продажи в кол-м выражении SystemElectric 2024-2026.xlsx",
+          "Systeme electric/Сезонность SystemElectric 2024-2026.xlsx",
+          "Systeme electric/Товар в пути_SystemElectric на 22.09.2026.xlsx"
+        ],
+        "used": [
+          "IEK/MOQ  ИЭК.xlsx",
+          "IEK/Динамика продаж_2025-2026.xlsx",
+          "IEK/Ежемесячные остатки продукции за последние 2 года  ИЭК.xlsx",
+          "IEK/Ежемесячные продажи в количественном выражении за последние 2 года.xlsx",
+          "IEK/Путь ИЭК 22.09.2026.xlsx",
+          "IEK/Сезонность ИЭК.xlsx",
+          "Systeme electric/MOQ SystemElectric.xlsx",
+          "Systeme electric/Динамика продаж_Syseme Electric_2025-2026.xlsx",
+          "Systeme electric/Ежемесячные остатки SystemElectric 2024-2026.xlsx",
+          "Systeme electric/Ежемесячные продажи в кол-м выражении SystemElectric 2024-2026.xlsx",
+          "Systeme electric/Сезонность SystemElectric 2024-2026.xlsx",
+          "Systeme electric/Товар в пути_SystemElectric на 22.09.2026.xlsx"
+        ],
+        "checks": [
+          {
+            "input": "Все шесть IEK и все шесть SystemElectric XLSX, as-of 2026-09-22, horizon 1 month.",
+            "method": "Совместный CLI partner_data с обоими каталогами; результат сохранён в JSON.",
+            "result": "Exit 0. Получены 3185 IEK и 724 SystemElectric records. Числовых draft нет: 3185/3185 и 724/724 имеют status needs_data; quality сохранил 287 IEK и 1617 SystemElectric issue entries.",
+            "conclusion": "Загрузчики реально обработали предоставленные источники и не подменили неполные поля нулевыми заказами; реальный числовой end-to-end сценарий ограничен семантикой исходных таблиц и strict gating."
+          },
+          {
+            "input": "Synthetic demo fixtures, без предоставленных XLSX.",
+            "method": "CLI --demo через тот же pipeline; проверены пять metrics-сценариев и provenance-обёртки.",
+            "result": "NORMAL DEMAND order=276; LARGE OUTLIER order=276, outliers=1; GROWING DEMAND forecast=720, seasonality impact=330; INCOMING GOODS incoming=200, order=72; STOCKOUT lost=310, order=312, urgency=now.",
+            "conclusion": "Заявленные чувствительности к выбросу, росту, сезонности, incoming и подтверждённому stockout наблюдаются в локальном демо."
+          },
+          {
+            "input": "Полный Go test suite с AGROPULSE_CASES_DIR=/data и SE_DATA_DIR=/data/Systeme electric.",
+            "method": "go test ./... -count=1 в изолированном окружении; реальные workbook-тесты включены через переменные.",
+            "result": "Exit 0: cmd/app, analytics, calculator, demo, explain, loader, normalize, pipeline и tests прошли; реальные IEK/SystemElectric loader-аудиты также прошли.",
+            "conclusion": "Unit/domain и доступные интеграционные проверки воспроизводимы на supplied data."
+          }
+        ],
+        "limitations": [
+          "В исходных файлах сезонность дана на уровне компании, а не SKU; дата incoming в SystemElectric есть только в заголовке колонки.",
+          "Для IEK месячные остатки не подтверждены как текущий snapshot на 2026-09-22; часть SKU не имеет полного incoming или MOQ.",
+          "В предоставленной схеме нет client ID и подтверждённых длительностей stockout, поэтому эти факторы нельзя честно извлечь из Excel.",
+          "Полные датасеты не приведены в отчёт; перечислены только файлы и агрегированные результаты."
+        ]
+      },
+      "runtime": {
+        "status": "partial",
+        "build": "Сборка и статические проверки прошли; demo и real CLI также стартуют. Основной real-data конвейер частично выполняет бизнес-сценарий: формирует полный диагностический отчёт, но не может выдать числовые заказы по supplied partner data.",
+        "start": "Приложение успешно запускается через cmd/app в demo и partner_data режимах; ошибки загрузки, паники и ненулевые exit code не наблюдались.",
+        "scenario": "Synthetic numeric scenario воспроизведён полностью. Real partner scenario воспроизведён до quality-gated needs_data output: 3909 records, 0 numeric draft orders.",
+        "environment": "Изолированный Go 1.26 контейнер с модулем go 1.25 и Excel-файлами кейса, без секретов и внешних API.",
+        "summary": "Runtime evidence достаточен для оценки: компиляция, vet, unit/domain suite, demo и обе группы реальных XLSX проверены.",
+        "checks": [
+          {
+            "command": "go test ./... -count=1",
+            "result": "Exit 0. Все пакеты прошли; при переменных AGROPULSE_CASES_DIR и SE_DATA_DIR прошли реальные IEK/SystemElectric проверки.",
+            "id": "CHK-DATA-TEST",
+            "stage": "build",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Проект компилируется, тесты проходят, реальные workbook-аудиты выполняются при явно поданных путях данных."
+          },
+          {
+            "command": "go build ./... && go vet ./...",
+            "result": "Exit 0; build и vet завершились без ошибок.",
+            "id": "CHK-VET-BUILD",
+            "stage": "build",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Все пакеты собираются и не имеют диагностированных vet-проблем."
+          },
+          {
+            "command": "go run ./cmd/app --demo --output <new-demo-report.json>",
+            "result": "Exit 0; создан JSON с source=synthetic_demo и 5 сценариями. Значения: 276, 276, 720 forecast, 72, 312; все explanation и derived_from присутствуют.",
+            "id": "CHK-DEMO",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Demo формирует пять изолированных сценариев, выдаёт числовой результат, объяснение и не смешивает provenance."
+          },
+          {
+            "command": "go run ./cmd/app --iek-dir <IEK-dir> --se-dir <Systeme-electric-dir> --as-of 2026-09-22 --months 1 --output <new-partner-report.json>",
+            "result": "Exit 0; suppliers=2, IEK recommendations=3185, SystemElectric recommendations=724. Все записи имеют needs_data, draft=0, числовые recommended_quantity отсутствуют; quality/issues сохранены.",
+            "id": "CHK-PARTNER",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "CLI читает оба набора XLSX, группирует результат по поставщикам и не выдаёт числовой заказ при неподтверждённых входах."
+          }
+        ],
+        "limitations": [
+          "Основной partner-data результат не является числовым заказом из-за отсутствующих или семантически неподтверждённых полей; это ограничение входных данных и заявленного strict режима, а не сбой запуска.",
+          "Визуальное поведение интерфейса не проверялось: репозиторий предоставляет CLI/JSON, а визуальную проверку выполняет пользователь."
+        ]
+      },
+      "liveDemo": {
+        "status": "none",
+        "url": null,
+        "notes": "Публичной live-ссылки в проверяемом срезе нет. Локальное CLI-демо воспроизведено; отсутствие URL отдельно не уменьшало оценку."
+      },
+      "fiveHourContext": "Для пятичасового хакатона объём результата высокий: общий Go pipeline, два Excel-адаптера, provenance, quality diagnostics, робастный прогноз, MOQ, explainability и пять изолированных demo fixtures. Консервативный needs_data на реальных выгрузках — разумная граница MVP, когда текущий snapshot, смысл incoming, SKU-сезонность, MOQ policy и stockout duration не подтверждены. При этом три пробела уже видны в исходниках и влияют на полноту MVP: категория не участвует в формуле, customer-level outlier не моделируется, а итог не представлен в рабочей таблице/дашборде.",
+      "strengths": [
+        "Полный локальный CLI-сценарий и единый JSON-отчёт для IEK и SystemElectric.",
+        "Реально работающие пять demo fixtures с измеримой чувствительностью к выбросу, росту, сезонности, incoming и stockout.",
+        "Строгое разделение partner_data и synthetic_demo с provenance на числах и запретом молчаливой импутации.",
+        "Хорошо разделённые loader, analytics, calculator, pipeline и explain пакеты; тесты проходят на реальных supplied workbook-аудитах.",
+        "Детерминированное объяснение содержит факторы расчёта и причины needs_data, а автоматическая отправка заказа отсутствует."
+      ],
+      "gaps": [
+        "Категория читается и сохраняется, но не используется как фактор прогноза или заказа; это подтверждено F6.",
+        "Нельзя выделить разовую крупную продажу одного клиента: нет client ID и соответствующей группировки; это подтверждено F7.",
+        "Пользовательский результат ограничен JSON CLI и не представлен как отдельная таблица/дашборд для менеджера; это подтверждено F8."
+      ],
+      "futureAdvice": [
+        {
+          "principle": "Разделяйте аномалию транзакции и аномалию клиента по явному ключу группировки.",
+          "why": "F7: текущий Tukey видит только количество строки Sale; он не может подтвердить требование про одного клиента и может одинаково обработать несколько регулярных отгрузок и одну клиентскую покупку.",
+          "how": "В следующем кейсе сначала проверьте наличие customer/order-group key. Если он есть, добавьте этап customer-month aggregation до Tukey и сохраняйте в explanation число клиентов, долю группы и решение cap. Если ключа нет, выводите requirement-specific unverified вместо общей эвристики.",
+          "findingIds": [
+            "F7"
+          ],
+          "successCheck": "На фикстуре с десятью регулярными продажами и одной покупкой C-07 система отдельно помечает C-07, а базовый forecast остаётся близким к регулярному ряду; source key виден в evidence.",
+          "timeboxMinutes": 45
+        },
+        {
+          "principle": "Атрибут, который обещан как фактор решения, должен пройти до формулы и иметь sensitivity check.",
+          "why": "F6: Category заполняется из SystemElectric, но после маппинга не влияет на Forecast или Calculate, поэтому пользователь видит категорию без эффекта.",
+          "how": "Для другого MVP заведите явную policy-конфигурацию: либо подтверждённые category coefficients, либо честный category diagnostic. Проведите парный тест, где меняется только категория/профиль, и сохраните derived_from и объяснение изменения.",
+          "findingIds": [
+            "F6"
+          ],
+          "successCheck": "Изменение только category fixture меняет ожидаемый forecast/order по согласованному правилу, а отсутствие подтверждённого коэффициента приводит к отдельному needs_data, а не к молчаливому игнорированию.",
+          "timeboxMinutes": 50
+        },
+        {
+          "principle": "Последний шаг MVP должен быть ориентирован на рабочее место пользователя.",
+          "why": "F8: сейчас менеджер получает JSON и может сделать PowerShell-выборку, но не готовую сгруппированную таблицу с видимым статусом подтверждения.",
+          "how": "Добавьте экспорт CSV/HTML или минимальный локальный table view поверх уже существующего JSON: supplier group, SKU, quantity/null, needs_data, explanation, urgency и явный draft/approve state. Кнопка approve должна только менять локальный статус и не отправлять заказ.",
+          "findingIds": [
+            "F8"
+          ],
+          "successCheck": "Локальный запуск показывает две группы поставщиков и позволяет однозначно отфильтровать needs_data/draft; для реальных данных не появляется approve без закрытых полей и нет сетевого submit.",
+          "timeboxMinutes": 60
+        }
+      ],
+      "uncertainties": [
+        "Поставленные файлы не содержат client ID, поэтому невозможность customer-level outlier является ограничением входа и одновременно границей функции проекта; это не трактовалось как ошибка загрузчика.",
+        "Сезонность в SystemElectric имеет company_total scope и неизвестную единицу базовых сумм; incoming имеет дату только в заголовке. Строгая блокировка числовой рекомендации в этих условиях оправдана, но бизнес-правила не проверены.",
+        "У реальных данных нет подтверждённых duration для stockout и lead time/urgency policy; real output поэтому оставляет stockout/urgency в unknown/not_confirmed.",
+        "Визуальный интерфейс не проверялся по явному правилу пользовательской visual verification; оценивались CLI, JSON, исходники и тесты."
+      ],
+      "reviewPolicyVersion": 2,
+      "assessmentStatus": "ready",
+      "findings": [
+        {
+          "id": "F1",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Партнёрский прогон читает оба набора предоставленных Excel и формирует отдельные отчёты поставщиков без паники или выдуманного заказа.",
+          "expected": "CLI должен обработать входные workbooks, сгруппировать SKU по IEK/SystemElectric и явно показать неполные входы.",
+          "actual": "CHK-PARTNER завершился exit 0: 3185 IEK и 724 SystemElectric recommendations, 0 draft, needs_data у всех записей.",
+          "evidence": [
+            "CHK-PARTNER",
+            "cmd/app/main.go:76-89",
+            "internal/pipeline/pipeline.go:38-119"
+          ],
+          "checkIds": [
+            "CHK-PARTNER"
+          ]
+        },
+        {
+          "id": "F2",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Demo-конвейер даёт числовые, объяснимые и чувствительные к входам результаты.",
+          "expected": "Пять сценариев должны показать ожидаемое влияние выброса, роста/сезонности, incoming и stockout.",
+          "actual": "NORMAL=276, LARGE OUTLIER=276 при outliers=1, GROWING forecast=720 и seasonality impact=330, INCOMING=72, STOCKOUT lost=310 и order=312.",
+          "evidence": [
+            "CHK-DEMO",
+            "internal/demo/scenarios.go:20-72",
+            "internal/demo/report.go:42-115"
+          ],
+          "checkIds": [
+            "CHK-DEMO"
+          ]
+        },
+        {
+          "id": "F3",
+          "kind": "strength",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Происхождение каждого числового demo-входа проверяется и не смешивается с partner_data.",
+          "expected": "Synthetic demo должен принимать только явно маркированные конечные числа и запрещать неподписанные/партнёрские источники.",
+          "actual": "RunDemo проверяет source.Kind, отсутствие File, Valid, finite/nonnegative values, дату snapshot, MOQ и подтверждение stockout до запуска расчёта.",
+          "evidence": [
+            "internal/pipeline/demo.go:13-91",
+            "internal/model/model.go:6-18"
+          ],
+          "checkIds": [
+            "CHK-DEMO",
+            "CHK-DATA-TEST"
+          ]
+        },
+        {
+          "id": "F4",
+          "kind": "strength",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Общее ядро разделено на loader, analytics, calculator, pipeline и explain, а результат сохраняет quality/issues и детерминированное объяснение.",
+          "expected": "Расчёт должен быть переносимым между поставщиками и аудируемым по факторам.",
+          "actual": "Два адаптера приводятся к общей Product/Dataset модели; Build использует forecast, stock, incoming, raw order, MOQ, urgency и warnings; quality issues остаются в отчёте.",
+          "evidence": [
+            "internal/loader/iek.go:5-15",
+            "internal/loader/systemelectric_core.go:11-79",
+            "internal/explain/explain.go:9-30",
+            "internal/model/replenishment.go:50-63"
+          ],
+          "checkIds": [
+            "CHK-PARTNER",
+            "CHK-DATA-TEST"
+          ]
+        },
+        {
+          "id": "F5",
+          "kind": "limitation",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Реальный прогон не выдал числовой заказ ни для одного supplied SKU.",
+          "expected": "При достаточных и подтверждённых входах partner-data режим должен формировать числовой draft order.",
+          "actual": "На 3185 IEK и 724 SystemElectric records quantity отсутствует у всех; причины включают seasonality_sku_scope_unconfirmed, current_stock_unavailable/incomplete incoming и moq_rule_unconfirmed.",
+          "evidence": [
+            "CHK-PARTNER",
+            "Agro-Pulse/IEK_RUN.md:19-59",
+            "README.md:420-435"
+          ],
+          "checkIds": [
+            "CHK-PARTNER"
+          ]
+        },
+        {
+          "id": "F6",
+          "kind": "defect",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Доступная категория товара не участвует в модели прогноза или количества заказа.",
+          "expected": "Если category присутствует в исходном источнике, она должна влиять на расчёт согласно постановке либо иметь отдельное подтверждённое правило.",
+          "actual": "SystemElectric loader записывает rec.Category в Product.Category, pipeline переносит его в Recommendation, но Forecast и Calculate используют только demand/seasonality/stock/incoming/MOQ/unit. README прямо фиксирует, что отдельная category growth model не реализована.",
+          "evidence": [
+            "internal/loader/systemelectric_core.go:30-31",
+            "internal/loader/systemelectric.go:366-369",
+            "internal/pipeline/pipeline.go:38-119",
+            "README.md:69-70"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "F7",
+          "kind": "defect",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Система не реализует отделение крупной покупки одного клиента от регулярного спроса.",
+          "expected": "При наличии такого требования крупная отгрузка одного клиента должна быть отдельно обнаруживаема или её отсутствие должно быть явно покрыто requirement-specific результатом.",
+          "actual": "Sale содержит только Date, Document, Quantity, Unit и Source; CapOutliers анализирует положительные размеры транзакций без customer key. README признаёт, что client grouping не реализован.",
+          "evidence": [
+            "internal/model/model.go:44-50",
+            "internal/analytics/forecast.go:126-150",
+            "README.md:170-175",
+            "TEST_PLAN.md:43-46"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "F8",
+          "kind": "defect",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Отдельный пользовательский табличный/дашбордный слой отсутствует.",
+          "expected": "Результат должен быть доступен менеджеру как таблица/дашборд помимо машинного JSON-экспорта.",
+          "actual": "cmd/app принимает --output и сериализует Report в JSON либо пишет JSON в stdout; UI/table view/approve workflow в репозитории нет.",
+          "evidence": [
+            "REQUIREMENTS.md:64-68",
+            "cmd/app/main.go:90-109",
+            "README.md:393-418"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "F9",
+          "kind": "limitation",
+          "verification": "source",
+          "responsibility": "review_environment",
+          "claim": "Визуальный интерфейс не подвергался визуальной проверке.",
+          "expected": "Визуальное поведение оценивается отдельным пользовательским review.",
+          "actual": "Проверены статический код, unit/domain tests, CLI/JSON и HTTP/API-подобный процесс отсутствует; браузерная/CUA-проверка не выполнялась.",
+          "evidence": [
+            "runtime limitations",
+            "README.md:444-446"
+          ],
+          "checkIds": []
+        }
+      ],
+      "gapFindingIds": [
+        "F6",
+        "F7",
+        "F8"
+      ]
+    }
+  ],
+  "score": 80.0,
+  "status": "complete",
+  "expectedJudges": 1
+}

@@ -1,0 +1,732 @@
+{
+  "methodVersion": 4,
+  "repoId": "hack-fd685e04-proofflow",
+  "repoUrl": "https://github.com/BAITC-Hacks/hack-fd685e04-proofflow",
+  "caseId": 5,
+  "snapshot": "459077b778f8847d4134181a80ffda9cd717ad22",
+  "judges": [
+    {
+      "methodVersion": 4,
+      "repoId": "hack-fd685e04-proofflow",
+      "caseId": 5,
+      "model": "GPT-5.6 Luna",
+      "snapshot": "459077b778f8847d4134181a80ffda9cd717ad22",
+      "overallSummary": "ProofFlow — сильный локально воспроизводимый MVP для объяснимых черновиков закупок. Он действительно импортирует оба набора партнёрских XLSX, считает 3 588 SKU, показывает объяснение, группирует строки по поставщикам, требует ручного утверждения и формирует CSV/XLSX и паспорт расчёта. Синтетический сценарий и реальный HTTP-прогон на 12 книгах прошли. Главный подтверждённый недостаток — адаптер не переносит из реального отчёта коэффициент роста в расчёт: категория импортируется как метка, но без настроенной политики, а growth остаётся нулевым. Поэтому модельные возможности кейса доказаны полно, а полнота применения реального источника — частично.",
+      "global": {
+        "criteria": [
+          {
+            "name": "Ценность решения",
+            "score": 24,
+            "max": 25,
+            "awarded": "Решение адресует конкретную и дорогую для закупщика проблему ручной консолидации Excel: черновик заказа строится по SKU и складу, а каждая строка сопровождается причиной и риском дефицита.",
+            "deductions": "Снято 1 балл за то, что в фактическом партнёрском прогоне часть заявленной ценности «учёт прироста/категории» не проявилась: реальный коэффициент роста не дошёл до модели, поэтому расчёт на этих книгах не использует один из важных сигналов.",
+            "evidence": [
+              "README.md:1-11",
+              "cases/5/task.txt",
+              "cases/5/case-data/HackAlem AI_ Автоматизация формирования заказов поставщикам.docx.md",
+              "partner_xlsx.py:150-168",
+              "captures/20261002T095646850325-partner.stdout.log"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "F5",
+                "reason": "В реальном наборе 12 XLSX импортировано 3 588 SKU, но ни один товар не получил ненулевой growth; категория у части SKU осталась только текстовой меткой без политики, поэтому практическая ценность прогнозирования прироста снижена."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Попадание в рабочую боль закупщика",
+                "implementation": "README описывает не автоматическую закупку, а черновик, который менеджер проверяет, корректирует, утверждает и выгружает. Это соответствует сценарию из задания: перейти от редкого ручного расчёта в Excel к повторяемому списку потребности.",
+                "value": "Для целевой аудитории ценность понятна без обещаний неподтверждённой экономии: сокращается ручная сверка, видны дефицит и причина позиции, а ответственность остаётся у сотрудника.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:3-11",
+                  "cases/5/case-data/HackAlem AI_ Автоматизация формирования заказов поставщикам.docx.md"
+                ]
+              },
+              {
+                "aspect": "Риск-дефицита превращён в действие",
+                "implementation": "engine.py вычисляет горизонт из lead/review/safety, вычитает доступный остаток и датированные inbound-поступления, моделирует дату stockout без нового заказа и выставляет urgency. В API это попадает в строку, сводку и explanation.",
+                "value": "Менеджер получает не только число, но и приоритет, что помогает сначала разбирать критические позиции, а не просматривать плоскую выгрузку.",
+                "verification": "source",
+                "evidence": [
+                  "engine.py:213-217",
+                  "engine.py:415-469",
+                  "engine.py:488-522"
+                ]
+              },
+              {
+                "aspect": "Объяснимость вместо чёрного ящика",
+                "implementation": "Результат хранит adjusted/raw demand, lost demand, исключённые события, сезонность, тренд, growth factor, inbound receipts и breakdown; отдельный endpoint отдаёт детализацию позиции, а evidence строит паспорт.",
+                "value": "Пользователь может сверить рекомендацию с исходными данными и увидеть, почему объём изменился, что снижает риск слепого доверия расчёту.",
+                "verification": "observed",
+                "evidence": [
+                  "engine.py:488-522",
+                  "server.py:290-312",
+                  "scripts/verify_live_flow.py:83-103"
+                ]
+              },
+              {
+                "aspect": "Работа на предоставленном масштабе данных",
+                "implementation": "Партнёрский путь принимает 12 XLSX, соединяет SKU по коду 1С, сохраняет предупреждения и запускает расчёт по 3 588 товарам и 248 467 положительным продажам.",
+                "value": "Это уже не только демонстрационная таблица: основной полезный результат воспроизведён на объёме, близком к реальной выгрузке кейса.",
+                "verification": "observed",
+                "evidence": [
+                  "captures/20261002T095646850325-partner.stdout.log",
+                  "partner_xlsx.py:101-147"
+                ]
+              }
+            ],
+            "scoreReasoning": "Проблема, пользователь и полезный выход раскрыты убедительно, а синтетический и партнёрский прогоны показывают практическую ценность локального рабочего места. Единственное существенное удержание — F5: на реальных книгах growth и влияние категории не активированы автоматически. Это ограничивает полноту ценности, но не отменяет основной сценарий закупочного черновика."
+          },
+          {
+            "name": "Результат и качество решения",
+            "score": 18,
+            "max": 20,
+            "awarded": "Целостный сценарий от источника до утверждённого экспорта реально работает: загрузка, расчёт, строковая детализация, ручная корректировка, approval, CSV/XLSX и evidence прошли по HTTP.",
+            "deductions": "Снято 2 балла за неполное использование существенного входного сигнала реального отчёта: growth не импортируется, а категория без отдельно заданной политики не меняет формулу. Остатки, inbound и продажи работают, но часть полей реального источника остаётся информационной, а не расчётной.",
+            "evidence": [
+              "captures/20261002T095604862761-test.stdout.log",
+              "captures/20261002T095646850325-partner.stdout.log",
+              "engine.py:366-438",
+              "partner_xlsx.py:304-343"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "F5",
+                "reason": "Для реального импорта nonzero_growth=0; поэтому заявленная чувствительность к прогнозу прироста и категориям подтверждается синтетическими настройками, но не полным партнёрским путём."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Сценарий воспроизведён в живом HTTP-приложении",
+                "implementation": "verify_live_flow поднимает сервер, проверяет health и статику, делает demo/import, calculate, item detail, approve, два формата экспорта и evidence. Синтетический прогон дал 10 строк и 8 order lines; реальный — 3 588 строк и 191 order line.",
+                "value": "Проверен не только чистый engine, но и связка API, SQLite, сериализации и экспортов — именно тот результат, которым пользуется менеджер.",
+                "verification": "observed",
+                "evidence": [
+                  "scripts/verify_live_flow.py:27-111",
+                  "captures/20261002T095604862761-test.stdout.log",
+                  "captures/20261002T095646850325-partner.stdout.log"
+                ]
+              },
+              {
+                "aspect": "Прогноз учитывает дату и порядок поставок",
+                "implementation": "Дневной прогноз умножается на сезонный и трендовый факторы; inbound сортируется по ETA и вычитается в кумулятивном дефиците, так что поздняя поставка не скрывает ранний stockout. Заказ округляется до pack_size и MOQ.",
+                "value": "Это существеннее простого среднего: ранняя и поздняя поставки дают разные риски, а результат пригоден для ручной закупочной проверки.",
+                "verification": "source",
+                "evidence": [
+                  "engine.py:91-154",
+                  "engine.py:415-438",
+                  "engine.py:444-469",
+                  "tests/test_engine.py:45-60"
+                ]
+              },
+              {
+                "aspect": "Устойчивость к выбросам и stockout",
+                "implementation": "Детектор требует изолированности, доли клиента/события и отсутствия повторяемого месячного пика; stockout компенсируется медианой peer-дней с предупреждением о разреженной опоре. Тесты отдельно проверяют клиента, event_id, устойчивый рост и stockout.",
+                "value": "Заказ не раздувается автоматически из-за одной крупной операции, но и потерянный спрос не приравнивается к нулевой продаже, если интервал отсутствия задан.",
+                "verification": "source",
+                "evidence": [
+                  "engine.py:256-364",
+                  "tests/test_engine.py:62-139",
+                  "tests/test_workflow_acceptance.py:84-125"
+                ]
+              },
+              {
+                "aspect": "Результат безопасен для ручного утверждения",
+                "implementation": "API отвергает неизвестные позиции и недопустимые количества, хранит approval отдельно, а exports.py различает draft и approved и не содержит функции отправки поставщику.",
+                "value": "Это соответствует ограничению кейса: система подготавливает решение, но не превращает расчёт в необратимую закупку.",
+                "verification": "observed",
+                "evidence": [
+                  "server.py:314-362",
+                  "exports.py:1-15",
+                  "tests/test_api.py:41-99",
+                  "tests/test_security_performance.py:64-91"
+                ]
+              }
+            ],
+            "scoreReasoning": "Рабочий результат подтверждён двумя HTTP-прогонами и полным локальным тестовым набором. До максимума не хватает не инфраструктуры, а полноты реального data path: F5 оставляет growth и не настроенную категорийную политику вне фактической формулы для партнёрских книг."
+          },
+          {
+            "name": "Инновационность",
+            "score": 13,
+            "max": 15,
+            "awarded": "Собственное преимущество ProofFlow — сочетание устойчивого статистического расчёта, объяснения происхождения каждой рекомендации и управляемого human-in-the-loop утверждения в одном локальном MVP.",
+            "deductions": "Снято 2 балла: нестандартная часть хорошо реализована в engine и синтетической демонстрации, но в реальном адаптере коэффициент роста из отчёта не используется, поэтому преимущество не полностью переносится на вход кейса.",
+            "evidence": [
+              "engine.py:256-438",
+              "evidence.py",
+              "exports.py:62-146",
+              "partner_xlsx.py:304-343"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "F5",
+                "reason": "Из-за нулевого growth на всех импортированных реальных продуктах объяснимый прогнозный слой в фактическом партнёрском сценарии менее дифференцирован, чем заявлено для синтетического пути."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Робастная обработка разового заказа",
+                "implementation": "Алгоритм не просто удаляет все большие значения: он использует baseline/MAD, долю крупнейшего клиента, историю клиента, изолированность и повторяемость пиков; event_id разрешён только как более слабый сигнал.",
+                "value": "Для кейса это содержательный нестандартный компромисс между удалением выбросов и сохранением устойчивого роста, а не произвольный hard-coded фильтр одного заказа.",
+                "verification": "source",
+                "evidence": [
+                  "engine.py:256-325",
+                  "tests/test_engine.py:79-139"
+                ]
+              },
+              {
+                "aspect": "Кумулятивная модель датированных inbound",
+                "implementation": "Расчёт проверяет максимум накопленного дефицита по дням, а не только terminal balance; receipt учитывается только после ETA и отображается в breakdown.",
+                "value": "Такой подход избегает типичной ошибки, когда поздняя поставка искусственно обнуляет общий дефицит, хотя товар успевает закончиться раньше.",
+                "verification": "source",
+                "evidence": [
+                  "engine.py:415-438",
+                  "tests/test_engine.py:45-60"
+                ]
+              },
+              {
+                "aspect": "Паспорт доказательности результата",
+                "implementation": "evidence.py фиксирует исходные и утверждённые количества, различия и SHA-256 fingerprint; exports.py добавляет methodology sheet и предупреждения.",
+                "value": "Для закупочного процесса это полезная форма инновации: решение можно проверить постфактум, а не только увидеть число в интерфейсе.",
+                "verification": "observed",
+                "evidence": [
+                  "server.py:298-311",
+                  "exports.py:104-146",
+                  "scripts/verify_live_flow.py:91-103"
+                ]
+              },
+              {
+                "aspect": "Privacy-aware outlier path",
+                "implementation": "server.py и importer.py заменяют client_id/event_id на HMAC-псевдонимы до сохранения и расчёта; исходные идентификаторы не нужны для отображения пользователю.",
+                "value": "Команда встроила приватность в полезный алгоритм поиска пиков, а не добавила её только как декларацию в README.",
+                "verification": "source",
+                "evidence": [
+                  "server.py:31-57",
+                  "importer.py:160-177",
+                  "tests/test_privacy.py:14-46"
+                ]
+              }
+            ],
+            "scoreReasoning": "Нестандартность достаточна для сильного MVP: алгоритм объясним, устойчив к нескольким видам искажений и связан с аудируемым approval. F5 удерживает от максимума, потому что один из ключевых прогнозных входов реального отчёта не включён в этот слой."
+          },
+          {
+            "name": "Потенциал развития и масштабирования",
+            "score": 17,
+            "max": 20,
+            "awarded": "Архитектура разделяет импорт, чистый engine, API, хранилище, экспорт и фронтенд; лимиты, provenance, локализация и фильтры дают понятную основу для следующего этапа.",
+            "deductions": "Снято 3 балла за подтверждённую границу расширения: адаптер жёстко диспетчеризует известные имена/листы и не переводит growth из уже встречающегося отчёта в каноническую модель. При подключении новых выгрузок это ограничивает масштабируемость именно бизнес-правил, хотя технический каркас расширяем.",
+            "evidence": [
+              "partner_xlsx.py:66-99",
+              "partner_xlsx.py:150-168",
+              "README.md:94-110",
+              "captures/20261002T095646850325-partner.stdout.log"
+            ],
+            "deductionItems": [
+              {
+                "points": 3,
+                "findingId": "F5",
+                "reason": "Реальный импорт распознаёт категорию только как метку и оставляет growth нулевым; это означает, что перенос на следующий источник или повторный запуск с новым коэффициентом потребует явного расширения адаптера, иначе масштабируется только механическая часть."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Модульная граница расширения",
+                "implementation": "partner_xlsx.py формирует канонический dataset, engine.py не знает о формате XLSX, server.py отвечает за workflow, storage.py — за SQLite, exports.py — за ручную передачу.",
+                "value": "Новые источники и интерфейсы можно добавлять без переписывания расчётной формулы, что является хорошей основой для нескольких поставщиков и складов.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:94-106",
+                  "importer.py:180-198",
+                  "engine.py:526-687"
+                ]
+              },
+              {
+                "aspect": "Масштаб по объёму и ограничителям",
+                "implementation": "В engine заданы пределы для товаров, продаж, inbound, history и horizon; тест производительности проверяет 250 000 транзакций и 2 500 SKU, а реальный прогон обработал 248 467 продаж.",
+                "value": "Команда предусмотрела контролируемый отказ вместо неограниченной обработки и показала, что MVP выдерживает заметный объём данных кейса.",
+                "verification": "observed",
+                "evidence": [
+                  "engine.py:29-37",
+                  "tests/test_security_performance.py:96-117",
+                  "captures/20261002T095646850325-partner.stdout.log"
+                ]
+              },
+              {
+                "aspect": "Локализация и экспортный контракт",
+                "implementation": "Доступны ru/kk/en, язык сохраняется в расчёте и используется в CSV/XLSX; форматы содержат статус, рекомендованное и утверждённое количество, объяснение и methodology sheet.",
+                "value": "Это снижает стоимость адаптации для разных команд закупа и оставляет универсальный ручной интерфейс до появления коннектора учётной системы.",
+                "verification": "source",
+                "evidence": [
+                  "localization.py",
+                  "exports.py:18-55",
+                  "tests/test_export_i18n.py",
+                  "tests/test_i18n.py"
+                ]
+              },
+              {
+                "aspect": "Понятные границы production-расширения",
+                "implementation": "README прямо указывает отсутствие multi-user authentication, непроверенный 1С-коннектор, зависимость прогноза от качества входа и отсутствие автоматической отправки.",
+                "value": "Честное описание границ облегчает планирование следующей итерации и не создаёт ложного впечатления, что локальный MVP уже является ERP-модулем.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:121-166",
+                  "docs/1C_COMPATIBILITY.md"
+                ]
+              }
+            ],
+            "scoreReasoning": "Технический каркас и лимиты заметно выше минимального прототипа, а объём реального прогона это подтверждает. F5 снижает перспективу масштабирования бизнес-логики: адаптер пока покрывает конкретные форматы и не превращает присутствующий growth coefficient в общий контракт."
+          },
+          {
+            "name": "Презентация, демо и ответы на вопросы",
+            "score": 20,
+            "max": 20,
+            "awarded": "Устной презентации и вопросов не было; по предусмотренной методике оценены README и воспроизводимое демо из репозитория. README даёт запуск, ограничения, сценарий и критерии проверки, а live HTTP flow подтверждает заявленный результат.",
+            "deductions": "Снятий нет. Визуальная работа интерфейса не дублировалась из-за установленного запрета на браузерную/скриншотную проверку и не является основанием для штрафа.",
+            "evidence": [
+              "README.md:13-64",
+              "README.md:129-166",
+              "docs/DEMO.md",
+              "scripts/verify_live_flow.py:20-111",
+              "captures/20261002T095604862761-test.stdout.log"
+            ],
+            "deductionItems": [],
+            "awardedDetails": [
+              {
+                "aspect": "Воспроизводимый quick start",
+                "implementation": "README содержит установку через requirements.lock, запуск server.py, localhost URL, автономность без API-ключей и ссылку на API/template.",
+                "value": "Проверяющему не нужно угадывать, как получить результат; основной путь понятен и соответствует локальному приложению.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:13-36"
+                ]
+              },
+              {
+                "aspect": "Демо покрывает требования кейса",
+                "implementation": "В README и docs/DEMO.md отдельно названы сезонность, рост, stockout, one-off spike, inbound, группировка, approval, экспорт и evidence; tests/test_workflow_acceptance.py содержит пять requirement-тестов.",
+                "value": "Демо не сводится к статической таблице: оно ведёт от источника через расчёт к проверяемому решению менеджера.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:38-51",
+                  "docs/DEMO.md",
+                  "tests/test_workflow_acceptance.py:58-159"
+                ]
+              },
+              {
+                "aspect": "Ограничения сообщаются рядом с результатом",
+                "implementation": "Документация различает синтетические и партнёрские данные, неизвестные цены, отсутствие stockout/client ID/lead time, непроверенный 1С и локальный single-user режим.",
+                "value": "Такая подача делает демонстрацию убедительнее: команда не выдаёт синтетические признаки за реальные данные и не обещает неподтверждённую экономию.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:48-51",
+                  "README.md:87-92",
+                  "README.md:121-166",
+                  "docs/DATA_MAPPING.md"
+                ]
+              }
+            ],
+            "scoreReasoning": "В рамках правил этого разбора README и локальная воспроизводимость полностью выполняют роль презентации и демо. Невозможность оценивать визуальную подачу без браузера — ограничение проверки, не недостаток проекта."
+          }
+        ],
+        "total": 92
+      },
+      "case": null,
+      "judgeScore": 92,
+      "caseRequirements": [
+        {
+          "requirement": "История продаж, текущие остатки, товары в пути, категории и прогноз прироста влияют на расчёт по артикулу.",
+          "status": "partial",
+          "explanation": "История, остаток, inbound, SKU/склад и настраиваемые growth/category policies влияют на engine; это покрыто unit/acceptance-тестами. В реальном адаптере категория для 497 SKU импортирована как метка, но отдельные политики не создаются, а коэффициент роста из TDSheet не маппится, поэтому на фактических 12 книгах growth остался нулевым.",
+          "evidence": [
+            "engine.py:202-217",
+            "engine.py:403-438",
+            "tests/test_acceptance.py:46-75",
+            "partner_xlsx.py:304-343",
+            "captures/20261002T095646850325-partner.stdout.log"
+          ]
+        },
+        {
+          "requirement": "Сезонность и устойчивый рост учитываются при прогнозировании.",
+          "status": "partial",
+          "explanation": "Календарные weekday/month indices, десезонализация и bounded linear trend реализованы и проверены на 730/90-дневной синтетике. В партнёрском наборе дневная история импортирована, но фактическая прогнозная точность на отложенном периоде не измерялась, а внешний growth coefficient не используется.",
+          "evidence": [
+            "engine.py:91-154",
+            "engine.py:366-412",
+            "tests/test_workflow_acceptance.py:84-98",
+            "partner_xlsx.py:163-168"
+          ]
+        },
+        {
+          "requirement": "Потерянный спрос при зафиксированном stockout компенсируется.",
+          "status": "partial",
+          "explanation": "Явные интервалы stockout расширяются по календарным дням и оцениваются по peer-дням с предупреждением о разреженности; синтетический acceptance-тест подтверждает рост рекомендации относительно сырых продаж. В предоставленных книгах импортировано 0 stockout-интервалов, поэтому реальную компенсацию по архиву нельзя утверждать.",
+          "evidence": [
+            "engine.py:331-364",
+            "tests/test_engine.py:62-77",
+            "tests/test_workflow_acceptance.py:100-113",
+            "captures/20261002T095646850325-partner.stdout.log"
+          ]
+        },
+        {
+          "requirement": "Разовый крупный заказ, включая заказ одного клиента, не раздувает регулярную потребность.",
+          "status": "partial",
+          "explanation": "Алгоритм различает client_id и event_id, требует изолированный и концентрированный пик и сохраняет устойчивый/повторный спрос; это проверено отдельными тестами. Реальные книги дают номера документов, но не обезличенный client_id, поэтому фактический прогон может проверять пик события, а не доказанно одного клиента.",
+          "evidence": [
+            "engine.py:223-234",
+            "engine.py:271-325",
+            "tests/test_engine.py:79-139",
+            "partner_xlsx.py:171-201",
+            "docs/DATA_MAPPING.md"
+          ]
+        },
+        {
+          "requirement": "Список заказов сгруппирован по поставщикам, каждая позиция имеет объяснение.",
+          "status": "met",
+          "explanation": "API возвращает rows, supplier_groups, explanation и breakdown; фильтры нормализуют отсутствующего поставщика в UNASSIGNED. Синтетический и реальный HTTP-прогоны завершили расчёт и детализацию.",
+          "evidence": [
+            "server.py:242-273",
+            "engine.py:499-522",
+            "tests/test_engine.py:171-180",
+            "tests/test_workflow_acceptance.py:127-159",
+            "captures/20261002T095646850325-partner.stdout.log"
+          ]
+        },
+        {
+          "requirement": "Заказ не отправляется поставщику без ручного подтверждения.",
+          "status": "met",
+          "explanation": "Approval требует reviewer, сохраняет утверждённые количества отдельно, а экспорт до approval маркируется как draft. В коде нет send_order или внешнего dispatch; live flow проверил approval и supplier_sent=false.",
+          "evidence": [
+            "server.py:314-351",
+            "exports.py:18-27",
+            "tests/test_security_performance.py:86-91",
+            "captures/20261002T095604862761-test.stdout.log"
+          ]
+        },
+        {
+          "requirement": "Данные клиентов обезличены.",
+          "status": "met",
+          "explanation": "client_id и event_id заменяются на неперсистируемые per-operation HMAC-псевдонимы до хранения/вычисления, а исходные имена не отображаются. Тесты проверяют прямой calculate и unlinkability между запусками.",
+          "evidence": [
+            "server.py:31-57",
+            "importer.py:160-177",
+            "tests/test_privacy.py:14-46"
+          ]
+        },
+        {
+          "requirement": "Проверить чувствительность к товарам в пути, сезонности, stockout и выбросу.",
+          "status": "met",
+          "explanation": "Направленные unit/acceptance-тесты меняют эти источники по отдельности, а живой synthetic flow использует 2 inbound, 1 stockout и синтетический spike. Реальный workbook flow подтверждает импорт 313 inbound, но не может подтвердить stockout/client-сценарии, которых в книгах нет.",
+          "evidence": [
+            "tests/test_acceptance.py:46-75",
+            "tests/test_workflow_acceptance.py:84-125",
+            "tests/test_engine.py:45-139",
+            "captures/20261002T095604862761-test.stdout.log",
+            "captures/20261002T095646850325-partner.stdout.log"
+          ]
+        },
+        {
+          "requirement": "Использовать предоставленные таблицы без выдумывания отсутствующих колонок.",
+          "status": "met",
+          "explanation": "Все 12 XLSX были поданы в partner adapter. Он использует дневные продажи, сентябрьский остаток, код 1С, ETA/inbound и pack size, а месячные продажи/сезонность оставляет контрольными, чтобы не посчитать продажи дважды. Неизвестные lead time, цена, точные stockout и client ID помечаются предупреждениями, а не придумываются.",
+          "evidence": [
+            "partner_xlsx.py:101-147",
+            "partner_xlsx.py:150-168",
+            "docs/DATA_MAPPING.md",
+            "captures/20261002T095646850325-partner.stdout.log"
+          ]
+        }
+      ],
+      "testData": {
+        "provided": [
+          "cases/5/case-data/HackAlem AI_ Автоматизация формирования заказов поставщикам.docx.md",
+          "cases/5/case-data/IEK/MOQ  ИЭК.xlsx",
+          "cases/5/case-data/IEK/Динамика продаж_2025-2026.xlsx",
+          "cases/5/case-data/IEK/Ежемесячные остатки продукции за последние 2 года  ИЭК.xlsx",
+          "cases/5/case-data/IEK/Ежемесячные продажи в количественном выражении за последние 2 года.xlsx",
+          "cases/5/case-data/IEK/Путь ИЭК 22.09.2026.xlsx",
+          "cases/5/case-data/IEK/Сезонность ИЭК.xlsx",
+          "cases/5/case-data/Systeme electric/MOQ SystemElectric.xlsx",
+          "cases/5/case-data/Systeme electric/Динамика продаж_Syseme Electric_2025-2026.xlsx",
+          "cases/5/case-data/Systeme electric/Ежемесячные остатки SystemElectric 2024-2026.xlsx",
+          "cases/5/case-data/Systeme electric/Ежемесячные продажи в кол-м выражении SystemElectric 2024-2026.xlsx",
+          "cases/5/case-data/Systeme electric/Сезонность SystemElectric 2024-2026.xlsx",
+          "cases/5/case-data/Systeme electric/Товар в пути_SystemElectric на 22.09.2026.xlsx"
+        ],
+        "used": [
+          "cases/5/case-data/HackAlem AI_ Автоматизация формирования заказов поставщикам.docx.md",
+          "cases/5/case-data/IEK/MOQ  ИЭК.xlsx",
+          "cases/5/case-data/IEK/Динамика продаж_2025-2026.xlsx",
+          "cases/5/case-data/IEK/Ежемесячные остатки продукции за последние 2 года  ИЭК.xlsx",
+          "cases/5/case-data/IEK/Ежемесячные продажи в количественном выражении за последние 2 года.xlsx",
+          "cases/5/case-data/IEK/Путь ИЭК 22.09.2026.xlsx",
+          "cases/5/case-data/IEK/Сезонность ИЭК.xlsx",
+          "cases/5/case-data/Systeme electric/MOQ SystemElectric.xlsx",
+          "cases/5/case-data/Systeme electric/Динамика продаж_Syseme Electric_2025-2026.xlsx",
+          "cases/5/case-data/Systeme electric/Ежемесячные остатки SystemElectric 2024-2026.xlsx",
+          "cases/5/case-data/Systeme electric/Ежемесячные продажи в кол-м выражении SystemElectric 2024-2026.xlsx",
+          "cases/5/case-data/Systeme electric/Сезонность SystemElectric 2024-2026.xlsx",
+          "cases/5/case-data/Systeme electric/Товар в пути_SystemElectric на 22.09.2026.xlsx"
+        ],
+        "checks": [
+          {
+            "input": "Синтетический набор build_demo: 10 SKU, 3 639 продаж, 1 stockout, 2 inbound.",
+            "method": "scripts/verify_live_flow.py через живой HTTP-сервер: /api/demo → /api/calculate → item → approve → CSV/XLSX → evidence.",
+            "result": "Проверка прошла; 10 result rows, 8 order lines, supplier_sent=false, экспорт и fingerprint evidence получены за 0.562 секунды.",
+            "conclusion": "Основной пользовательский сценарий и чувствительность на синтетических примерах воспроизводятся."
+          },
+          {
+            "input": "Все 12 предоставленных XLSX из каталогов IEK и Systeme electric.",
+            "method": "multipart /api/import через scripts/verify_live_flow.py с последующим /api/calculate и approval/export/evidence.",
+            "result": "Импорт и расчёт прошли: 3 588 products, 248 467 положительных sales, 313 inbound, 0 stockouts; 3 588 result rows, 191 order lines, 34.31 секунды.",
+            "conclusion": "Реальный data path работает на данных кейса; отсутствующие stockout/client/lead/growth fields нельзя считать подтверждёнными. Данные не публиковались построчно."
+          },
+          {
+            "input": "TDSheet книги «Товар в пути_SystemElectric на 22.09.2026.xlsx».",
+            "method": "Проверена строка заголовков исходной книги и результат partner_xlsx.import_partner_files на всех 12 книгах.",
+            "result": "В источнике присутствуют «Категория 2026», «Кэф. Роста» и «Кэф. Сез-ти»; импорт дал nonzero_growth=0, nonunknown_category=497, lead_days_values=[0].",
+            "conclusion": "Подтверждён F5: growth coefficient реально присутствует во входном отчёте, но текущий адаптер его не переводит в расчёт; категория импортируется только для части товаров."
+          },
+          {
+            "input": "Синтетические направленные сценарии сезонности, тренда, inbound, stockout, one-off/recurring spike, supplier grouping и approval.",
+            "method": "Полный tests набор проекта в контейнере: python -X utf8 scripts/preflight.py.",
+            "result": "125 passed, 1 skipped, 9 subtests passed. В контейнере Node отсутствует, поэтому дополнительная JS syntax gate не запускалась.",
+            "conclusion": "Domain/API/security regression coverage сильная; пропущенная JS-проверка — ограничение проверочной среды, не основание для штрафа."
+          }
+        ],
+        "limitations": [
+          "Партнёрские книги не содержат точных stockout-интервалов и обезличенного client_id; номер документа используется только как event_id и не объявляется клиентом.",
+          "В книгах нет подтверждённого lead time и цены; адаптер оставляет lead_days=0 и unit_price=0 с provenance/warnings, а API не представляет неизвестную цену как подтверждённую.",
+          "Реальный запуск подтвердил прохождение сценария, но не точность прогноза на отложенном периоде и не совместимость экспортного файла с конкретным коннектором 1С."
+        ]
+      },
+      "runtime": {
+        "status": "working",
+        "build": "Docker image built successfully from the snapshot. The application image installed the pinned Python dependencies and copied the repository.",
+        "start": "Live localhost HTTP server started successfully in verify_live_flow for both synthetic and partner-data runs; /api/health and interface assets returned successfully.",
+        "scenario": "Synthetic and real XLSX scenarios completed import/demo, calculation, item detail, manual approval, CSV/XLSX export and evidence generation. No supplier dispatch exists or was performed.",
+        "environment": "Проверка выполнялась в изолированном Linux-контейнере с Python 3.12 и зависимостями из requirements.lock; браузер, CUA и UI-автоматизация не использовались.",
+        "summary": "Основной сценарий воспроизведён полностью. Синтетика: 10 SKU, 3 639 продаж, 8 order lines. Реальные книги: 3 588 SKU, 248 467 продаж, 313 inbound, 191 order line, 34.31 секунды.",
+        "checks": [
+          {
+            "command": "docker build -t <review-image> .",
+            "result": "Код выхода 0; образ собран из snapshot.",
+            "id": "R-BUILD",
+            "stage": "build",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Сборка Dockerfile завершается успешно с зависимостями из requirements.lock."
+          },
+          {
+            "command": "python -X utf8 scripts/preflight.py",
+            "result": "Код выхода 0; 125 Python-тестов passed, 1 skipped, 9 subtests passed. Скрипт сообщил, что Node отсутствует, поэтому JS syntax check не запускался.",
+            "id": "R-TEST",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Локальный набор тестов и доступные syntax gates проходят."
+          },
+          {
+            "command": "python -X utf8 scripts/verify_live_flow.py",
+            "result": "Код выхода 0; server/assets OK, demo/calculation/detail/approval/CSV/XLSX/evidence OK; 10 rows, 8 order lines, 0.562 s.",
+            "id": "R-LIVE-SYNTH",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Синтетический основной workflow воспроизводится через HTTP без внешних ключей и без отправки поставщику."
+          },
+          {
+            "command": "python -X utf8 scripts/verify_live_flow.py <каталог_IEK> <каталог_Systeme_electric> --expect-sales 248467 --expect-products 3588",
+            "result": "Код выхода 0; 12 XLSX импортированы, counts совпали: 3 588 products, 248 467 sales, 313 inbound, 0 stockouts; 3 588 rows and 191 order lines; 34.31 s.",
+            "id": "R-LIVE-PARTNER",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Партнёрские XLSX импортируются и проходят тот же HTTP workflow до approval/export/evidence."
+          },
+          {
+            "command": "node --check frontend/*.js и node --check frontend/lib/*.js",
+            "result": "Не запускалось: Node.js отсутствует внутри проверочного образа; на хосте Node был доступен, но визуальная/UI-проверка не выполнялась.",
+            "id": "R-JS-SYNTAX",
+            "stage": "build",
+            "status": "not_run",
+            "cause": "review_environment",
+            "expected": "Все JS-модули проходят синтаксическую проверку."
+          },
+          {
+            "command": "python -X utf8 -c \"import_files(<12 provided XLSX>)\"",
+            "result": "Импорт завершился без исключения; агрегат: files=12, products=3588, sales=248467, inbound=313, stockouts=0, nonzero_growth=0, nonunknown_category=497, lead_days_values=[0], warnings=9.",
+            "id": "R-DATA-IMPORT",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Предоставленные книги распознаются, а фактически используемые поля и ограничения можно измерить без публикации строк."
+          }
+        ],
+        "limitations": [
+          "Визуальное поведение интерфейса, адаптивная вёрстка и клики в браузере не проверялись по обязательной политике пользовательской визуальной проверки.",
+          "В образе не установлен Node.js, поэтому preflight не выполнил опциональную проверку синтаксиса JavaScript; Python/API/domain проверки прошли.",
+          "Публичная 1С-интеграция и внешний supplier dispatch не заявлены как проверенные и не требовались для локального MVP."
+        ]
+      },
+      "liveDemo": {
+        "status": "none",
+        "url": null,
+        "notes": "Публичная ссылка в материалах не предоставлена. Локальный HTTP demo и партнёрский workflow подтверждены через scripts/verify_live_flow.py; отсутствие публичного URL не использовано как штраф."
+      },
+      "fiveHourContext": "Для пятичасового хакатона это цельный MVP: в одном snapshot есть импорт реальных книг, детерминированный расчёт, synthetic regression coverage, API workflow, approval, экспорт, provenance и документация. Оценка не требует production-аутентификации, 1С-коннектора или внешней инфраструктуры. Удержание относится к конкретному data-path дефекту F5, а не к отсутствию функций вне кейса.",
+      "strengths": [
+        "F1: основной пользовательский workflow подтверждён живым HTTP-прогоном на синтетике и на всех 12 предоставленных XLSX.",
+        "F2: engine отдельно моделирует сезонность, тренд, stockout, выбросы, inbound timing, MOQ/pack и объяснение.",
+        "F3: manual approval, draft/approved exports, formula escaping и HMAC-псевдонимизация встроены в код и покрыты тестами.",
+        "F4: импортёр честно сохраняет provenance и предупреждения вместо выдумывания цены, срока поставки, stockout или клиентских данных."
+      ],
+      "gaps": [
+        "F5: partner_xlsx.py распознаёт коэффициент роста в исходной TDSheet, но не маппит его в product.growth; в реальном импорте nonzero_growth=0. Категория импортируется только для части SKU и без автоматически созданных category policies."
+      ],
+      "futureAdvice": [
+        {
+          "principle": "Превращайте неоднозначный бизнес-коэффициент в явный проверяемый контракт",
+          "why": "F5 показывает, что реальный файл содержит «Кэф. Роста», но текущий адаптер безопасно пропускает его: это защищает от неверной трактовки масштаба, однако оставляет требование прироста неактивным на рабочем источнике.",
+          "how": "На следующем хакатоне за короткий timebox согласовать с владельцем данных смысл и единицы коэффициента, сохранить его как provenance-поле, затем добавить один fixture с ненулевым значением и sensitivity-тест, где изменение коэффициента меняет recommendation.",
+          "findingIds": [
+            "F5"
+          ],
+          "successCheck": "На реальном или согласованном fixture импорт показывает ненулевой growth для строк с коэффициентом, explanation отражает его, а парный прогон с коэффициентом 0 и коэффициентом X даёт различающиеся количества.",
+          "timeboxMinutes": 45
+        }
+      ],
+      "uncertainties": [
+        "Прогнозная точность на отложенном реальном периоде не измерялась; текущие тесты подтверждают поведение формул и чувствительность, а не бизнес-ошибку прогноза.",
+        "Визуальная ясность интерфейса и адаптивность не оценивались браузером по пользовательской политике; HTTP и статические frontend-ресурсы доступны.",
+        "Совместимость CSV/XLSX с конкретным импортом 1С не подтверждена образцом коннектора партнёра.",
+        "Внешние API-ключи не предоставлялись, но проект заявляет автономный runtime без внешнего API; основной сценарий поэтому проверен без ключей."
+      ],
+      "reviewPolicyVersion": 2,
+      "assessmentStatus": "ready",
+      "findings": [
+        {
+          "id": "F1",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Основной сценарий ProofFlow работает от загрузки/демо до расчёта, детализации, ручного approval, CSV/XLSX и evidence.",
+          "expected": "Менеджер получает воспроизводимый черновик заказа и может вручную утвердить и выгрузить его без автоматической отправки.",
+          "actual": "Оба live HTTP-прогона завершились успешно; synthetic дал 10 rows/8 order lines, partner дал 3 588 rows/191 order lines; supplier_sent=false.",
+          "evidence": [
+            "scripts/verify_live_flow.py:39-103",
+            "captures/20261002T095604862761-test.stdout.log",
+            "captures/20261002T095646850325-partner.stdout.log"
+          ],
+          "checkIds": [
+            "R-LIVE-SYNTH",
+            "R-LIVE-PARTNER"
+          ]
+        },
+        {
+          "id": "F2",
+          "kind": "strength",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Расчётный engine содержит объяснимую обработку сезонности, тренда, stockout, выбросов, датированных inbound и округления заказа.",
+          "expected": "Изменение поддержанного источника должно менять forecast/recommendation предсказуемо, а результат должен объяснять вклад источников.",
+          "actual": "Реализации и направленные тесты покрывают каждый из перечисленных механизмов; synthetic live data содержит соответствующие примеры.",
+          "evidence": [
+            "engine.py:91-154",
+            "engine.py:256-438",
+            "tests/test_engine.py:45-180",
+            "tests/test_workflow_acceptance.py:58-159"
+          ],
+          "checkIds": [
+            "R-TEST",
+            "R-LIVE-SYNTH"
+          ]
+        },
+        {
+          "id": "F3",
+          "kind": "strength",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Приватность и human-in-the-loop встроены в API: identifiers псевдонимизируются, approval отдельный, supplier dispatch отсутствует.",
+          "expected": "Неанонимизированные идентификаторы не должны попадать в сохранённый результат, а заказ не должен отправляться без ручного подтверждения.",
+          "actual": "HMAC-псевдонимы создаются до storage/calculate; approval требует reviewer; exports.py — download-only, тесты проверяют отсутствие send_order и cross-origin mutation.",
+          "evidence": [
+            "server.py:31-57",
+            "server.py:314-362",
+            "exports.py:1-15",
+            "tests/test_privacy.py:14-46",
+            "tests/test_security_performance.py:76-91"
+          ],
+          "checkIds": [
+            "R-TEST",
+            "R-LIVE-SYNTH"
+          ]
+        },
+        {
+          "id": "F4",
+          "kind": "limitation",
+          "verification": "observed",
+          "responsibility": "external_service",
+          "claim": "Предоставленные партнёрские книги не дают точных stockout-интервалов, обезличенного client_id и подтверждённого lead time.",
+          "expected": "Для доказательства компенсации lost demand и one-client spike нужны соответствующие наблюдаемые поля.",
+          "actual": "Реальный импорт дал stockouts=0, event_id приходит из номера документа, client_id отсутствует, lead_days_values=[0]; код показывает предупреждения и не объявляет эти данные измеренными.",
+          "evidence": [
+            "partner_xlsx.py:130-147",
+            "docs/DATA_MAPPING.md",
+            "captures/20261002T095646850325-partner.stdout.log"
+          ],
+          "checkIds": [
+            "R-LIVE-PARTNER",
+            "R-DATA-IMPORT"
+          ]
+        },
+        {
+          "id": "F5",
+          "kind": "defect",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Партнёрский адаптер не переносит имеющийся в TDSheet коэффициент роста в canonical product.growth и не создаёт category policy из реального category label.",
+          "expected": "Если предоставленный источник содержит коэффициент роста и категорию, должен существовать явный согласованный путь, по которому они влияют на recommendation либо явно помечаются как неподдержанные до расчёта.",
+          "actual": "partner_xlsx.py диспатчит TDSheet в _read_systeme_report, читает category_col, но не читает колонку «Кэф. Роста»; _update_product задаёт growth не заданным, поэтому engine получает default 0. На 12 реальных книгах nonzero_growth=0, category заполнена только у 497 товаров, а category_policies остаётся пустым.",
+          "evidence": [
+            "partner_xlsx.py:150-168",
+            "partner_xlsx.py:304-343",
+            "engine.py:204-210",
+            "engine.py:403-409",
+            "cases/5/case-data/Systeme electric/Товар в пути_SystemElectric на 22.09.2026.xlsx — заголовок TDSheet содержит «Кэф. Роста» и «Категория 2026»",
+            "R-DATA-IMPORT: nonzero_growth=0, nonunknown_category=497"
+          ],
+          "checkIds": [
+            "R-DATA-IMPORT",
+            "R-LIVE-PARTNER"
+          ]
+        },
+        {
+          "id": "F6",
+          "kind": "limitation",
+          "verification": "unverified",
+          "responsibility": "review_environment",
+          "claim": "Визуальная ясность и адаптивность frontend не проверялись браузером.",
+          "expected": "Визуальная проверка могла бы подтвердить фактическое расположение и читаемость экранов.",
+          "actual": "Проверены HTTP-ответы статики и API-сценарий, но браузерная/скриншотная автоматизация запрещена пользовательской политикой.",
+          "evidence": [
+            "R-LIVE-SYNTH",
+            "runtime.limitations"
+          ],
+          "checkIds": [
+            "R-LIVE-SYNTH"
+          ]
+        }
+      ],
+      "gapFindingIds": [
+        "F5"
+      ]
+    }
+  ],
+  "score": 92.0,
+  "status": "complete",
+  "expectedJudges": 1
+}

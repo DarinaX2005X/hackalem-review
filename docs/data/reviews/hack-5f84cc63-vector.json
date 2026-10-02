@@ -1,0 +1,832 @@
+{
+  "methodVersion": 4,
+  "repoId": "hack-5f84cc63-vector",
+  "repoUrl": "https://github.com/BAITC-Hacks/hack-5f84cc63-vector",
+  "caseId": 5,
+  "snapshot": "259182781fdad1f5b26eb39fd4b1a61f2657dfca",
+  "judges": [
+    {
+      "methodVersion": 4,
+      "repoId": "hack-5f84cc63-vector",
+      "caseId": 5,
+      "model": "GPT-5.6 Luna",
+      "snapshot": "259182781fdad1f5b26eb39fd4b1a61f2657dfca",
+      "overallSummary": "Vector — сильный, воспроизводимый MVP для подготовки черновика заказа: в публичном синтетическом режиме он собирает объяснимую рекомендацию по SKU, учитывает прогноз, остаток, датированные поступления, сроки и округление, показывает ранний дефицит и требует ручного review перед экспортом. Сборка Docker, старт Streamlit, health HTTP-проверка, полный набор из десяти test-файлов и синтетические проверки A–E прошли. Главный подтверждённый изъян находится до расчёта: приложенный к кейсу реальный набор из 12 XLSX не проходит через config/sources.json, потому что несколько SystemElectric записей ссылаются на чужие хэши, роли и листы; ingestion останавливается на se_mislabeled_constraints_copy. Дополнительно код явно оставляет category_id и customer_id пустыми, поэтому требования о категориях и покупке одного клиента закрыты только частично. Итог — 82/100: высокое качество прототипа и демо, но ограниченная готовность к реальному входному срезу кейса.",
+      "global": {
+        "criteria": [
+          {
+            "name": "Ценность решения",
+            "score": 22,
+            "max": 25,
+            "awarded": "Решение адресует ясную операционную проблему закупщика и превращает разрозненные выгрузки в проверяемый черновик заказа.",
+            "deductions": "Снижено за отсутствие рабочего прохода реального входного набора и за неиспользуемые в расчёте категории и клиентский уровень.",
+            "evidence": [
+              "README.md:9-15, 65-91",
+              "src/vector_pipeline/replenishment.py:28-195",
+              "captures/20261002T070551137715-scenario.stdout.log",
+              "CHK-SYNTH-DEMO"
+            ],
+            "deductionItems": [
+              {
+                "points": 3,
+                "findingId": "F6",
+                "reason": "Для ценности именно в реальном процессе закупки предоставленные XLSX не доходят до канонического слоя: manifest останавливает ingestion на несовпадении fingerprint, поэтому полезность доказана на синтетическом режиме, но не на фактическом наборе кейса."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Понятная задача закупщика",
+                "implementation": "README формулирует результат через три практических вопроса — что заказать, сколько и почему. Dashboard показывает рекомендацию по отдельному supplier/SKU/warehouse/unit, а не только агрегированный общий итог.",
+                "value": "Это напрямую сокращает ручное сведение Excel и делает результат пригодным для обсуждения с менеджером закупок. Пользователь видит не абстрактный прогноз, а конкретную строку черновика и причины количества.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:9-15",
+                  "app.py:273-305"
+                ]
+              },
+              {
+                "aspect": "Объяснимый расчёт потребности",
+                "implementation": "recommend() рассчитывает потребность на период lead time + review, добавляет safety buffer, вычитает доступный остаток и только подходящие по датам поступления, затем проверяет дефицит до даты нового заказа и округляет результат.",
+                "value": "Закупщик получает проверяемую арифметику и предупреждение о ситуации, когда обычная поставка приходит после начала дефицита. Такой вывод полезнее непрозрачного числа и поддерживает ручное решение.",
+                "verification": "source",
+                "evidence": [
+                  "src/vector_pipeline/replenishment.py:65-90",
+                  "src/vector_pipeline/replenishment.py:115-195",
+                  "app.py:176-196"
+                ]
+              },
+              {
+                "aspect": "Изменение сценария без отправки заказа",
+                "implementation": "В интерфейсе можно изменить остаток, срок, период пересмотра, safety, задержку и дополнительное поступление; draft хранится в сессии, а экспорт появляется только после acknowledgement менеджера.",
+                "value": "Это даёт закупщику безопасный способ проверить чувствительность и подготовить черновик, не превращая экспериментальный расчёт в автоматическую закупку.",
+                "verification": "observed",
+                "evidence": [
+                  "app.py:215-251",
+                  "app.py:310-345",
+                  "CHK-SYNTH-ACCEPTANCE"
+                ]
+              },
+              {
+                "aspect": "Польза ограничена отсутствующими измерениями",
+                "implementation": "Pipeline сохраняет category_id как null, а адаптер транзакций создаёт customer_id=None; README и экран покрытия явно сообщают, что категории и customer IDs в данных отсутствуют.",
+                "value": "Команда не маскирует пробелы нулями, что повышает доверие к доступным числам. Но ценность для категорий и анализа покупки одного клиента пока не реализована.",
+                "verification": "source",
+                "evidence": [
+                  "src/vector_pipeline/pipeline.py:58-76",
+                  "src/vector_pipeline/adapters.py:110-116",
+                  "app.py:258-263",
+                  "app.py:364-370"
+                ]
+              }
+            ],
+            "scoreReasoning": "22 балла заслужены за хорошо выбранную боль, конкретный результат по SKU, объяснение и управляемый сценарий review. До максимума не хватает доказанного прохода по предоставленному реальному набору: ошибка manifest блокирует именно тот путь, который должен превращать выгрузки партнёра в рекомендации. Это существенно для прикладной ценности, хотя синтетическая демонстрация ясно показывает пользу продукта."
+          },
+          {
+            "name": "Результат и качество решения",
+            "score": 16,
+            "max": 20,
+            "awarded": "Синтетический пользовательский сценарий цельный и технически воспроизводимый; реальный ingestion и часть обязательных измерений остаются неполными.",
+            "deductions": "Снижено за блокирующую ошибку входного manifest и за отсутствие категории/customer-пути в продуктовой модели.",
+            "evidence": [
+              "Dockerfile:1-31",
+              "src/vector_pipeline/replenishment_cli.py:82-206",
+              "tests/test_public_demo.py:1-58",
+              "CHK-UNIT-SUITE",
+              "CHK-REAL-INGEST"
+            ],
+            "deductionItems": [
+              {
+                "points": 3,
+                "findingId": "F6",
+                "reason": "Качество end-to-end результата на реальном кейсовом срезе нельзя считать рабочим: project-owned fingerprint/layout guard выдаёт SourceLayoutError ещё до обработки SystemElectric данных."
+              },
+              {
+                "points": 1,
+                "findingId": "F7",
+                "reason": "Даже после исправления manifest результат не покрывает обязательные категории и покупку одного клиента: соответствующие поля остаются null, поэтому полная бизнес-семантика заказа не достигается."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Детерминированный расчёт заказа",
+                "implementation": "Функция recommend() валидирует evidence статусы входов, проверяет размерности и даты снимка, распределяет месячный forecast по календарным дням, учитывает поставки в окне защиты и формирует timeline без скрытого сложения разных единиц.",
+                "value": "Сценарий не является макетом: он выдаёт количество, urgency, calculation, audit поставок и explanation, которые можно пересчитать и проверить.",
+                "verification": "source",
+                "evidence": [
+                  "src/vector_pipeline/replenishment.py:14-27",
+                  "src/vector_pipeline/replenishment.py:39-85",
+                  "src/vector_pipeline/replenishment.py:89-195"
+                ]
+              },
+              {
+                "aspect": "Защита от неготовых входов",
+                "implementation": "При unresolved operational inputs или недостаточном прогнозе рекомендация получает статус unavailable и причины, а не выдуманное количество. Pipeline также проверяет хэши и число строк upstream artifacts.",
+                "value": "Для закупочного MVP это важная качественная граница: отсутствие остатка или срока не превращается в ложную уверенность.",
+                "verification": "source",
+                "evidence": [
+                  "src/vector_pipeline/replenishment.py:34-60",
+                  "src/vector_pipeline/replenishment_cli.py:93-110",
+                  "app.py:348-370"
+                ]
+              },
+              {
+                "aspect": "Работающий публичный результат",
+                "implementation": "Чистый образ запускает 40 синтетических SKU от двух поставщиков, а build_demo.py заново генерирует bundle и выполняет проверку 105 → 65 → 35 для остатка и своевременного поступления.",
+                "value": "Есть воспроизводимый результат без приватных файлов и ключей, достаточный для демонстрации основного сценария за пять часов хакатона.",
+                "verification": "observed",
+                "evidence": [
+                  "scripts/build_demo.py:36-83",
+                  "scripts/build_demo.py:109-142",
+                  "captures/20261002T070551137715-scenario.stdout.log"
+                ]
+              },
+              {
+                "aspect": "Тестируемость",
+                "implementation": "В checkout есть тесты адаптеров, dashboard, demand, forecast, pipeline, i18n, evidence и replenishment. Исправленный изолированный запуск всех десяти файлов завершился без ошибок.",
+                "value": "Проверки охватывают не только happy path: тестируются хэши, отсутствующие месяцы, отрицательные значения, same-day leakage, review invalidation и экспорт.",
+                "verification": "observed",
+                "evidence": [
+                  "tests/test_adapters.py",
+                  "tests/test_demand.py",
+                  "tests/test_forecast.py",
+                  "tests/test_replenishment.py",
+                  "captures/20261002T070624113666-test.stdout.log"
+                ]
+              }
+            ],
+            "scoreReasoning": "16 баллов отражают реально работающий синтетический сценарий, строгие статусы unavailable и хороший набор domain-тестов. Четыре балла сняты не за отсутствие production-функций, а за конкретный project defect в реальном входном registry и за неполную модель обязательных измерений, что не позволяет назвать результат готовым для предоставленных XLSX."
+          },
+          {
+            "name": "Инновационность",
+            "score": 11,
+            "max": 15,
+            "awarded": "Нестандартность есть в сочетании causal очистки спроса, chronological model selection, stockout refit и объяснимого review; при этом ядро остаётся небольшим детерминированным набором моделей.",
+            "deductions": "Снижено за отсутствие клиентского уровня и за то, что агрегированные коэффициенты категорий/сезонности не становятся частью SKU-расчёта.",
+            "evidence": [
+              "src/vector_pipeline/demand.py:122-152",
+              "src/vector_pipeline/forecast.py:193-238",
+              "src/vector_pipeline/stockout.py:11-75",
+              "README.md:163-181"
+            ],
+            "deductionItems": [
+              {
+                "points": 4,
+                "findingId": "F7",
+                "reason": "Document/SKU proxy для выбросов — полезный приём, но не выполнение заявленного требования про крупную покупку одного клиента; customer_id не проходит из входа и отдельного обработчика нет. Также category_id остаётся null, поэтому преимущества коэффициентов по категориям не реализованы."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Устойчивое выявление разовых продаж",
+                "implementation": "clean_transactions строит историю по документу, дате, SKU, складу и единице; применяет median/IQR/MAD fences, не допускает утечки текущего дня и сохраняет повторяющиеся крупные заказы как regular.",
+                "value": "Это лучше наивного удаления всех больших значений: разовая закупка исключается из регулярного спроса, но повторяемый большой объём не объявляется аномалией автоматически.",
+                "verification": "source",
+                "evidence": [
+                  "src/vector_pipeline/demand.py:72-111",
+                  "src/vector_pipeline/demand.py:122-152",
+                  "tests/test_demand.py:35-111"
+                ]
+              },
+              {
+                "aspect": "Причинный выбор модели",
+                "implementation": "select_model сравнивает mean, EWMA, trend_seasonal и seasonal_naive на одинаковых rolling origins; final holdout добавляется только после выбора модели. Trend-seasonal отделяет annual pattern от slope.",
+                "value": "Подход снижает риск подглядывания в контрольный месяц и позволяет объяснить, почему сезонность и устойчивый рост не добавляются к заказу второй раз.",
+                "verification": "source",
+                "evidence": [
+                  "src/vector_pipeline/forecast.py:132-180",
+                  "src/vector_pipeline/forecast.py:193-238",
+                  "src/vector_pipeline/forecast.py:241-292"
+                ]
+              },
+              {
+                "aspect": "Компенсация stockout с frozen model",
+                "implementation": "correct_history принимает только явный интервал, известный к cutoff, оценивает потерянные дни по предыдущим месяцам, а refit_adjusted сохраняет выбранную модель и заменяет только обученную историю.",
+                "value": "Это аккуратнее, чем трактовать каждый нулевой день как lost sales: механизм включается только при достаточной истории и оставляет audit по каждой дате.",
+                "verification": "source",
+                "evidence": [
+                  "src/vector_pipeline/stockout.py:11-55",
+                  "src/vector_pipeline/stockout.py:58-75",
+                  "tests/test_replenishment.py"
+                ]
+              },
+              {
+                "aspect": "Нестандартная операционная проверка сроков",
+                "implementation": "Кроме net requirement, расчёт проверяет worst_after_arrival и early shortage; поэтому поздняя поставка не скрывает дефицит, который возникает до прихода нового заказа.",
+                "value": "Это превращает обычный reorder point в объяснимый риск-сценарий: пользователю сообщается необходимость expedite или transfer.",
+                "verification": "source",
+                "evidence": [
+                  "src/vector_pipeline/replenishment.py:118-133",
+                  "src/vector_pipeline/replenishment.py:170-195",
+                  "scripts/accept_case.py:78-99"
+                ]
+              }
+            ],
+            "scoreReasoning": "11 баллов заслужены за хорошо продуманные защитные механизмы, которые для пятичасового MVP заметно сильнее простой скользящей средней. До максимума не хватает реального category/customer уровня: текущая инновация работает на document/SKU proxy и синтетической проверке, а не на полноценной сегментации крупной покупки клиента."
+          },
+          {
+            "name": "Потенциал развития и масштабирования",
+            "score": 13,
+            "max": 20,
+            "awarded": "Архитектура модульная, hash-guarded и пригодна для расширения поставщиков и входных схем, но реальный ingestion registry сейчас препятствует масштабированию на предоставленный второй источник.",
+            "deductions": "Снижено за ошибочную регистрацию SystemElectric и отсутствие готовых category/customer входов.",
+            "evidence": [
+              "src/vector_pipeline/pipeline.py:83-167",
+              "src/vector_pipeline/adapters.py:15-25, 242-250",
+              "Dockerfile:10-31",
+              "docs/ARCHITECTURE.md:186-205"
+            ],
+            "deductionItems": [
+              {
+                "points": 4,
+                "findingId": "F6",
+                "reason": "Масштабирование на два поставщика ломается до выполнения расчёта из-за неверных SystemElectric path/hash/role записей. Guard правильно останавливает опасный запуск, но зафиксированный snapshot не содержит рабочего mapping для предоставленного набора."
+              },
+              {
+                "points": 3,
+                "findingId": "F7",
+                "reason": "Каноническая модель формально предусматривает nullable category/customer, но текущая реализация не даёт дальнейшему расчёту использовать эти измерения; перенос на category-aware и customer-aware политики потребует отдельного расширения схемы и логики."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Разделение pipeline на этапы",
+                "implementation": "Проект разделяет adapters/parsing, canonical pipeline, demand cleaning, forecast, stockout, replenishment и dashboard. JSONL artifacts имеют summaries, row counts и SHA-256, а downstream run проверяет upstream fingerprints.",
+                "value": "Такую структуру можно расширять по поставщику и по источнику без переписывания формулы заказа; она также облегчает аудит и повторный запуск.",
+                "verification": "source",
+                "evidence": [
+                  "src/vector_pipeline/pipeline.py:20-49",
+                  "src/vector_pipeline/pipeline.py:83-163",
+                  "src/vector_pipeline/replenishment_cli.py:93-110"
+                ]
+              },
+              {
+                "aspect": "Поставщик-специфические adapters",
+                "implementation": "Базовый SupplierAdapter описывает чтение явной физической раскладки, а IEKAdapter и SystemElectricAdapter могут задавать различия, включая default constraint kind для SystemElectric.",
+                "value": "Это разумная точка расширения для новых поставщиков и неоднородных Excel-выгрузок, с защитой от тихой смены заголовка или ширины строки.",
+                "verification": "source",
+                "evidence": [
+                  "src/vector_pipeline/adapters.py:15-25",
+                  "src/vector_pipeline/adapters.py:39-70",
+                  "src/vector_pipeline/adapters.py:242-250"
+                ]
+              },
+              {
+                "aspect": "Безопасная упаковка",
+                "implementation": "Dockerfile копирует только исходники, demo, конфиги и документацию, исключает data/*.xlsx через .dockerignore и запускает Streamlit под отдельным непривилегированным пользователем.",
+                "value": "Для MVP это снижает риск утечки партнёрских выгрузок и делает public synthetic fallback переносимым на другую машину без API-ключей.",
+                "verification": "source",
+                "evidence": [
+                  "Dockerfile:1-31",
+                  ".dockerignore:1-29",
+                  "README.md:40-48"
+                ]
+              },
+              {
+                "aspect": "Конфигурационное развитие",
+                "implementation": "Пороговые значения, модели, stockout policy, rounding и demo inputs вынесены в config/*.json; acceptance и public demo фиксируют происхождение synthetic artifacts отдельно от business approval.",
+                "value": "Следующий hackathon сможет добавлять новые политики через явную конфигурацию и тестовые fixtures, не смешивая их с текущими партнёрскими данными.",
+                "verification": "source",
+                "evidence": [
+                  "config/demand.json",
+                  "config/forecast.json",
+                  "config/replenishment.json",
+                  "scripts/build_demo.py:99-135",
+                  "src/vector_pipeline/evidence.py:1-52"
+                ]
+              }
+            ],
+            "scoreReasoning": "13 баллов — за модульность, отдельные поставщик-адаптеры, артефакты с fingerprint и безопасную упаковку. Потенциал заметный, но до масштабируемого продукта ещё далеко: ошибка registry не позволяет развернуть полный реальный вход из кейса, а category/customer dimensions остаются только nullable contract без работающих политик."
+          },
+          {
+            "name": "Презентация, демо и ответы на вопросы",
+            "score": 20,
+            "max": 20,
+            "awarded": "README, DEMO.md, acceptance evidence и локально воспроизводимый синтетический сценарий ясно объясняют продукт, ограничения и действия пользователя.",
+            "deductions": "Снятий нет: публичный live URL и устное выступление по правилам этого разбора не требуются, а визуальную проверку выполняет пользователь.",
+            "evidence": [
+              "README.md:1-15, 95-202",
+              "DEMO.md:1-145",
+              "tests/test_public_demo.py:1-58",
+              "CHK-START",
+              "CHK-HTTP-HEALTH",
+              "CHK-UNIT-SUITE"
+            ],
+            "deductionItems": [],
+            "awardedDetails": [
+              {
+                "aspect": "Короткий маршрут демонстрации",
+                "implementation": "README задаёт последовательность открыть case validation, выбрать IEK, изменить stock, добавить receipt, положить строку в draft, подтвердить review и скачать CSV.",
+                "value": "Демо можно показать за несколько минут без объяснения внутреннего кода; каждый шаг связан с наблюдаемым изменением результата.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:95-113",
+                  "DEMO.md:15-45"
+                ]
+              },
+              {
+                "aspect": "Честная маркировка synthetic и границ",
+                "implementation": "Публичная страница и acceptance report помечают данные synthetic, а README отдельно сообщает про не подтверждённые stock/lead time, отсутствие customer/category и непроверенный 1C формат.",
+                "value": "Пользователь не получает ложное впечатление, что 40 generated SKU — это измерение бизнеса партнёра.",
+                "verification": "source",
+                "evidence": [
+                  "scripts/build_demo.py:102-107",
+                  "README.md:183-199",
+                  "DEMO.md:91-124"
+                ]
+              },
+              {
+                "aspect": "Воспроизводимость из чистого checkout",
+                "implementation": "Docker build завершился успешно, контейнер Streamlit стартовал, а GET /_stcore/health вернул HTTP 200 и ok. build_demo.py также прошёл в изолированном контейнере без приватных файлов.",
+                "value": "Репозиторий содержит не только текстовый pitch, но и запускаемый локальный демо-путь, который может повторить жюри.",
+                "verification": "observed",
+                "evidence": [
+                  "captures/20261002T070023903065-build.stderr.log",
+                  "captures/20261002T070551149712-start.stdout.log",
+                  "captures/20261002T070717177902-scenario.stdout.log",
+                  "captures/20261002T070551137715-scenario.stdout.log"
+                ]
+              },
+              {
+                "aspect": "Доказательная страница",
+                "implementation": "Case validation показывает пять карточек A–E, их origin, численные before/after значения, limitations и provenance report; evidence.py проверяет свежесть исходников и artifact hashes.",
+                "value": "Объяснение можно защищать конкретными числами и границами, а не только заявлением в README.",
+                "verification": "source",
+                "evidence": [
+                  "src/vector_pipeline/evidence.py:11-52",
+                  "src/vector_pipeline/evidence_ui.py:65-147",
+                  "demo/acceptance/fe8bbb223344/case_acceptance.json"
+                ]
+              }
+            ],
+            "scoreReasoning": "20 баллов соответствуют условиям разбора: README и DEMO.md ясны, синтетический сценарий воспроизводится, ограничения проговорены, старт и HTTP health подтверждены. Визуальную эстетику интерфейса не оценивал, поскольку она находится в зоне пользовательской visual verification; это не основание для штрафа."
+          }
+        ],
+        "total": 82
+      },
+      "case": null,
+      "judgeScore": 82,
+      "caseRequirements": [
+        {
+          "requirement": "Расчёт заказа по SKU с историей продаж, остатком, сроком поставки, периодом пересмотра, товарами в пути и объяснением",
+          "status": "partial",
+          "explanation": "Механизм и sensitivity реализованы и проходят synthetic demo, включая dated incoming и timing shortage. На предоставленных XLSX полный real run не начинается из-за ошибки SystemElectric manifest; категории также не представлены в расчёте.",
+          "evidence": [
+            "src/vector_pipeline/replenishment.py:65-195",
+            "scripts/accept_case.py:78-99",
+            "captures/20261002T070526437643-scenario.stderr.log"
+          ]
+        },
+        {
+          "requirement": "Отражение сезонности и устойчивого роста",
+          "status": "partial",
+          "explanation": "Trend-seasonal модель с двумя годами истории и отдельными counterfactuals работает на 36-месячном synthetic fixture: октябрь/ноябрь/декабрь дают 295/310/305 при slope 5. Реальные серии из набора имеют не более 20 полных последовательных месяцев, а manifest блокирует их ingestion.",
+          "evidence": [
+            "src/vector_pipeline/forecast.py:157-180",
+            "scripts/accept_case.py:102-122",
+            "docs/FORECAST_POLICY.md:50-52"
+          ]
+        },
+        {
+          "requirement": "Компенсация lost demand при явном stockout",
+          "status": "partial",
+          "explanation": "correct_history оценивает потерянные дневные продажи по предыдущим месяцам и refit_adjusted сохраняет audit. Synthetic acceptance даёт 290 оценённых единиц и изменение заказа 67 → 104. В предоставленных XLSX явных stockout intervals нет, поэтому real compensation не подтверждена.",
+          "evidence": [
+            "src/vector_pipeline/stockout.py:11-75",
+            "scripts/accept_case.py:125-164",
+            "demo/acceptance/fe8bbb223344/case_acceptance.json"
+          ]
+        },
+        {
+          "requirement": "Удаление разовых крупных покупок, включая случай одного клиента",
+          "status": "partial",
+          "explanation": "Robust document/SKU detector исключает synthetic injection 9000 и оставляет cleaned order 63 вместо 1224 без screening. Customer-level grouping не реализовано: document_number не трактуется как customer ID, а customer_id в адаптере равен null.",
+          "evidence": [
+            "src/vector_pipeline/demand.py:72-111",
+            "src/vector_pipeline/demand.py:122-152",
+            "src/vector_pipeline/adapters.py:110-116",
+            "scripts/accept_case.py:165-205"
+          ]
+        },
+        {
+          "requirement": "Учитывать категории и применимость сезонных/внешних коэффициентов",
+          "status": "missing",
+          "explanation": "Продуктовая canonical запись принудительно получает category_id=None; aggregate seasonality сохраняется как source evidence, но в forecast/replenishment формулу не входит. README и acceptance честно помечают это ограничение.",
+          "evidence": [
+            "src/vector_pipeline/pipeline.py:58-76",
+            "src/vector_pipeline/adapters.py:197-236",
+            "README.md:375-388",
+            "docs/ARCHITECTURE.md:27-37"
+          ]
+        },
+        {
+          "requirement": "Выводить количество с объяснением и группировкой по поставщикам",
+          "status": "met",
+          "explanation": "Order planning фильтрует supplier и показывает calculation/explanation, а Draft review группирует выбранные линии по supplier_id перед export. Synthetic workflow проверяет наличие IEK и SystemElectric и сохранение несвязанной линии.",
+          "evidence": [
+            "app.py:273-305",
+            "app.py:310-345",
+            "tests/test_public_demo.py:12-58",
+            "CHK-SYNTH-ACCEPTANCE"
+          ]
+        },
+        {
+          "requirement": "Не отправлять заказ без ручного подтверждения",
+          "status": "met",
+          "explanation": "draft_line требует причину ручного изменения, review_draft требует имя и acknowledgement, export_draft проверяет актуальность fingerprint review. Экспорт явно имеет статус reviewed_draft_not_sent и не вызывает supplier connection.",
+          "evidence": [
+            "src/vector_pipeline/dashboard.py:126-183",
+            "app.py:328-345",
+            "scripts/accept_case.py:206-244",
+            "CHK-SYNTH-ACCEPTANCE"
+          ]
+        },
+        {
+          "requirement": "Обезличить клиентские данные",
+          "status": "partial",
+          "explanation": "Код не публикует клиентские идентификаторы и явно не подменяет document ID клиентом, но отдельной anonymized customer сущности нет; поле customer_id заполняется null. Для supplied data это безопасное поведение, однако требование анализа клиента остаётся нереализованным.",
+          "evidence": [
+            "src/vector_pipeline/adapters.py:110-116",
+            "docs/CASE.md:21-35",
+            "docs/DEMAND_POLICY.md:110-115"
+          ]
+        },
+        {
+          "requirement": "Проверить чувствительность к товарам в пути, сезонности, stockout и выбросу",
+          "status": "partial",
+          "explanation": "Все четыре механизма проверены на synthetic fixtures: incoming changes order, seasonal growth is separated, stockout changes forecast/order, one-off injection is screened. Реальные XLSX были открыты, но не прошли полный ingestion из-за F6, поэтому real sensitivity не выполнена.",
+          "evidence": [
+            "scripts/accept_case.py:78-205",
+            "scripts/build_demo.py:109-115",
+            "captures/20261002T070313968676-test.stdout.log",
+            "captures/20261002T070526437643-scenario.stderr.log"
+          ]
+        }
+      ],
+      "testData": {
+        "provided": [
+          "cases/5/case-data/HackAlem AI_ Автоматизация формирования заказов поставщикам.docx.md",
+          "cases/5/case-data/IEK/MOQ  ИЭК.xlsx",
+          "cases/5/case-data/IEK/Динамика продаж_2025-2026.xlsx",
+          "cases/5/case-data/IEK/Ежемесячные остатки продукции за последние 2 года  ИЭК.xlsx",
+          "cases/5/case-data/IEK/Ежемесячные продажи в количественном выражении за последние 2 года.xlsx",
+          "cases/5/case-data/IEK/Путь ИЭК 22.09.2026.xlsx",
+          "cases/5/case-data/IEK/Сезонность ИЭК.xlsx",
+          "cases/5/case-data/Systeme electric/MOQ SystemElectric.xlsx",
+          "cases/5/case-data/Systeme electric/Динамика продаж_Syseme Electric_2025-2026.xlsx",
+          "cases/5/case-data/Systeme electric/Ежемесячные остатки SystemElectric 2024-2026.xlsx",
+          "cases/5/case-data/Systeme electric/Ежемесячные продажи в кол-м выражении SystemElectric 2024-2026.xlsx",
+          "cases/5/case-data/Systeme electric/Сезонность SystemElectric 2024-2026.xlsx",
+          "cases/5/case-data/Systeme electric/Товар в пути_SystemElectric на 22.09.2026.xlsx"
+        ],
+        "used": [
+          "cases/5/case-data/IEK/MOQ  ИЭК.xlsx",
+          "cases/5/case-data/IEK/Динамика продаж_2025-2026.xlsx",
+          "cases/5/case-data/IEK/Ежемесячные остатки продукции за последние 2 года  ИЭК.xlsx",
+          "cases/5/case-data/IEK/Ежемесячные продажи в количественном выражении за последние 2 года.xlsx",
+          "cases/5/case-data/IEK/Путь ИЭК 22.09.2026.xlsx",
+          "cases/5/case-data/IEK/Сезонность ИЭК.xlsx",
+          "cases/5/case-data/Systeme electric/MOQ SystemElectric.xlsx",
+          "cases/5/case-data/Systeme electric/Динамика продаж_Syseme Electric_2025-2026.xlsx",
+          "cases/5/case-data/Systeme electric/Ежемесячные остатки SystemElectric 2024-2026.xlsx",
+          "cases/5/case-data/Systeme electric/Ежемесячные продажи в кол-м выражении SystemElectric 2024-2026.xlsx",
+          "cases/5/case-data/Systeme electric/Сезонность SystemElectric 2024-2026.xlsx",
+          "cases/5/case-data/Systeme electric/Товар в пути_SystemElectric на 22.09.2026.xlsx"
+        ],
+        "checks": [
+          {
+            "input": "Все 12 XLSX из IEK и Systeme electric.",
+            "method": "Открытие read-only через openpyxl внутри изолированного контейнера; проверены sheetnames и размеры листов.",
+            "result": "Открыты 12/12 файлов. IEK: 1939×5, 171605×8, 2857×37, 2466×36, 2642×9, 41×15; SystemElectric: 557×5, 77314×8, 704×37, 557×38 и 35×15 на двух листах, 35×15, 499×70 и 23×15 на двух листах.",
+            "conclusion": "Файлы доступны и читаются; в наборе действительно есть отдельные продажи, остатки, MOQ, сезонность и товар в пути."
+          },
+          {
+            "input": "Полный raw набор из 12 XLSX, разложенный по ожидаемым data/IEK и data/system_electric путям.",
+            "method": "Запуск vector_pipeline.pipeline.run() с config/sources.json проекта и ingestion.json проекта.",
+            "result": "FAIL: после копирования 12 файлов и чтения manifest из project snapshot получен SourceLayoutError: Source fingerprint changed; review mapping first: se_mislabeled_constraints_copy. Manifest содержит 13 source records, включая duplicate, а реальные SystemElectric hashes сдвинуты относительно path/role; обработка до downstream не продолжается.",
+            "conclusion": "Интеграция предоставленных реальных данных не воспроизводится в текущем snapshot; это подтверждённый project defect F6, а не ограничение ключей или браузера."
+          },
+          {
+            "input": "Synthetic demo bundle, 40 SKU из двух поставщиков.",
+            "method": "Запуск scripts/build_demo.py в чистом собранном образе.",
+            "result": "PASS: сгенерированы 40 SKU, public bundle 312,180 bytes; IEK SYN-IEK-001: 105 → stock 55: 65 → timely incoming 30: 35; private files не читались.",
+            "conclusion": "Публичный демо-сценарий воспроизводим без Excel, private data и API keys."
+          },
+          {
+            "input": "Synthetic acceptance cases A–E.",
+            "method": "Вызов base_case, seasonal_case, stockout_case, one_off_case и workflow_case из scripts/accept_case.py.",
+            "result": "PASS: A sensitivity; B 295/310/305 и slope 5; C 290 lost units и order 67 → 104; D +9000 оставляет order 63 против 1224 без screening; E manual review/export/revocation.",
+            "conclusion": "Основные алгоритмические и review claims подтверждены synthetic fixtures, но не являются метрикой партнёрского бизнеса."
+          }
+        ],
+        "limitations": [
+          "Полный real pipeline прекращается до парсинга из-за F6; поэтому численные real recommendations и real sensitivity на этих XLSX не заявляются.",
+          "В данных нет явных stockout intervals, category IDs и anonymized customer IDs; проект корректно не выдумывает их.",
+          "Сезонный acceptance fixture синтетический и не заменяет оценку точности на реальных series.",
+          "Проверка внешнего XLSX-источника ограничилась структурой, хэшами и попыткой ingestion; визуальная проверка UI не выполнялась."
+        ]
+      },
+      "runtime": {
+        "status": "partial",
+        "build": "Docker image собран успешно на Python 3.11-slim; pip установил пакет проекта и dashboard dependencies.",
+        "start": "Streamlit-контейнер стартовал с Dockerfile CMD и health endpoint ответил HTTP 200 с телом ok.",
+        "scenario": "Синтетический основной сценарий заказа, sensitivity и review/export воспроизведён. Реальный кейсовый ingestion частичный: project manifest останавливает его на SystemElectric source fingerprint.",
+        "environment": "Изолированный Linux Docker runtime с лимитами 3 GB памяти и 2 CPU; API credentials не требовались. Browser/CUA/Playwright/Selenium не использовались.",
+        "summary": "Рабочий public synthetic MVP и запускаемый интерфейс; готовность к supplied real XLSX ограничена подтверждённой ошибкой source registry.",
+        "checks": [
+          {
+            "command": "docker build -t <review-image> .",
+            "result": "exit 0; Dockerfile завершил все слои, включая pip install и useradd.",
+            "id": "CHK-BUILD",
+            "stage": "build",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Чистый checkout собирается в образ без ошибок зависимостей."
+          },
+          {
+            "command": "python -m streamlit run app.py --server.address=0.0.0.0 --server.port=8501",
+            "result": "Контейнер запущен; процесс приложения остался running до штатной остановки после проверки.",
+            "id": "CHK-START",
+            "stage": "start",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Приложение стартует из собранного образа и слушает заявленный внутренний порт."
+          },
+          {
+            "command": "GET /_stcore/health",
+            "result": "HTTP 200 OK; тело ответа ok.",
+            "id": "CHK-HTTP-HEALTH",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Health endpoint отвечает успешным HTTP-кодом без браузерной навигации."
+          },
+          {
+            "command": "python scripts/build_demo.py",
+            "result": "exit 0; Public synthetic bundle: 40 SKU series, 312,180 bytes; 105 → 65 → 35; No private files read.",
+            "id": "CHK-SYNTH-DEMO",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Public fallback генерирует данные и рассчитывает основной sensitivity сценарий."
+          },
+          {
+            "command": "python scripts/accept_case.py (A–E functions)",
+            "result": "Все A–E synthetic checks pass; наблюдены значения A 105/129/65/135/135/135/75/105, B 295/310/305, C 67 → 104, D 63 против 1224, E review-gated export.",
+            "id": "CHK-SYNTH-ACCEPTANCE",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Ключевые case mechanisms воспроизводятся на заявленных synthetic fixtures."
+          },
+          {
+            "command": "python -m unittest <ten test files>",
+            "result": "exit 0; все десять файлов завершились OK: 11, 8, 19, 5, 6, 16, 5, 3, 1 и 18 тестов соответственно.",
+            "id": "CHK-UNIT-SUITE",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Unit/domain/app tests проходят в изолированном окружении."
+          },
+          {
+            "command": "python -m vector_pipeline.cli --manifest config/sources.json --settings config/ingestion.json",
+            "result": "exit 1; с 12 реальными XLSX получен SourceLayoutError: Source fingerprint changed; review mapping first: se_mislabeled_constraints_copy.",
+            "id": "CHK-REAL-INGEST",
+            "stage": "scenario",
+            "status": "fail",
+            "cause": "project",
+            "expected": "12 предоставленных workbook files проходят registry/hash/layout guard и создают canonical ingestion run."
+          }
+        ],
+        "limitations": [
+          "Заявленный публичный UI проверен только статически и через HTTP health; визуальную компоновку и клики в браузере пользователь проверяет отдельно.",
+          "Real business result не вычислен после F6; synthetic result не трактуется как измерение точности партнёрского спроса.",
+          "Точные 1C import semantics и корпоративная авторизация не заявлены проектом и не проверялись."
+        ]
+      },
+      "liveDemo": {
+        "status": "none",
+        "url": null,
+        "notes": "Публичной live-ссылки в репозитории нет. Локальный Docker demo воспроизведён через build/start/HTTP health; отсутствие публичного URL не использовано как штраф."
+      },
+      "fiveHourContext": "Для пятичасового MVP объём реализации высокий: есть два режима данных, строгие canonical contracts, устойчивое выявление выбросов, chronological forecasting, stockout correction, dated replenishment, evidence page и review-gated export. Отсутствие production database, supplier API, 1C adapter и real-time sync само по себе не штрафуется. Существенный риск именно в том, что обязательный source registry для реального SystemElectric snapshot не согласован с файлами: это уже не пожелание production-hardening, а препятствие повторению кейсового пути. Частичность customer/category функций также соответствует явно зафиксированным ограничениям данных, но оставляет обязательные требования незакрытыми.",
+      "strengths": [
+        "Цельный и понятный procurement workflow: recommendation → explanation → scenario → supplier-grouped draft → manager review → CSV/JSON.",
+        "Прозрачная формула заказа с датированными поступлениями, ранним дефицитом, safety и контролем округления.",
+        "Качественная causal очистка спроса: robust fences, защита от same-day leakage, сохранение raw audit и обработка повторных крупных заказов.",
+        "Chronological model selection и отдельный frozen-model stockout refit вместо безусловного добавления коэффициентов.",
+        "Строгая provenance-модель: source hashes, artifact hashes, statuses unavailable и явная маркировка synthetic data.",
+        "Воспроизводимый Docker/public demo без секретов; сборка, старт, health HTTP и все domain/app tests прошли."
+      ],
+      "gaps": [
+        "F6: config/sources.json не соответствует предоставленным SystemElectric XLSX по path/hash/role; реальный ingestion останавливается до создания canonical run.",
+        "F7: category_id и customer_id остаются null, а document-level outlier proxy не реализует требование о крупной покупке одного клиента; category coefficients не применяются к SKU-расчёту."
+      ],
+      "futureAdvice": [
+        {
+          "principle": "Сначала проверяйте входной registry на точном snapshot, затем стройте downstream evidence.",
+          "why": "F6 показывает, что один сдвиг SystemElectric path/hash/role блокирует весь real pipeline, хотя downstream расчёты и тесты уже готовы.",
+          "how": "В другом хакатоне добавьте короткий preflight, который для каждого заявленного файла сравнивает basename, SHA-256, sheet, header row и ожидаемую роль; затем прогоните его на полном кейсовом пакете до forecast.",
+          "findingIds": [
+            "F6"
+          ],
+          "successCheck": "Preflight печатает 12/12 matching files, duplicate records согласованы с duplicate_of, а canonical run создаётся и содержит source_manifest без ручной подмены файлов.",
+          "timeboxMinutes": 45
+        },
+        {
+          "principle": "Разделяйте document-level proxy и customer-level requirement в схеме и acceptance.",
+          "why": "F7: текущий detector хорошо фильтрует разовый документ, но не может доказать крупную покупку одного клиента, а category_id не доходит до расчёта.",
+          "how": "Если следующий кейс предоставляет anonymized customer_id и category, добавьте их в ключи группировки, отдельный acceptance fixture для одного клиента и явный status unavailable при отсутствии полей; не используйте document_number как fallback identity.",
+          "findingIds": [
+            "F7"
+          ],
+          "successCheck": "Один клиент с несколькими документами исключается из regular demand, разные клиенты с тем же SKU не смешиваются, а category coefficient виден в calculation и покрыт before/after тестом.",
+          "timeboxMinutes": 75
+        },
+        {
+          "principle": "Сохраняйте сильное synthetic evidence, но привязывайте каждый claim к real-data status.",
+          "why": "F6 и F7 оставляют проект с убедительным демо, но без real SKU result и без customer/category proof; README это признаёт, однако сценарий нельзя показывать как partner validation.",
+          "how": "В другом MVP держите synthetic acceptance отдельной секцией, а после preflight создавайте real acceptance карточки только для series с подтверждёнными stock/lead/receipt inputs; остальные маркируйте unavailable.",
+          "findingIds": [
+            "F6",
+            "F7"
+          ],
+          "successCheck": "Отчёт и UI различают synthetic mechanism pass, real observed result и unresolved input; ни один synthetic number не отображается как бизнес-метрика.",
+          "timeboxMinutes": 40
+        }
+      ],
+      "uncertainties": [
+        "Визуальная компоновка, читабельность и интерактивные клики Streamlit не оценивались в соответствии с пользовательской политикой visual verification.",
+        "Предоставленные XLSX не содержат достаточных подтверждённых current stock, supplier lead time и real stockout interval для бизнес-оценки численных заказов.",
+        "Нельзя сделать вывод о forecast accuracy или снижении inventory cost по synthetic fixtures; проект сам сообщает, что selected policy не превосходит baseline во всех real segments.",
+        "Совместимость CSV/JSON с точным шаблоном 1C и authenticated corporate approval не подтверждены."
+      ],
+      "reviewPolicyVersion": 2,
+      "assessmentStatus": "ready",
+      "findings": [
+        {
+          "id": "F1",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Публичный синтетический сценарий действительно генерируется и пересчитывает заказ при изменении остатка и своевременного incoming.",
+          "expected": "scripts/build_demo.py должен завершиться успешно, создать public bundle и показать заявленную последовательность quantities.",
+          "actual": "Команда завершилась exit 0; получены 40 SKU и IEK SYN-IEK-001: 105 → 65 → 35, private files не читались.",
+          "evidence": [
+            "scripts/build_demo.py:109-142",
+            "captures/20261002T070551137715-scenario.stdout.log"
+          ],
+          "checkIds": [
+            "CHK-SYNTH-DEMO"
+          ]
+        },
+        {
+          "id": "F2",
+          "kind": "strength",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Расчёт отделяет net requirement от timing requirement и учитывает только поступления в protection window с совпадающими unit/warehouse.",
+          "expected": "Датированное поступление должно уменьшать заказ только если оно своевременно и совместимо по размерности; ранний дефицит должен быть виден отдельно.",
+          "actual": "recommend() реализует проверки дат/размерностей, timeline, worst_after_arrival, first_shortage и urgency expedite_or_transfer.",
+          "evidence": [
+            "src/vector_pipeline/replenishment.py:89-133",
+            "src/vector_pipeline/replenishment.py:170-195",
+            "scripts/accept_case.py:90-99"
+          ],
+          "checkIds": [
+            "CHK-SYNTH-ACCEPTANCE"
+          ]
+        },
+        {
+          "id": "F3",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Demand cleaning, forecasting, stockout correction и review/export workflow покрыты проходящими domain/app tests.",
+          "expected": "Все десять test-файлов должны завершиться без ошибок в изолированном окружении.",
+          "actual": "Все десять файлов завершились OK; в логе зафиксированы 11, 8, 19, 5, 6, 16, 5, 3, 1 и 18 тестов.",
+          "evidence": [
+            "tests/test_demand.py",
+            "tests/test_forecast.py",
+            "tests/test_public_demo.py",
+            "captures/20261002T070624113666-test.stdout.log"
+          ],
+          "checkIds": [
+            "CHK-UNIT-SUITE"
+          ]
+        },
+        {
+          "id": "F4",
+          "kind": "strength",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Экспорт блокируется до ручного review и инвалидируется при изменении draft/scenario.",
+          "expected": "Без reviewer acknowledgement export не должен быть доступен; после изменения состояния старый review не должен считаться актуальным.",
+          "actual": "review_draft проверяет непустой draft, reviewer и acknowledgement, а export_draft требует совпадения cart fingerprint; acceptance E подтверждает reason_required, review_required и edit_revokes_review.",
+          "evidence": [
+            "src/vector_pipeline/dashboard.py:126-183",
+            "app.py:328-345",
+            "scripts/accept_case.py:206-244"
+          ],
+          "checkIds": [
+            "CHK-SYNTH-ACCEPTANCE",
+            "CHK-UNIT-SUITE"
+          ]
+        },
+        {
+          "id": "F5",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Образ собирается, приложение стартует и HTTP health endpoint отвечает успешно.",
+          "expected": "Docker build должен пройти, Streamlit должен подняться, GET /_stcore/health должен вернуть 200.",
+          "actual": "Build exit 0; start выполнен; GET /_stcore/health вернул HTTP 200 OK и ok.",
+          "evidence": [
+            "Dockerfile:1-31",
+            "captures/20261002T070023903065-build.stderr.log",
+            "captures/20261002T070717177902-scenario.stdout.log"
+          ],
+          "checkIds": [
+            "CHK-BUILD",
+            "CHK-START",
+            "CHK-HTTP-HEALTH"
+          ]
+        },
+        {
+          "id": "F6",
+          "kind": "defect",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "config/sources.json содержит несогласованный registry для SystemElectric и блокирует ingestion предоставленного реального набора.",
+          "expected": "Каждый из 12 реальных XLSX должен соответствовать зарегистрированному path/hash/sheet/role, а pipeline должен перейти к canonical artifacts.",
+          "actual": "При 12 реально открываемых workbook files и project manifest из 13 records pipeline останавливается на SourceLayoutError для se_mislabeled_constraints_copy. Его path указывает на Dynamics workbook, но hash совпадает с MOQ SystemElectric и запись объявлена duplicate_of se_constraints; последующие se_* записи также имеют сдвинутые hash/role, а transit workbook зарегистрирован как aggregate_seasonality.",
+          "evidence": [
+            "config/sources.json:254-309",
+            "config/sources.json:312-350",
+            "config/sources.json:407-507",
+            "src/vector_pipeline/pipeline.py:89-111",
+            "captures/20261002T070526437643-scenario.stderr.log",
+            "captures/20261002T070314022674-test.stdout.log"
+          ],
+          "checkIds": [
+            "CHK-REAL-INGEST"
+          ]
+        },
+        {
+          "id": "F7",
+          "kind": "defect",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Обязательные category/customer измерения не доходят до расчёта: category_id принудительно null, customer_id не извлекается, а one-off механизм остаётся document/SKU proxy.",
+          "expected": "При наличии соответствующих полей решение должно учитывать category-aware правила и уметь отличать крупную покупку одного обезличенного клиента от обычного спроса.",
+          "actual": "pipeline.finish_products() записывает category_id=None; adapters.Suppl​ierAdapter для каждой transaction записывает customer_id=None; demand policy и UI прямо сообщают, что document ID не является customer ID и customer grouping не реализован.",
+          "evidence": [
+            "src/vector_pipeline/pipeline.py:58-76",
+            "src/vector_pipeline/adapters.py:100-116",
+            "README.md:375-388",
+            "docs/DEMAND_POLICY.md:110-115"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "F8",
+          "kind": "limitation",
+          "verification": "source",
+          "responsibility": "unknown",
+          "claim": "В supplied case data отсутствуют подтверждённые current stock, lead time, customer IDs и real stockout intervals.",
+          "expected": "Для real business order эти inputs должны быть доступны и иметь подтверждённую семантику.",
+          "actual": "ingestion.json оставляет lead/review unresolved; README/DEMO и dashboard маркируют operational values и synthetic intervals как assumptions или unavailable.",
+          "evidence": [
+            "config/ingestion.json:1-32",
+            "README.md:183-199",
+            "DEMO.md:91-124",
+            "docs/OPEN_QUESTIONS.md:13-23"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "F9",
+          "kind": "limitation",
+          "verification": "unverified",
+          "responsibility": "review_environment",
+          "claim": "Визуальная полировка и реальные браузерные клики не являются проверенным фактом этого отчёта.",
+          "expected": "Visual QA выполняется пользователем в браузере.",
+          "actual": "Проведены статический анализ, unit/domain checks и HTTP health; browser-control и screenshot инструменты не использовались.",
+          "evidence": [
+            "tests/test_public_demo.py:1-58",
+            "captures/20261002T070717177902-scenario.stdout.log"
+          ],
+          "checkIds": [
+            "CHK-HTTP-HEALTH"
+          ]
+        }
+      ],
+      "gapFindingIds": [
+        "F6",
+        "F7"
+      ]
+    }
+  ],
+  "score": 82.0,
+  "status": "complete",
+  "expectedJudges": 1
+}

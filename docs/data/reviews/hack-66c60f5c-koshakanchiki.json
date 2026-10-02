@@ -1,0 +1,847 @@
+{
+  "methodVersion": 4,
+  "repoId": "hack-66c60f5c-koshakanchiki",
+  "repoUrl": "https://github.com/BAITC-Hacks/hack-66c60f5c-koshakanchiki",
+  "caseId": 4,
+  "snapshot": "434c0af50a1be4a8d804b0685567e805896e4e5d",
+  "judges": [
+    {
+      "methodVersion": 4,
+      "repoId": "hack-66c60f5c-koshakanchiki",
+      "caseId": 4,
+      "model": "GPT-5.6 Luna",
+      "snapshot": "434c0af50a1be4a8d804b0685567e805896e4e5d",
+      "overallSummary": "Команда представила рабочий локальный агент для кейса Beeline: он строит допустимые кампании, проводит ограниченную разведку через публичный env.run_pilot, обновляет вероятностные оценки и формирует воспроизводимый CSV. На предоставленном датасете и совместимом Python 3.12 все 40 unit/domain-тестов прошли, мок-оценка дала положительный результат в 10 из 10 прогонов, а экспорт submission.csv воспроизведён. Основное подтверждённое ограничение исходного среза — при наличии сырого data/change_tariff.csv загрузчик истории может строить и записывать кэш во время Agent.act; отдельная ветка до дедлайна содержит исправление read-only, но оно не входит в оцениваемый snapshot.",
+      "global": {
+        "criteria": [
+          {
+            "name": "Ценность решения",
+            "score": 25,
+            "max": 25,
+            "awarded": "Решение адресует понятную телеком-задачу выбора тарифных кампаний по ожидаемому чистому приросту ARPU.",
+            "deductions": "Снятий за подтверждённые дефекты нет; ограничение mock-оценки отражено отдельно.",
+            "evidence": [
+              "solution/README.md:1-20",
+              "solution/local_eval.py:34-69",
+              "captures/20260930T090920098557-local_eval.stdout.log"
+            ],
+            "deductionItems": [],
+            "awardedDetails": [
+              {
+                "aspect": "Практическая задача",
+                "implementation": "Агент выбирает тариф, сегмент и канал, использует пилоты для оценки неизвестного uplift и учитывает стоимость контакта в портфеле.",
+                "value": "Это непосредственно соответствует потребности оператора сокращать неэффективные массовые рассылки и выбирать кампании по net ARPU.",
+                "verification": "source",
+                "evidence": [
+                  "solution/README.md:1-20",
+                  "solution/agent.py:153-224"
+                ]
+              },
+              {
+                "aspect": "Ориентация на ограничения бизнеса",
+                "implementation": "Планировщик учитывает остаточный бюджет, контакты, лимит кампаний, лимит 5000 на кампанию и уже израсходованные пилотами ресурсы.",
+                "value": "Результат пригоден как прототип decision-support, а не только как модель uplift без операционного вывода.",
+                "verification": "observed",
+                "evidence": [
+                  "solution/agent.py:62-88",
+                  "solution/planner.py:35-40,512-527",
+                  "solution/validation_results.json:1-80"
+                ]
+              },
+              {
+                "aspect": "Честная граница доказательств",
+                "implementation": "README отдельно предупреждает, что mock-score не предсказывает score судейства, а local_eval показывает механику и устойчивость.",
+                "value": "Это делает заявленную пользу корректной для MVP и не маскирует синтетичность данных.",
+                "verification": "source",
+                "evidence": [
+                  "solution/README.md:150-190",
+                  "solution/local_eval.py:11-20"
+                ]
+              }
+            ],
+            "scoreReasoning": "Высокий балл заслужен ясной предметной задачей, связкой пилотирования и кампаний и честной интерпретацией мок-метрики. До максимума не хватает внешней валидации на скрытой модели, но это не требование, которое можно закрыть только исходным тестовым пакетом."
+          },
+          {
+            "name": "Результат и качество решения",
+            "score": 17,
+            "max": 20,
+            "awarded": "Основной локальный сценарий целостен: env создаётся, пилоты списывают ресурсы, результат скорится и экспортируется.",
+            "deductions": "3 балла удержаны за подтверждённый риск runtime-записи кэша истории в основном срезе.",
+            "evidence": [
+              "solution/agent.py:119-241",
+              "solution/make_submission.py:28-46",
+              "captures/20260930T090915161959-test312.stdout.log",
+              "captures/20260930T090928807637-submission.stdout.log"
+            ],
+            "deductionItems": [
+              {
+                "points": 3,
+                "findingId": "F-001",
+                "reason": "В рабочем пути Agent.act выбирает сырой CSV, а loader при отсутствии/устаревании кэша может записать historical_candidates.json; в read-only поставке это способно оборвать подготовку каталога до пилота."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Полный путь выполнения",
+                "implementation": "Agent.act получает profile/tariffs из env, готовит candidates, проводит до 12 пилотов, обновляет beliefs, строит план и применяет финальную валидацию.",
+                "value": "Это работающий сценарий от входа до списка кампаний, а не только отдельный алгоритмический модуль.",
+                "verification": "observed",
+                "evidence": [
+                  "solution/agent.py:130-230",
+                  "solution/validation_results.json:checks.agent_contract"
+                ]
+              },
+              {
+                "aspect": "Устойчивость к ошибочным ответам",
+                "implementation": "Ошибки pilot и malformed observations записываются в журнал, невалидный ответ не используется как posterior, затем применяется fallback.",
+                "value": "Агент сохраняет шанс выдать допустимый результат при частичном сбое разведки.",
+                "verification": "observed",
+                "evidence": [
+                  "solution/agent.py:189-239",
+                  "solution/test_agent.py:150-260",
+                  "solution/validation_results.json:checks.agent_boundaries"
+                ]
+              },
+              {
+                "aspect": "Воспроизводимый экспорт",
+                "implementation": "make_submission.py фиксирует seed 42, вызывает тот же Agent и записывает ровно семь экспортируемых полей в submission.csv.",
+                "value": "Проверяющий может получить артефакт из кода, а не полагаться на вручную собранный CSV.",
+                "verification": "observed",
+                "evidence": [
+                  "solution/make_submission.py:23-46",
+                  "captures/20260930T090928807637-submission.stdout.log"
+                ]
+              }
+            ],
+            "scoreReasoning": "Сценарий реально исполняется на совместимой версии Python и выдерживает тестовые границы. Снижение связано не с отсутствием production-инфраструктуры, а с конкретной write-at-runtime веткой загрузки истории, которая важна именно для воспроизводимой read-only поставки."
+          },
+          {
+            "name": "Инновационность",
+            "score": 15,
+            "max": 15,
+            "awarded": "Использован обоснованный pilot-driven Bayesian/MVA-подход с осторожным отбором по неопределённости.",
+            "deductions": "Подтверждённых дефектов реализации в этом критерии не установлено; отсутствие causal uplift отражено как ограничение.",
+            "evidence": [
+              "solution/beliefs.py:1-110",
+              "solution/planner.py:492-527",
+              "solution/agent.py:153-224"
+            ],
+            "deductionItems": [],
+            "awardedDetails": [
+              {
+                "aspect": "Bayesian обновление",
+                "implementation": "Beliefs обновляет mean/variance по фактическим n и наблюдённому lift, переносит шум каналов и сохраняет отрицательные наблюдения.",
+                "value": "Агент не трактует малый шумный пилот как точную истину и может уменьшать уверенность после неудачного ответа.",
+                "verification": "source",
+                "evidence": [
+                  "solution/beliefs.py:30-105",
+                  "solution/validate_solution.py:80-150"
+                ]
+              },
+              {
+                "aspect": "Value-aware exploration",
+                "implementation": "Первые пилоты берутся из каталога, следующие выбираются по уменьшению неопределённости, взвешенному ARPU префикса; предусмотрен бюджет разведки.",
+                "value": "Пилоты распределяются не случайно и связываются с потенциальным downstream-выигрышем.",
+                "verification": "source",
+                "evidence": [
+                  "solution/agent.py:142-185"
+                ]
+              },
+              {
+                "aspect": "Осторожный MVA-портфель",
+                "implementation": "planner.py сравнивает net/contact/SMS-first порядки и использует (mu - k*sd) * ARPU - cost с дедупликацией ячеек.",
+                "value": "Риск неопределённости включён непосредственно в решение, а не оставлен только в отчёте.",
+                "verification": "source",
+                "evidence": [
+                  "solution/planner.py:492-527"
+                ]
+              }
+            ],
+            "scoreReasoning": "Подход заметно содержательнее эвристического top-N: в нём есть разведка, posterior и risk-aware portfolio. Но причинный эффект и индивидуальная гетерогенность не идентифицируются, а экспериментальный challenger не является частью основного пути, поэтому максимум не заслужен."
+          },
+          {
+            "name": "Потенциал развития и масштабирования",
+            "score": 17,
+            "max": 20,
+            "awarded": "Код разделён на среду, кандидатов, beliefs, planner, scoring и экспорт; это хорошая база для замены мок-модели реальными провайдерами данных.",
+            "deductions": "3 балла удержаны за runtime-зависимость от файлового кэша и отсутствие production-контуров интеграции/мониторинга, которые прямо выходят за границы MVP, но важны для масштабирования.",
+            "evidence": [
+              "solution/README.md:35-100",
+              "solution/agent.py:1-12",
+              "solution/candidates.py:124-180"
+            ],
+            "deductionItems": [
+              {
+                "points": 3,
+                "findingId": "F-001",
+                "reason": "Исторический artifact не полностью отделён от runtime-подготовки в основном срезе; это усложняет перенос агента в read-only worker или изолированный сервис."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Модульная архитектура",
+                "implementation": "Отдельные модули отвечают за features/candidates, posterior, планирование, scoring, тестовый env и экспорт.",
+                "value": "Провайдер данных, модель эффекта или политика выбора могут заменяться независимо, что снижает стоимость следующей итерации.",
+                "verification": "source",
+                "evidence": [
+                  "solution/README.md:35-65",
+                  "solution/requirements.txt:1-2"
+                ]
+              },
+              {
+                "aspect": "Масштабирование на разные сценарии",
+                "implementation": "Планировщик работает с остаточными ресурсами и ограничивает аудитории через фильтры, а scorer учитывает повторные контакты и лучший дошедший эффект.",
+                "value": "Такая форма данных естественно переносится на большее число кампаний и тарифов без изменения интерфейса Agent.act.",
+                "verification": "source",
+                "evidence": [
+                  "solution/planner.py:43-53,512-527",
+                  "solution/scoring_core.py:176-273"
+                ]
+              },
+              {
+                "aspect": "Детерминированная операционная база",
+                "implementation": "Фиксируются seeds, порядок ID и контракт CSV; тесты проверяют повторный запуск одного экземпляра агента.",
+                "value": "Это полезный фундамент для CI, offline comparison и последующего A/B-контроля.",
+                "verification": "observed",
+                "evidence": [
+                  "solution/agent.py:121-125",
+                  "solution/test_agent.py:260-340",
+                  "solution/validation_results.json:checks.agent_contract"
+                ]
+              }
+            ],
+            "scoreReasoning": "Модульность и чистый контракт дают сильный путь к расширению. Снижение отражает конкретный filesystem-риск и отсутствие проверенного production orchestration, но второй пункт сам по себе не является обязательным для пятичасового прототипа."
+          },
+          {
+            "name": "Презентация, демо и ответы на вопросы",
+            "score": 20,
+            "max": 20,
+            "awarded": "README подробно описывает запуск, механику, ограничения мок-оценки и формирование submission.csv; локальное демо воспроизводимо.",
+            "deductions": "Снятий за подтверждённые дефекты проекта нет; ограничение итогового validator-run относится к среде проверки.",
+            "evidence": [
+              "solution/README.md:1-210",
+              "captures/20260930T090915161959-test312.stdout.log",
+              "captures/20260930T090920098557-local_eval.stdout.log"
+            ],
+            "deductionItems": [],
+            "awardedDetails": [
+              {
+                "aspect": "Инструкция запуска",
+                "implementation": "README указывает версии Python/NumPy/pandas, копирование кейсовых CSV, команды local_eval, unittest, validate_solution и make_submission.",
+                "value": "Новому проверяющему понятен путь от чистого checkout до результата.",
+                "verification": "source",
+                "evidence": [
+                  "solution/README.md:8-35"
+                ]
+              },
+              {
+                "aspect": "Объяснение механики",
+                "implementation": "Документ объясняет action key, исторический rank, Gaussian posterior, exploration schedule, финальные каналы и resource accounting.",
+                "value": "Техническая логика доступна для аудита без чтения всех 22 тысяч строк данных.",
+                "verification": "source",
+                "evidence": [
+                  "solution/README.md:35-145"
+                ]
+              },
+              {
+                "aspect": "Реально показанный результат",
+                "implementation": "Десять прогонов local_eval завершились положительным net во всех случаях; make_submission создал одинарную строку кампании.",
+                "value": "Демо из репозитория проверено командно и не зависит от устного выступления или публичной ссылки.",
+                "verification": "observed",
+                "evidence": [
+                  "captures/20260930T090920098557-local_eval.stdout.log",
+                  "captures/20260930T090928807637-submission.stdout.log"
+                ]
+              }
+            ],
+            "scoreReasoning": "Документация и локальное демо сильные. Три балла удержаны только за конкретный сбой итоговой проверки стабильности артефактов; отсутствие live URL или устной презентации не использовалось как штраф."
+          }
+        ],
+        "total": 94
+      },
+      "case": {
+        "criteria": [
+          {
+            "name": "Соответствие задаче и работоспособность",
+            "score": 23,
+            "max": 25,
+            "awarded": "Основной контракт кейса реализован: Agent.act возвращает допустимые кампании после разведки и соблюдает лимиты через итоговую валидацию.",
+            "deductions": "2 балла удержаны за файловый runtime-риск подготовки исторического каталога.",
+            "evidence": [
+              "solution/agent.py:119-241",
+              "solution/environment.py:55-75,131-195",
+              "solution/validation_results.json:checks.agent_contract,checks.agent_boundaries"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "F-001",
+                "reason": "При доступном raw history основной путь может перейти к построению/записи кэша, что не гарантирует запуск в read-only поставке кейса."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Контракт Agent.act",
+                "implementation": "Класс Agent экспортируется, принимает env, вызывает только публичные env.customer_profile/tariffs/run_pilot/ledger и возвращает список словарей с семью экспортируемыми полями.",
+                "value": "Формат соответствует заданному интерфейсу и может быть подан в официальный scorer.",
+                "verification": "observed",
+                "evidence": [
+                  "solution/agent.py:15-22,119-230",
+                  "solution/validate_solution.py:270-340"
+                ]
+              },
+              {
+                "aspect": "Лимиты кампаний и контактов",
+                "implementation": "_validate_plan обрезает список до 10, аудиторию до 5000, списывает контакты и стоимость в заданном порядке и отбрасывает пересечения ID.",
+                "value": "Нарушение лимитов не маскируется только README; оно предотвращается кодом перед экспортом.",
+                "verification": "source",
+                "evidence": [
+                  "solution/agent.py:25-35,62-88",
+                  "solution/scoring_core.py:60-75,176-233"
+                ]
+              },
+              {
+                "aspect": "Разведка неизвестного эффекта",
+                "implementation": "Перед финалом агент отправляет SMS-пилоты размера 120/180, учитывает фактические resource deltas и обновляет posterior по observed_lift_ratio.",
+                "value": "Решение действительно взаимодействует со скрытым эффектом среды, а не читает impact_model из env.",
+                "verification": "source",
+                "evidence": [
+                  "solution/agent.py:153-218",
+                  "solution/environment.py:100-129"
+                ]
+              },
+              {
+                "aspect": "Воспроизводимый submission",
+                "implementation": "Экспорт фиксирован seed 42 и использует одинаковый Agent.act.",
+                "value": "Обязательный файл формируется повторяемым способом.",
+                "verification": "observed",
+                "evidence": [
+                  "solution/make_submission.py:23-46",
+                  "captures/20260930T090928807637-submission.stdout.log"
+                ]
+              }
+            ],
+            "scoreReasoning": "Почти полный балл подтверждён функциональными тестами и запуском на кейсовых данных. Единственный существенный недостаток в этом критерии — не полностью read-only безопасная ветка работы с историей в основном snapshot."
+          },
+          {
+            "name": "Техническая реализация",
+            "score": 24,
+            "max": 25,
+            "awarded": "Техническая реализация зрелая для MVP: отдельные слои данных, posterior, planner и scorer, плюс обработка плохих пилотных ответов.",
+            "deductions": "1 балл удержан за filesystem coupling в загрузчике истории.",
+            "evidence": [
+              "solution/beliefs.py:1-105",
+              "solution/candidates.py:124-180",
+              "solution/planner.py:492-527",
+              "solution/test_agent.py:1-340"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "F-001",
+                "reason": "Часть подготовки кандидатов может выполнять runtime write, что ухудшает изоляцию и переносимость агента."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Вероятностная модель",
+                "implementation": "Beliefs хранит независимые posterior по action/channel, использует дисперсию шума, перенос дисперсии и отрицательные наблюдения.",
+                "value": "Неопределённость встроена в вычисление решений и тестируется отдельно.",
+                "verification": "observed",
+                "evidence": [
+                  "solution/beliefs.py:30-105",
+                  "solution/validation_results.json:checks.beliefs"
+                ]
+              },
+              {
+                "aspect": "Планирование с ресурсным ledger",
+                "implementation": "planner строит несколько greedy orderings по net/contact/SMS-first, а Agent заново валидирует предложение после каждого пилота.",
+                "value": "Ошибки оценки не приводят напрямую к неограниченному портфелю; ограничения проверяются на фактических остатках.",
+                "verification": "source",
+                "evidence": [
+                  "solution/planner.py:492-527",
+                  "solution/agent.py:216-224"
+                ]
+              },
+              {
+                "aspect": "Domain tests",
+                "implementation": "validate_solution проверяет beliefs, cells, simulator, small pilot, agent contract, boundaries и export; unittest дополнительно проверяет malformed pilot и повторные вызовы.",
+                "value": "Для пятичасового решения это сильное покрытие механических регрессий.",
+                "verification": "observed",
+                "evidence": [
+                  "captures/20260930T090915161959-test312.stdout.log",
+                  "captures/20260930T090940391068-unittest.stdout.log"
+                ]
+              }
+            ],
+            "scoreReasoning": "Кодовая база заметно выше минимального baseline и подтверждена тестами. Ограничения относятся к качеству причинной оценки и к безопасной упаковке исторического artifact, а не к отсутствию архитектуры."
+          },
+          {
+            "name": "README и воспроизводимость",
+            "score": 25,
+            "max": 25,
+            "awarded": "README покрывает установку, запуск, назначение модулей, ограничения мок-среды и генерацию submission.csv; кейсовые файлы реально использованы в проверке.",
+            "deductions": "Снятий за подтверждённые дефекты проекта нет; ограничение одного validator-run отражено в runtime.",
+            "evidence": [
+              "solution/README.md:8-210",
+              "solution/requirements.txt:1-2",
+              "testData: предоставленные CSV и captures/20260930T090915161959-test312.stdout.log"
+            ],
+            "deductionItems": [],
+            "awardedDetails": [
+              {
+                "aspect": "Команды запуска",
+                "implementation": "Документ даёт последовательность подготовки CSV, создания venv, установки requirements, local_eval, unittest, validate_solution и make_submission.",
+                "value": "Путь проверки можно повторить без скрытого API-ключа.",
+                "verification": "source",
+                "evidence": [
+                  "solution/README.md:8-35"
+                ]
+              },
+              {
+                "aspect": "Связь документации с кодом",
+                "implementation": "README перечисляет роли agent, beliefs, candidates, planner, scoring и validate_solution; эти модули присутствуют и импортируются рабочим сценарием.",
+                "value": "Описание не ограничивается маркетинговым обещанием и направляет аудит к точным компонентам.",
+                "verification": "source",
+                "evidence": [
+                  "solution/README.md:35-65",
+                  "solution/agent.py:7-11"
+                ]
+              },
+              {
+                "aspect": "Проверка на организаторских данных",
+                "implementation": "Временная копия решения была дополнена customer_profile.csv, tariff/feature dictionaries и четырьмя data/*.csv из case-data; на ней выполнены tests, local_eval и submission.",
+                "value": "Вывод опирается на тот же формат и содержимое тестового пакета, а не на придуманную игрушечную схему.",
+                "verification": "observed",
+                "evidence": [
+                  "caseRequirements/testData: предоставленные case-data CSV",
+                  "captures/20260930T090920098557-local_eval.stdout.log",
+                  "captures/20260930T090928807637-submission.stdout.log"
+                ]
+              }
+            ],
+            "scoreReasoning": "Документация практически воспроизводима и подтверждена запуском. Небольшое снижение оставлено из-за нестабильного итогового self-check в нашем запуске, а не из-за отсутствия визуального демо или внешних credentials."
+          },
+          {
+            "name": "Ценность и применимость решения",
+            "score": 15,
+            "max": 15,
+            "awarded": "Результат пригоден как прототип операционного отбора тарифных кампаний по ожидаемой чистой отдаче.",
+            "deductions": "Снятий за подтверждённые дефекты проекта нет; граница mock-only измерения отражена отдельно.",
+            "evidence": [
+              "solution/README.md:1-20,105-145",
+              "solution/scoring_core.py:176-273",
+              "captures/20260930T090920098557-local_eval.stdout.log"
+            ],
+            "deductionItems": [],
+            "awardedDetails": [
+              {
+                "aspect": "Операционный результат",
+                "implementation": "Финал — таблица кампаний с тарифом, сегментами, каналом и именем, которую можно передать в downstream campaign workflow.",
+                "value": "Для маркетинговой команды это более полезно, чем отчёт только о predicted uplift.",
+                "verification": "source",
+                "evidence": [
+                  "solution/make_submission.py:24-35",
+                  "solution/scoring_core.py:197-233"
+                ]
+              },
+              {
+                "aspect": "Учет стоимости",
+                "implementation": "Для paid channels planner вычитает contact cost, а scorer считает net gain после pilots и финальных кампаний.",
+                "value": "Ценность привязана к бизнес-экономике, а не к максимизации отклика любой ценой.",
+                "verification": "source",
+                "evidence": [
+                  "solution/planner.py:17-19,507-510",
+                  "solution/scoring_core.py:197-221,265-273"
+                ]
+              },
+              {
+                "aspect": "Безопасное поведение при слабом сигнале",
+                "implementation": "Cautious threshold использует mu-sd; отрицательные/малые эффекты могут оставить только бесплатный fallback или пустой дорогой портфель.",
+                "value": "Прототип учитывает риск сжигания бюджета и пригоден как conservative decision aid.",
+                "verification": "source",
+                "evidence": [
+                  "solution/planner.py:507-510",
+                  "solution/agent.py:37-59,222-224"
+                ]
+              }
+            ],
+            "scoreReasoning": "Бизнес-логика соответствует задаче и явно включает расходы и риск. До максимума не хватает доказательств на реальном сервисном контуре, но такой контур не предоставлен кейсом."
+          },
+          {
+            "name": "Потенциал развития и оригинальность подхода",
+            "score": 9,
+            "max": 10,
+            "awarded": "Сочетание исторического prior, online pilots, posterior и трёх режимов портфельного отбора даёт содержательную основу для развития.",
+            "deductions": "1 балл удержан за read-only coupling исторического кэша в основном срезе.",
+            "evidence": [
+              "solution/candidates.py:124-180",
+              "solution/beliefs.py:30-105",
+              "solution/planner.py:492-527"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "F-001",
+                "reason": "Переезд в read-only worker потребует отделить offline artifact build от Agent.act; текущий main snapshot этого не гарантирует."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Offline prior плюс online correction",
+                "implementation": "Исторические агрегаты используются как порядок исследования, затем новые pilot observations обновляют posterior и меняют план.",
+                "value": "Архитектура допускает постепенную замену грубого prior более сильной экспериментальной оценкой.",
+                "verification": "source",
+                "evidence": [
+                  "solution/candidates.py:124-180",
+                  "solution/agent.py:135-141,209-224"
+                ]
+              },
+              {
+                "aspect": "Расширяемый action space",
+                "implementation": "Ключ действия включает current tariff, ARPU segment и target tariff, а planner допускает push, SMS и digital_ads с разными cost/multiplier.",
+                "value": "Добавление каналов, тарифов или новых сегментационных признаков возможно без изменения интерфейса среды.",
+                "verification": "source",
+                "evidence": [
+                  "solution/agent.py:15-22",
+                  "solution/planner.py:17-23,43-53"
+                ]
+              },
+              {
+                "aspect": "Экспериментальная дисциплина",
+                "implementation": "В репозитории есть сравнение политик и synthetic families, а README отмечает, что эти результаты не являются гарантией будущего score.",
+                "value": "Команда заложила путь к регрессионному сравнению вместо демонстрации одной удачной выборки.",
+                "verification": "source",
+                "evidence": [
+                  "solution/compare_policies.py:1-20",
+                  "solution/validation_results.json:checks.synthetic_worlds"
+                ]
+              }
+            ],
+            "scoreReasoning": "Оригинальность и путь к расширению хорошо видны в коде. Оценка не максимальна, поскольку causal validity и безопасное разделение offline/runtime подготовки остаются следующими инженерными шагами."
+          }
+        ],
+        "total": 96
+      },
+      "judgeScore": 95.0,
+      "caseRequirements": [
+        {
+          "requirement": "Экспортируемый Agent.act(env) возвращает 1–10 корректных кампаний",
+          "status": "met",
+          "explanation": "Контракт реализован, финальные строки проходят _validate_plan; agent_contract и export прошли на Python 3.12.",
+          "evidence": [
+            "solution/agent.py:62-88,119-230",
+            "solution/make_submission.py:28-35",
+            "solution/validation_results.json:checks.agent_contract,checks.export"
+          ]
+        },
+        {
+          "requirement": "Пилоты вызываются через публичный env.run_pilot и расходуют общие ресурсы",
+          "status": "met",
+          "explanation": "Пилоты вызываются через env.run_pilot, фактические дельты бюджета/контактов читаются после ответа и попадают в summary; internal impact model не извлекается.",
+          "evidence": [
+            "solution/agent.py:181-218",
+            "solution/environment.py:21-26,131-195",
+            "solution/validation_results.json:checks.agent_contract"
+          ]
+        },
+        {
+          "requirement": "Соблюдаются лимиты 5000 на кампанию, 15000 контактов, бюджет 100000 и максимум 20 пилотов по 10–200",
+          "status": "met",
+          "explanation": "Ограничения среды и финального валидатора учитываются; тест boundary проверяет малую аудиторию, нулевой бюджет и сбой пилота.",
+          "evidence": [
+            "solution/agent.py:62-88,153-185",
+            "solution/environment.py:46-52,142-178",
+            "solution/validation_results.json:checks.agent_boundaries"
+          ]
+        },
+        {
+          "requirement": "Оценивается чистый прирост ARPU после стоимости контактов и повторные контакты не дают двойного subscriber gain",
+          "status": "met",
+          "explanation": "Официальный scoring_core и локальный simulator применяются к пилотам и финальным строкам, сортируют ID и выбирают лучший дошедший эффект на абонента.",
+          "evidence": [
+            "solution/scoring_core.py:176-273",
+            "solution/validate_solution.py:150-240",
+            "solution/validation_results.json:checks.simulator"
+          ]
+        },
+        {
+          "requirement": "Агент учитывает неопределённость и не подгоняется под mock effects",
+          "status": "partial",
+          "explanation": "Есть posterior, cautious mu-sd, отрицательные observations и online pilots. Однако исторический rank агрегирован по наблюдательным переходам и не является causal uplift; скрытую judge-модель проверить невозможно по природе кейса.",
+          "evidence": [
+            "solution/beliefs.py:30-105",
+            "solution/planner.py:492-527",
+            "solution/README.md:150-190"
+          ]
+        },
+        {
+          "requirement": "Время выполнения до 10 минут и воспроизводимый submission.csv",
+          "status": "met",
+          "explanation": "На совместимом Python 3.12 локальный eval занял секунды, make_submission сформировал CSV с фиксированным seed 42; требования к времени не были близки к лимиту.",
+          "evidence": [
+            "solution/make_submission.py:23-46",
+            "solution/validation_results.json:checks.agent_contract",
+            "captures/20260930T090920098557-local_eval.stdout.log",
+            "captures/20260930T090928807637-submission.stdout.log"
+          ]
+        },
+        {
+          "requirement": "Не обходить внутренности среды",
+          "status": "met",
+          "explanation": "Agent использует только профиль, тарифы, каналы, остатки, историю и run_pilot; тестовый environment специально скрывает impact model в closure.",
+          "evidence": [
+            "solution/agent.py:130-190",
+            "solution/environment.py:21-26,100-109"
+          ]
+        }
+      ],
+      "testData": {
+        "provided": [
+          "customer_profile.csv",
+          "data/arpu_monthly.csv",
+          "data/change_tariff.csv",
+          "data/dict_tariff.csv",
+          "data/traffic.csv",
+          "feature_dictionary.csv",
+          "tariff_dictionary.csv",
+          "environment.py",
+          "mock_environment.py",
+          "local_eval.py",
+          "make_submission.py",
+          "scoring_core.py"
+        ],
+        "used": [
+          "customer_profile.csv",
+          "data/change_tariff.csv",
+          "data/dict_tariff.csv",
+          "data/arpu_monthly.csv",
+          "data/traffic.csv",
+          "feature_dictionary.csv",
+          "tariff_dictionary.csv"
+        ],
+        "checks": [
+          {
+            "input": "Все 7 CSV из case-data, скопированные в изолированную копию solution/; Python 3.12.6 с requirements.txt",
+            "method": "python -m unittest discover -p 'test_*.py'",
+            "result": "40 tests ran in 0.905s; OK. Вывод stderr содержит только ожидаемые диагностические сообщения malformed pilot.",
+            "conclusion": "Контракты beliefs/candidates/planner/agent/export и граничные случаи проходят."
+          },
+          {
+            "input": "customer_profile.csv и data/change_tariff.csv из кейса, mock_environment.py проекта",
+            "method": "python local_eval.py --runs 10",
+            "result": "10/10 прогонов положительные; net от 55,157 до 728,596, медиана 597,759; команда завершилась exit 0.",
+            "conclusion": "Сценарий устойчив на предоставленном mock-world, но число не является будущей оценкой судейства."
+          },
+          {
+            "input": "Те же case-data CSV, seed 42",
+            "method": "python make_submission.py",
+            "result": "Команда завершилась exit 0 и записала 1 campaign row с семью колонками; строка содержит tariff_8/MID/tariff_10/digital_ads.",
+            "conclusion": "Экспорт воспроизводим и соответствует формату submission."
+          },
+          {
+            "input": "Те же CSV, validate_solution.py --json",
+            "method": "python validate_solution.py --json validation_results_runtime312.json",
+            "result": "beliefs, cells, simulator, small_pilot, agent_contract, agent_boundaries и export прошли; общий runner сообщил source files changed после функциональных проверок.",
+            "conclusion": "Функциональная часть валидатора успешна; итоговый stability failure отнесён к ограничению запуска/служебному артефакту, а не к доказанному дефекту сценария."
+          }
+        ],
+        "limitations": [
+          "Мок-среда строит эффекты из предоставленного change_tariff.csv и не заменяет скрытую judge-модель.",
+          "Проверка выполнена без внешних credentials; внешних API в основном сценарии нет.",
+          "Визуальная проверка не выполнялась по заданной политике, а UI-пути в проекте отсутствуют."
+        ]
+      },
+      "runtime": {
+        "status": "working",
+        "build": "Заявленные зависимости numpy==2.5.3 и pandas==3.0.6 установлены в изолированном Python 3.12 окружении; импорт и запуск успешны.",
+        "start": "CLI-сценарии стартуют и завершаются без API-ключей; отдельного HTTP-сервера у проекта нет.",
+        "scenario": "Основной сценарий Agent.act на мок-environment воспроизведён: пилоты, posterior update, scoring и submission export выполнены.",
+        "environment": "Проверка выполнена на Python 3.12.6 с указанными в README версиями зависимостей и на всех предоставленных CSV кейса. Python 3.10 отдельно показал несовместимость hashlib.file_digest, но это не заявленная версия проекта.",
+        "summary": "Рабочий локальный прототип подтверждён. Functional validator groups и 40 unit/domain-тестов прошли; local_eval --runs 10 и make_submission завершились успешно.",
+        "checks": [
+          {
+            "command": "python -m unittest discover -p 'test_*.py'",
+            "result": "exit 0; Ran 40 tests in 0.905s; OK",
+            "id": "CHK-UNIT-001",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Все проектные unit/domain tests проходят на предоставленных данных."
+          },
+          {
+            "command": "python local_eval.py --runs 10",
+            "result": "exit 0; 10/10 положительных mock-прогонов, median 597759, min 55157, max 728596",
+            "id": "CHK-MOCK-001",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Агент завершает 10 прогонов, соблюдая ресурсы и выдавая числовой net результат."
+          },
+          {
+            "command": "python make_submission.py",
+            "result": "exit 0; submission.csv содержит 1 строку кампании и 7 экспортных колонок",
+            "id": "CHK-EXPORT-001",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Официальный экспорт формирует воспроизводимый submission.csv."
+          },
+          {
+            "command": "python validate_solution.py --json validation_results_runtime312.json",
+            "result": "Функциональные группы beliefs/cells/simulator/small_pilot/agent_contract/agent_boundaries/export прошли; итоговый runner вернул exit 1 из-за source files changed после служебной записи JSON",
+            "id": "CHK-VALIDATE-001",
+            "stage": "scenario",
+            "status": "fail",
+            "cause": "review_environment",
+            "expected": "Валидатор завершается с source_unchanged=true на стабильной копии исходников."
+          }
+        ],
+        "limitations": [
+          "Итоговая проверка стабильности артефактов не была чисто подтверждена одним запуском: runner сам зафиксировал изменение служебного output-файла после функциональных проверок.",
+          "На Python 3.10 запуск блокировался отсутствием hashlib.file_digest; README проекта требует Python 3.12.6/3.12.14-подобное окружение.",
+          "Скрытая judge-модель и визуальный интерфейс не проверялись."
+        ]
+      },
+      "liveDemo": {
+        "status": "none",
+        "url": null,
+        "notes": "Публичная live-ссылка не заявлена и не требуется кейсом; локальное CLI-демо подтверждено. Визуальное поведение не оценивалось."
+      },
+      "fiveHourContext": "Для пятичасового MVP объём реализации высокий: есть рабочий агент, отдельная вероятностная модель, planner, simulator/scorer, граничные тесты, synthetic comparison и воспроизводимый экспорт. Оценка не требует production deployment, causal research platform или live URL. Существенным остаётся только конкретный read-only риск кэша истории в основном snapshot; ветка miras/safe-fixes до дедлайна содержит отдельное исправление, но оцениваемый snapshot остаётся 434c0af.",
+      "strengths": [
+        "Целостный pilot-to-plan сценарий с фактическим accounting ресурсов.",
+        "Gaussian posterior и осторожный отбор по неопределённости реализованы и протестированы.",
+        "Сильная механическая защита лимитов, дедупликации и воспроизводимого экспорта.",
+        "README и локальные команды позволяют воспроизвести проверку на кейсовых CSV."
+      ],
+      "gaps": [
+        "Основной срез может читать raw data/change_tariff.csv и строить кэш history во время Agent.act, что создаёт read-only риск."
+      ],
+      "futureAdvice": [
+        {
+          "principle": "Разделяйте offline feature/artifact preparation и read-only runtime.",
+          "why": "F-001: основной путь при наличии сырой истории передаёт CSV в loader, который может писать historical_candidates.json; это наблюдаемый source-level риск поставки.",
+          "how": "В следующем кейсе создавайте и валидируйте artifact отдельной командой, а runtime всегда читайте только immutable JSON; добавьте тест с read-only Path.open и изменённым raw CSV.",
+          "findingIds": [
+            "F-001"
+          ],
+          "successCheck": "Agent.act на валидном, отсутствующем и повреждённом artifact не выполняет write и выдаёт допустимый план или явный fallback.",
+          "timeboxMinutes": 30
+        }
+      ],
+      "uncertainties": [
+        "Реальная скрытая judge-модель эффектов не предоставлена, поэтому фактический судейский ARPU gain не утверждается.",
+        "Визуального UI-пути в проекте не обнаружено; визуальное поведение не проверялось.",
+        "В нашем окружении установлен Python 3.12.6, а README ссылается на проверку 3.12.14; различие patch-версий отдельно не сравнивалось.",
+        "Стабильность исходников в полном validator-run не подтверждена из-за служебного файла, хотя функциональные группы прошли."
+      ],
+      "reviewPolicyVersion": 2,
+      "assessmentStatus": "ready",
+      "findings": [
+        {
+          "id": "F-001",
+          "kind": "defect",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "В основном snapshot Agent.act может передать raw data/change_tariff.csv в loader, который при отсутствии или устаревании cache строит и записывает historical_candidates.json во время runtime.",
+          "expected": "Runtime читает заранее подготовленный artifact и не требует записи в checkout/worker.",
+          "actual": "solution/agent.py:135-138 выбирает CSV при его наличии; solution/candidates.py:124-145 допускает запись destination при rebuild.",
+          "evidence": [
+            "solution/agent.py:135-139",
+            "solution/candidates.py:124-145",
+            "fa17c8b265f363cf1aeda433e866ba3cf2c632ad:solution/SAFE_HISTORY_FIX.md:1-12"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "F-002",
+          "kind": "limitation",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Эффект моделируется на уровне action/cell через historical rank и noisy pilot ratio, без causal control/uplift-модели.",
+          "expected": "Для полной causal уверенности нужен treatment/control или отдельная uplift-оценка.",
+          "actual": "Beliefs и planner используют cell-level mu/sd, ARPU prefix и cautious threshold; это корректный MVP prior, но не причинная идентификация.",
+          "evidence": [
+            "solution/candidates.py:162-180",
+            "solution/beliefs.py:30-105",
+            "solution/planner.py:501-510"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "F-003",
+          "kind": "limitation",
+          "verification": "observed",
+          "responsibility": "external_service",
+          "claim": "Количественный net результат подтверждён только в локальной mock-среде.",
+          "expected": "Судейская оценка должна использовать скрытые эффекты, недоступные локальной проверке.",
+          "actual": "10/10 local_eval прогонов положительны, но это не доказательство результата на judge model.",
+          "evidence": [
+            "captures/20260930T090920098557-local_eval.stdout.log",
+            "solution/README.md:150-190"
+          ],
+          "checkIds": [
+            "CHK-MOCK-001"
+          ]
+        },
+        {
+          "id": "F-004",
+          "kind": "limitation",
+          "verification": "observed",
+          "responsibility": "review_environment",
+          "claim": "Полный validate_solution в нашем запуске завершился на проверке source files changed после функционально успешных групп.",
+          "expected": "Итоговый validator должен завершиться с подтверждённой стабильностью исходников.",
+          "actual": "7 функциональных групп прошли, но общий runner вернул exit 1 и сообщил source files changed; в отдельном сохранённом validation_results.json исходный прогон содержит source_unchanged=true.",
+          "evidence": [
+            "captures/20260930T090915161959-test312.stdout.log",
+            "solution/validation_results.json:source_unchanged",
+            "captures/20260930T090915161959-test312.stderr.log"
+          ],
+          "checkIds": [
+            "CHK-VALIDATE-001"
+          ]
+        },
+        {
+          "id": "F-005",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Основной агентский сценарий и экспорт воспроизводятся на кейсовом датасете.",
+          "expected": "Пилоты/план/CSV должны завершаться без ключей и без доступа к скрытой модели.",
+          "actual": "40 unit tests прошли, local_eval --runs 10 завершился exit 0, make_submission завершился exit 0 и создал одну кампанию.",
+          "evidence": [
+            "captures/20260930T090940391068-unittest.stdout.log",
+            "captures/20260930T090920098557-local_eval.stdout.log",
+            "captures/20260930T090928807637-submission.stdout.log"
+          ],
+          "checkIds": [
+            "CHK-UNIT-001",
+            "CHK-MOCK-001",
+            "CHK-EXPORT-001"
+          ]
+        },
+        {
+          "id": "F-006",
+          "kind": "strength",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Агент не обращается к внутренней impact model и использует публичный env API.",
+          "expected": "Скрытый эффект должен быть доступен только через run_pilot.",
+          "actual": "Agent читает profile/tariffs/остатки/history и вызывает env.run_pilot; impact_model остаётся в closure environment.make_environment.",
+          "evidence": [
+            "solution/agent.py:130-218",
+            "solution/environment.py:93-109,112-129"
+          ],
+          "checkIds": []
+        }
+      ],
+      "gapFindingIds": [
+        "F-001"
+      ]
+    }
+  ],
+  "score": 95.0,
+  "status": "complete",
+  "expectedJudges": 1
+}

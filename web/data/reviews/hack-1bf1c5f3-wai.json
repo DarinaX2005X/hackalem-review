@@ -1,0 +1,981 @@
+{
+  "methodVersion": 4,
+  "repoId": "hack-1bf1c5f3-wai",
+  "repoUrl": "https://github.com/BAITC-Hacks/hack-1bf1c5f3-wai",
+  "caseId": 4,
+  "snapshot": "481516f5afca8c00cc41c906fd69ea24156822c5",
+  "judges": [
+    {
+      "methodVersion": 4,
+      "repoId": "hack-1bf1c5f3-wai",
+      "caseId": 4,
+      "model": "GPT-5.6 Luna",
+      "snapshot": "481516f5afca8c00cc41c906fd69ea24156822c5",
+      "overallSummary": "Сильный и воспроизводимый Python-MVP для планирования тарифных кампаний. Агент действительно строит гипотезы из истории, проводит 20 пилотов через публичный env.run_pilot, обновляет оценки неопределённости и формирует допустимый план с учётом пересечений аудиторий, бюджета и контактов. Локальный сценарий на предоставленных данных завершился PASS: чистый результат 5 063 252 условных единицы при 15 000 контактах и бюджете 99 932 из 100 000; 10 seed также дали положительный результат. Это не предсказывает скрытую судейскую модель, но исходники и проверки дают достаточное основание для высокой оценки. Основные ограничения — только три target-гипотезы на ячейку и жадное планирование без гарантии глобального оптимума; обе границы явно описаны в документации.",
+      "global": {
+        "criteria": [
+          {
+            "name": "Ценность решения",
+            "score": 25,
+            "max": 25,
+            "awarded": "Решение адресует конкретную бизнес-проблему отрицательного эффекта смены тарифа и превращает её в измеримый план кампаний.",
+            "deductions": "Снятий нет. Ограничение mock-среды зафиксировано отдельно и не относится к ответственности проекта.",
+            "evidence": [
+              "README.md:17-45",
+              "challenges/beeline-tariff-campaigns/local_eval.py:34-69",
+              "check-local-case-seed42"
+            ],
+            "deductionItems": [],
+            "awardedDetails": [
+              {
+                "aspect": "Понятная целевая проблема",
+                "implementation": "README формулирует задачу как выбор аудитории, target-тарифа и канала при ограниченном бюджете, а scoring считает чистый прирост ARPU минус стоимость контактов. В коде профиль преобразуется в ячейки текущий тариф × ARPU-сегмент, для которых строятся переходные гипотезы.",
+                "value": "Это непосредственно связывает алгоритм с задачей маркетингового аналитика: результатом является не абстрактная модель, а набор кампаний, который можно передать в оценщик.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:17-45",
+                  "candidate_research.py:24-39",
+                  "scoring_core.py:242-300"
+                ]
+              },
+              {
+                "aspect": "Оптимизация чистого эффекта",
+                "implementation": "Планировщик считает ожидаемый lift на основе predicted_arpu и вычитает стоимость канала; при добавлении кампании учитывает лучший уже обеспеченный эффект по каждому профилю, а scoring дедуплицирует клиента по лучшей кампании.",
+                "value": "Защищает бизнес-метрику от двойного счёта при пересекающихся сегментах и не позволяет бесплатному или дешёвому каналу скрыть отрицательный эффект.",
+                "verification": "source",
+                "evidence": [
+                  "campaign_planner.py:134-177",
+                  "scoring_core.py:270-300"
+                ]
+              },
+              {
+                "aspect": "Доказанный локальный результат",
+                "implementation": "На предоставленных case-data выполнен local_eval.py: seed 42 дал PASS, gross 5 163 184, cost 99 932 и net 5 063 252; 10 seed дали положительный net в каждом прогоне.",
+                "value": "Это показывает, что решение не ограничивается заявлением в README и создаёт содержательный результат в предусмотренной среде.",
+                "verification": "observed",
+                "evidence": [
+                  "check-local-case-seed42",
+                  "check-local-case-runs10",
+                  "local_eval.py:64-93"
+                ]
+              }
+            ],
+            "scoreReasoning": "25/25: проект решает именно заявленную бизнес-проблему, выдаёт операционный план и показывает положительный локальный результат. Невозможность проверить скрытую judge-модель вынесена в ограничения и не уменьшает балл, поскольку ответственность лежит на review environment."
+          },
+          {
+            "name": "Результат и качество решения",
+            "score": 19,
+            "max": 20,
+            "awarded": "Основной сценарий работает целиком: среда, пилоты, обратная связь, финальный план и CSV.",
+            "deductions": "Снят 1 балл за отсутствие гарантии глобально оптимального распределения ресурсов у жадного планировщика.",
+            "evidence": [
+              "agent.py:25-53",
+              "campaign_planner.py:117-133",
+              "check-tests-17",
+              "check-local-case-seed42"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "f-greedy-planner",
+                "reason": "plan_campaigns добавляет локально лучший incremental proposal и прямо описан как greedy; README также указывает, что глобальная оптимальность не гарантируется. Это уменьшает потолок качества результата при сложных пересечениях, хотя текущий план остаётся легальным и положительным."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Целостный жизненный цикл",
+                "implementation": "Agent.act загружает историю, строит Belief-объекты, запускает exploration до исчерпания pilots_left, затем передаёт обновлённые beliefs в планировщик и возвращает список словарей кампаний.",
+                "value": "Все обязательные этапы находятся в одном воспроизводимом сценарии, а не в разрозненных исследовательских ноутбуках.",
+                "verification": "source",
+                "evidence": [
+                  "agent.py:25-53",
+                  "candidate_research.py:100-138"
+                ]
+              },
+              {
+                "aspect": "Соблюдение ограничений",
+                "implementation": "Код ограничивает 20 пилотов по 10–200 клиентов, финальные кампании до 10, кампанию до 5000 клиентов и планирует по оставшимся contacts/budget. Проверка seed 42 фактически использовала 20 пилотов, 6 финальных кампаний, 15 000 контактов и 99 932 бюджета.",
+                "value": "Результат пригоден для предусмотренного оценщика и не требует ручного исправления CSV перед запуском.",
+                "verification": "observed",
+                "evidence": [
+                  "campaign_planner.py:19-28",
+                  "agent.py:57-88",
+                  "check-local-case-seed42",
+                  "check-tests-17"
+                ]
+              },
+              {
+                "aspect": "Устойчивость к сбоям",
+                "implementation": "Ошибки чтения истории переводят агент к нейтральным гипотезам; ошибки пилота помечают belief как непилотируемый; ошибки exploration и планирования сохраняют выполненные наблюдения и используют fallback. Тесты отдельно инъецируют сбой выбора, неполный feedback и сбой planner.",
+                "value": "Даже частично нарушенный внешний feedback не превращает уже потраченный бюджет в исключение без результата.",
+                "verification": "observed",
+                "evidence": [
+                  "agent.py:29-52",
+                  "agent.py:73-88",
+                  "tests/test_agent_resilience.py:29-64",
+                  "check-tests-17"
+                ]
+              },
+              {
+                "aspect": "Проверяемый пользовательский результат",
+                "implementation": "make_submission.py фиксирует seed 42, формирует ровно согласованный набор колонок и записывает submission.csv. Два запуска на case-data дали одинаковый SHA-256.",
+                "value": "Команда может повторить сдаваемый артефакт и отделить generated CSV от ручной правки.",
+                "verification": "observed",
+                "evidence": [
+                  "make_submission.py:23-46",
+                  "check-submission-determinism"
+                ]
+              }
+            ],
+            "scoreReasoning": "19/20: основной сценарий подтверждён кодом, 17 unit/domain тестами и реальным прогоном на case-data. Единственное существенное снижение — эвристический greedy-планировщик; для пятичасового MVP это разумный компромисс, но он не доказывает оптимальность результата."
+          },
+          {
+            "name": "Инновационность",
+            "score": 13,
+            "max": 15,
+            "awarded": "Нестандартная часть решения — активное исследование с Bayesian-подобными beliefs и value-of-information выбором пилотов.",
+            "deductions": "Снято 2 балла за отсутствие самостоятельной модели или более сильного глобального поиска: подход основан на простых нормальных beliefs и ограниченном candidate pool.",
+            "evidence": [
+              "campaign_planner.py:31-105",
+              "candidate_research.py:50-82",
+              "README.md:55-75"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "f-candidate-pool",
+                "reason": "На каждую ячейку сохраняются только до трёх target-тарифов; README прямо предупреждает, что остальные варианты могут быть пропущены. Это реальное ограничение оригинальности и полноты поиска, а не отсутствие внешнего ключа."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Пилоты как активное обучение",
+                "implementation": "next_pilot оценивает ожидаемое улучшение осторожной best-estimate после наблюдения, учитывая posterior variance, normal PDF/CDF и суммарный ARPU ячейки; пилот выбирается не простым top-score.",
+                "value": "Это соответствует сути кейса, где скрытые эффекты нужно узнавать дорогостоящими пилотами, и демонстрирует agentic-поведение в рамках публичного env API.",
+                "verification": "source",
+                "evidence": [
+                  "campaign_planner.py:71-105",
+                  "agent.py:56-88"
+                ]
+              },
+              {
+                "aspect": "Слабые исторические priors",
+                "implementation": "История дедуплицируется, отбрасываются слишком малые ARPU, эффект считается относительным, а редкие переходы shrink-ятся к нулю; при отсутствии истории выбираются ближайшие более дорогие тарифы с нейтральным prior.",
+                "value": "Решение не зашивает названия тарифов и не принимает небольшую историческую выборку за истину, что особенно важно для намеренно отличающейся судейской аудитории.",
+                "verification": "source",
+                "evidence": [
+                  "candidate_research.py:50-82",
+                  "candidate_research.py:114-137",
+                  "tests/test_agent_resilience.py:79-85"
+                ]
+              },
+              {
+                "aspect": "Неопределённость влияет на финальный выбор",
+                "implementation": "Планировщик использует mean - 0.5*sd для каналов и кампаний, поэтому не тестированные или шумные hypotheses получают осторожную оценку; update переводит channel-observation обратно в base effect.",
+                "value": "Это более содержательный подход, чем сортировка по историческому среднему, и он учитывает риск отрицательного эффекта при масштабировании.",
+                "verification": "source",
+                "evidence": [
+                  "campaign_planner.py:31-60",
+                  "campaign_planner.py:170-177",
+                  "README.md:67-73"
+                ]
+              }
+            ],
+            "scoreReasoning": "13/15: активное обучение, слабые priors и осторожная оценка дают заметно нестандартный для MVP подход. Два балла удержаны за простую параметрическую модель и ограничение до трёх кандидатов, которое может исключить лучший target до стадии пилота."
+          },
+          {
+            "name": "Потенциал развития и масштабирования",
+            "score": 18,
+            "max": 20,
+            "awarded": "Разделение research, beliefs, planner и env-контракта делает решение расширяемым на новые данные и каналы.",
+            "deductions": "Снято 2 балла за явно эвристические границы candidate generation и greedy allocation; масштабирование на большее число тарифов потребует усиления поиска.",
+            "evidence": [
+              "README.md:76-110",
+              "candidate_research.py:85-138",
+              "campaign_planner.py:117-309"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "f-greedy-planner",
+                "reason": "При расширении числа ячеек и перекрытий жадное добавление кампаний не гарантирует глобально лучшего resource allocation; это документированная граница самого решения."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Публичный интерфейс среды",
+                "implementation": "Agent использует customer_profile, tariffs, channels, остатки ресурсов и run_pilot, не читая скрытые internals. История подключается относительным путём к data/change_tariff.csv.",
+                "value": "Ту же архитектуру можно подключить к другой аудитории, каталогу тарифов или набору каналов при сохранении контракта.",
+                "verification": "source",
+                "evidence": [
+                  "agent.py:10-31",
+                  "environment.py:93-110",
+                  "README.md:140-157"
+                ]
+              },
+              {
+                "aspect": "Модульные границы",
+                "implementation": "candidate_research отвечает за клетки и priors, campaign_planner — за beliefs и resource allocation, environment/scoring — за доменную механику, make_submission — за артефакт сдачи.",
+                "value": "Можно заменить модель приоритета или стратегию оптимизации без переписывания интерфейса агента и генератора CSV.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:76-110",
+                  "agent.py:12-20",
+                  "campaign_planner.py:117-133"
+                ]
+              },
+              {
+                "aspect": "Тестируемая устойчивость",
+                "implementation": "Тесты покрывают контракт, детерминированность, fallback, missing feedback, planner failure, отсутствие history и historical candidates; десять seed-проходов на case-data остаются положительными.",
+                "value": "Это даёт основу для дальнейшего расширения без потери базового контракта.",
+                "verification": "observed",
+                "evidence": [
+                  "tests/test_agent_contract.py:13-41",
+                  "tests/test_agent_resilience.py:15-85",
+                  "check-tests-17",
+                  "check-local-case-runs10"
+                ]
+              }
+            ],
+            "scoreReasoning": "18/20: модульность и env-контракт хорошо подходят для следующей итерации. Снижение связано не с отсутствием production-инфраструктуры, а с конкретными алгоритмическими ограничениями, которые сам проект признаёт при расширении масштаба."
+          },
+          {
+            "name": "Презентация, демо и ответы на вопросы",
+            "score": 20,
+            "max": 20,
+            "awarded": "README объясняет задачу, архитектуру, ограничения, команды запуска и ожидаемые локальные результаты; локальный demo-сценарий воспроизводим.",
+            "deductions": "Снятий нет: по правилам этого разбора отсутствие публичной ссылки, видео или устной презентации не является самостоятельным недостатком; локальное CLI-демо воспроизводимо.",
+            "evidence": [
+              "README.md:1-39",
+              "../../README.md:90-138",
+              "check-local-case-seed42",
+              "check-submission-determinism"
+            ],
+            "deductionItems": [],
+            "awardedDetails": [
+              {
+                "aspect": "Пошаговая инструкция",
+                "implementation": "Корневой README содержит команды установки, local_eval, --runs 10, make_submission и unittest; challenge README связывает файлы решения с ролями компонентов.",
+                "value": "Другой проверяющий может воспроизвести сценарий без знания внутреннего устройства проекта.",
+                "verification": "source",
+                "evidence": [
+                  "../../README.md:90-120",
+                  "challenges/beeline-tariff-campaigns/README.md:1-39"
+                ]
+              },
+              {
+                "aspect": "Репродуцируемый числовой результат",
+                "implementation": "README фиксирует PASS, net 5 063 252, 20/6 кампаний, 15 000 контактов, 99 932 бюджета и статистику seed 0–9; эти значения были повторно получены в проверке.",
+                "value": "Документация не ограничивается архитектурой, а задаёт проверяемые признаки успеха.",
+                "verification": "observed",
+                "evidence": [
+                  "../../README.md:122-138",
+                  "check-local-case-seed42",
+                  "check-local-case-runs10"
+                ]
+              },
+              {
+                "aspect": "Честные границы",
+                "implementation": "README отдельно указывает, что mock-эффекты не предсказывают judge-score, что другие target-варианты могут быть пропущены, и что web-интерфейс не входит в этот кейс.",
+                "value": "Это помогает не перепутать локальный smoke-test с доказательством скрытого production-эффекта.",
+                "verification": "source",
+                "evidence": [
+                  "../../README.md:138-178"
+                ]
+              }
+            ],
+            "scoreReasoning": "20/20: README хорошо объясняет локальную демонстрацию и её ограничения, а команды действительно работают. Публичная ссылка и визуальный/live слой не требовались и не используются как основание для снижения оценки."
+          }
+        ],
+        "total": 95
+      },
+      "case": {
+        "criteria": [
+          {
+            "name": "Соответствие задаче и работоспособность",
+            "score": 24,
+            "max": 25,
+            "awarded": "Обязательный сценарий кейса реализован и воспроизведён.",
+            "deductions": "Снят 1 балл за ограниченный candidate pool, который может не рассмотреть лучший target-тариф.",
+            "evidence": [
+              "agent.py:25-88",
+              "candidate_research.py:100-138",
+              "check-local-case-seed42",
+              "check-tests-17"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "f-candidate-pool",
+                "reason": "На ячейку генерируется максимум три цели; при отсутствии истории выбираются только ближайшие более дорогие тарифы, поэтому часть допустимых вариантов не попадает в exploration."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Контракт Agent.act",
+                "implementation": "Agent.act(env) принимает публичную среду и возвращает список финальных campaign dict с фильтрами, target_tariff и channel.",
+                "value": "Полностью соответствует точке интеграции кейса; это подтверждено контрактными тестами.",
+                "verification": "observed",
+                "evidence": [
+                  "agent.py:25-53",
+                  "tests/test_agent_contract.py:13-35"
+                ]
+              },
+              {
+                "aspect": "Пилотное изучение скрытых эффектов",
+                "implementation": "До планирования запускается цикл до env.pilots_left, обычно 20 пилотов по 200 клиентов; результат observed_lift_ratio обновляет belief.",
+                "value": "Агент не подменяет судейскую среду чтением impact model и использует разрешённый feedback path.",
+                "verification": "source",
+                "evidence": [
+                  "agent.py:55-88",
+                  "environment.py:93-129",
+                  "environment.py:131-195"
+                ]
+              },
+              {
+                "aspect": "Ограничения результата",
+                "implementation": "Финальный план ограничен max_campaigns=10, MAX_CUSTOMERS_PER_CAMPAIGN=5000 и доступными budget/contacts; fallback сохраняет минимум одну допустимую кампанию.",
+                "value": "Даже при отрицательных priors или ошибке planner возвращается формально допустимый результат.",
+                "verification": "observed",
+                "evidence": [
+                  "campaign_planner.py:19-28",
+                  "campaign_planner.py:256-309",
+                  "tests/test_agent_resilience.py:59-77"
+                ]
+              },
+              {
+                "aspect": "Реальный локальный прогон",
+                "implementation": "На предоставленном пакете case-data сценарий завершился PASS: 20 пилотов, 6 финальных кампаний, 15 000 контактов, 99 932 бюджета, net 5 063 252.",
+                "value": "Работоспособность основного сценария подтверждена исполнением, а не только анализом исходников.",
+                "verification": "observed",
+                "evidence": [
+                  "check-local-case-seed42"
+                ]
+              }
+            ],
+            "scoreReasoning": "24/25: все существенные ограничения соблюдены, env.run_pilot реально вызывается, а локальный сценарий положительный. Один балл удержан за заранее ограниченный набор целей на ячейку, который снижает полноту поиска, но не ломает обязательный MVP-сценарий."
+          },
+          {
+            "name": "Техническая реализация",
+            "score": 24,
+            "max": 25,
+            "awarded": "Архитектура аккуратная: исторические priors, нормальные beliefs, выбор пилота по ожидаемой ценности информации и resource-aware planner.",
+            "deductions": "Снят 1 балл за эвристический greedy allocation без глобальной оптимизации.",
+            "evidence": [
+              "candidate_research.py:50-138",
+              "campaign_planner.py:31-309",
+              "check-tests-17"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "f-greedy-planner",
+                "reason": "plan_campaigns последовательно выбирает лучший incremental proposal; при многих пересекающихся кампаниях это не гарантирует оптимум, хотя текущие лимиты проверены."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Bayesian update",
+                "implementation": "Belief хранит precision и weighted_sum, обновляет posterior с шумом 0.804/sqrt(n), а observed channel effect переводится в base effect делением на multiplier.",
+                "value": "Формула использует доменное описание пилота и позволяет одной проверкой обновлять оценку для всех каналов.",
+                "verification": "source",
+                "evidence": [
+                  "campaign_planner.py:31-60",
+                  "environment.py:172-189"
+                ]
+              },
+              {
+                "aspect": "Value-of-information pilot selection",
+                "implementation": "next_pilot сравнивает ожидаемый cautious best после posterior variance reduction с текущим best и масштабирует пользу на cell.arpu_sum.",
+                "value": "Пилоты направлены на потенциально полезное уменьшение неопределённости, а не распределяются случайно.",
+                "verification": "source",
+                "evidence": [
+                  "campaign_planner.py:71-105"
+                ]
+              },
+              {
+                "aspect": "Корректное покрытие и дедупликация",
+                "implementation": "Планировщик поддерживает current lift по строкам профиля, добавляет только incremental gain и создаёт комбинированные tariff filters; scoring выбирает максимум по ID_NUMBER.",
+                "value": "Пересекающиеся кампании не раздувают ожидаемый lift, а доступный бюджет расходуется на новые полезные контакты.",
+                "verification": "source",
+                "evidence": [
+                  "campaign_planner.py:134-220",
+                  "scoring_core.py:270-300"
+                ]
+              },
+              {
+                "aspect": "Публичный контракт без обхода",
+                "implementation": "Основной агент получает данные через env и вызывает только env.run_pilot; скрытый impact model остаётся внутри environment factory и не импортируется agent.py.",
+                "value": "Решение следует честным правилам кейса и должно переноситься на отличающиеся эффекты судейской среды.",
+                "verification": "source",
+                "evidence": [
+                  "agent.py:10-88",
+                  "environment.py:93-110",
+                  "README.md:140-155"
+                ]
+              }
+            ],
+            "scoreReasoning": "24/25: техническая реализация существенно выше базового rule-based решения и покрыта тестами. Один балл удержан только за отсутствие гарантированного глобального оптимума, что является осознанной эвристикой, а не дефектом исполнения."
+          },
+          {
+            "name": "README и воспроизводимость",
+            "score": 25,
+            "max": 25,
+            "awarded": "Порядок запуска, структура компонентов, ограничения и ожидаемые числа описаны достаточно подробно; воспроизводимость подтверждена.",
+            "deductions": "Снятий нет. Зависимость от сохранённой входной истории явно описана и подтверждена повторным запуском.",
+            "evidence": [
+              "../../README.md:90-157",
+              "make_submission.py:28-46",
+              "check-submission-determinism",
+              "check-tests-17"
+            ],
+            "deductionItems": [],
+            "awardedDetails": [
+              {
+                "aspect": "Запуск и зависимости",
+                "implementation": "README даёт команды для venv, requirements, local_eval, --runs 10, make_submission и unittest; requirements фиксирует numpy/pandas.",
+                "value": "Инструкция достаточна для независимого воспроизведения без скрытого сервиса.",
+                "verification": "source",
+                "evidence": [
+                  "../../README.md:90-120",
+                  "requirements.txt:1-2"
+                ]
+              },
+              {
+                "aspect": "Описание входных данных",
+                "implementation": "Документация перечисляет customer_profile, tariffs/channels, change_tariff и отделяет исследовательские traffic/arpu_monthly от файлов, которые читает финальный агент.",
+                "value": "Пользователь понимает, какие файлы обязательны для сдаваемого сценария и какие являются исследовательскими.",
+                "verification": "source",
+                "evidence": [
+                  "../../README.md:140-157",
+                  "agent.py:27-31"
+                ]
+              },
+              {
+                "aspect": "Воспроизводимый артефакт",
+                "implementation": "make_submission использует SUBMISSION_SEED=42 и фиксированный порядок CAMPAIGN_COLUMNS; повторный запуск на предоставленных данных дал одинаковый SHA-256 CSV.",
+                "value": "Снижает риск ручной рассинхронизации между кодом и сдаваемым результатом.",
+                "verification": "observed",
+                "evidence": [
+                  "make_submission.py:23-46",
+                  "check-submission-determinism"
+                ]
+              }
+            ],
+            "scoreReasoning": "25/25: README покрывает запуск, входы, ограничения и ожидаемые числа, а generated submission.csv воспроизведён повторным запуском. Требование сохранить входную историю явно указано и не является дефектом для этого кейса."
+          },
+          {
+            "name": "Ценность и применимость решения",
+            "score": 15,
+            "max": 15,
+            "awarded": "Подход непосредственно применим к задаче операционного маркетингового планирования в пределах заданного env-контракта.",
+            "deductions": "Снятий нет: отсутствие production-интеграций не является требованием этого MVP.",
+            "evidence": [
+              "README.md:17-45",
+              "campaign_planner.py:117-220",
+              "check-local-case-seed42"
+            ],
+            "deductionItems": [],
+            "awardedDetails": [
+              {
+                "aspect": "Практический выход для аналитика",
+                "implementation": "CSV содержит название, сегменты, текущие тарифы, target-тариф и канал; это минимальный операционный план, а не только score.",
+                "value": "Результат можно передать следующему этапу кампании и проверить тем же scoring-кодом.",
+                "verification": "source",
+                "evidence": [
+                  "make_submission.py:23-46",
+                  "README.md:1-18"
+                ]
+              },
+              {
+                "aspect": "Учет стоимости контакта",
+                "implementation": "Планировщик сравнивает ожидаемый lift с cost_per_contact, а scoring вычитает фактическую стоимость пилотов и финальных кампаний.",
+                "value": "Решение оптимизирует именно чистый результат кейса, а не красивый gross lift.",
+                "verification": "source",
+                "evidence": [
+                  "campaign_planner.py:174-220",
+                  "scoring_core.py:242-300"
+                ]
+              },
+              {
+                "aspect": "Положительная проверка",
+                "implementation": "На case-data seed 42 net положителен на 5 063 252, а 10 seed дали positive в 10/10 прогонов.",
+                "value": "В заданной синтетической среде практическая применимость доказана наблюдаемым результатом.",
+                "verification": "observed",
+                "evidence": [
+                  "check-local-case-seed42",
+                  "check-local-case-runs10"
+                ]
+              }
+            ],
+            "scoreReasoning": "15/15: применимость полностью соответствует масштабу кейса; дополнительные production-сервисы, веб-интерфейс и реальные сообщения клиентам не требовались и не используются как основание для штрафа."
+          },
+          {
+            "name": "Потенциал развития и оригинальность подхода",
+            "score": 9,
+            "max": 10,
+            "awarded": "Есть переносимая оригинальная идея активного обучения аудитории с ресурсным планированием.",
+            "deductions": "Снят 1 балл за две явные эвристические границы: top-3 candidates per cell и greedy selection.",
+            "evidence": [
+              "candidate_research.py:20-21",
+              "candidate_research.py:126-137",
+              "campaign_planner.py:117-133",
+              "../../README.md:159-174"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "f-candidate-pool",
+                "reason": "При расширении каталога тарифов top-3 pruning может исключить полезную цель; это ограничивает дальнейшее масштабирование оригинального подхода."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Переносимость на новые аудитории",
+                "implementation": "Размеры и ARPU-суммы клеток вычисляются из profile, а тарифы и каналы приходят из env; нет зашитого списка клиентов.",
+                "value": "Та же схема может работать с новой выборкой при сохранении колонок и публичного интерфейса.",
+                "verification": "source",
+                "evidence": [
+                  "candidate_research.py:85-97",
+                  "agent.py:27-45"
+                ]
+              },
+              {
+                "aspect": "Естественная следующая итерация",
+                "implementation": "Раздельные функции build_hypotheses, next_pilot и plan_campaigns дают явные точки замены для более полного candidate search или оптимизатора.",
+                "value": "Развитие можно делать инкрементально, не ломая существующие тесты контракта.",
+                "verification": "source",
+                "evidence": [
+                  "candidate_research.py:100-138",
+                  "campaign_planner.py:71-124",
+                  "tests/test_agent_contract.py:13-41"
+                ]
+              },
+              {
+                "aspect": "Оригинальность относительно baseline",
+                "implementation": "Решение комбинирует historical shrinkage, posterior uncertainty, value-of-information и overlap-aware campaign allocation вместо статического CSV или одной сортировки сегментов.",
+                "value": "Это даёт обоснованное преимущество именно в кейсе с неизвестными эффектами и ограниченным числом пилотов.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:55-75",
+                  "campaign_planner.py:71-105"
+                ]
+              }
+            ],
+            "scoreReasoning": "9/10: идея хорошо переносится и имеет ясные точки развития. Один балл удержан за ограничения полноты поиска и глобальной оптимизации, которые проявятся сильнее при расширении каталога и числа сегментов."
+          }
+        ],
+        "total": 97
+      },
+      "judgeScore": 96,
+      "caseRequirements": [
+        {
+          "requirement": "Реализован публичный интерфейс Agent.act(env) и возвращается список финальных кампаний",
+          "status": "met",
+          "explanation": "Agent.act принимает env, проводит exploration и возвращает campaign dict; контрактный тест прошёл.",
+          "evidence": [
+            "agent.py:25-53",
+            "tests/test_agent_contract.py:13-20",
+            "check-tests-17"
+          ]
+        },
+        {
+          "requirement": "Финальный план содержит от 1 до 10 корректных кампаний",
+          "status": "met",
+          "explanation": "На seed 42 получено 6 финальных кампаний; tests проверяют диапазон и fallback обеспечивает кампанию при отрицательных оценках.",
+          "evidence": [
+            "campaign_planner.py:19-23",
+            "campaign_planner.py:256-309",
+            "tests/test_agent_contract.py:17-20"
+          ]
+        },
+        {
+          "requirement": "Не более 5000 абонентов в одной кампании",
+          "status": "met",
+          "explanation": "Планировщик ограничивает размер proposal, а тесты проверяют длину каждого отфильтрованного сегмента.",
+          "evidence": [
+            "campaign_planner.py:23",
+            "campaign_planner.py:206-207",
+            "tests/test_agent_contract.py:28-31"
+          ]
+        },
+        {
+          "requirement": "Не более 15000 контактов и бюджет 100000 с учетом пилотов",
+          "status": "met",
+          "explanation": "Прогон использовал 15000 контактов и 99932 бюджета, включая 20 пилотов; тесты также проверяют остатки ресурсов.",
+          "evidence": [
+            "agent.py:57-71",
+            "check-local-case-seed42",
+            "tests/test_agent_contract.py:31-35"
+          ]
+        },
+        {
+          "requirement": "Не более 20 пилотов, размер каждого 10–200",
+          "status": "met",
+          "explanation": "Цикл использует pilots_left, ограничивает n_customers 200 и не запускает пилот меньше 10; seed 42 выполнил 20 пилотов по 200.",
+          "evidence": [
+            "agent.py:56-88",
+            "campaign_planner.py:19-23",
+            "environment.py:142-149",
+            "check-local-case-seed42"
+          ]
+        },
+        {
+          "requirement": "Пилоты реально расходуют бюджет и контакты и участвуют в общем score",
+          "status": "met",
+          "explanation": "Среда уменьшает remaining_budget/remaining_contacts при run_pilot, а local_eval объединяет executed pilots с финальными кампаниями перед score_campaigns.",
+          "evidence": [
+            "environment.py:162-195",
+            "local_eval.py:45-61",
+            "check-local-case-seed42"
+          ]
+        },
+        {
+          "requirement": "Учитывать неопределенность и не подгоняться под mock-эффекты",
+          "status": "met",
+          "explanation": "Agent не импортирует impact model; Belief и next_pilot используют только feedback env.run_pilot и uncertainty discount. Скрытая модель не извлекается.",
+          "evidence": [
+            "agent.py:10-88",
+            "campaign_planner.py:31-105",
+            "environment.py:100-129"
+          ]
+        },
+        {
+          "requirement": "Оптимизировать чистый прирост ARPU минус стоимость контактов с учетом уникальности абонента",
+          "status": "met",
+          "explanation": "Планировщик считает incremental gain, scoring выбирает лучший effect по ID_NUMBER и вычитает total_cost.",
+          "evidence": [
+            "campaign_planner.py:174-177",
+            "scoring_core.py:270-300",
+            "check-local-case-seed42"
+          ]
+        },
+        {
+          "requirement": "Предоставить воспроизводимый submission.csv",
+          "status": "met",
+          "explanation": "make_submission фиксирует seed 42 и колонки; два запуска на case-data дали одинаковый hash.",
+          "evidence": [
+            "make_submission.py:23-46",
+            "check-submission-determinism"
+          ]
+        },
+        {
+          "requirement": "Уложиться в требуемое время выполнения до 10 минут",
+          "status": "met",
+          "explanation": "Доступные локальные прогоны завершились за секунды, включая 10 seed и 17 тестов; отдельного стресс-прогона на 10-минутный лимит не требовалось.",
+          "evidence": [
+            "check-tests-17",
+            "check-local-case-runs10"
+          ]
+        },
+        {
+          "requirement": "Не обходить внутренности среды",
+          "status": "met",
+          "explanation": "Основной агент работает через env.customer_profile, env.tariffs, env.channels и env.run_pilot; скрытые internals используются только организаторским mock harness.",
+          "evidence": [
+            "agent.py:25-88",
+            "environment.py:93-110",
+            "README.md:140-155"
+          ]
+        }
+      ],
+      "testData": {
+        "provided": [
+          "cases/4/case-data/HackAlem AI_ Beeline Tariff Marketing Campaigns Case.md",
+          "cases/4/case-data/beeline_case_participants (1)/PARTICIPANT_GUIDE.md",
+          "cases/4/case-data/beeline_case_participants (1)/customer_profile.csv",
+          "cases/4/case-data/beeline_case_participants (1)/data/arpu_monthly.csv",
+          "cases/4/case-data/beeline_case_participants (1)/data/change_tariff.csv",
+          "cases/4/case-data/beeline_case_participants (1)/data/dict_tariff.csv",
+          "cases/4/case-data/beeline_case_participants (1)/data/traffic.csv",
+          "cases/4/case-data/beeline_case_participants (1)/feature_dictionary.csv",
+          "cases/4/case-data/beeline_case_participants (1)/tariff_dictionary.csv",
+          "cases/4/case-data/beeline_case_participants (1)/environment.py",
+          "cases/4/case-data/beeline_case_participants (1)/local_eval.py",
+          "cases/4/case-data/beeline_case_participants (1)/make_submission.py",
+          "cases/4/case-data/beeline_case_participants (1)/mock_environment.py",
+          "cases/4/case-data/beeline_case_participants (1)/scoring_core.py"
+        ],
+        "used": [
+          "customer_profile.csv",
+          "data/change_tariff.csv",
+          "data/dict_tariff.csv",
+          "data/arpu_monthly.csv",
+          "data/traffic.csv",
+          "feature_dictionary.csv",
+          "tariff_dictionary.csv",
+          "environment.py",
+          "local_eval.py",
+          "mock_environment.py",
+          "scoring_core.py",
+          "make_submission.py"
+        ],
+        "checks": [
+          {
+            "input": "Предоставленные customer_profile.csv и data/*.csv, вместе с кодом environment/mock_environment/scoring_core",
+            "method": "Собран временный runnable overlay с кодом финального агента и оригинальными case-data; запущен python local_eval.py.",
+            "result": "Exit 0, PASS; 20 пилотов, 6 финальных кампаний, 15000 контактов, бюджет 99932/100000, net 5063252.",
+            "conclusion": "Основной локальный сценарий воспроизведён на предоставленном пакете данных."
+          },
+          {
+            "input": "Те же case-data и Agent",
+            "method": "Запущен python local_eval.py --runs 10.",
+            "result": "10/10 прогонов положительные; median 4808448, min 4435121, max 5051876.",
+            "conclusion": "Локальная устойчивость к seed подтверждена, но это не прогноз скрытой judge-модели."
+          },
+          {
+            "input": "Оригинальные case-data и make_submission.py",
+            "method": "Запуск python make_submission.py дважды с seed 42 и сравнение SHA-256 результата.",
+            "result": "Оба запуска создали 6 кампаний; SHA-256 совпал.",
+            "conclusion": "Генерация submission.csv детерминирована при сохранении исходной истории."
+          }
+        ],
+        "limitations": [
+          "Локальный mock использует синтетические эффекты и не подтверждает будущий judge-score на скрытой модели.",
+          "Полные датасеты не включаются в отчёт; проверялись их штатные пути и схема."
+        ]
+      },
+      "runtime": {
+        "status": "working",
+        "build": "Исходники py_compile прошли; импорт numpy 1.26.4 и pandas 2.3.0 успешен на Python 3.10.11.",
+        "start": "CLI-проверки local_eval.py, make_submission.py и unittest стартовали и завершились без ошибки проекта.",
+        "scenario": "Основной сценарий на оригинальных case-data воспроизведён: PASS, 20 пилотов и 6 финальных кампаний.",
+        "environment": "Python 3.10.11; numpy 1.26.4; pandas 2.3.0; локальный CLI, без внешних API и без визуальной проверки.",
+        "summary": "Рабочий локальный MVP; скрытая судейская модель и визуальное поведение не проверялись и не подменялись mock-ответом сверх штатного local_eval.",
+        "checks": [
+          {
+            "command": "python -m py_compile agent.py candidate_research.py campaign_planner.py environment.py local_eval.py make_submission.py scoring_core.py",
+            "result": "Exit 0.",
+            "id": "check-compile",
+            "stage": "build",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Все основные Python-модули компилируются."
+          },
+          {
+            "command": "python -m unittest discover -s tests -v",
+            "result": "Exit 0; 17 tests OK.",
+            "id": "check-tests-17",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Контракт, детерминированность, resilience, historical candidates и transition prior проходят."
+          },
+          {
+            "command": "python local_eval.py",
+            "result": "Exit 0; PASS, net 5063252, 20 pilots, 6 final campaigns, 15000 contacts, cost 99932.",
+            "id": "check-local-case-seed42",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Агент выдаёт содержательный положительный план в штатном mock-сценарии."
+          },
+          {
+            "command": "python local_eval.py --runs 10",
+            "result": "Exit 0; 10/10 positive, median 4808448, min 4435121, max 5051876.",
+            "id": "check-local-case-runs10",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Результат не меняет знак на доступном диапазоне seed."
+          },
+          {
+            "command": "python make_submission.py",
+            "result": "Два запуска создали по 6 кампаний; output CSV hashes совпали.",
+            "id": "check-submission-determinism",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "submission.csv воспроизводим из agent.py и seed 42."
+          }
+        ],
+        "limitations": [
+          "Скрытая модель эффектов судейства недоступна по правилам кейса; локальный PASS не является её заменой.",
+          "Визуальная проверка не проводилась по пользовательской политике, а web/live demo в проекте отсутствует по масштабу кейса."
+        ]
+      },
+      "liveDemo": {
+        "status": "none",
+        "url": null,
+        "notes": "Проект является локальным CLI/Python-решением без web-сервера. Проверены CLI и HTTP/API не применимы; отсутствие live URL не использовано как самостоятельный штраф."
+      },
+      "fiveHourContext": "Для пятичасового MVP объём разумный: команда доставила работающий env-driven агент, локальный scoring harness, устойчивые fallback-тесты и воспроизводимый CSV. Не требовались production deployment, внешние API или визуальный интерфейс. Ограничения top-3 candidates и greedy allocation заметны, но явно документированы и не мешают обязательному сценарию.",
+      "strengths": [
+        "Целостный цикл Agent.act: priors → pilots → posterior beliefs → campaigns → submission.csv.",
+        "Корректный учёт бюджета, контактов, лимитов кампаний и уникальных абонентов.",
+        "17 автоматических тестов покрывают контракт и ошибки feedback/planner.",
+        "Реальные case-data применены: seed 42 PASS и 10/10 положительных seed.",
+        "Честно отделены локальный mock-результат и неизвестный будущий judge-score."
+      ],
+      "gaps": [
+        "Набор кандидатов ограничен максимум тремя target-тарифами на ячейку, поэтому часть допустимых целей может не попасть в пилоты.",
+        "Планировщик жадный и не гарантирует глобально оптимальное распределение при сложных перекрытиях."
+      ],
+      "futureAdvice": [
+        {
+          "principle": "Не отбрасывать кандидатов до стадии измерения без явного coverage-контроля",
+          "why": "f-candidate-pool подтверждает top-3 pruning в candidate_research.py; при расширении каталога это может исключить лучший target до exploration.",
+          "how": "Для следующего кейса оставьте широкий shortlist по цене и prior, а top-k применяйте только после расчёта upper confidence bound; добавьте тест, который проверяет, что каждый cell имеет покрытие всех существенных ценовых диапазонов.",
+          "findingIds": [
+            "f-candidate-pool"
+          ],
+          "successCheck": "На синтетическом наборе с хорошим четвёртым target он попадает в shortlist и может быть выбран пилотом; число рассмотренных целей и причины pruning логируются.",
+          "timeboxMinutes": 45
+        },
+        {
+          "principle": "Проверять жадные решения контрпримером малой оптимизационной задачи",
+          "why": "f-greedy-planner подтверждает последовательный greedy proposal без гарантии global optimum.",
+          "how": "На небольшом профиле переберите все допустимые планы до 10 кампаний и сравните их с greedy; если разрыв выше выбранного порога, замените финальный выбор на knapsack/ILP или локальный swap-search.",
+          "findingIds": [
+            "f-greedy-planner"
+          ],
+          "successCheck": "Для набора контрпримеров greedy не уступает exact optimum более чем на заранее заданный порог, а resource constraints остаются выполненными.",
+          "timeboxMinutes": 60
+        }
+      ],
+      "uncertainties": [
+        "Скрытая judge-модель эффектов отличается от local mock и не доступна для исполнения; будущий score не выводится из локальных миллионов.",
+        "Не проводилась визуальная проверка, поскольку проект не содержит визуального интерфейса и пользователь запретил browser/CUA-проверки.",
+        "Отдельного публичного live URL нет; проверка ограничена локальным CLI-сценарием."
+      ],
+      "reviewPolicyVersion": 2,
+      "assessmentStatus": "ready",
+      "findings": [
+        {
+          "id": "f-local-value",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Агент выдаёт положительный и ресурсно допустимый локальный план на оригинальном пакете case-data.",
+          "expected": "Основной сценарий должен завершаться допустимым содержательным результатом.",
+          "actual": "PASS; net 5063252, 20 пилотов, 6 финальных кампаний, 15000 контактов, бюджет 99932.",
+          "evidence": [
+            "check-local-case-seed42",
+            "local_eval.py:34-69"
+          ],
+          "checkIds": [
+            "check-local-case-seed42"
+          ]
+        },
+        {
+          "id": "f-tests-contract",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Автоматический набор проверок покрывает контракт, fallback, отказ feedback и исторические кандидаты.",
+          "expected": "Тесты должны проходить на зафиксированном checkout.",
+          "actual": "17 тестов завершились OK.",
+          "evidence": [
+            "tests/test_agent_contract.py:13-41",
+            "tests/test_agent_resilience.py:15-85",
+            "check-tests-17"
+          ],
+          "checkIds": [
+            "check-tests-17"
+          ]
+        },
+        {
+          "id": "f-deterministic-submission",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "submission.csv генерируется детерминированно из кода при seed 42.",
+          "expected": "Повторная генерация должна дать тот же CSV.",
+          "actual": "Два запуска создали 6 кампаний и одинаковый SHA-256.",
+          "evidence": [
+            "make_submission.py:23-46",
+            "check-submission-determinism"
+          ],
+          "checkIds": [
+            "check-submission-determinism"
+          ]
+        },
+        {
+          "id": "f-candidate-pool",
+          "kind": "defect",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Генерация гипотез оставляет максимум три target-тарифа на cell.",
+          "expected": "Существенные допустимые цели должны иметь шанс попасть в exploration при масштабировании каталога.",
+          "actual": "build_hypotheses срезает sorted(options) до per_cell=3; README признаёт, что остальные варианты могут быть пропущены.",
+          "evidence": [
+            "candidate_research.py:20-21",
+            "candidate_research.py:126-137",
+            "../../README.md:159-172"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "f-greedy-planner",
+          "kind": "defect",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Финальные кампании выбираются жадно по лучшему incremental proposal.",
+          "expected": "Распределение ресурсов должно хотя бы иметь проверяемую гарантию качества при перекрывающихся аудиториях.",
+          "actual": "plan_campaigns последовательно добавляет один лучший proposal; README прямо указывает, что глобальная оптимальность не гарантируется.",
+          "evidence": [
+            "campaign_planner.py:117-133",
+            "campaign_planner.py:179-220",
+            "../../README.md:159-174"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "f-lim-hidden-effects",
+          "kind": "limitation",
+          "verification": "source",
+          "responsibility": "review_environment",
+          "claim": "Локальный mock не подтверждает поведение на скрытой judge-модели.",
+          "expected": "Judge-score должен быть проверен на соответствующей скрытой модели, если она доступна.",
+          "actual": "Проверка ограничена штатным mock; README предупреждает, что его эффекты выдуманы и отличаются от судейства.",
+          "evidence": [
+            "local_eval.py:11-20",
+            "../../README.md:138",
+            "runtime.checks:check-local-case-seed42"
+          ],
+          "checkIds": [
+            "check-local-case-seed42"
+          ]
+        },
+        {
+          "id": "f-no-live-demo",
+          "kind": "limitation",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "В репозитории нет web/live demo; результат демонстрируется локальными CLI-командами.",
+          "expected": "Для этого кейса достаточно воспроизводимого локального демо; публичный URL не обязателен.",
+          "actual": "README описывает локальный Python/CSV workflow и отсутствие web-интерфейса.",
+          "evidence": [
+            "../../README.md:176-180",
+            "make_submission.py:38-46"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "f-repro-history",
+          "kind": "limitation",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Детерминированный submission зависит от сохранённой data/change_tariff.csv и seed 42.",
+          "expected": "Воспроизводимость должна иметь явно зафиксированные входы.",
+          "actual": "make_submission читает штатную историю через финальный агент; README объясняет необходимость сохранить её.",
+          "evidence": [
+            "agent.py:27-31",
+            "make_submission.py:28-42",
+            "../../README.md:153-155"
+          ],
+          "checkIds": [
+            "check-submission-determinism"
+          ]
+        }
+      ],
+      "gapFindingIds": [
+        "f-candidate-pool",
+        "f-greedy-planner"
+      ]
+    }
+  ],
+  "score": 96.0,
+  "status": "complete",
+  "expectedJudges": 1
+}

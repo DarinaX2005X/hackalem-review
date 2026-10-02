@@ -1,0 +1,767 @@
+{
+  "methodVersion": 4,
+  "repoId": "hack-c1c48f6d-impact",
+  "repoUrl": "https://github.com/BAITC-Hacks/hack-c1c48f6d-impact",
+  "caseId": 5,
+  "snapshot": "7d213d2facc60331c00f06492341d7104d1c2a42",
+  "judges": [
+    {
+      "methodVersion": 4,
+      "repoId": "hack-c1c48f6d-impact",
+      "caseId": 5,
+      "model": "GPT-5.6 Luna",
+      "snapshot": "7d213d2facc60331c00f06492341d7104d1c2a42",
+      "overallSummary": "Рабочий детерминированный прототип действительно читает все предоставленные книги IEK и SystemElectric, нормализует продажи, очищает разовые всплески, оценивает stockout, рост и сезонность, учитывает запас и приход в пути, округляет заказ по MOQ и формирует объяснимый результат по поставщикам. На полном наборе данных в совместимой версии pandas получены 3530 рекомендаций, поэтому основной сценарий воспроизводим. Главный технический риск — requirements.txt разрешает свежий pandas 3.x: при такой установке два теста anomaly-пути падают из-за изменения поведения groupby.apply, а третий падает из-за некорректного fixture. Поэтому решение близко к сильному MVP, но воспроизводимость свежей установки и дисциплина тестов не доведены до максимума.",
+      "global": {
+        "criteria": [
+          {
+            "name": "Ценность решения",
+            "score": 23,
+            "max": 25,
+            "awarded": "Решение адресует конкретную и дорогостоящую для закупок проблему ручного сведения Excel, дефицита и избыточного запаса.",
+            "deductions": "Снято 2 балла за то, что при свежей разрешённой requirements.txt установке основной расчётный путь не защищён от несовместимого изменения pandas; это уменьшает практическую доступность обещанной автоматизации.",
+            "evidence": [
+              "README.md:1-12",
+              "README.md:319-321",
+              "captures/20261002T090024375835-scenario.stdout.log"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "D1",
+                "reason": "Непредсказуемость запуска с допустимой свежей версией pandas мешает закупщику воспроизвести расчёт после обычной установки зависимостей."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Замена ручного сведения Excel единым расчётом",
+                "implementation": "README описывает единый поток от партнёрских книг к нормализованным продажам, запасам, приходу, прогнозу и заказу. В src/pipeline.py:184-243 загружаются и объединяются источники обоих поставщиков, а src/pipeline.py:246-422 доводит их до рекомендаций.",
+                "value": "Ценность не абстрактна: закупщик получает единый список SKU вместо ручного сопоставления нескольких выгрузок. Полный прогон подтвердил 3530 строк результата из реальных книг.",
+                "verification": "observed",
+                "evidence": [
+                  "src/pipeline.py:184-243",
+                  "src/pipeline.py:246-422",
+                  "captures/20261002T090024375835-scenario.stdout.log"
+                ]
+              },
+              {
+                "aspect": "Защита от ошибочных закупочных сигналов",
+                "implementation": "src/outliers.py:5-46 считает дневной спрос по SKU и использует MAD либо IQR/ratio fallback; src/stockouts.py:4-40 добавляет консервативную оценку потерянного спроса; src/replenishment.py:6-64 вычитает запас и eligible inbound до округления заказа.",
+                "value": "Эти меры прямо соответствуют причинам из кейса: разовая крупная продажа не должна механически стать регулярной потребностью, а пришедший до срока товар не должен породить лишний заказ.",
+                "verification": "source",
+                "evidence": [
+                  "src/outliers.py:5-46",
+                  "src/stockouts.py:4-40",
+                  "src/replenishment.py:28-64",
+                  "tests/test_replenishment.py:46-68"
+                ]
+              },
+              {
+                "aspect": "Польза для принятия решения, а не только число",
+                "implementation": "src/explanations.py:4-43 формирует rationale с прогнозом, safety stock, свободным и зарезервированным остатком, inbound, raw requirement и MOQ. app.py:201-369 показывает детальную историю и trace расчёта, а src/export.py:4-12 даёт CSV и Excel по поставщикам.",
+                "value": "Менеджер может проверить, почему рекомендовано именно это количество, затем отредактировать или подтвердить его в своём рабочем процессе; результат не является непрозрачным числом.",
+                "verification": "source",
+                "evidence": [
+                  "src/explanations.py:4-43",
+                  "app.py:201-369",
+                  "src/export.py:4-12"
+                ]
+              },
+              {
+                "aspect": "Честные границы применимости",
+                "implementation": "README.md:619-647 явно сообщает об отсутствии customer ID, дневных stockout-интервалов, полного справочника lead time и отдельного текущего остатка IEK; код не фабрикует customer IDs и использует labelled 30-day assumption.",
+                "value": "Для MVP это повышает доверие: ограничения источников отделены от результата, а недостающие данные не маскируются под точность.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:619-647",
+                  "src/config.py:29-39",
+                  "src/loaders.py:100-119"
+                ]
+              }
+            ],
+            "scoreReasoning": "23/25 заслужены за прямое сокращение ручной работы и за реальный полный результат на 3530 SKU. До максимума не хватает надёжной воспроизводимости стандартной установки: разрешённый pandas 3.x ломает anomaly-путь, что превращает часть ценности в условную для нового пользователя."
+          },
+          {
+            "name": "Результат и качество решения",
+            "score": 16,
+            "max": 20,
+            "awarded": "Сценарий целостный и выдаёт пользовательский результат, но качество поставки снижено свежим падением тестов и некорректным тестовым fixture.",
+            "deductions": "Снято 4 балла: 3 за несовместимость anomaly-пути с разрешённым pandas 3.x и 1 за падение test_quality.py на fixture без обязательного supplier.",
+            "evidence": [
+              "captures/20261002T085528467920-test.stdout.log",
+              "captures/20261002T090024375835-scenario.stdout.log",
+              "captures/20261002T090624035084-start.stdout.log"
+            ],
+            "deductionItems": [
+              {
+                "points": 3,
+                "findingId": "D1",
+                "reason": "При чистой установке зависимостей были 32 passed и 3 failed; два падения происходят в обязательном пути очистки разовых заказов из-за отсутствующих supplier/sku после groupby.apply в pandas 3.x."
+              },
+              {
+                "points": 1,
+                "findingId": "D2",
+                "reason": "Встроенный test_quality.py сам передаёт inventory и inbound без колонки supplier, из-за чего data_quality_report падает KeyError вместо проверки заявленного качества данных."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Полный пользовательский сценарий",
+                "implementation": "src/pipeline.py:246-422 последовательно выполняет sign normalization, outlier detection, reconciliation без сложения двух источников, stockout adjustment, inbound eligibility, forecast hierarchy, recommendation и risk/quality report.",
+                "value": "Это не набор несвязанных функций: на реальных книгах этапы состыковались и дали 3530 рекомендаций, 2931 IEK и 599 SystemElectric.",
+                "verification": "observed",
+                "evidence": [
+                  "src/pipeline.py:246-422",
+                  "captures/20261002T090024375835-scenario.stdout.log"
+                ]
+              },
+              {
+                "aspect": "Измеримые результаты проверки кейса",
+                "implementation": "Полный прогон загрузил products 2491, transactions 248917, monthly_sales 90510, monthly_stock 106620, inventory 3247, inbound 803 и seasonality 72 строк; сформировал 1351 anomaly-affected SKU rows, 307 inbound-covered rows, 2 stockout-adjusted rows, 3388 seasonal rows и 2274 growth rows.",
+                "value": "Проверены не только запуск и наличие файлов, но и воздействие требуемых факторов на вычисленный результат.",
+                "verification": "observed",
+                "evidence": [
+                  "captures/20261002T090024375835-scenario.stdout.log"
+                ]
+              },
+              {
+                "aspect": "Проверяемость расчёта",
+                "implementation": "src/diagnostics.py:4-52 возвращает месячный raw/cleaned/adjusted ряд и все ключевые этапы, а app.py:323-369 отображает его в SKU detail. Тесты покрывают monotonicity запаса и inbound, MOQ, reserved stock, late inbound и rationale.",
+                "value": "Покупатель может отследить источник количества и увидеть предупреждения, вместо того чтобы принимать рекомендацию без аудита.",
+                "verification": "source",
+                "evidence": [
+                  "src/diagnostics.py:4-52",
+                  "app.py:323-369",
+                  "tests/test_replenishment.py:21-78"
+                ]
+              },
+              {
+                "aspect": "Реальная проверка деплоя",
+                "implementation": "compileall завершился с кодом 0, Streamlit health endpoint вернул HTTP 200 и body ok, а full-data pipeline завершился с кодом 0 в окружении с pandas 2.3.0.",
+                "value": "Отдельно подтверждены сборка, старт сервера и содержательный расчёт; это сильнее одного статического чтения README.",
+                "verification": "observed",
+                "evidence": [
+                  "captures/20261002T090550610315-build.stdout.log",
+                  "captures/20261002T090624035084-start.stdout.log",
+                  "captures/20261002T090024375835-scenario.stdout.log"
+                ]
+              }
+            ],
+            "scoreReasoning": "16/20: основной результат устойчиво получен на полном пакете и имеет trace, экспорт и quality report. Существенное удержание баллов связано не с отсутствием внешнего API, а с тем, что обычная свежая установка из requirements.txt ломает именно ключевую очистку demand, а один из 35 тестов содержит несовместимый fixture."
+          },
+          {
+            "name": "Инновационность",
+            "score": 15,
+            "max": 15,
+            "awarded": "Максимальный балл за обоснованную комбинацию устойчивой очистки спроса, консервативного stockout adjustment, иерархического прогноза и объяснимой закупочной рекомендации.",
+            "deductions": "Снятий балл отсутствует: подтверждённых дефектов, относящихся именно к инновационности реализованного подхода, не установлено.",
+            "evidence": [
+              "src/outliers.py:5-46",
+              "src/forecast.py:6-35",
+              "src/stockouts.py:4-40",
+              "src/pipeline.py:138-181"
+            ],
+            "deductionItems": [],
+            "awardedDetails": [
+              {
+                "aspect": "Устойчивое исключение разовых объёмов",
+                "implementation": "Вместо abs(quantity) и вместо глобального порога код группирует demand по supplier/SKU/day, применяет per-SKU MAD robust z-score и IQR/ratio fallback, сохраняя raw quantity для аудита.",
+                "value": "Это нестандартнее простого среднего: единичный заказ 90 000 или 210 000 не обязан формировать регулярную потребность всего SKU, но остаётся видимым как anomaly.",
+                "verification": "source",
+                "evidence": [
+                  "src/outliers.py:5-46",
+                  "src/transactions.py:4-18",
+                  "docs/DATA_AUDIT.md:20-24"
+                ]
+              },
+              {
+                "aspect": "Иерархия прогноза для разреженных SKU",
+                "implementation": "src/pipeline.py:138-181 выбирает SKU history, затем category или supplier history, а при недостатке наблюдений нейтрализует trend и seasonality; src/forecast.py:6-35 применяет capped sustained growth и seasonality.",
+                "value": "Подход избегает как бездумного single-SKU extrapolation, так и чёрного ящика, и остаётся объяснимым на малых историях.",
+                "verification": "source",
+                "evidence": [
+                  "src/pipeline.py:138-181",
+                  "src/forecast.py:6-35",
+                  "tests/test_forecast.py:109-133"
+                ]
+              },
+              {
+                "aspect": "Дата-ориентированная ценность inbound",
+                "implementation": "src/inventory.py:20-37 суммирует весь transit отдельно от части, прибывающей до required_date; src/loaders.py:122-154 извлекает expected-arrival дату из заголовков IEK.",
+                "value": "Решение не считает поздний приход немедленным покрытием дефицита — важная и легко упускаемая бизнес-деталь.",
+                "verification": "source",
+                "evidence": [
+                  "src/loaders.py:122-154",
+                  "src/inventory.py:20-37",
+                  "tests/test_replenishment.py:58-68"
+                ]
+              },
+              {
+                "aspect": "Консервативная, но честная оценка stockout",
+                "implementation": "src/stockouts.py:4-40 трактует нулевой или отрицательный месячный snapshot как potential stockout, ищет до шести соседних regular months и применяет настраиваемую долю, а не утверждает полный потерянный спрос.",
+                "value": "Это разумный компромисс для предоставленных месячных snapshots: алгоритм добавляет сигнал дефицита, не выдавая слабое наблюдение за точную историю отсутствия товара.",
+                "verification": "source",
+                "evidence": [
+                  "src/stockouts.py:4-40",
+                  "tests/test_forecast.py:21-65",
+                  "README.md:627-633"
+                ]
+              }
+            ],
+            "scoreReasoning": "Подход заметно сильнее простого среднего по продажам: он комбинирует robust anomaly treatment, hierarchy, сезонность, growth и date-aware inbound в аудируемом deterministic pipeline. Ограничение отсутствия customer-level признака отражено честно и не обесценивает инновационность реализованной части кейса."
+          },
+          {
+            "name": "Потенциал развития и масштабирования",
+            "score": 18,
+            "max": 20,
+            "awarded": "Архитектура хорошо разделена на loaders, normalization, forecast, inventory, replenishment, diagnostics, quality, presentation и export, что облегчает добавление новых поставщиков и источников.",
+            "deductions": "Снято 2 балла за подтверждённый риск воспроизводимости зависимостей: без фиксации совместимой версии pandas расширение и запуск нового окружения могут не дойти до расчёта.",
+            "evidence": [
+              "README.md:377-410",
+              "src/loaders.py:7-184",
+              "src/export.py:4-12",
+              "captures/20261002T085528467920-test.stdout.log"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "D1",
+                "reason": "Масштабирование на новые окружения или CI не гарантировано: requirements.txt допускает pandas 3.x, где существующий groupby/apply контракт ломает базовый anomaly pipeline."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Общая модель для двух поставщиков",
+                "implementation": "Source-specific функции src/loaders.py:57-184 преобразуют SystemElectric и IEK в общие поля supplier, sku, quantity, stock, inbound и seasonality; src/pipeline.py:184-243 объединяет их без копирования бизнес-логики расчёта.",
+                "value": "Новый поставщик может получить собственный loader и подключиться к существующему pipeline, сохраняя единые проверки и объяснения.",
+                "verification": "source",
+                "evidence": [
+                  "src/loaders.py:57-184",
+                  "src/pipeline.py:184-243"
+                ]
+              },
+              {
+                "aspect": "Параметризованный planning layer",
+                "implementation": "src/config.py:29-39 и app.py:39-82 выносят horizon, lead time, service factor, stockout fraction, outlier threshold и trend caps в Settings/presets; расчёт не зашит под один сценарий.",
+                "value": "Можно переносить решение на разные политики сервиса и проводить stress test без переписывания расчётных функций.",
+                "verification": "source",
+                "evidence": [
+                  "src/config.py:29-39",
+                  "app.py:39-94",
+                  "src/presentation.py:10-31"
+                ]
+              },
+              {
+                "aspect": "Аудит и качество как отдельные компоненты",
+                "implementation": "src/diagnostics.py, src/quality.py и src/risk.py отделены от расчёта количества; pipeline формирует quality rows, confidence и high-portfolio-impact review signals.",
+                "value": "При росте числа SKU можно расширять контроль данных, не встраивая предупреждения в каждую формулу и не меняя саму рекомендацию.",
+                "verification": "source",
+                "evidence": [
+                  "src/diagnostics.py:4-52",
+                  "src/quality.py:4-45",
+                  "src/risk.py:4-41",
+                  "captures/20261002T090024375835-scenario.stdout.log"
+                ]
+              },
+              {
+                "aspect": "Экспортируемый boundary",
+                "implementation": "src/export.py:4-12 экспортирует CSV и Excel с листами по supplier; README.md:319-321 явно оставляет отправку заказа за ручным review/export boundary.",
+                "value": "Такой boundary позволяет позднее подключить ERP или approval workflow, не превращая MVP в опасную автоматическую отправку.",
+                "verification": "source",
+                "evidence": [
+                  "src/export.py:4-12",
+                  "README.md:319-321",
+                  "app.py:191-200"
+                ]
+              }
+            ],
+            "scoreReasoning": "18/20: модульная структура, настройки и экспорт дают понятную основу для новых поставщиков, политик и интеграций. Два балла удержаны за отсутствие dependency pinning/совместимого контракта с pandas, поскольку это препятствует надёжному переносу pipeline в новый runtime."
+          },
+          {
+            "name": "Презентация, демо и ответы на вопросы",
+            "score": 15,
+            "max": 20,
+            "awarded": "Вместо несуществующей устной презентации оценены README, воспроизводимая локальная команда, Streamlit-сценарий, demo mode, rationale, diagnostics и exports.",
+            "deductions": "Снято 5 баллов: 2 за свежую установку, которая не проходит заявленный pytest-путь, и 3 за противоречивое описание category fallback в README.",
+            "evidence": [
+              "README.md:231-299",
+              "README.md:661-665",
+              "app.py:84-115",
+              "captures/20261002T090624035084-start.stdout.log",
+              "captures/20261002T085528467920-test.stdout.log"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "D1",
+                "reason": "README предлагает обычные pip install -r requirements.txt и pytest -q, но фактическая свежая установка дала 32 passed и 3 failed; это ухудшает воспроизводимость демо для следующего проверяющего."
+              },
+              {
+                "points": 3,
+                "findingId": "D3",
+                "reason": "README.md:661-665 утверждает, что category не используется как forecasting input/fallback, тогда как src/pipeline.py:284-317 реально строит category_demand и выбирает forecast_source category. Пользователь не получает согласованное описание демонстрационного сценария."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "README с методологией и запуском",
+                "implementation": "README.md:37-171 описывает ingestion, sign rule, anomaly, stockout, growth, seasonality, inbound, MOQ и rationale; README.md:231-299 даёт installation, pytest и пошаговый demo scenario.",
+                "value": "Репозиторий достаточно подробен, чтобы понять, что показывать закупщику и какие факторы искать в SKU detail.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:37-171",
+                  "README.md:231-299"
+                ]
+              },
+              {
+                "aspect": "Доступное локальное демо",
+                "implementation": "app.py:84-115 кэширует pipeline и предлагает Demo mode с representative examples, выбранными из реально рассчитанных строк; app.py:116-200 добавляет фильтры, таблицу и download buttons.",
+                "value": "Сценарий демо не требует выдуманных ответов: примеры anomaly, stockout, inbound и reorder должны выбираться из текущих расчётов.",
+                "verification": "source",
+                "evidence": [
+                  "app.py:84-115",
+                  "app.py:116-200",
+                  "src/presentation.py:36-72"
+                ]
+              },
+              {
+                "aspect": "Содержательные объяснения на экране",
+                "implementation": "app.py:201-369 показывает demand chart, stock history, inbound table, бизнес-формулу, rationale, growth/seasonality/stockout context и diagnostics table.",
+                "value": "Показ результата рассчитан на вопросы менеджера: откуда прогноз, чем покрывается потребность и почему округление дало конкретный заказ.",
+                "verification": "source",
+                "evidence": [
+                  "app.py:201-369",
+                  "src/explanations.py:4-43"
+                ]
+              },
+              {
+                "aspect": "Фактически проверенная доступность",
+                "implementation": "Streamlit стартовал в изолированном окружении, HTTP health endpoint вернул 200/ok, а compileall завершился без ошибок. Визуальный вид компонентов намеренно не проверялся согласно политике проверки.",
+                "value": "Подтверждена техническая доступность демонстрационного процесса без приписывания непроверенного визуального качества.",
+                "verification": "observed",
+                "evidence": [
+                  "captures/20261002T090624035084-start.stdout.log",
+                  "captures/20261002T090550610315-build.stdout.log"
+                ]
+              }
+            ],
+            "scoreReasoning": "15/20: README и интерфейс объясняют демо заметно лучше минимального MVP, а сервер и полный расчёт воспроизводятся в совместимом окружении. Баллы удержаны за несогласованность документации и за то, что заявленная стандартная установка не проходит весь тестовый набор на свежем pandas. Отсутствие публичной ссылки и устного выступления не штрафовалось."
+          }
+        ],
+        "total": 87
+      },
+      "case": null,
+      "judgeScore": 87,
+      "caseRequirements": [
+        {
+          "requirement": "Рассчитать базовую потребность по SKU на основе истории продаж, текущих остатков, товаров в пути, категорий и прогноза роста.",
+          "status": "met",
+          "explanation": "Pipeline объединяет все эти сущности в нормализованную модель. SKU/category metadata, stock, inbound, trend и recommendation fields проходят в итоговую таблицу; category fallback реализован для разреженной истории.",
+          "evidence": [
+            "src/pipeline.py:47-93",
+            "src/pipeline.py:138-181",
+            "src/pipeline.py:246-400",
+            "captures/20261002T090024375835-scenario.stdout.log"
+          ]
+        },
+        {
+          "requirement": "Учитывать сезонность и устойчивый рост спроса при прогнозировании.",
+          "status": "met",
+          "explanation": "forecast_one применяет capped sustained_growth и seasonal_factor; pipeline использует supplier seasonality и SKU/category/supplier history hierarchy. На полном прогоне 3388 строк имели сезональный коэффициент вне нейтрального диапазона и 2274 — growth coefficient вне 1.0±0.05.",
+          "evidence": [
+            "src/forecast.py:6-35",
+            "src/seasonality.py:4-23",
+            "src/pipeline.py:269-325",
+            "captures/20261002T090024375835-scenario.stdout.log"
+          ]
+        },
+        {
+          "requirement": "Компенсировать потерянный спрос в периоды stockout.",
+          "status": "partial",
+          "explanation": "Реализована консервативная компенсация для non-positive monthly stock snapshot: берутся до шести соседних regular months и применяется configurable fraction. Это не доказывает длительность stockout и на полном наборе реально сработало только для 2 итоговых строк, поэтому exact lost demand не заявляется.",
+          "evidence": [
+            "src/stockouts.py:4-40",
+            "tests/test_forecast.py:21-65",
+            "README.md:627-633",
+            "captures/20261002T090024375835-scenario.stdout.log"
+          ]
+        },
+        {
+          "requirement": "Убирать разовые крупные покупки из регулярного спроса, включая всплеск одного клиента.",
+          "status": "partial",
+          "explanation": "Per-SKU daily MAD/IQR detection и исключение из cleaned demand реализованы и на данных отметили 1351 anomaly-affected rows, но customer identifier отсутствует во всех предоставленных транзакционных таблицах. Поэтому именно принадлежность всплеска одному клиенту не проверяется и не моделируется.",
+          "evidence": [
+            "src/outliers.py:5-61",
+            "README.md:619-625",
+            "docs/DATA_AUDIT.md:24-28",
+            "captures/20261002T090024375835-scenario.stdout.log"
+          ]
+        },
+        {
+          "requirement": "Выводить количество с объяснением по каждой позиции и группировкой по поставщикам.",
+          "status": "met",
+          "explanation": "Каждая recommendation row получает rationale с прогнозом, запасом, inbound, raw need и MOQ; Streamlit показывает таблицу и detail, а export.py создаёт supplier worksheets. В полном прогоне результат сгруппирован по IEK и SystemElectric.",
+          "evidence": [
+            "src/explanations.py:4-43",
+            "src/export.py:4-12",
+            "app.py:157-200",
+            "captures/20261002T090024375835-scenario.stdout.log"
+          ]
+        },
+        {
+          "requirement": "Не отправлять заказ без ручного подтверждения и не использовать необезличенные customer data.",
+          "status": "met",
+          "explanation": "Приложение ограничено decision support и экспортом, не содержит supplier-send интеграции или автоматической отправки. Customer IDs не создаются; README и UI явно сообщают, что customer-level detection невозможен без идентификатора.",
+          "evidence": [
+            "README.md:600-611",
+            "README.md:681-685",
+            "app.py:20-22",
+            "src/export.py:4-12"
+          ]
+        },
+        {
+          "requirement": "Проверить чувствительность к товарам в пути, сезонности, stockout и выбросу.",
+          "status": "met",
+          "explanation": "Unit tests проверяют monotonicity stock/inbound, late inbound, seasonality, stockout adjustment и anomaly removal; full-data run подтвердил ненейтральные сезонные/growth строки, inbound-covered строки и anomaly removal. Полноценный controlled perturbation всех 12 файлов не требовался для подтверждения реализованных путей.",
+          "evidence": [
+            "tests/test_forecast.py:8-106",
+            "tests/test_replenishment.py:46-68",
+            "captures/20261002T090024375835-scenario.stdout.log"
+          ]
+        },
+        {
+          "requirement": "Использовать предоставленные книги IEK и SystemElectric, не придумывая отсутствующие поля.",
+          "status": "met",
+          "explanation": "Full-data scenario загрузил все 12 книг кейса. Транзакции имеют 248917 строк, inbound 803, monthly stock 106620; отсутствующие customer ID и explicit lead-time directory не были искусственно добавлены.",
+          "evidence": [
+            "src/config.py:9-25",
+            "src/loaders.py:57-184",
+            "captures/20261002T090024375835-scenario.stdout.log"
+          ]
+        }
+      ],
+      "testData": {
+        "provided": [
+          "IEK/MOQ  ИЭК.xlsx",
+          "IEK/Динамика продаж_2025-2026.xlsx",
+          "IEK/Ежемесячные остатки продукции за последние 2 года  ИЭК.xlsx",
+          "IEK/Ежемесячные продажи в количественном выражении за последние 2 года.xlsx",
+          "IEK/Путь ИЭК 22.09.2026.xlsx",
+          "IEK/Сезонность ИЭК.xlsx",
+          "Systeme electric/MOQ SystemElectric.xlsx",
+          "Systeme electric/Динамика продаж_Syseme Electric_2025-2026.xlsx",
+          "Systeme electric/Ежемесячные остатки SystemElectric 2024-2026.xlsx",
+          "Systeme electric/Ежемесячные продажи в кол-м выражении SystemElectric 2024-2026.xlsx",
+          "Systeme electric/Сезонность SystemElectric 2024-2026.xlsx",
+          "Systeme electric/Товар в пути_SystemElectric на 22.09.2026.xlsx"
+        ],
+        "used": [
+          "IEK/MOQ  ИЭК.xlsx",
+          "IEK/Динамика продаж_2025-2026.xlsx",
+          "IEK/Ежемесячные остатки продукции за последние 2 года  ИЭК.xlsx",
+          "IEK/Ежемесячные продажи в количественном выражении за последние 2 года.xlsx",
+          "IEK/Путь ИЭК 22.09.2026.xlsx",
+          "IEK/Сезонность ИЭК.xlsx",
+          "Systeme electric/MOQ SystemElectric.xlsx",
+          "Systeme electric/Динамика продаж_Syseme Electric_2025-2026.xlsx",
+          "Systeme electric/Ежемесячные остатки SystemElectric 2024-2026.xlsx",
+          "Systeme electric/Ежемесячные продажи в кол-м выражении SystemElectric 2024-2026.xlsx",
+          "Systeme electric/Сезонность SystemElectric 2024-2026.xlsx",
+          "Systeme electric/Товар в пути_SystemElectric на 22.09.2026.xlsx"
+        ],
+        "checks": [
+          {
+            "input": "Все 12 предоставленных XLSX из каталогов IEK и Systeme electric.",
+            "method": "Запуск src.pipeline.run_pipeline() на полном пакете с pandas 2.3.0, numpy 1.26.4 и openpyxl 3.1.5.",
+            "result": "Код выхода 0; products 2491, transactions 248917, monthly_sales 90510, monthly_stock 106620, inventory 3247, inbound 803, seasonality 72, recommendations 3530.",
+            "conclusion": "Входная схема и полный объединённый сценарий совместимы с фактическими книгами кейса."
+          },
+          {
+            "input": "Транзакционные книги SystemElectric и IEK, включая большие валидные движения и footer rows.",
+            "method": "normalize_sales_sign(), detect_one_off_orders(), build_clean_monthly_demand() внутри pipeline; отдельно просмотрены sign-rule и anomaly tests.",
+            "result": "248917 транзакций нормализованы; 141346 daily anomaly records; 1351 итоговых recommendation rows имеют anomaly_count>0; удалено 4832538 units из regular-demand signal.",
+            "conclusion": "Разовые объёмы реально проходят через очистку, а raw и cleaned значения сохраняются раздельно."
+          },
+          {
+            "input": "IEK shipment headers and SystemElectric inbound quantity.",
+            "method": "load_iek_inbound(), summarize_inbound() и test late-arrival behavior.",
+            "result": "803 inbound rows загружены; 307 recommendation rows имеют eligible inbound, суммарно 159677 units; код отделяет total transit от inbound до required date.",
+            "conclusion": "Входящий товар учитывается с датой, а поздние партии не покрывают раннюю потребность."
+          },
+          {
+            "input": "Monthly stock and monthly demand workbooks.",
+            "method": "estimate_stockout_demand() плюс unit tests for zero-sales stockout and positive-demand adjustment.",
+            "result": "На полном прогоне 2 recommendation rows получили estimated_lost_demand>0, суммарно около 126 units; тестовый zero-sales stockout увеличивает adjusted demand относительно raw zero.",
+            "conclusion": "Stockout path реализован консервативно, но он не претендует на точный интервал недоступности при месячных snapshots."
+          },
+          {
+            "input": "Seasonality and growth sources for both suppliers.",
+            "method": "forecast_one()/forecast_with_hierarchy() в полном прогоне и tests/test_forecast.py.",
+            "result": "3388 rows имеют seasonality coefficient вне 1.0±0.05, 2274 rows имеют growth coefficient вне 1.0±0.05; capped growth и seasonality tests passed.",
+            "conclusion": "Сезонный паттерн и устойчивое изменение спроса реально влияют на расчёт, а не только присутствуют в интерфейсе."
+          },
+          {
+            "input": "Свежая установка по requirements.txt.",
+            "method": "Изолированный pytest -q с автоматически выбранным pandas 3.0.6, numpy 2.4.6 и прочими заявленными зависимостями.",
+            "result": "32 passed, 3 failed: два anomaly-теста получают KeyError missing supplier/sku после groupby.apply; test_quality получает KeyError потому что fixture inventory/inbound не содержит supplier.",
+            "conclusion": "Основная логика доказана совместимым окружением, но свежая установка не является полностью воспроизводимой; это подтверждённый gap проекта."
+          }
+        ],
+        "limitations": [
+          "Во входных данных нет customer identifier, поэтому single-customer bulk order нельзя отличить от quantity-based SKU outlier.",
+          "Stock представлены месячными snapshots, а не дневными интервалами; точная длительность stockout не наблюдаема.",
+          "Полного supplier lead-time directory нет; 30 дней остаются настраиваемым planning assumption.",
+          "Визуальная проверка Streamlit намеренно не выполнялась; подтверждены только compile, HTTP health и статический код/UI wiring."
+        ]
+      },
+      "runtime": {
+        "status": "working",
+        "build": "compileall завершился кодом 0 для app.py, src и tests.",
+        "start": "Streamlit стартовал, HTTP health endpoint вернул 200 и ok.",
+        "scenario": "Основной full-data pipeline завершился кодом 0 в совместимом окружении и создал 3530 рекомендаций; отдельный свежий dependency run выявил pandas 3.x compatibility defect.",
+        "environment": "Изолированные контейнеры Python 3.11 с лимитами 3 GB RAM и 2 CPU; для успешного полного сценария pandas 2.3.0, numpy 1.26.4, openpyxl 3.1.5. Внешние API и credentials не нужны.",
+        "summary": "Сборка и старт подтверждены, а содержательный расчёт на всех книгах воспроизведён. Статус working относится к основному сценарию в совместимом разрешении зависимостей; отсутствие pinning отдельно отражено как D1 и не скрывает падения свежего pytest run.",
+        "checks": [
+          {
+            "command": "python -m compileall -q app.py src tests",
+            "result": "Код выхода 0, stdout/stderr пустые.",
+            "id": "build-compileall",
+            "stage": "build",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Синтаксическая компиляция всех application и test modules завершается успешно."
+          },
+          {
+            "command": "streamlit run app.py --server.headless true",
+            "result": "HTTP GET /_stcore/health вернул status 200 и body ok; сервер сообщил Local URL и корректно остановлен после проверки.",
+            "id": "start-http-health",
+            "stage": "start",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Приложение стартует и отвечает на health endpoint без внешнего API-ключа."
+          },
+          {
+            "command": "python -m pytest -q",
+            "result": "Код выхода 1, 32 passed и 3 failed. test_extreme_one_off_sale_does_not_dominate_forecast и test_per_sku_giant_one_off_is_retained_but_excluded_from_clean_demand падают KeyError ['supplier','sku'] при свежем pandas 3.0.6; test_unmatched_skus_are_reported_not_silently_dropped падает KeyError ['supplier'] на fixture.",
+            "id": "tests-fresh-dependencies",
+            "stage": "scenario",
+            "status": "fail",
+            "cause": "project",
+            "expected": "Заявленный pytest -q проходит после чистой установки требований."
+          },
+          {
+            "command": "python -c \"from src.pipeline import run_pipeline; run_pipeline()\"",
+            "result": "Код выхода 0 после 310.7 s; 3530 recommendations, IEK 2931 и SystemElectric 599; суммы recommended_order_qty: IEK 47887, SystemElectric 60867.",
+            "id": "scenario-full-workbooks",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Все предоставленные книги загружаются, расчёт завершается и выдаёт объяснимые рекомендации по поставщикам."
+          }
+        ],
+        "limitations": [
+          "Полный расчёт занимает около 311 секунд в проверенном ограниченном окружении; это наблюдение производительности, а не ошибка результата.",
+          "Визуальное поведение Streamlit не проверялось по обязательной политике user-owned visual verification.",
+          "Свежая установка по широким диапазонам requirements.txt не проходит полный pytest suite; основной сценарий проверен с совместимым pandas 2.3.0."
+        ]
+      },
+      "liveDemo": {
+        "status": "none",
+        "url": null,
+        "notes": "В репозитории нет публичной Live URL. Локальный Streamlit health endpoint подтверждён; отсутствие публичной ссылки само по себе не уменьшало балл."
+      },
+      "fiveHourContext": "Для пятичасового MVP объём реализованного сценария высокий: два формата поставщика, 12 Excel-источников, очищенный спрос, stockout, сезонность, рост, inbound, MOQ, quality report, diagnostics, экспорт и demo mode. Оценка не требует production ERP-интеграции, полного lead-time master или customer-level модели, которых нет в данных кейса. При этом 311-секундный полный прогон и свежая dependency incompatibility важны для практической демонстрации, поэтому они отражены как limitation/defect, а не замаскированы под идеальную воспроизводимость.",
+      "strengths": [
+        "Полный end-to-end расчёт на всех 12 книгах кейса с 3530 итоговыми рекомендациями.",
+        "Детерминированная и объяснимая формула с raw/cleaned/stockout-adjusted demand, growth, seasonality, stock, inbound и MOQ.",
+        "Дата-ориентированное вычитание inbound и отдельное обращение с free/reserved stock.",
+        "Robust per-SKU anomaly detection с сохранением raw quantities для аудита.",
+        "Реальные diagnostics, quality report, supplier-grouped export и demo examples из рассчитанных строк.",
+        "Честно обозначены отсутствующие customer IDs, lead times и точные stockout intervals; автоматическая отправка заказа отсутствует."
+      ],
+      "gaps": [
+        "Свежая установка из requirements.txt разрешает pandas 3.x, где anomaly-путь ломается в build_clean_monthly_demand после groupby.apply; стандартный pytest run дал 3 failures.",
+        "Встроенный test_quality.py передаёт inventory и inbound без обязательной колонки supplier, поэтому собственный тест quality report падает независимо от production-shaped inputs.",
+        "README.md:661-665 противоречит текущему коду: документация говорит, что category не является forecasting input/fallback, но src/pipeline.py:284-317 реально использует category history для forecast hierarchy."
+      ],
+      "futureAdvice": [
+        {
+          "principle": "Фиксируйте контракт runtime для data-processing pipeline.",
+          "why": "D1 показывает, что широкое требование pandas>=2.0 позволяет свежий pandas 3.0.6, в котором groupby.apply меняет форму результата и ломает два теста ключевого anomaly-пути.",
+          "how": "Для следующего хакатона зафиксировать проверенную major/minor версию pandas либо переписать groupby.apply на явный выбор колонок и добавить CI smoke test на минимальной и максимальной поддерживаемой версии. Последовательность: воспроизвести KeyError, исправить форму daily_outliers, прогнать full-data smoke и затем обновить requirements.",
+          "findingIds": [
+            "D1"
+          ],
+          "successCheck": "Чистая установка из requirements.txt проходит pytest и full-data pipeline; результат daily_outliers содержит supplier, sku и day на обеих поддерживаемых версиях pandas.",
+          "timeboxMinutes": 35
+        },
+        {
+          "principle": "Тестовые fixtures должны повторять минимальный production schema contract.",
+          "why": "D2: test_quality.py создаёт пустые inventory/inbound только с sku, хотя data_quality_report группирует по composite key supplier+sku; из-за этого тест проверяет форму fixture, а не бизнес-правило.",
+          "how": "В другом кейсе сначала вынести обязательные поля в маленький fixture builder, добавить supplier к пустым frames и отдельный тест на пустую таблицу с полной схемой. Затем запускать полный suite вместе с одним smoke input, похожим на реальную загрузку.",
+          "findingIds": [
+            "D2"
+          ],
+          "successCheck": "test_quality.py проходит и подтверждает counts sales_missing_moq/moq_missing_sales на frames с полной минимальной схемой.",
+          "timeboxMinutes": 20
+        },
+        {
+          "principle": "README должен быть проверяемым источником истины для демо.",
+          "why": "D3: README отрицает category fallback, но UI и pipeline его используют; такая рассинхронизация может привести к неверному объяснению результата на demo SKU.",
+          "how": "После изменения forecast hierarchy в новом проекте пройти README по каждому заявленному источнику данных, сверить с code path и добавить короткий smoke output с forecast_source. Удалить устаревшее ограничение или явно описать, для каких поставщиков category доступна.",
+          "findingIds": [
+            "D3"
+          ],
+          "successCheck": "Описание category, forecast_source и demo steps совпадает с кодом и с observed full-data output; проверяющий может найти этот путь одной ссылкой на README и source line.",
+          "timeboxMinutes": 25
+        }
+      ],
+      "uncertainties": [
+        "Визуальная разметка, удобство таблиц и charts не оценивались: проверены только статический UI wiring, запуск и HTTP health.",
+        "Публичная Live demo URL отсутствует; локальная доступность подтверждена без браузера.",
+        "Customer-specific bulk order нельзя подтвердить или опровергнуть, потому что customer identifier отсутствует в предоставленных транзакциях.",
+        "Месячные stock snapshots не позволяют определить, был ли товар недоступен весь месяц; stockout adjustment поэтому намеренно консервативен.",
+        "Явные supplier lead times отсутствуют, а 30 дней — настраиваемое предположение, не наблюденное свойство поставщика."
+      ],
+      "reviewPolicyVersion": 2,
+      "assessmentStatus": "ready",
+      "findings": [
+        {
+          "id": "S1",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Полный pipeline на предоставленных книгах формирует итоговые рекомендации по обоим поставщикам.",
+          "expected": "Все входные workbook sources загружаются и основной сценарий завершается содержательным результатом.",
+          "actual": "Код выхода 0; 3530 recommendations: IEK 2931, SystemElectric 599.",
+          "evidence": [
+            "captures/20261002T090024375835-scenario.stdout.log",
+            "src/pipeline.py:246-422"
+          ],
+          "checkIds": [
+            "scenario-full-workbooks"
+          ]
+        },
+        {
+          "id": "S2",
+          "kind": "strength",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Расчёт учитывает eligible inbound по expected arrival date, free/reserved stock, MOQ, anomaly cleaning, stockout adjustment, seasonality и growth.",
+          "expected": "Изменение каждого предусмотренного источника должно проходить через нормализованный расчёт и отражаться в trace/rationale.",
+          "actual": "Соответствующие этапы и поля присутствуют в loaders, pipeline, replenishment, explanation и diagnostics.",
+          "evidence": [
+            "src/loaders.py:100-154",
+            "src/inventory.py:20-37",
+            "src/pipeline.py:246-400",
+            "src/explanations.py:4-43",
+            "src/diagnostics.py:4-52"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "D1",
+          "kind": "defect",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Свежая установка разрешённых зависимостей не проходит anomaly path.",
+          "expected": "python -m pytest -q после pip install -r requirements.txt проходит, а build_clean_monthly_demand получает supplier/sku/day columns.",
+          "actual": "При pandas 3.0.6 два теста падают KeyError ['supplier','sku']; outliers.py:42-46 использует groupby.apply(score), а outliers.py:49-61 затем ожидает grouping columns в daily_outliers.",
+          "evidence": [
+            "captures/20261002T085528467920-test.stdout.log",
+            "src/outliers.py:42-61",
+            "requirements.txt:1-6"
+          ],
+          "checkIds": [
+            "tests-fresh-dependencies"
+          ]
+        },
+        {
+          "id": "D2",
+          "kind": "defect",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Один встроенный quality test использует fixture, несовместимый с контрактом data_quality_report.",
+          "expected": "test_unmatched_skus_are_reported_not_silently_dropped проверяет counts на frames, содержащих supplier и sku.",
+          "actual": "tests/test_quality.py:8-9 создаёт inventory/inbound только с sku; src/quality.py:6 требует frame[['supplier','sku']], поэтому тест падает KeyError.",
+          "evidence": [
+            "captures/20261002T085528467920-test.stdout.log",
+            "tests/test_quality.py:5-17",
+            "src/quality.py:4-11"
+          ],
+          "checkIds": [
+            "tests-fresh-dependencies"
+          ]
+        },
+        {
+          "id": "D3",
+          "kind": "defect",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "README содержит устаревшее утверждение о том, что category не используется как forecasting input/fallback.",
+          "expected": "Документация должна совпадать с фактической forecast hierarchy и объяснять category fallback.",
+          "actual": "README.md:661-665 отрицает category fallback, но src/pipeline.py:284-317 строит category_demand, category_histories и передаёт category history в forecast_with_hierarchy.",
+          "evidence": [
+            "README.md:661-665",
+            "src/pipeline.py:284-317",
+            "tests/test_forecast.py:109-121"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "L1",
+          "kind": "limitation",
+          "verification": "source",
+          "responsibility": "review_environment",
+          "claim": "Customer-specific bulk-order behavior не может быть проверен по предоставленным данным.",
+          "expected": "Для customer-level исключения нужен обезличенный customer identifier в транзакционной схеме.",
+          "actual": "В книгах нет такого поля; код ограничивается per-SKU quantity anomaly и не фабрикует customer IDs.",
+          "evidence": [
+            "README.md:619-625",
+            "src/outliers.py:5-6",
+            "docs/DATA_AUDIT.md:26-28"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "L2",
+          "kind": "limitation",
+          "verification": "source",
+          "responsibility": "review_environment",
+          "claim": "Точная длительность stockout и фактический supplier lead time не наблюдаются.",
+          "expected": "Для точного lost demand нужны дневные stock intervals, для lead-time расчёта — supplier directory или события поставок.",
+          "actual": "Есть месячные snapshots и даты известных inbound; приложение использует conservative fraction и configurable 30-day assumption.",
+          "evidence": [
+            "README.md:627-647",
+            "src/config.py:29-39",
+            "src/stockouts.py:4-40"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "L3",
+          "kind": "limitation",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Полный расчёт на реальных книгах заметно тяжелее unit checks.",
+          "expected": "Основной dashboard calculation завершается в разумное время для демонстрации.",
+          "actual": "Full-data run завершился успешно примерно за 310.7 секунд при 248917 транзакциях и 3530 рекомендациях.",
+          "evidence": [
+            "captures/20261002T090024375835-scenario.stdout.log"
+          ],
+          "checkIds": [
+            "scenario-full-workbooks"
+          ]
+        }
+      ],
+      "gapFindingIds": [
+        "D1",
+        "D2",
+        "D3"
+      ]
+    }
+  ],
+  "score": 87.0,
+  "status": "complete",
+  "expectedJudges": 1
+}

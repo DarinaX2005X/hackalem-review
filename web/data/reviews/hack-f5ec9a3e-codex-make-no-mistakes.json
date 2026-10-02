@@ -1,0 +1,878 @@
+{
+  "methodVersion": 4,
+  "repoId": "hack-f5ec9a3e-codex-make-no-mistakes",
+  "repoUrl": "https://github.com/BAITC-Hacks/hack-f5ec9a3e-codex-make-no-mistakes",
+  "caseId": 5,
+  "snapshot": "ab132d4c74007557fe9ec26a2bdb574f9bf8c2b5",
+  "judges": [
+    {
+      "methodVersion": 4,
+      "repoId": "hack-f5ec9a3e-codex-make-no-mistakes",
+      "caseId": 5,
+      "model": "GPT-5.6 Luna",
+      "snapshot": "ab132d4c74007557fe9ec26a2bdb574f9bf8c2b5",
+      "overallSummary": "Проект содержит сильный и воспроизводимый backend-прототип расчёта пополнения: импортирует 12 XLSX, учитывает остаток, транзит, явные сезонные и ростовые допущения, stockout-компенсацию, статистические всплески, единицы закупки и ранний дефицит, а сценарий проходит ручное изменение, утверждение и CSV-экспорт. Это подтверждено 21 acceptance-тестом, чистой сборкой frontend, 10 frontend-тестами и HTTP-проверкой PostgreSQL-backed API. Главный разрыв с задачей находится в фактически смонтированном UI: main.jsx запускает синтетический ElektroWorkspace, а подключённый к каталогу и сохранённым сценариям ConnectedWorkspace не является entry point. Поэтому реальный набор данных доступен через backend/API, но не доведён до основного UI-сценария. Дополнительно сезонные XLSX сохраняются как contextual и не превращаются автоматически в per-SKU факторы, а baseline-манифест не соответствует размеру одного сохранённого файла. Оценка готова и основана на исходниках, тестах, сборке, запуске и HTTP/API-проверках; браузерная визуальная проверка не выполнялась по установленной политике.",
+      "global": {
+        "criteria": [
+          {
+            "name": "Ценность решения",
+            "score": 22,
+            "max": 25,
+            "awarded": "Решение адресует ручной и нерегулярный расчёт закупки: менеджер получает потребность, объяснение, риск раннего дефицита и безопасный путь до утверждённого CSV.",
+            "deductions": "Снято 3 балла за synthetic entry point и отсутствие доказанного автоматического использования сезонных источников.",
+            "evidence": [
+              "cases/5/task.txt:2-4",
+              "backend/src/replenishment/planning/calculator.py:289-329",
+              "frontend/src/purchasing/main.jsx:3-6",
+              "captures/20261002T093859119204-http-api.stdout.log"
+            ],
+            "deductionItems": [
+              {
+                "points": 1.5,
+                "findingId": "D-UI-REAL-DATA",
+                "reason": "Ценность для закупщика снижена: основной экран строит строки из локального synthetic products, поэтому импортированные реальные SKU не являются входом основного сценария."
+              },
+              {
+                "points": 1.5,
+                "findingId": "D-SEASONAL-UNCONNECTED",
+                "reason": "Сезонные книги принимаются и сохраняются, но source preparation помечает supplier seasonality contextual; real-data seasonal result не доказан."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Понятная операционная проблема",
+                "implementation": "История спроса превращается в прогноз на выбранный период, из него вычитаются остаток и приход, затем применяются буфер, единицы, минимум и кратность.",
+                "value": "Это снижает ручную консолидацию Excel и делает причину количества видимой менеджеру.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:60-60",
+                  "backend/src/replenishment/planning/calculator.py:289-329"
+                ]
+              },
+              {
+                "aspect": "Безопасность решения",
+                "implementation": "needs_input блокирует неизвестные склад, остаток и полноту транзита; scenario_only и approve разделены.",
+                "value": "Пользователь не получает ложную точность и не отправляет заказ автоматически.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/src/replenishment/planning/calculator.py:194-229",
+                  "captures/20261002T093954596200-http-workflow-retry.stdout.log"
+                ]
+              },
+              {
+                "aspect": "Объяснимый результат",
+                "implementation": "ResultRow содержит forecast, need, recommendation, daily_balances, shortage, incoming decisions и русскоязычное explanation.",
+                "value": "Видно не только число, но и покрытие, транзит, округление и ранний дефицит.",
+                "verification": "source",
+                "evidence": [
+                  "backend/src/replenishment/planning/calculator.py:301-335",
+                  "frontend/src/purchasing/elektro-workspace.jsx:114-123"
+                ]
+              },
+              {
+                "aspect": "Честная граница ценности",
+                "implementation": "Документы не выдают synthetic tests за экономию и перечисляют неподтверждённые stock, lead time, customer IDs, stockout и BOM.",
+                "value": "Это делает обещание реалистичным для MVP.",
+                "verification": "source",
+                "evidence": [
+                  "docs/BACKEND_ACCEPTANCE.md:43-52",
+                  "docs/DELIVERY_VERIFICATION.md:89-105"
+                ]
+              }
+            ],
+            "scoreReasoning": "22/25 заслужены за прямое попадание в проблему закупщика, объяснимую арифметику и безопасный ручной контроль. До максимума не хватает доведения imported товарных данных до главного UI и рабочего использования сезонных источников."
+          },
+          {
+            "name": "Результат и качество решения",
+            "score": 15,
+            "max": 20,
+            "awarded": "Backend-сценарий целостен и воспроизводим от входа до утверждённого CSV; качество снижается из-за разрыва с фактически запускаемым UI и одного падающего baseline-аудита.",
+            "deductions": "Снято 5 баллов: 3 за synthetic UI, 1.5 за неиспользование seasonal inputs и 0.5 за baseline drift.",
+            "evidence": [
+              "captures/20261002T093543984587-scenario-planning.stdout.log",
+              "captures/20261002T093859119204-http-api.stdout.log",
+              "captures/20261002T093954596200-http-workflow-retry.stdout.log",
+              "captures/20261002T093308947305-test-targeted.stdout.log"
+            ],
+            "deductionItems": [
+              {
+                "points": 3,
+                "findingId": "D-UI-REAL-DATA",
+                "reason": "Главный UI использует synthetic rows, а imported catalog и persistence остаются в неиспользуемом ConnectedWorkspace."
+              },
+              {
+                "points": 1.5,
+                "findingId": "D-SEASONAL-UNCONNECTED",
+                "reason": "Seasonal tables импортируются, но source adapter оставляет их contextual и calculator принимает только явные factors."
+              },
+              {
+                "points": 0.5,
+                "findingId": "D-AUDIT-BASELINE",
+                "reason": "Полный regression gate содержит подтверждённый mismatch 5,016 против 4,994 bytes."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Детерминированный расчёт",
+                "implementation": "calculate() строит PlanningResult из PlanningRequest, использует Fraction до ceiling и не создаёт автоматически утверждённый заказ.",
+                "value": "Одинаковый вход даёт проверяемый результат, а дробный остаток не меняет заказ.",
+                "verification": "source",
+                "evidence": [
+                  "backend/src/replenishment/planning/calculator.py:27-29",
+                  "backend/src/replenishment/planning/calculator.py:340-349"
+                ]
+              },
+              {
+                "aspect": "Неполные входы",
+                "implementation": "Критические неизвестные сохраняются в missing_inputs и приводят к null recommendation.",
+                "value": "Незнание не подменяется нулём.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/tests/test_purchasing_acceptance.py:184-197",
+                  "captures/20261002T093543984587-scenario-planning.stdout.log"
+                ]
+              },
+              {
+                "aspect": "Workflow",
+                "implementation": "HTTP-проверка создала revision 1, сохранила override 110 с причиной в revision 2, утвердила и экспортировала CSV.",
+                "value": "Проверен целостный пользовательский результат, а не только formula.",
+                "verification": "observed",
+                "evidence": [
+                  "captures/20261002T093954596200-http-workflow-retry.stdout.log",
+                  "backend/src/replenishment/orders/writing.py:115-201"
+                ]
+              },
+              {
+                "aspect": "Регрессии",
+                "implementation": "Acceptance suite прошёл 21 test; Vitest сообщил 7 files/10 tests; production build прошёл.",
+                "value": "Покрыты transit, growth, bulk, stockout, timing и UI guards.",
+                "verification": "observed",
+                "evidence": [
+                  "captures/20261002T093543984587-scenario-planning.stdout.log",
+                  "captures/20261002T093420559405-test-frontend.stdout.log"
+                ]
+              }
+            ],
+            "scoreReasoning": "15/20 отражают работоспособность backend/API и численные тесты. Основной пользовательский результат всё ещё демонстрационный: фактически смонтированный экран не доводит imported source selection и server-side saved scenarios до менеджера; baseline gate также красный."
+          },
+          {
+            "name": "Инновационность",
+            "score": 12,
+            "max": 15,
+            "awarded": "Сильная сторона — не простое среднее продаж, а объяснимый слой с очисткой всплесков, группировкой анонимного клиента, lost demand, daily balance и точным округлением.",
+            "deductions": "Снято 3 балла за явные вместо автоматически извлечённых seasonal factors и неиспользованный source-aware main UI.",
+            "evidence": [
+              "backend/src/replenishment/planning/calculator.py:60-159",
+              "backend/src/replenishment/demand/cleaning.py:61-115",
+              "backend/tests/test_purchasing_acceptance.py:99-182",
+              "frontend/src/purchasing/main.jsx:3-6"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "D-SEASONAL-UNCONNECTED",
+                "reason": "Автоматическое извлечение seasonal pattern из seasonal workbooks не подключено к calculator."
+              },
+              {
+                "points": 1,
+                "findingId": "D-UI-REAL-DATA",
+                "reason": "Source-aware преимущество не проявляется в основном интерфейсе, который собирает synthetic rows."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "EWMA с явным методом",
+                "implementation": "Для 56 дней auto использует weekly EWMA, для короткой истории/stockout compensation — history_mean, метод возвращается в строке.",
+                "value": "Видно, какой метод применён; experimental ML не маскируется под production.",
+                "verification": "source",
+                "evidence": [
+                  "backend/src/replenishment/planning/calculator.py:136-159",
+                  "README.md:8-24"
+                ]
+              },
+              {
+                "aspect": "Bulk и устойчивый рост",
+                "implementation": "clean_orders использует median/MAD и сохраняет recurring elevation; same-day documents одного customer_id объединяются.",
+                "value": "Единичный проект не раздувает регулярный заказ, но устойчивый рост не удаляется как выброс.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/src/replenishment/demand/cleaning.py:61-115",
+                  "backend/tests/test_purchasing_acceptance.py:129-165"
+                ]
+              },
+              {
+                "aspect": "Lost demand и время",
+                "implementation": "Сопоставимые дни недели восстанавливают stockout; daily balances показывают приход до расхода, first shortage и maximum pre-arrival shortfall.",
+                "value": "Это объясняет, почему обычный новый заказ не исправит ранний дефицит.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/src/replenishment/planning/calculator.py:111-135",
+                  "backend/tests/test_purchasing_acceptance.py:167-182"
+                ]
+              },
+              {
+                "aspect": "Exact purchase arithmetic",
+                "implementation": "Need переводится в purchase unit, затем minimum/multiple; Fraction предотвращает лишнюю единицу на repeating average.",
+                "value": "Предметно важная защита от over-ordering.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/src/replenishment/planning/calculator.py:289-300",
+                  "backend/tests/test_purchasing_acceptance.py:199-220"
+                ]
+              }
+            ],
+            "scoreReasoning": "12/15 заслужены за policy-комбинацию EWMA, bulk/MAD, customer grouping, stockout recovery, time-aware balances и exact arithmetic. До максимума не хватает measured real-data seasonal policy и доставки source-aware решения в основной UI."
+          },
+          {
+            "name": "Потенциал развития и масштабирования",
+            "score": 15,
+            "max": 20,
+            "awarded": "Архитектура разделяет intake, source preparation, pure planning, API и persistence; это даёт базу для новых поставщиков и политик.",
+            "deductions": "Снято 5 баллов за незавершённый real-data UI, неавтоматическую seasonal policy и baseline drift.",
+            "evidence": [
+              "backend/pyproject.toml:41-62",
+              "backend/src/replenishment/planning_sources.py:59-220",
+              "backend/src/replenishment/api/app.py:97-208",
+              "docs/DELIVERY_VERIFICATION.md:89-105"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "D-UI-REAL-DATA",
+                "reason": "Масштабирование по SKU/складам не завершено в основном UI: он не использует source catalog и persisted revisions."
+              },
+              {
+                "points": 2,
+                "findingId": "D-SEASONAL-UNCONNECTED",
+                "reason": "Нет общего подтверждённого преобразования supplier seasonal summaries в per-SKU policy."
+              },
+              {
+                "points": 1,
+                "findingId": "D-AUDIT-BASELINE",
+                "reason": "Manifest drift требует исправления перед расширением source/audit registry."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Модульные границы",
+                "implementation": "import-linter contracts разделяют kernel, domain storage, arithmetic и I/O; pure calculator не подключается к базе.",
+                "value": "Новые adapters можно добавлять вокруг стабильной арифметики.",
+                "verification": "source",
+                "evidence": [
+                  "backend/pyproject.toml:41-62",
+                  "backend/src/replenishment/planning/calculator.py:340-349"
+                ]
+              },
+              {
+                "aspect": "Provenance",
+                "implementation": "prepare_source_input хранит source refs, версии, supplier/SKU identity и usage; competing versions не объединяются молча.",
+                "value": "Это переносимо на новых поставщиков с трассировкой происхождения.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/src/replenishment/planning_sources.py:59-115",
+                  "captures/20261002T093916473602-http-source-input.stdout.log"
+                ]
+              },
+              {
+                "aspect": "Версионность",
+                "implementation": "ScenarioRevision/Approval хранят immutable revisions; stale operations получают конфликт.",
+                "value": "Есть база для multi-manager audit trail.",
+                "verification": "source",
+                "evidence": [
+                  "backend/src/replenishment/orders/writing.py:103-159",
+                  "backend/src/replenishment/api/orders.py:99-115"
+                ]
+              },
+              {
+                "aspect": "Исследовательский контур",
+                "implementation": "README разделяет EWMA baseline и LightGBM challenger и не объявляет ML автоматически победившим.",
+                "value": "Новые модели можно вводить через horizon-specific gate.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:26-52",
+                  "experiments/INDEX.md:1-20"
+                ]
+              }
+            ],
+            "scoreReasoning": "15/20: хорошая основа для развития, но самый ценный real-data UI-контур не смонтирован, seasonal summaries не имеют автоматической policy, а baseline-аудит уже красный."
+          },
+          {
+            "name": "Презентация, демо и ответы на вопросы",
+            "score": 14,
+            "max": 20,
+            "awarded": "README, двуязычные документы и CLI/API walkthrough объясняют запуск, формулу, ограничения и ожидаемые synthetic outputs; HTTP/API demo воспроизводим.",
+            "deductions": "Снято 6 баллов: 3 за несоответствие документации и main entry point, 2 за baseline drift и 1 за отсутствие real-data seasonal demonstration. Устная презентация и визуальный review не оценивались.",
+            "evidence": [
+              "README.md:62-143",
+              "docs/STARTUP.md:77-82",
+              "docs/BACKEND_ACCEPTANCE.md:28-41",
+              "frontend/src/purchasing/main.jsx:1-6",
+              "captures/20261002T093859119204-http-api.stdout.log"
+            ],
+            "deductionItems": [
+              {
+                "points": 3,
+                "findingId": "D-UI-REAL-DATA",
+                "reason": "README описывает connected workspace как основной, но main.jsx фактически монтирует synthetic ElektroWorkspace."
+              },
+              {
+                "points": 2,
+                "findingId": "D-AUDIT-BASELINE",
+                "reason": "Documented quality gate не воспроизводится чисто из-за 5,016 vs 4,994 bytes."
+              },
+              {
+                "points": 1,
+                "findingId": "D-SEASONAL-UNCONNECTED",
+                "reason": "Нет real-data walkthrough, показывающего влияние supplied seasonality на конкретный SKU."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Пошаговый запуск",
+                "implementation": "README/STARTUP описывают Docker, uv, Node, PostgreSQL, миграции, import, API и frontend; acceptance даёт CLI без базы.",
+                "value": "Другой проверяющий может воспроизвести слои запуска.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:62-100",
+                  "docs/STARTUP.md:3-27"
+                ]
+              },
+              {
+                "aspect": "Concrete checkpoints",
+                "implementation": "Зафиксированы baseline 100, more-transit 70, early-shortage 0 с предупреждением и семь CLI cases.",
+                "value": "Демо можно оценивать по числовому результату.",
+                "verification": "observed",
+                "evidence": [
+                  "docs/STARTUP.md:77-82",
+                  "captures/20261002T093543984587-scenario-planning.stdout.log"
+                ]
+              },
+              {
+                "aspect": "Ограничения",
+                "implementation": "Документы прямо сообщают scenario_only, отсутствие BOM, customer IDs/точных stockout и неподтверждённую 1C compatibility.",
+                "value": "Это повышает доверие к презентации.",
+                "verification": "source",
+                "evidence": [
+                  "docs/DELIVERY_VERIFICATION.md:89-105",
+                  "docs/BACKEND_ACCEPTANCE.md:43-52"
+                ]
+              },
+              {
+                "aspect": "API walkthrough",
+                "implementation": "health 200, demo-cases, calculation 200, затем create/update/approve/export с revision 2.",
+                "value": "Backend demo убедительно воспроизводим без browser.",
+                "verification": "observed",
+                "evidence": [
+                  "captures/20261002T093859119204-http-api.stdout.log",
+                  "captures/20261002T093954596200-http-workflow-retry.stdout.log"
+                ]
+              }
+            ],
+            "scoreReasoning": "14/20: документация заметно глубже среднего README, но claimed connected main UI не совпадает с фактическим entry point, baseline gate падает, а real-data seasonal outcome не подтверждён."
+          }
+        ],
+        "total": 78
+      },
+      "case": null,
+      "judgeScore": 78,
+      "caseRequirements": [
+        {
+          "requirement": "Базовая потребность по SKU учитывает историю, остаток, транзит, supplier/category context и рост.",
+          "status": "partial",
+          "explanation": "Pure calculator принимает входы и acceptance проверяет transit, category buffer, growth, stock и purchase units. Source preparation сохраняет supplier/SKU и provenance, но для реальных SKU часто оставляет stock, transit completeness, conversion и category policy неизвестными; основной UI synthetic.",
+          "evidence": [
+            "backend/src/replenishment/planning/calculator.py:209-290",
+            "backend/tests/test_purchasing_acceptance.py:86-128",
+            "backend/src/replenishment/planning_sources.py:97-115",
+            "captures/20261002T093916473602-http-source-input.stdout.log"
+          ]
+        },
+        {
+          "requirement": "Сезонность и устойчивый рост влияют на прогноз, а не только среднее.",
+          "status": "partial",
+          "explanation": "Synthetic test проверяет 12, 12, 24, 24 при October factor 2 и growth 20%. В source path seasonal books импортируются, но помечаются contextual и требуют явных month factors; automatic per-SKU derivation отсутствует.",
+          "evidence": [
+            "backend/tests/test_purchasing_acceptance.py:99-109",
+            "backend/src/replenishment/planning/calculator.py:243-277",
+            "backend/src/replenishment/planning_sources.py:198-211",
+            "docs/DELIVERY_VERIFICATION.md:101-104"
+          ]
+        },
+        {
+          "requirement": "Известный stockout компенсирует потерянный спрос вверх относительно сырых продаж.",
+          "status": "partial",
+          "explanation": "Калькулятор восстанавливает сопоставимые дни недели и test проверяет 14 дней/140 units. Реальные книги не дают точных availability intervals, поэтому real-data stockout result не доказан; UI synthetic.",
+          "evidence": [
+            "backend/src/replenishment/planning/calculator.py:111-135",
+            "backend/tests/test_purchasing_acceptance.py:167-182",
+            "docs/DELIVERY_VERIFICATION.md:96-98"
+          ]
+        },
+        {
+          "requirement": "Разовые крупные заказы, включая документы одного клиента, не раздувают регулярный заказ.",
+          "status": "partial",
+          "explanation": "clean_orders использует median/MAD и сохраняет sustained elevation; customer_id объединяется в same-day group. Synthetic variants проходят, но source movements имеют customer_id=None, поэтому real customer concentration не установлена.",
+          "evidence": [
+            "backend/src/replenishment/demand/cleaning.py:61-115",
+            "backend/src/replenishment/planning/calculator.py:60-105",
+            "backend/tests/test_purchasing_acceptance.py:142-165",
+            "backend/src/replenishment/planning_sources.py:135-141"
+          ]
+        },
+        {
+          "requirement": "Итоговые позиции видны по поставщикам, имеют объяснение и экспорт.",
+          "status": "partial",
+          "explanation": "Backend result содержит supplier, explanation, source refs и CSV; CLI/API baseline это показывает. Фактический main UI группирует synthetic rows, а imported catalog recommendations не доведены до него; 1C compatibility не подтверждена.",
+          "evidence": [
+            "backend/src/replenishment/planning/calculator.py:319-335",
+            "backend/src/replenishment/orders/writing.py:170-201",
+            "captures/20261002T093954596200-http-workflow-retry.stdout.log",
+            "docs/DELIVERY_VERIFICATION.md:98-99"
+          ]
+        },
+        {
+          "requirement": "Заказ нельзя отправить без ручного подтверждения.",
+          "status": "met",
+          "explanation": "Есть отдельный approve endpoint, approval привязано к revision, export требует approved revision; supplier-send операции нет. Frontend сообщает, что автоматической отправки нет.",
+          "evidence": [
+            "backend/src/replenishment/api/orders.py:106-115",
+            "backend/src/replenishment/orders/writing.py:135-201",
+            "frontend/src/purchasing/elektro-workspace.jsx:104-111",
+            "captures/20261002T093954596200-http-workflow-retry.stdout.log"
+          ]
+        },
+        {
+          "requirement": "Данные клиентов обезличены.",
+          "status": "met",
+          "explanation": "Source adapter не выдумывает customer IDs и реальные movement rows получают customer_id=None; synthetic tests используют только явно anonymous IDs. Это подтверждает отсутствие попытки восстановить личность.",
+          "evidence": [
+            "backend/src/replenishment/planning_sources.py:81-85",
+            "backend/src/replenishment/planning_sources.py:135-141",
+            "backend/tests/test_purchasing_acceptance.py:142-165"
+          ]
+        },
+        {
+          "requirement": "Неизвестные критические входы не подменяются нулём.",
+          "status": "met",
+          "explanation": "Unknown warehouse, stock, conversion и incoming completeness yield needs_input и null recommendation; usage различает unavailable/contextual.",
+          "evidence": [
+            "backend/tests/test_purchasing_acceptance.py:184-197",
+            "backend/src/replenishment/planning/calculator.py:209-229",
+            "captures/20261002T093916473602-http-source-input.stdout.log"
+          ]
+        },
+        {
+          "requirement": "Выход совместим с 1C.",
+          "status": "unverified",
+          "explanation": "CSV технически содержит SKU, supplier, warehouse, quantities, status, explanation, refs и revision, но accepted 1C columns/identities оставлены для sponsor confirmation; наличие CSV не доказывает совместимость.",
+          "evidence": [
+            "backend/src/replenishment/orders/writing.py:178-201",
+            "docs/DELIVERY_VERIFICATION.md:98-99",
+            "captures/20261002T093954596200-http-workflow-retry.stdout.log"
+          ]
+        },
+        {
+          "requirement": "BOM не должен молча игнорироваться или выдумываться.",
+          "status": "partial",
+          "explanation": "BOM calculation не реализован, но результат явно предупреждает, что BOM не задан и components не рассчитаны. Это корректная граница MVP, но не выполнение входного требования.",
+          "evidence": [
+            "backend/src/replenishment/planning/calculator.py:282-284",
+            "docs/DELIVERY_VERIFICATION.md:97-99"
+          ]
+        }
+      ],
+      "testData": {
+        "provided": [
+          "cases/5/case-data/IEK/MOQ  ИЭК.xlsx",
+          "cases/5/case-data/IEK/Динамика продаж_2025-2026.xlsx",
+          "cases/5/case-data/IEK/Ежемесячные остатки продукции за последние 2 года  ИЭК.xlsx",
+          "cases/5/case-data/IEK/Ежемесячные продажи в количественном выражении за последние 2 года.xlsx",
+          "cases/5/case-data/IEK/Путь ИЭК 22.09.2026.xlsx",
+          "cases/5/case-data/IEK/Сезонность ИЭК.xlsx",
+          "cases/5/case-data/Systeme electric/MOQ SystemElectric.xlsx",
+          "cases/5/case-data/Systeme electric/Динамика продаж_Syseme Electric_2025-2026.xlsx",
+          "cases/5/case-data/Systeme electric/Ежемесячные остатки SystemElectric 2024-2026.xlsx",
+          "cases/5/case-data/Systeme electric/Ежемесячные продажи в кол-м выражении SystemElectric 2024-2026.xlsx",
+          "cases/5/case-data/Systeme electric/Сезонность SystemElectric 2024-2026.xlsx",
+          "cases/5/case-data/Systeme electric/Товар в пути_SystemElectric на 22.09.2026.xlsx"
+        ],
+        "used": [
+          "docs/data/IEK/MOQ  ИЭК.xlsx",
+          "docs/data/IEK/Динамика продаж_2025-2026.xlsx",
+          "docs/data/IEK/Ежемесячные остатки продукции за последние 2 года  ИЭК.xlsx",
+          "docs/data/IEK/Ежемесячные продажи в количественном выражении за последние 2 года.xlsx",
+          "docs/data/IEK/Путь ИЭК 22.09.2026.xlsx",
+          "docs/data/IEK/Сезонность ИЭК.xlsx",
+          "docs/data/Systeme electric/MOQ SystemElectric.xlsx",
+          "docs/data/Systeme electric/Динамика продаж_Syseme Electric_2025-2026.xlsx",
+          "docs/data/Systeme electric/Ежемесячные остатки SystemElectric 2024-2026.xlsx",
+          "docs/data/Systeme electric/Ежемесячные продажи в кол-м выражении SystemElectric 2024-2026.xlsx",
+          "docs/data/Systeme electric/Сезонность SystemElectric 2024-2026.xlsx",
+          "docs/data/Systeme electric/Товар в пути_SystemElectric на 22.09.2026.xlsx"
+        ],
+        "checks": [
+          {
+            "input": "12 предоставленных XLSX из IEK и Systeme electric.",
+            "method": "Сравнение 12 пар по SHA-256/размеру и openpyxl read_only inspection каждого файла.",
+            "result": "Все 12 пар byte-identical; открыты 12 workbook и 14 листов суммарно. Dimensions зафиксированы в captures/20261002T094049551911-test-data-structure.stdout.log.",
+            "conclusion": "Тестовый набор применён к тому же содержимому, которое импортирует проект."
+          },
+          {
+            "input": "Все 12 XLSX из docs/data.",
+            "method": "import_excel после миграции на чистой PostgreSQL.",
+            "result": "Каждый файл получил status=imported; logs показывают movements, monthly_stock, seasonality, quantity_rules, shipments и findings.",
+            "conclusion": "Excel ingestion и provenance работают на полном наборе; не каждое поле пригодно для арифметики."
+          },
+          {
+            "input": "Imported catalog product, planning_date=2026-09-23, warehouse=Алматы.",
+            "method": "GET catalog и POST /api/v1/planning/source-input.",
+            "result": "Catalog вернул 3,909 products; source-input HTTP 200 и одну row; usage явно показал contextual/unavailable для movements, stock, shipments, MOQ и monthly-sales.",
+            "conclusion": "Source preparation консервативно сохраняет ограничения, но выбранная real row не становится готовым numeric order автоматически."
+          },
+          {
+            "input": "Synthetic acceptance cases: transit, seasonality/growth, bulk/customer, stockout и timing.",
+            "method": "pytest tests/test_purchasing_acceptance.py и planning_demo --json.",
+            "result": "21 passed; JSON содержит baseline, more-transit, bulk, seasonal-growth, stockout, early-shortage, missing-inputs.",
+            "conclusion": "Механизмы проверены; synthetic fixtures не доказывают real customer/stockout accuracy."
+          },
+          {
+            "input": "Baseline demo и ручная корректировка.",
+            "method": "HTTP health/demo/calculation и scenario create → update → approve → export.",
+            "result": "health 200; demo-cases 7; calculation 200 recommendation 100; create 201 revision 1; update 200 revision 2 quantity 110; approve/export 200.",
+            "conclusion": "Основной backend user-result воспроизводим без browser и external key."
+          }
+        ],
+        "limitations": [
+          "Книги не содержат подтверждённых anonymous customer IDs и точных stockout intervals.",
+          "Seasonality, growth, lead time, stock scope, conversions и BOM требуют подтверждённой business policy.",
+          "Imported workbooks проверены через ingestion/API, но не через полноценный visual real-data workflow, поскольку main UI synthetic.",
+          "Визуальная browser-проверка не выполнялась по user-owned visual verification policy."
+        ]
+      },
+      "runtime": {
+        "status": "partial",
+        "build": "Backend image build passed; frontend production build passed.",
+        "start": "PostgreSQL, migrations, import of all 12 workbooks and Uvicorn startup passed; /api/v1/health returned 200.",
+        "scenario": "Backend/API scenario and persistence workflow passed. The primary UI path is only partially representative because its entry point uses synthetic data.",
+        "environment": "Изолированные контейнеры с Python 3.12/uv, Node 22 и PostgreSQL 17; внешние API credentials не предоставлялись.",
+        "summary": "Приложение реально стартует и backend scenario reproduces, но status partial отражает подтверждённый разрыв между imported-data backend/connected workspace и фактически монтируемым synthetic main UI.",
+        "checks": [
+          {
+            "command": "docker build backend/Dockerfile",
+            "result": "Backend image built successfully with pinned uv dependencies.",
+            "id": "build-backend",
+            "stage": "build",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Backend image builds from the pinned snapshot."
+          },
+          {
+            "command": "npm run build",
+            "result": "TypeScript/Vite build passed and generated production assets.",
+            "id": "build-frontend",
+            "stage": "build",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Frontend production build completes without errors."
+          },
+          {
+            "command": "python -m pytest -q",
+            "result": "Container run: 318 passed, 30 skipped, 3 failed. Two failures were incomplete review mounts and passed in corrected targeted run; remaining project failure is manifest byte drift.",
+            "id": "backend-full-suite",
+            "stage": "scenario",
+            "status": "fail",
+            "cause": "project",
+            "expected": "Backend regression suite passes against the repository snapshot."
+          },
+          {
+            "command": "python -m pytest -q tests/test_purchasing_acceptance.py",
+            "result": "21 passed in 0.39s.",
+            "id": "backend-acceptance",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Case mechanisms meet fixed behavioral assertions."
+          },
+          {
+            "command": "npm test",
+            "result": "7 test files and 10 tests passed.",
+            "id": "frontend-tests",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Frontend behavior tests pass."
+          },
+          {
+            "command": "alembic upgrade head; import_excel docs/data; uvicorn",
+            "result": "Migration completed, all 12 workbooks imported, service became ready, /api/v1/health returned HTTP 200.",
+            "id": "start-api",
+            "stage": "start",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Backend starts on fresh PostgreSQL and exposes healthy HTTP."
+          },
+          {
+            "command": "GET /api/v1/health; GET /api/v1/planning/demo-cases; POST /api/v1/planning/calculate",
+            "result": "Health/calculation HTTP 200; seven cases; baseline scenario_only recommendation 100.",
+            "id": "http-api",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "API returns validated cases and explained calculation."
+          },
+          {
+            "command": "POST /api/v1/planning/source-input",
+            "result": "HTTP 200 for imported catalog product; 3,909 catalog products and explicit contextual/unavailable usage states.",
+            "id": "http-source-input",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Source preparation returns traceable input without inventing unknown values."
+          },
+          {
+            "command": "POST /api/v1/scenarios; PUT /api/v1/scenarios/{id}; POST approve; GET export",
+            "result": "Create 201 revision 1; update 200 revision 2 with reason/quantity 110; approve 200; export 200 with approved and recommended quantities.",
+            "id": "http-workflow",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Manager can save, explain override, approve exact revision and export approved content."
+          },
+          {
+            "command": "openpyxl read_only workbook inspection",
+            "result": "12 workbooks opened and 14 sheets enumerated.",
+            "id": "test-data-structure",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Provided case files are readable and used as project inputs."
+          },
+          {
+            "command": "static source audit: frontend/src/purchasing/main.jsx",
+            "result": "Entry point renders ElektroWorkspace from replenishment-demo.js; ConnectedWorkspace is not imported by main.jsx.",
+            "id": "ui-entry-source",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Identify the actual shipped workspace before claiming real-data UI behavior."
+          }
+        ],
+        "limitations": [
+          "Визуальный browser review и скриншоты запрещены пользовательской политикой; UI оценён по source и jsdom tests.",
+          "OpenAI credentials намеренно не предоставлялись; deterministic calculator/API проверены, внешняя LLM integration оценена по исходникам.",
+          "Real imported source preparation оставляет неподтверждённые поля needs_input/contextual; это граница данных и политики.",
+          "Публичной live URL нет; локальный HTTP/API путь проверен отдельно."
+        ]
+      },
+      "liveDemo": {
+        "status": "none",
+        "url": null,
+        "notes": "Публичной ссылки в репозитории нет. Локальный backend/API сценарий подтверждён HTTP-проверками; визуальная проверка браузера не выполнялась по пользовательской политике."
+      },
+      "fiveHourContext": "Для пятичасового MVP объём backend-работы высокий: импорт 12 книг, source provenance, pure calculator, exact Fraction arithmetic, synthetic acceptance cases, scenario revisions, approval и export собраны в один воспроизводимый контур. Поэтому отсутствие production auth, BOM, автоматической отправки и подтверждённой 1C-схемы само по себе не штрафуется. Но граница MVP не оправдывает расхождение между заявленным connected main workspace и фактическим synthetic entry point: это непосредственно влияет на демонстрацию ключевого пользовательского сценария. Явные сезонные коэффициенты разумны для прототипа, но не являются автоматическим real-data seasonal forecast.",
+      "strengths": [
+        "S-EXACT: объяснимый pure calculator использует exact rational arithmetic, purchase-unit conversion и daily balance.",
+        "S-CASE: 21 acceptance tests проверяют transit, seasonality/growth, bulk/customer, stockout и timing.",
+        "S-SOURCE: все 12 supplied XLSX импортируются с hashes, source references и явными contextual/unavailable states.",
+        "S-WORKFLOW: revisioned create/update/approve/export HTTP flow реально пройден на PostgreSQL-backed service.",
+        "S-SAFETY: needs_input не превращается в нулевой заказ, автоматическая отправка поставщику отсутствует."
+      ],
+      "gaps": [
+        "D-UI-REAL-DATA: фактический frontend entry point монтирует synthetic ElektroWorkspace, а imported-data ConnectedWorkspace остаётся неиспользуемым.",
+        "D-SEASONAL-UNCONNECTED: seasonal workbooks импортируются как contextual; автоматическое per-SKU применение сезонности из supplied data не доказано.",
+        "D-AUDIT-BASELINE: manifest ожидает 4,994 байта для retained brief, tracked file имеет 5,016; audit test падает."
+      ],
+      "futureAdvice": [
+        {
+          "principle": "Один shipped entry point должен быть тем же source-aware workflow, который проверен backend acceptance.",
+          "why": "D-UI-REAL-DATA показывает, что main.jsx рендерит synthetic products, хотя в репозитории есть ConnectedWorkspace с imported catalog, source-input и persisted scenarios.",
+          "how": "Зафиксировать smoke-тест: imported SKU → source usage → calculate → save revision → approve → CSV. Synthetic workspace вынести в отдельный demo route.",
+          "findingIds": [
+            "D-UI-REAL-DATA"
+          ],
+          "successCheck": "Production build запускает connected workspace; smoke/API test подтверждает, что выбранный SKU и source references дошли до approved CSV.",
+          "timeboxMinutes": 60
+        },
+        {
+          "principle": "Источник данных должен иметь явную policy-проверку перед арифметикой.",
+          "why": "D-SEASONAL-UNCONNECTED: seasonal source виден, но остаётся contextual и не влияет на per-SKU calculation без ручного фактора.",
+          "how": "Сначала сопоставить seasonal schema с SKU, выбрать правило версии и добавить golden SKU test: seasonal source → factor → dated forecast; конфликт оставлять blocked.",
+          "findingIds": [
+            "D-SEASONAL-UNCONNECTED"
+          ],
+          "successCheck": "Golden test показывает factors в input/result sources и меняет dated demand ожидаемым образом.",
+          "timeboxMinutes": 45
+        },
+        {
+          "principle": "Audit baselines должны обновляться атомарно вместе с исходным артефактом.",
+          "why": "D-AUDIT-BASELINE: mismatch 5,016 против 4,994 делает regression gate красным при проходящих product checks.",
+          "how": "В том же change-set пересчитывать manifest hash/bytes и запускать короткий check всех retained paths перед длинным suite.",
+          "findingIds": [
+            "D-AUDIT-BASELINE"
+          ],
+          "successCheck": "test_audit_baseline.py проходит на чистом checkout, а изменение source без manifest сразу выдаёт понятную ошибку.",
+          "timeboxMinutes": 20
+        }
+      ],
+      "uncertainties": [
+        "Визуальное поведение, responsive layout и browser navigation не проверялись по прямому пользовательскому запрету; source и jsdom tests не заменяют visual acceptance.",
+        "У исходных книг нет подтверждённых anonymous customer IDs и точных stockout intervals; synthetic tests подтверждают механизм, но не real-data факт.",
+        "BOM, lead time, stock freshness/scope, purchase conversions и 1C schema требуют подтверждения владельца данных.",
+        "Внешняя OpenAI integration не запускалась без credentials; deterministic API path проверен без неё.",
+        "Retrospective WAPE/ML artifacts не доказывают inventory savings или production forecast accuracy."
+      ],
+      "reviewPolicyVersion": 2,
+      "assessmentStatus": "ready",
+      "findings": [
+        {
+          "id": "S-EXACT",
+          "kind": "strength",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Расчёт использует exact rational arithmetic до округления и сохраняет daily balance.",
+          "expected": "Repeating fractions and arrival timing must not add units or hide shortages.",
+          "actual": "Fraction используется в forecast/need/ceiling; daily_balances и maximum_prearrival_shortfall записываются.",
+          "evidence": [
+            "backend/src/replenishment/planning/calculator.py:27-29",
+            "backend/src/replenishment/planning/calculator.py:255-317",
+            "backend/tests/test_purchasing_acceptance.py:199-245"
+          ],
+          "checkIds": [
+            "backend-acceptance"
+          ]
+        },
+        {
+          "id": "S-CASE",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Основные поведенческие механизмы кейса проходят acceptance suite.",
+          "expected": "Transit, seasonality/growth, bulk/customer, stockout, units, timing and missing inputs must have checks.",
+          "actual": "21 tests passed; planning_demo JSON produced seven named scenarios.",
+          "evidence": [
+            "captures/20261002T093543984587-scenario-planning.stdout.log",
+            "backend/tests/test_purchasing_acceptance.py:86-289"
+          ],
+          "checkIds": [
+            "backend-acceptance"
+          ]
+        },
+        {
+          "id": "S-SOURCE",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Все 12 supplied workbooks импортируются, source preparation сохраняет provenance и ограничения.",
+          "expected": "Import must not silently drop files or invent absent stock/customer/policy values.",
+          "actual": "12 files opened/imported; source-input returned refs and contextual/unavailable usage.",
+          "evidence": [
+            "captures/20261002T094049551911-test-data-structure.stdout.log",
+            "backend/src/replenishment/planning_sources.py:81-115",
+            "captures/20261002T093916473602-http-source-input.stdout.log"
+          ],
+          "checkIds": [
+            "test-data-structure",
+            "start-api",
+            "http-source-input"
+          ]
+        },
+        {
+          "id": "S-WORKFLOW",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Persistence, manual override, approval and CSV form a working revisioned path.",
+          "expected": "Unapproved/stale revisions must not export as approved; manual changes need a reason.",
+          "actual": "Revision 1 created, revision 2 saved with reason and quantity 110, approved and exported.",
+          "evidence": [
+            "captures/20261002T093954596200-http-workflow-retry.stdout.log",
+            "backend/src/replenishment/orders/writing.py:115-201"
+          ],
+          "checkIds": [
+            "http-workflow"
+          ]
+        },
+        {
+          "id": "S-SAFETY",
+          "kind": "strength",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "needs_input/scenario_only отделены от approved order, supplier-send отсутствует.",
+          "expected": "Unknown critical input must not yield numeric recommendation; sending requires a manual step.",
+          "actual": "Missing inputs yield null recommendation; approve/export are separate endpoints and no supplier-send route exists.",
+          "evidence": [
+            "backend/src/replenishment/planning/calculator.py:285-290",
+            "backend/src/replenishment/orders/writing.py:135-201",
+            "frontend/src/purchasing/elektro-workspace.jsx:104-111"
+          ],
+          "checkIds": [
+            "backend-acceptance",
+            "http-workflow"
+          ]
+        },
+        {
+          "id": "D-UI-REAL-DATA",
+          "kind": "defect",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Фактически запускаемый main frontend не использует imported catalog/source-input/persisted scenarios как основной путь.",
+          "expected": "Entry point should select imported SKU, show source usage, save revision and approve it.",
+          "actual": "main.jsx renders ElektroWorkspace; it builds rows from replenishment-demo.js and keeps edits/approval local. ConnectedWorkspace is not imported by main.jsx.",
+          "evidence": [
+            "frontend/src/purchasing/main.jsx:1-6",
+            "frontend/src/purchasing/elektro-workspace.jsx:1-34",
+            "frontend/src/purchasing/replenishment-demo.js:1-12",
+            "frontend/src/purchasing/connected-workspace.jsx:31-70"
+          ],
+          "checkIds": [
+            "ui-entry-source",
+            "frontend-tests"
+          ]
+        },
+        {
+          "id": "D-SEASONAL-UNCONNECTED",
+          "kind": "defect",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Seasonal workbooks are contextual and not connected to automatic per-SKU forecast; calculator uses only explicit request/row factors.",
+          "expected": "Supplied seasonality should affect real SKU forecast by documented policy or be clearly surfaced as unsupported in the primary scenario.",
+          "actual": "planning_sources.py says no per-SKU use without explicit policy; calculator applies row/request seasonality; verification says automatic seasonal model is not deployed.",
+          "evidence": [
+            "backend/src/replenishment/planning_sources.py:198-211",
+            "backend/src/replenishment/planning/calculator.py:243-277",
+            "docs/DELIVERY_VERIFICATION.md:101-104"
+          ],
+          "checkIds": [
+            "http-source-input",
+            "backend-acceptance"
+          ]
+        },
+        {
+          "id": "D-AUDIT-BASELINE",
+          "kind": "defect",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Source audit manifest does not match retained brief.",
+          "expected": "test_audit_baseline.py must confirm manifest bytes for every retained file.",
+          "actual": "Manifest expects 4,994 bytes for docs/sources/HackAlem...md; tracked file is 5,016; targeted test failed one case.",
+          "evidence": [
+            "docs/sources/manifest.json:85-88",
+            "backend/tests/test_audit_baseline.py:16-21",
+            "captures/20261002T093308947305-test-targeted.stdout.log"
+          ],
+          "checkIds": [
+            "backend-full-suite"
+          ]
+        }
+      ],
+      "gapFindingIds": [
+        "D-UI-REAL-DATA",
+        "D-SEASONAL-UNCONNECTED",
+        "D-AUDIT-BASELINE"
+      ]
+    }
+  ],
+  "score": 78.0,
+  "status": "complete",
+  "expectedJudges": 1
+}

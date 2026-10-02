@@ -1,0 +1,892 @@
+{
+  "methodVersion": 4,
+  "repoId": "hack-272a0f3c-bk-group",
+  "repoUrl": "https://github.com/BAITC-Hacks/hack-272a0f3c-bk-group",
+  "caseId": 5,
+  "snapshot": "7023b2a6fbaabd3d55800e3aba85174ce2d413da",
+  "judges": [
+    {
+      "methodVersion": 4,
+      "repoId": "hack-272a0f3c-bk-group",
+      "caseId": 5,
+      "model": "GPT-5.6 Luna",
+      "snapshot": "7023b2a6fbaabd3d55800e3aba85174ce2d413da",
+      "overallSummary": "Рабочий локальный MVP закупочного планирования с воспроизводимым расчётом по двум поставщикам, объяснениями, ручными подтверждениями, supplier-grouped экспортом и аккуратными блокировками неполных данных. На всех предоставленных XLSX сервер загрузил 3667 SKU; после подтверждения входов получил 199 готовых строк и 107 положительных заказов. Главные ограничения кейса подтверждены исходниками и проверками: явные книги сезонности и категории не проходят загрузчик, stockout только сигнализируется и не компенсируется в прогнозе, а выбросы исключаются только в явно выбранном robust-сценарии и не исключаются в default full-сценарии. Итоговая оценка отражает сильную инженерную основу и неполное покрытие трёх центральных требований кейса.",
+      "global": {
+        "criteria": [
+          {
+            "name": "Ценность решения",
+            "score": 20,
+            "max": 25,
+            "awarded": "Решение непосредственно автоматизирует понятный процесс менеджера закупа: загрузка архивов, проверка источников, расчёт горизонта, просмотр объяснений и подготовка отдельных проектов заказов поставщикам.",
+            "deductions": "5 баллов снято за неподтверждённую компенсацию stockout, игнорирование явных сезонных/категориальных источников и то, что default-режим не убирает кандидата-разовый выброс из регулярной истории.",
+            "evidence": [
+              "README.md:3",
+              "README.md:58",
+              "captures/20261002T061410669408-scenario.stdout.log",
+              "check-http-confirmed-report-export"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "D1",
+                "reason": "Для задачи, где снижение упущенных продаж является основной ценностью, отсутствие поправки на неудовлетворенный спрос ограничивает пользу прогноза при дефиците."
+              },
+              {
+                "points": 2,
+                "findingId": "D2",
+                "reason": "Из 12 предоставленных книг две сезонные книги и категории не входят в рабочий набор признаков, поэтому обещанная ценность использования всех предусмотренных данных неполна."
+              },
+              {
+                "points": 1,
+                "findingId": "D3",
+                "reason": "При обычном default full кандидаты крупных разовых строк остаются в raw history; устойчивый вариант нужно отдельно включить и согласовать."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Автоматизация ежедневной закупочной работы",
+                "implementation": "README описывает последовательность: ZIP-архивы Excel, паспорт качества, подтверждение параметров, карточка товара, затем Excel или проекты по поставщикам. Реальный API-прогон по двум архивам создал отчёт по 3667 SKU, а после подтверждения параметров 107 строк имели положительное количество заказа.",
+                "value": "Это превращает трудоёмкое ручное сведение Excel в повторяемый локальный сценарий для основного пользователя кейса и даёт измеримый результат на предоставленном наборе, а не только демонстрационный экран.",
+                "verification": "observed",
+                "evidence": [
+                  "README.md:58",
+                  "check-real-data",
+                  "check-http-confirmed-report-export"
+                ]
+              },
+              {
+                "aspect": "Объяснимый результат для закупщика",
+                "implementation": "Строка отчёта содержит статус, горизонты прогноза, остаток, резерв, страховой запас, кратность, даты заказа/прихода, блокировки и предупреждения; export.tables формирует общую таблицу и отдельные CSV по поставщикам.",
+                "value": "Менеджер получает не безымянное число, а проверяемое основание решения и может отличить закупку, покрытый горизонт и риск раннего дефицита.",
+                "verification": "source",
+                "evidence": [
+                  "procurement/engine.py:324",
+                  "procurement/export.py:35",
+                  "procurement/export.py:64"
+                ]
+              },
+              {
+                "aspect": "Безопасность рабочего процесса",
+                "implementation": "Расчёт стартует с неподтверждёнными настройками, строки остаются blocked, экспорт supplier-заказов фильтрует только ready-позиции с положительным количеством, а операции и AI-предложения требуют отдельного подтверждения.",
+                "value": "Такой контур снижает риск отправить неверный заказ из-за пропуска источника или устаревшего остатка; это особенно уместно для пятичасового прототипа закупок.",
+                "verification": "observed",
+                "evidence": [
+                  "procurement/engine.py:281",
+                  "procurement/export.py:71",
+                  "tests/test_mvp.py:87",
+                  "check-http-default-blocked"
+                ]
+              },
+              {
+                "aspect": "Практическая ценность ограничена недостающими сигналами спроса",
+                "implementation": "В расчёте есть предупреждение о раннем дефиците и устойчивый прогноз, но отдельная проверка с нулевым opening balance оставила рекомендацию 36.0 без изменения; явные сезонные файлы загрузчик также не распознал.",
+                "value": "Продукт уже полезен для наблюдаемого спроса и запасов, но его ключевая бизнес-ценность при stockout и сезонных источниках пока ниже заявленной.",
+                "verification": "observed",
+                "evidence": [
+                  "captures/20261002T061841695894-scenario.stdout.log",
+                  "captures/20261002T061855721567-scenario.stdout.log",
+                  "procurement/engine.py:267"
+                ]
+              }
+            ],
+            "scoreReasoning": "20/25 заслужено за прямое соответствие реальной работе закупщика, запуск на полном наборе партнёрских данных, supplier-grouped объяснимый результат и обязательное ручное подтверждение. До максимума не хватает именно тех сигналов, которые должны защищать бизнес-ценность решения: stockout не повышает потребность, сезонные книги не используются, а default full сохраняет разовые кандидаты. Эти проблемы не отменяют пользу для обычных наблюдаемых рядов, но ограничивают эффект в наиболее важных исключительных ситуациях."
+          },
+          {
+            "name": "Результат и качество решения",
+            "score": 15,
+            "max": 20,
+            "awarded": "Основной сценарий целостен: импортер валидирует архивы, движок строит прогноз и инвентарную траекторию, отчёт блокирует неподтверждённые позиции, API отдаёт результат, а ZIP содержит проекты по поставщикам.",
+            "deductions": "5 баллов снято за отсутствие алгоритма компенсации stockout, пропуск части входных книг и неавтоматическое исключение выбросов из default-сценария.",
+            "evidence": [
+              "captures/20261002T061000544772-test.stderr.log",
+              "captures/20261002T061410669408-scenario.stdout.log",
+              "check-http-confirmed-report-export"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "D1",
+                "reason": "Проверенный сценарий stockout показывает одинаковое количество при изменении баланса, поэтому качество конечной закупочной рекомендации не покрывает это обязательное условие кейса."
+              },
+              {
+                "points": 2,
+                "findingId": "D2",
+                "reason": "Рабочий входной контракт не использует две переданные сезонные книги и не сохраняет категорию; результат не является полным расчётом по всем предусмотренным источникам."
+              },
+              {
+                "points": 1,
+                "findingId": "D3",
+                "reason": "Проверка выброса в основном сценарии оставлена на ручное переключение robust и reconciliation, тогда как default full использует историю без удаления кандидата."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Надёжный импорт и provenance",
+                "implementation": "load_archives проверяет ZIP/XLSX, обязательные колонки, даты, дубли архивов и числовые значения; Dataset сохраняет источники, отпечаток и дату среза. Реальный прогон использовал все 12 XLSX, а не синтетическую подстановку.",
+                "value": "Ошибочные или неполные входы не превращаются молча в нулевые продажи, а результат можно связать с конкретным файлом источника.",
+                "verification": "observed",
+                "evidence": [
+                  "procurement/data.py:163",
+                  "procurement/data.py:211",
+                  "check-real-data"
+                ]
+              },
+              {
+                "aspect": "Дата-ориентированный inventory-план",
+                "implementation": "plan_inventory проходит каждый день горизонта, отдельно учитывает будущие приходы, раннюю нехватку, дату заказа, дату прихода и округление по pack/MOQ. Unit-тесты проверяют поздний приход, ранний shortage и дату order+lead.",
+                "value": "Это сильнее простого вычитания остатка из среднего: поздняя поставка не скрывает раннюю нехватку, а количество соответствует условиям упаковки.",
+                "verification": "observed",
+                "evidence": [
+                  "procurement/engine.py:45",
+                  "procurement/engine.py:78",
+                  "tests/test_mvp.py:39",
+                  "tests/test_mvp.py:46"
+                ]
+              },
+              {
+                "aspect": "Контроль целостности и ревизий",
+                "implementation": "API требует expected report revision, dataset fingerprint и instance id; состояние, overrides и журнал пишутся транзакционно. Stress-набор проверяет stale tab, конкурентные документы, импорт и отсутствие двойного движения.",
+                "value": "Для локального MVP это заметно повышает качество пользовательского результата: устаревшая вкладка не должна перезаписать свежий расчёт или дважды провести документ.",
+                "verification": "observed",
+                "evidence": [
+                  "app.py:134",
+                  "app.py:143",
+                  "tests/test_application_stress.py:170",
+                  "tests/test_operations_stress.py:242"
+                ]
+              },
+              {
+                "aspect": "Реально воспроизведённый API-результат",
+                "implementation": "Сервер с обоими архивами перешёл busy=false, loaded=true; до подтверждения report имел 3667 blocked строк, после `/api/calculate` получил 199 ready и 107 to_order. `/api/export.zip` вернул план, параметры и два supplier-файла.",
+                "value": "Это подтверждает рабочий end-to-end путь от входных таблиц до пользовательского артефакта, включая блокировку неподтверждённых данных.",
+                "verification": "observed",
+                "evidence": [
+                  "check-http-data-load",
+                  "check-http-default-blocked",
+                  "check-http-calculate",
+                  "check-http-confirmed-report-export"
+                ]
+              }
+            ],
+            "scoreReasoning": "15/20 — целостный и проверенный результат для наблюдаемой истории, остатков, прихода и условий закупки. Качество инженерных защит высокое, что подтверждено 232 unittest-тестами (одна ошибка только из-за отсутствующего в контейнере node). Но два центральных требования данных фактически не входят в рабочий расчёт, а outlier-поведение зависит от ручного выбора сценария; поэтому максимальный балл был бы необоснованным."
+          },
+          {
+            "name": "Инновационность",
+            "score": 10,
+            "max": 15,
+            "awarded": "Собственное отличие проекта — в связке устойчивого выбора прогноза, backtest, сценария кандидатов крупных партий, ежедневной траектории запасов и explainable supplier-плана с ручным контролем.",
+            "deductions": "5 баллов снято за то, что отдельный сезонный источник не подключён, а механизм выбросов остаётся консервативной подсказкой/ручным сценарием и не решает задачу одного клиента.",
+            "evidence": [
+              "procurement/forecast.py:104",
+              "analysis/orders_analysis.py:63",
+              "FORECAST_IMPROVEMENTS.md:11"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "D2",
+                "reason": "Заявленная работа с сезонностью реализована только через календарные лаги месячной истории; предоставленные сезонные таблицы не являются источником модели."
+              },
+              {
+                "points": 3,
+                "findingId": "D3",
+                "reason": "Кандидат крупной партии получает scenario_review, но не исключается автоматически в full; стабильность повторяющихся партий трактуется на уровне SKU, а не на уровне клиента."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Устойчивый selector вместо безусловной сезонной модели",
+                "implementation": "selection_details сравнивает seasonal_naive и adaptive с mean3 на последних 12 месяцах, требует минимум 6 полноценных folds, снижение ошибки 20%, победу в двух третях и отсутствие ухудшения на последних трёх сравнениях.",
+                "value": "Для короткого хакатонного ряда это содержательная защита от случайного переключения на красивую, но недоказанную сезонность; логика объясняет выбранный метод.",
+                "verification": "source",
+                "evidence": [
+                  "procurement/forecast.py:104",
+                  "procurement/forecast.py:123",
+                  "tests/test_model_selection.py:37"
+                ]
+              },
+              {
+                "aspect": "Разделение обычных, повторяющихся и разовых партий",
+                "implementation": "orders_analysis строит порог max(3*median, Q3+3*IQR), проверяет похожие крупные строки на разных датах и месяцах, оставляет repeating_wholesale_batch в регулярном спросе, а isolated candidate_one_off направляет в scenario_review.",
+                "value": "Подход учитывает, что крупная повторяющаяся упаковка может быть нормой и не должна автоматически удаляться как выброс; это нестандартнее простого удаления всех верхних квантилей.",
+                "verification": "observed",
+                "evidence": [
+                  "analysis/orders_analysis.py:47",
+                  "analysis/orders_analysis.py:109",
+                  "analysis/test_demand_patterns.py:57"
+                ]
+              },
+              {
+                "aspect": "Детальная симуляция политики закупки",
+                "implementation": "forecast.simulate_policies сопоставляет minmax, mean3, seasonal_naive, adaptive и selected на общей условной истории, а отчёт агрегирует fill rate, lost_units и mean_inventory.",
+                "value": "Команда проверяет не только MAE/WAPE, но и последствия для дефицита и запаса; README и FORECAST_IMPROVEMENTS честно предупреждают, что это не доказательство реальной экономии.",
+                "verification": "observed",
+                "evidence": [
+                  "procurement/forecast.py:170",
+                  "procurement/engine.py:346",
+                  "captures/20261002T061410669408-scenario.stdout.log"
+                ]
+              },
+              {
+                "aspect": "Инновация через безопасную объяснимость",
+                "implementation": "Каждая строка хранит forecast_selection, schedule, sources, examples, blocks и warnings; экспорт фиксирует снимок расчёта, а не исполняемый заказ.",
+                "value": "Это связывает алгоритмическую новизну с реальным контролем закупщика и делает нестандартные эвристики проверяемыми человеком.",
+                "verification": "source",
+                "evidence": [
+                  "procurement/engine.py:320",
+                  "procurement/export.py:1",
+                  "README.md:70"
+                ]
+              }
+            ],
+            "scoreReasoning": "10/15 — у проекта есть собственная методическая работа: устойчивый selector, аналитика партий и policy simulation, а не просто среднее продаж и вычитание остатков. Снятие существенное, потому что сезонные файлы кейса не используются, а задача выбросов и одного покупателя остаётся advisory: в default full крупная кандидатная строка продолжает влиять на историю."
+          },
+          {
+            "name": "Потенциал развития и масштабирования",
+            "score": 15,
+            "max": 20,
+            "awarded": "Архитектура хорошо подготовлена к развитию: отдельные адаптеры данных, чистые функции прогноза и inventory, HTTP API, persistent journal, импорт каталога, supplier-экспорт и модульный тестовый контур.",
+            "deductions": "5 баллов снято за отсутствие stockout-модели, пропуск расширяемых признаков сезонности/категорий и ограниченную автоматизацию выбросов/клиентского уровня.",
+            "evidence": [
+              "README.md:96",
+              "procurement/data.py:68",
+              "operations/store.py:99",
+              "tests/test_application_stress.py:170"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "D1",
+                "reason": "Без хранения интервалов отсутствия и оценки потерянного спроса расширение на сервисный уровень и KPI дефицита будет опираться на неполную картину."
+              },
+              {
+                "points": 1,
+                "findingId": "D2",
+                "reason": "Поставщик добавляется как имя-адаптер, но сезонность и категория не представлены в Dataset, поэтому расширение ассортимента через эти признаки потребует изменения контракта."
+              },
+              {
+                "points": 2,
+                "findingId": "D3",
+                "reason": "Масштабирование сценария крупных клиентов невозможно без отдельного стабильного anonymized customer_id, а full/robust выбор оставляет ручную операцию и reconciliation."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Разделение слоёв и адаптеров",
+                "implementation": "data.py нормализует источники в Dataset, engine.py строит report, forecast.py содержит модели и backtest, export.py формирует артефакты, operations/store.py изолирует учёт и journal.",
+                "value": "Новый поставщик или модель можно добавлять локально, не переписывая HTTP/UI и складской ledger; это хороший фундамент для следующего этапа.",
+                "verification": "source",
+                "evidence": [
+                  "procurement/data.py:149",
+                  "procurement/engine.py:108",
+                  "procurement/forecast.py:1",
+                  "operations/store.py:99"
+                ]
+              },
+              {
+                "aspect": "Расширение до рабочего пространства",
+                "implementation": "Помимо procurement есть entities, документы, склады, деньги, задачи, journal и import-report; операции используют версии записей и атомарные движения.",
+                "value": "Проект не замыкается на одноразовом CSV и имеет путь к объединению рекомендации с последующим draft/receipt workflow.",
+                "verification": "observed",
+                "evidence": [
+                  "README.md:11",
+                  "tests/test_operations.py:1",
+                  "tests/test_operations_http.py:1",
+                  "tests/test_operations_stress.py:1"
+                ]
+              },
+              {
+                "aspect": "Потенциал воспроизводимой аналитики",
+                "implementation": "Отчёт сохраняет fingerprint источников, параметры, backtest, simulations и forecast schedule; кэш инвалидируется по pipeline fingerprint и данным.",
+                "value": "При росте числа SKU или повторных расчётах можно контролировать, какой набор данных и правил породил рекомендацию, что важно для промышленного внедрения.",
+                "verification": "source",
+                "evidence": [
+                  "app.py:166",
+                  "app.py:196",
+                  "procurement/engine.py:352"
+                ]
+              },
+              {
+                "aspect": "Документированные направления развития",
+                "implementation": "README прямо ограничивает локальный single-user режим и отсутствие интеграций, а FORECAST_IMPROVEMENTS перечисляет необходимость ежедневных остатков, истории заказов, фактических lead time и cost-aware политики.",
+                "value": "Команда обозначила реалистичную дорожку к масштабированию и не маскирует условную симуляцию под production-эффект.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:76",
+                  "FORECAST_IMPROVEMENTS.md:78",
+                  "FORECAST_IMPROVEMENTS.md:84"
+                ]
+              }
+            ],
+            "scoreReasoning": "15/20 — модульность, отпечатки, API, journal, операции и тесты дают хороший запас развития для локального продукта. Удерживающие факторы — не только отсутствие интеграций, которое для пяти часов допустимо, а отсутствующие предметные сущности: stockout intervals/lost demand, сезонные и категориальные признаки и customer-level history. Именно они ограничивают перенос результата на более широкий ассортимент и KPI компании."
+          },
+          {
+            "name": "Презентация, демо и ответы на вопросы",
+            "score": 19,
+            "max": 20,
+            "awarded": "README, методологические документы, тесты и локальный HTTP-сценарий дают ясное и воспроизводимое демо из репозитория. Устной презентации и ответов не было, поэтому оценена только доступная письменная и локально исполнимая часть.",
+            "deductions": "1 балл снят за то, что наиболее важное поведение default full против robust и последствия неиспользуемых сезонных файлов требуют чтения исходников, а не полностью очевидны из основного README.",
+            "evidence": [
+              "README.md:28",
+              "README.md:68",
+              "FORECAST_IMPROVEMENTS.md:11",
+              "check-http-confirmed-report-export"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "D3",
+                "reason": "Пользовательская инструкция описывает устойчивый сценарий, но разница между default full и robust, влияющая на выбросы, раскрыта преимущественно в коде/документах; это слегка снижает убедительность короткого демо."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Понятная инструкция запуска",
+                "implementation": "README содержит требования Python, запуск, --archives, --no-auto-load, адрес локального сервера, порядок действий в интерфейсе и отдельную оговорку о Node.js только для Excel-экспорта.",
+                "value": "Другой проверяющий может воспроизвести основной ZIP/CSV-сценарий без устной передачи контекста и отличить обязательное от опционального AI.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:21",
+                  "README.md:37",
+                  "README.md:43"
+                ]
+              },
+              {
+                "aspect": "Объяснение методологии и границ",
+                "implementation": "README, DATA_CONTRACT, HISTORICAL_EVALUATION и FORECAST_IMPROVEMENTS объясняют модели, backtest, отсутствие customer identity, условность simulation и неполноту stockout-реконструкции.",
+                "value": "Документация не выдаёт прогноз за доказанную экономию и помогает интерпретировать отрицательные/неполные результаты.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:68",
+                  "docs/DATA_CONTRACT.md:34",
+                  "HISTORICAL_EVALUATION.md:11",
+                  "FORECAST_IMPROVEMENTS.md:84"
+                ]
+              },
+              {
+                "aspect": "Воспроизводимый backend-demo",
+                "implementation": "API без браузера прошёл запуск, загрузку двух архивов, blocked-report до подтверждения, calculate с revision/fingerprint и готовый report/export после подтверждения.",
+                "value": "Письменное демо подтверждается наблюдаемым пользовательским результатом, а не только наличием ссылок или скриншотов.",
+                "verification": "observed",
+                "evidence": [
+                  "check-http-data-load",
+                  "check-http-default-blocked",
+                  "check-http-calculate",
+                  "check-http-confirmed-report-export"
+                ]
+              },
+              {
+                "aspect": "Тесты как часть демонстрации качества",
+                "implementation": "В репозитории есть unit, HTTP, stress, frontend-contract и analysis tests; фактически в изолированной среде выполнено 232 теста, 31 ожидаемо пропущен, 231 завершился успешно, один XLSX-тест остановился на отсутствующем node.",
+                "value": "Объём проверок делает демо убедительным для технической аудитории; единственная ошибка не скрыта и объясняется средой, поскольку README отдельно требует Node для Excel.",
+                "verification": "observed",
+                "evidence": [
+                  "captures/20261002T061000544772-test.stderr.log",
+                  "README.md:43",
+                  "tests/test_frontend_contract.py:41"
+                ]
+              }
+            ],
+            "scoreReasoning": "19/20 — README и сопутствующие документы существенно лучше минимального хакатонного описания, а backend-сценарий с реальными архивами и экспортом воспроизведён. Устные материалы не оценивались и не штрафовались. Единственное снижение — за недостаточно очевидное в кратком пользовательском пути различие default full/robust, которое важно для обещания устойчивости к выбросам."
+          }
+        ],
+        "total": 79
+      },
+      "case": null,
+      "judgeScore": 79,
+      "caseRequirements": [
+        {
+          "requirement": "Рассчитывать пополнение по истории продаж, текущему остатку, резерву, товарам в пути, поставщику, сроку, кратности и прогнозному горизонту.",
+          "status": "partial",
+          "explanation": "История, snapshot остатка/резерва, приходы до горизонта, lead/review, supplier и pack multiple участвуют в расчёте и были проверены на 12 предоставленных книгах. Категория и явная сезонная книга не входят в рабочий Dataset.",
+          "evidence": [
+            "procurement/engine.py:113",
+            "procurement/engine.py:239",
+            "procurement/engine.py:287",
+            "captures/20261002T061410669408-scenario.stdout.log",
+            "captures/20261002T061855721567-scenario.stdout.log"
+          ]
+        },
+        {
+          "requirement": "Учитывать сезонность и устойчивый рост спроса.",
+          "status": "partial",
+          "explanation": "Adaptive-модель использует календарный лаг t-12, ограниченный тренд и growth factor, а selector проверяет их на прошлых folds. Но две предоставленные сезонные книги классифицируются как None и не читаются; подтверждённая сезонность — только косвенная из месячной истории.",
+          "evidence": [
+            "procurement/forecast.py:58",
+            "procurement/forecast.py:63",
+            "procurement/forecast.py:104",
+            "captures/20261002T061855721567-scenario.stdout.log"
+          ]
+        },
+        {
+          "requirement": "Оценивать и компенсировать упущенный спрос при stockout.",
+          "status": "missing",
+          "explanation": "Движок может предупредить о неположительном opening balance и раннем shortage, но не восстанавливает потерянный спрос и не добавляет его в history/forecast. Контрольная замена balance quantity на 0 оставила рекомендацию 36.0 без изменения.",
+          "evidence": [
+            "procurement/engine.py:267",
+            "procurement/engine.py:316",
+            "captures/20261002T061841695894-scenario.stdout.log",
+            "docs/DATA_CONTRACT.md:70"
+          ]
+        },
+        {
+          "requirement": "Выявлять и исключать разовые крупные покупки, включая крупный заказ одного клиента.",
+          "status": "partial",
+          "explanation": "Система выявляет candidate_one_off по порогу median/IQR и повторяемости, но default full использует raw history; корректировка применяется только при scenario=robust и согласовании invoice net total. Стабильного anonymized customer_id во входе нет, и код правильно не выдумывает его.",
+          "evidence": [
+            "analysis/orders_analysis.py:47",
+            "analysis/orders_analysis.py:121",
+            "procurement/engine.py:217",
+            "procurement/engine.py:225",
+            "docs/DATA_CONTRACT.md:34"
+          ]
+        },
+        {
+          "requirement": "Формировать список, сгруппированный по поставщикам, с количеством, датами и кратким обоснованием по каждой позиции.",
+          "status": "met",
+          "explanation": "Report rows содержат supplier, quantity, forecast, sources, blocks/warnings и calculation; export_zip создаёт отдельные CSV для каждого supplier. Реальный HTTP-экспорт вернул IEK и Systeme Electric project-файлы.",
+          "evidence": [
+            "procurement/engine.py:324",
+            "procurement/export.py:71",
+            "check-http-confirmed-report-export"
+          ]
+        },
+        {
+          "requirement": "Не отправлять заказ поставщику без ручного подтверждения ответственного сотрудника.",
+          "status": "met",
+          "explanation": "До подтверждения четырёх групп входных параметров report содержит 3667 blocked строк и 0 ready; calculate требует актуальные revision/dataset/instance_id. Экспорт supplier CSV фильтрует только ready положительные строки и не отправляет их внешнему поставщику.",
+          "evidence": [
+            "app.py:459",
+            "procurement/engine.py:281",
+            "procurement/export.py:71",
+            "check-http-default-blocked",
+            "check-http-calculate"
+          ]
+        },
+        {
+          "requirement": "Сохранять обезличенность клиентских данных.",
+          "status": "met",
+          "explanation": "Предоставленные файлы не содержат стабильного customer_id; реализация не создаёт ложные идентификаторы из номера накладной, даты или количества, а интеграционный assert не нашёл customer_id в экспортируемых строках.",
+          "evidence": [
+            "analysis/orders_analysis.py:63",
+            "analysis/orders_analysis.py:234",
+            "tests/real_data_check.py:40",
+            "docs/DATA_CONTRACT.md:34"
+          ]
+        },
+        {
+          "requirement": "Проверить чувствительность к товарам в пути, сезонности, stockout и выбросу.",
+          "status": "partial",
+          "explanation": "Приходы и late-receipt sensitivity покрыты unit/domain тестами и реальным импортом; outlier имеет отдельную классификацию и robust-сценарий. Stockout не компенсируется, а explicit seasonality files вообще не проходят классификацию, поэтому полный набор sensitivity-требований не выполнен.",
+          "evidence": [
+            "tests/test_mvp.py:39",
+            "tests/test_review_fixes.py:1",
+            "captures/20261002T061841695894-scenario.stdout.log",
+            "captures/20261002T061855721567-scenario.stdout.log"
+          ]
+        },
+        {
+          "requirement": "Давать совместимый экспорт результата и не подменять неполные данные нулями.",
+          "status": "met",
+          "explanation": "ZIP/CSV экспорт реально отработал; неизвестные месяцы, остатки и некорректные значения блокируют строку или остаются unknown. XLSX-экспорт реализован проектным Node-скриптом и документирован как требующий отдельного Node/artifact-tool runtime.",
+          "evidence": [
+            "procurement/data.py:43",
+            "procurement/export.py:64",
+            "README.md:43",
+            "check-http-confirmed-report-export"
+          ]
+        }
+      ],
+      "testData": {
+        "provided": [
+          "cases/5/case-data/IEK/MOQ  ИЭК.xlsx",
+          "cases/5/case-data/IEK/Динамика продаж_2025-2026.xlsx",
+          "cases/5/case-data/IEK/Ежемесячные остатки продукции за последние 2 года  ИЭК.xlsx",
+          "cases/5/case-data/IEK/Ежемесячные продажи в количественном выражении за последние 2 года.xlsx",
+          "cases/5/case-data/IEK/Путь ИЭК 22.09.2026.xlsx",
+          "cases/5/case-data/IEK/Сезонность ИЭК.xlsx",
+          "cases/5/case-data/Systeme electric/MOQ SystemElectric.xlsx",
+          "cases/5/case-data/Systeme electric/Динамика продаж_Syseme Electric_2025-2026.xlsx",
+          "cases/5/case-data/Systeme electric/Ежемесячные остатки SystemElectric 2024-2026.xlsx",
+          "cases/5/case-data/Systeme electric/Ежемесячные продажи в кол-м выражении SystemElectric 2024-2026.xlsx",
+          "cases/5/case-data/Systeme electric/Сезонность SystemElectric 2024-2026.xlsx",
+          "cases/5/case-data/Systeme electric/Товар в пути_SystemElectric на 22.09.2026.xlsx"
+        ],
+        "used": [
+          "cases/5/case-data/IEK/MOQ  ИЭК.xlsx",
+          "cases/5/case-data/IEK/Динамика продаж_2025-2026.xlsx",
+          "cases/5/case-data/IEK/Ежемесячные остатки продукции за последние 2 года  ИЭК.xlsx",
+          "cases/5/case-data/IEK/Ежемесячные продажи в количественном выражении за последние 2 года.xlsx",
+          "cases/5/case-data/IEK/Путь ИЭК 22.09.2026.xlsx",
+          "cases/5/case-data/IEK/Сезонность ИЭК.xlsx",
+          "cases/5/case-data/Systeme electric/MOQ SystemElectric.xlsx",
+          "cases/5/case-data/Systeme electric/Динамика продаж_Syseme Electric_2025-2026.xlsx",
+          "cases/5/case-data/Systeme electric/Ежемесячные остатки SystemElectric 2024-2026.xlsx",
+          "cases/5/case-data/Systeme electric/Ежемесячные продажи в кол-м выражении SystemElectric 2024-2026.xlsx",
+          "cases/5/case-data/Systeme electric/Сезонность SystemElectric 2024-2026.xlsx",
+          "cases/5/case-data/Systeme electric/Товар в пути_SystemElectric на 22.09.2026.xlsx"
+        ],
+        "checks": [
+          {
+            "input": "Все 12 XLSX из IEK и Systeme electric, упакованные в два архива, с подтверждёнными тестовыми параметрами.",
+            "method": "tests/real_data_check.py:26-44: load_archives, prepare_lines, build_report, assert по SKU, pack multiple, customer_id и export_zip.",
+            "result": "Проверка завершилась без assertion error; 3667 SKU, 199 ready, 107 to_order, 3468 blocked, 1568 candidate lines, 10101 recurring lines; ZIP содержит не менее трёх файлов.",
+            "conclusion": "Основной domain-сценарий на полном предоставленном наборе воспроизведён; output сохраняет provenance и не публикует customer_id."
+          },
+          {
+            "input": "Те же два архива через HTTP-сервер; сначала настройки по умолчанию, затем четыре подтверждения параметров.",
+            "method": "GET /api/status, GET /api/report, POST /api/calculate с актуальными revision/dataset/instance_id, GET /api/export.zip.",
+            "result": "До подтверждения: report 200, 3667 blocked и 0 ready. После calculate: report 200, 199 ready и 107 positive orders; export 200, четыре CSV: общий план, параметры, IEK и Systeme Electric.",
+            "conclusion": "Пользовательский backend-путь от загрузки до подтверждённого supplier-экспорта работает."
+          },
+          {
+            "input": "Fixture с одинаковой историей и snapshot, затем только balances.quantity изменён на 0 как stockout-like сигнал.",
+            "method": "Два build_report с одинаковыми подтверждёнными настройками и сравнением quantity/blocks/warnings.",
+            "result": "baseline_quantity=36.0 и stockout_like_quantity=36.0; меняется не расчёт, а только диагностическая ветка, без lost-demand uplift.",
+            "conclusion": "Stockout compensation не реализована; ранний shortage warning не заменяет корректировку прогноза."
+          },
+          {
+            "input": "Имена и заголовки предоставленных сезонных книг и пример строки с полем Категория.",
+            "method": "Проверка workbook_kind и product_metadata на проектном адаптере.",
+            "result": "workbook_kind('Сезонность ИЭК.xlsx') и Systeme Electric возвращают None; known kinds включают sales/monthly/balances/constraints/snapshot; metadata_fields равны только name и unit.",
+            "conclusion": "Явные сезонные таблицы и category не входят в расчётный контракт, поэтому соответствующее требование покрыто только частично."
+          },
+          {
+            "input": "Репозиторный unittest discover и отдельные analysis tests.",
+            "method": "python -m unittest discover -s tests -v и python -m unittest discover -s analysis -p 'test_*.py' -v.",
+            "result": "Основной набор: 232 tests, 31 skipped, 231 passed и 1 error в export_xlsx из-за FileNotFoundError: node. Analysis-набор: 6 tests OK. Остальные HTTP, agent, forecast, inventory, operations, import/export-stress и startup проверки прошли.",
+            "conclusion": "Инженерный контур широко проверен; Excel runtime ограничен отсутствующим в проверочном контейнере Node.js, что документировано README и не является дефектом Python-расчёта."
+          }
+        ],
+        "limitations": [
+          "В предоставленных продажах нет стабильного anonymized customer_id, поэтому требование про одного клиента нельзя подтвердить по данным; проект сознательно не выводит ложную идентичность.",
+          "Месячные остатки не дают точного дня stockout и величины неудовлетворённого спроса; однако проект также не реализует оценочный uplift даже по имеющемуся сигналу неположительного остатка.",
+          "Визуальная проверка браузера не выполнялась по правилам проверки; оценены HTTP, статический контракт и backend-результат.",
+          "В изолированной Python-среде не было Node.js и @oai/artifact-tool, поэтому XLSX-export не прошёл runtime-проверку; ZIP/CSV экспорт прошёл."
+        ]
+      },
+      "runtime": {
+        "status": "working",
+        "build": "Зависимости из requirements.txt установлены в изолированном Python 3.11 окружении. Основной unittest-набор выполнился до единственной среды-ошибки node; отдельные analysis tests завершились OK.",
+        "start": "app.py успешно стартовал с --no-auto-load и с двумя архивами; локальные GET /, /api/status и /api/operations/bootstrap отвечали 200.",
+        "scenario": "На двух архивах из 12 предоставленных XLSX сервер загрузил 3667 SKU, дождался busy=false/loaded=true, принял calculate с ручными подтверждениями, вернул 199 ready/107 positive orders и сформировал ZIP по поставщикам.",
+        "environment": "Изолированный Docker-контейнер, Python 3.11, pandas 2.3.3, numpy 2.4.6, openpyxl 3.1.5; секреты и API-ключи не использовались. Визуальный браузерный прогон не выполнялся.",
+        "summary": "Основной расчёт и HTTP/API результат работают. Единственная ошибка полного unittest-набора относится к отсутствующему в окружении исполняемому node при дополнительном XLSX-тесте; README отдельно указывает этот внешний runtime для Excel.",
+        "checks": [
+          {
+            "command": "python -m pip install -r requirements.txt",
+            "result": "Зависимости установлены успешно: pandas 2.3.3, numpy 2.4.6, openpyxl 3.1.5.",
+            "id": "build-dependencies",
+            "stage": "build",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Проектные Python-зависимости устанавливаются без ошибок."
+          },
+          {
+            "command": "python -m unittest discover -s tests -v",
+            "result": "232 tests, 31 skipped; 231 прошли, один error в tests/test_import_export_stress.py при вызове export_xlsx: FileNotFoundError для node.",
+            "id": "unit-suite",
+            "stage": "scenario",
+            "status": "fail",
+            "cause": "review_environment",
+            "expected": "Репозиторный unittest-набор завершается без ошибок в окружении, содержащем заявленные runtime-зависимости."
+          },
+          {
+            "command": "python -m unittest discover -s analysis -p 'test_*.py' -v",
+            "result": "6 analysis/domain tests OK.",
+            "id": "analysis-suite",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Доменные проверки procurement logic, incoming, MOQ, invoice patterns и inventory position проходят."
+          },
+          {
+            "command": "python app.py --no-auto-load --state-dir <state-dir> --port <port>",
+            "result": "Сервер стартовал; GET /, GET /api/status и GET /api/operations/bootstrap вернули 200; loaded=false и busy=false в пустом режиме.",
+            "id": "start-empty-http",
+            "stage": "start",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Приложение запускается без архивов и API-ключа, отдаёт локальный HTML и служебные API."
+          },
+          {
+            "command": "python app.py --archives <IEK.zip> <Systeme electric.zip> --state-dir <state-dir> --port <port>",
+            "result": "Сначала busy=true с сообщением чтения, затем busy=false, loaded=true, message=Готово, report_revision=1.",
+            "id": "start-real-archives",
+            "stage": "start",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Приложение принимает оба архива и заканчивает загрузку без project error."
+          },
+          {
+            "command": "GET /api/report; POST /api/calculate; GET /api/report; GET /api/export.zip",
+            "result": "Initial report 200 с 3667 blocked; calculate 202; final report 200 с 199 ready и 107 to_order; export 200 с 4 CSV.",
+            "id": "http-confirmed-report-export",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "После актуального ручного подтверждения API отдаёт расчёт с количествами/объяснениями и supplier-grouped экспорт."
+          },
+          {
+            "command": "python tests/real_data_check.py",
+            "result": "Полная проверка на обоих архивах завершилась; summary: sku_count=3667, ready=199, blocked=3468, to_order=107; export_zip содержит supplier tables.",
+            "id": "real-data-check",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Данные кейса проходят загрузку, расчёт, provenance/pack assertions, обезличенность и ZIP-export."
+          },
+          {
+            "command": "python -c '<stockout sensitivity check>'",
+            "result": "При изменении balances.quantity на 0 quantity остался 36.0; изменяющий расчёт lost-demand uplift отсутствует.",
+            "id": "stockout-sensitivity",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Проверка должна выявить и компенсировать stockout; фактический результат зафиксирован как доказательство отсутствия этой логики."
+          },
+          {
+            "command": "python -c '<workbook_kind/product_metadata check>'",
+            "result": "Сезонные книги возвращают None; поддерживаемые виды — sales/monthly/balances/constraints/snapshot; metadata_fields только name и unit.",
+            "id": "source-contract-check",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Предоставленные сезонные и категориальные признаки должны быть видимы в нормализованном входном контракте."
+          }
+        ],
+        "limitations": [
+          "Полный unittest имеет один error только из-за отсутствующего node runtime при XLSX export; это ограничение проверочной среды, не доказанный defect проекта.",
+          "Внешний OpenAI API не проверялся: credentialsProvided=false, AI не нужен для основного procurement-сценария.",
+          "Визуальное поведение UI не проверялось; HTTP и статический frontend contract проверены доступными тестами."
+        ]
+      },
+      "liveDemo": {
+        "status": "none",
+        "url": null,
+        "notes": "Публичная Live-ссылка в материалах не предоставлена. Локальный HTTP-сценарий с реальными архивами подтверждён; отсутствие публичного URL не использовалось как снижение баллов."
+      },
+      "fiveHourContext": "Для пятичасового хакатона объём результата высокий: отдельный импортёр реальных Excel-форматов, backtest/selector, ежедневный inventory-план, ручные gates, supplier CSV, операции и широкий regression/stress-контур. Не требовалась production-интеграция с 1С или поставщиками. При этом stockout-компенсация, использование явных seasonal/category inputs и автоматическое исключение one-off в default-пути относятся к самому заявленному MVP кейса, поэтому отмечены как реальные неполноты, а не как ожидание production-функций.",
+      "strengths": [
+        "Полностью воспроизводимый основной backend-сценарий на всех 12 XLSX кейса: 3667 SKU, 199 ready, 107 положительных заказов.",
+        "Датированный прогноз, проверка утечки будущего, selector с out-of-sample folds, страховой запас и ежедневная траектория прихода.",
+        "Сильные ручные подтверждения, stale-revision защита, provenance, журнал и запрет публикации blocked строк в supplier-экспорт.",
+        "Отдельное объяснение партий с учётом повторяющихся оптовых объёмов, а не слепое удаление всех крупных продаж.",
+        "README и методологические документы честно раскрывают отсутствие customer identity, условность симуляций и требования Node для XLSX."
+      ],
+      "gaps": [
+        "D1: неположительный opening balance и ранний shortage дают предупреждение, но не корректируют историю и прогноз потерянным спросом; sensitivity check оставил quantity=36.0.",
+        "D2: workbook_kind не поддерживает обе предоставленные книги сезонности, а product_metadata сохраняет только name/unit, поэтому explicit seasonality/category inputs не используются.",
+        "D3: candidate_one_off помечается scenario_review; только robust при согласованном net total вычитает excess, тогда как default full использует raw history; customer-level detection невозможна без customer_id."
+      ],
+      "futureAdvice": [
+        {
+          "principle": "Сначала формализуйте missing-demand как отдельный источник наблюдения, а не как warning.",
+          "why": "D1 показывает, что изменение stockout-like balance не меняет recommendation; ранний shortage диагностируется, но неудовлетворённый спрос не попадает в forecast.",
+          "how": "В другом кейсе сначала добавьте в нормализованный контракт интервалы availability/stockout и правило censored demand: для каждого SKU отделите observed sales от estimated lost demand, затем сравните raw и adjusted forecast на одном контрольном периоде.",
+          "findingIds": [
+            "D1"
+          ],
+          "successCheck": "На фиксированном synthetic сценарии с одинаковыми продажами, но более длинным stockout adjusted forecast и quantity выше raw baseline, а explanation показывает использованный интервал и допущение.",
+          "timeboxMinutes": 45
+        },
+        {
+          "principle": "Проверяйте все переданные таблицы входным контрактом до разработки модели.",
+          "why": "D2 выявлен прямым запуском адаптера: сезонные файлы возвращают None, category не проходит в metadata, хотя обе сущности присутствуют в кейсовом обещании.",
+          "how": "Для следующего хакатона составьте маленькую таблицу source-to-feature до расчёта: каждый файл должен иметь kind, required columns, row count и один contract test; неподдержанный файл должен быть явным blocked/unsupported, а не молча пропускаться.",
+          "findingIds": [
+            "D2"
+          ],
+          "successCheck": "Все предоставленные книги появляются в Dataset.sources с распознанным kind, а один искусственный сезонный SKU меняет forecast в ожидаемом направлении и виден в explanation.",
+          "timeboxMinutes": 35
+        },
+        {
+          "principle": "Безопасный режим выбросов должен быть default для заявленной бизнес-цели, а не скрытым альтернативным сценарием.",
+          "why": "D3: код правильно различает repeating wholesale и candidate one-off, но full по умолчанию оставляет кандидата в истории; пользователь может не понять, что для обещанного эффекта нужен robust и reconciliation.",
+          "how": "В другом кейсе закрепите два явно названных результата — regular demand и exceptional demand — и показывайте рядом raw/adjusted quantity; включите режим с консервативным review-gate по умолчанию и отдельную кнопку принять исключение.",
+          "findingIds": [
+            "D3"
+          ],
+          "successCheck": "Добавление одиночной крупной строки в тестовый набор не увеличивает regular order, при этом строка остаётся видимой в exceptional review и повторяющиеся batch-продажи не удаляются.",
+          "timeboxMinutes": 40
+        }
+      ],
+      "uncertainties": [
+        "Нет стабильного customer_id и точных ежедневных stockout-интервалов в предоставленном пакете, поэтому клиентский one-off и точный lost demand невозможно оценить по фактическим данным.",
+        "Визуальная проверка браузерного UI не проводилась по обязательному ограничению; UI-выводы ограничены статическим контрактом и HTTP API.",
+        "Реальный XLSX export не был запущен в проверочном контейнере из-за отсутствия Node.js/artifact-tool; ZIP/CSV и все расчётные таблицы были проверены."
+      ],
+      "reviewPolicyVersion": 2,
+      "assessmentStatus": "ready",
+      "findings": [
+        {
+          "id": "S1",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Основной procurement-сценарий работает на полном предоставленном наборе и отдаёт supplier-grouped результат.",
+          "expected": "Загрузка реальных архивов должна привести к report с количествами, объяснениями и экспортом.",
+          "actual": "На 12 XLSX: 3667 SKU, 199 ready, 107 positive orders; HTTP report=200 и ZIP export=200 с четырьмя CSV.",
+          "evidence": [
+            "captures/20261002T061410669408-scenario.stdout.log",
+            "check-real-data",
+            "check-http-confirmed-report-export"
+          ],
+          "checkIds": [
+            "real-data-check",
+            "http-confirmed-report-export"
+          ]
+        },
+        {
+          "id": "S2",
+          "kind": "strength",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Прогноз и инвентарная траектория защищены от утечки будущего и учитывают дату прихода, lead time, pack/MOQ и safety stock.",
+          "expected": "Будущие значения не должны менять прошлый прогноз; поздний приход не должен скрывать ранний дефицит; заказ должен округляться по условию поставщика.",
+          "actual": "Эти свойства реализованы в forecast/engine и подтверждены unit/stress тестами.",
+          "evidence": [
+            "procurement/forecast.py:104",
+            "procurement/engine.py:45",
+            "tests/test_mvp.py:19",
+            "tests/test_inventory_stress.py:68"
+          ],
+          "checkIds": [
+            "unit-suite",
+            "analysis-suite"
+          ]
+        },
+        {
+          "id": "S3",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Ручное подтверждение действительно является gate перед готовым заказом.",
+          "expected": "До подтверждения неполные строки должны быть заблокированы; после актуального calculate готовые строки должны появляться только при целостном наборе входов.",
+          "actual": "Initial HTTP report: 3667 blocked/0 ready; после POST calculate с подтверждениями: 199 ready/107 positive orders.",
+          "evidence": [
+            "procurement/engine.py:281",
+            "procurement/export.py:71",
+            "check-http-default-blocked",
+            "check-http-calculate"
+          ],
+          "checkIds": [
+            "http-confirmed-report-export"
+          ]
+        },
+        {
+          "id": "S4",
+          "kind": "strength",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Команда не выдумывает customer identity и различает повторяющиеся крупные партии и кандидатов на разовый выброс.",
+          "expected": "Без стабильного anonymized customer_id проект не должен связывать накладные в одного клиента; крупные повторяющиеся batches не должны удаляться автоматически.",
+          "actual": "Код прямо документирует отсутствие customer identity, не добавляет customer_id и классифицирует повторяемость на уровне supplier/SKU/unit.",
+          "evidence": [
+            "analysis/orders_analysis.py:63",
+            "analysis/orders_analysis.py:109",
+            "docs/DATA_CONTRACT.md:34",
+            "analysis/test_demand_patterns.py:57"
+          ],
+          "checkIds": [
+            "analysis-suite"
+          ]
+        },
+        {
+          "id": "D1",
+          "kind": "defect",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Stockout не компенсируется в прогнозе и количестве заказа.",
+          "expected": "При зафиксированном отсутствии товара расчётная потребность должна быть скорректирована вверх относительно сырых продаж.",
+          "actual": "Движок только добавляет warning для opening balance<=0/early shortage; изменение balances.quantity на 0 не изменило quantity: baseline=36.0, stockout-like=36.0.",
+          "evidence": [
+            "procurement/engine.py:267",
+            "procurement/engine.py:316",
+            "captures/20261002T061841695894-scenario.stdout.log"
+          ],
+          "checkIds": [
+            "stockout-sensitivity"
+          ]
+        },
+        {
+          "id": "D2",
+          "kind": "defect",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Явные сезонные книги и category не входят в нормализованный входной контракт.",
+          "expected": "Предоставленные seasonal/category источники должны быть распознаны, проверены и влиять на объяснимый прогноз или классификацию.",
+          "actual": "workbook_kind для обеих сезонных книг возвращает None; поддерживаются sales/monthly/balances/constraints/snapshot, а product_metadata возвращает только name/unit.",
+          "evidence": [
+            "procurement/data.py:68",
+            "procurement/data.py:113",
+            "captures/20261002T061855721567-scenario.stdout.log"
+          ],
+          "checkIds": [
+            "source-contract-check"
+          ]
+        },
+        {
+          "id": "D3",
+          "kind": "defect",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Разовый candidate one-off не исключается из regular demand в default full-сценарии.",
+          "expected": "Одиночный крупный заказ должен быть исключён из регулярной потребности или явно вынесен из неё по умолчанию, оставаясь видимым для review.",
+          "actual": "Кандидаты получают scenario_review и корректируют adjusted history только при scenario=robust; при default scenario=full selected_history=history.",
+          "evidence": [
+            "analysis/orders_analysis.py:121",
+            "procurement/engine.py:217",
+            "procurement/engine.py:225",
+            "procurement/engine.py:12"
+          ],
+          "checkIds": [
+            "analysis-suite"
+          ]
+        },
+        {
+          "id": "L1",
+          "kind": "limitation",
+          "verification": "observed",
+          "responsibility": "review_environment",
+          "claim": "XLSX export не прошёл отдельный runtime-тест в контейнере без Node.js.",
+          "expected": "Дополнительный XLSX-тест должен иметь node и @oai/artifact-tool, как указано в README.",
+          "actual": "Один unittest завершился FileNotFoundError: node; ZIP/CSV экспорт и расчётный report прошли.",
+          "evidence": [
+            "captures/20261002T061000544772-test.stderr.log",
+            "README.md:43",
+            "procurement/export.py:81"
+          ],
+          "checkIds": [
+            "unit-suite"
+          ]
+        },
+        {
+          "id": "L2",
+          "kind": "limitation",
+          "verification": "unverified",
+          "responsibility": "review_environment",
+          "claim": "Визуальное поведение браузерного интерфейса не оценивалось.",
+          "expected": "Полная UI-проверка потребовала бы визуального браузерного прогона.",
+          "actual": "Проверены статический frontend contract и HTTP/API, но не визуальная раскладка или интерактивность.",
+          "evidence": [
+            "tests/test_frontend_contract.py:41",
+            "runtime policy: visual verification delegated to user"
+          ],
+          "checkIds": [
+            "unit-suite"
+          ]
+        }
+      ],
+      "gapFindingIds": [
+        "D1",
+        "D2",
+        "D3"
+      ]
+    }
+  ],
+  "score": 79.0,
+  "status": "complete",
+  "expectedJudges": 1
+}

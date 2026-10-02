@@ -1,0 +1,1116 @@
+{
+  "methodVersion": 4,
+  "repoId": "hack-8c2d1c68-san-ai",
+  "repoUrl": "https://github.com/BAITC-Hacks/hack-8c2d1c68-san-ai",
+  "caseId": 11,
+  "snapshot": "59582bb5bdb628293ff67676d93d59c0623484f8",
+  "judges": [
+    {
+      "methodVersion": 4,
+      "repoId": "hack-8c2d1c68-san-ai",
+      "caseId": 11,
+      "model": "GPT-5.6 Luna",
+      "snapshot": "59582bb5bdb628293ff67676d93d59c0623484f8",
+      "overallSummary": "SAN.AI представляет цельный прототип цепочки «документы ДО/ПОСЛЕ → парсинг → проверяемое AI-извлечение → каноническая организация → сопоставление → findings, evidence и рекомендации». Сборка, типы, lint, 80 локальных тестов и отдельная проверка PDF/XLSX прошли, а production-сервер и HTTP API работают после подготовки локальной схемы и демоданных. Реальный прогон извлечения и сравнения на контрольных редакциях 8/9 не выполнен: в окружении намеренно нет ключа OpenAI, а файлы организатора представлены как markdown-экспорт DOCX и не являются загружаемыми DOCX/PDF/XLSX. Это ограничение проверки, а не дефект проекта. По исходникам основной сценарий реализован убедительно; итог сдерживают отсутствие встроенного offline/demo результата для ключевого кейса, отсутствие авторизации для чувствительных документов и устаревший вводный раздел API-документации.",
+      "global": {
+        "criteria": [
+          {
+            "name": "Ценность решения",
+            "score": 21,
+            "max": 25,
+            "awarded": "Решение адресует конкретный риск реорганизации: ручное сравнение положений может скрыть потерю, перенос, дублирование или конфликт функций.",
+            "deductions": "Снято 4 балла за то, что ценность для реального чувствительного документооборота пока не сопровождается контролем доступа, а доказательство результата на контрольном комплекте в этом ревью осталось статическим.",
+            "evidence": [
+              "README.md:1",
+              "README.md:24",
+              "cases/11/task.txt:1"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "D-AUTH",
+                "reason": "Отсутствие авторизации и разграничения доступа прямо оставляет локальное хранилище документов непригодным для реальных кадровых или нормативных комплектов без дополнительного защитного слоя; это уменьшает непосредственно применимую ценность."
+              },
+              {
+                "points": 2,
+                "findingId": "D-DEMO",
+                "reason": "В репозитории нет зафиксированного offline-результата на организаторских редакциях, поэтому полезность для контрольного сценария подтверждена архитектурой и синтетическими тестами, но не результатом на данном кейсе."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Проблема с высокой стоимостью ошибки",
+                "implementation": "README описывает ручное сопоставление положений, структур, инструкций и приказов и перечисляет риски исчезнувшей функции, переноса ответственности, дублирования и изменения структуры. Архитектура на выходе хранит findings и ссылки на исходные фрагменты.",
+                "value": "Это понятная бизнес-проблема для сотрудника, анализирующего реорганизацию: результат направлен не просто на поиск похожего текста, а на проверку владельца и ответственности функции.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:1-32",
+                  "src/lib/comparison.ts:286-410"
+                ]
+              },
+              {
+                "aspect": "Результат пригоден для проверки человеком",
+                "implementation": "UI выводит категории «Сохранено», «Передано», «Возможно потеряно», «Дублирование» и «Потенциальный конфликт», раскрывает цитату, полный фрагмент, координаты и уверенность модели; рекомендации помечаются как требующие рассмотрения.",
+                "value": "Для внутреннего аудита это полезнее непрозрачного общего summary: специалист видит основание вывода и может отклонить гипотезу.",
+                "verification": "source",
+                "evidence": [
+                  "src/components/comparison-panel.tsx:8-43",
+                  "src/components/comparison-panel.tsx:89-154"
+                ]
+              },
+              {
+                "aspect": "Практичная локальная обработка документов",
+                "implementation": "Поддержаны DOCX, PDF и XLSX, исходный файл сохраняется отдельно от parsed.json, координаты источника переносятся в fragments, а запись публикуется атомарно.",
+                "value": "Такой путь соответствует реальному входу кейса и снижает риск потери оригинала при ошибке разбора.",
+                "verification": "observed",
+                "evidence": [
+                  "src/lib/server/document-store.ts:16-57",
+                  "src/lib/server/document-parser.ts:13-146",
+                  "captures/20260930T105410838556-documents2.stdout.log"
+                ]
+              },
+              {
+                "aspect": "Границы полезности честно отражены",
+                "implementation": "ComparisonResult добавляет review_required, warnings, confidence и запрет на автоматическое объявление потери при неполных или неподтверждённых источниках.",
+                "value": "Для аудита это снижает риск ложной уверенности и поддерживает рекомендательный, а не автоматический характер решения.",
+                "verification": "source",
+                "evidence": [
+                  "src/lib/server/comparison.ts:70-113",
+                  "src/components/comparison-panel.tsx:49-58"
+                ]
+              }
+            ],
+            "scoreReasoning": "21/25 заслужены за ясную боль, traceability и результат, ориентированный на аудитора. Максимум не поставлен из-за подтверждённой проектной границы безопасности (D-AUTH) и отсутствия закреплённого контрольного результата в репозитории (D-DEMO); это существенные ограничения внедрения, но не отменяют ценность MVP."
+          },
+          {
+            "name": "Результат и качество решения",
+            "score": 16,
+            "max": 20,
+            "awarded": "Основной пользовательский pipeline спроектирован целостно, но AI-часть результата не была воспроизведена без внешнего ключа.",
+            "deductions": "Снято 4 балла за отсутствие проверяемого на контрольных редакциях итогового результата и за отсутствие offline-пути для демонстрации содержательного comparison output.",
+            "evidence": [
+              "README.md:45-76",
+              "captures/20260930T105215756832-build.stdout.log",
+              "captures/20260930T105159296681-test.stdout.log"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "D-DEMO",
+                "reason": "Качество содержательного результата на реальных редакциях 8/9 не подтверждено артефактом или воспроизводимым кэшем; локальные тесты используют явно синтетические provider fixtures."
+              },
+              {
+                "points": 2,
+                "findingId": "D-DOCS-API",
+                "reason": "В docs/API.md вводный раздел всё ещё описывает только синтетический demo-v1 и будущий API, хотя ниже уже описаны реализованные document/extraction/comparison маршруты; это может направить проверяющего по неверному сценарию."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Полный сценарий от загрузки до результата",
+                "implementation": "Страницы и компоненты связывают загрузку документов по сторонам, построение структур, запуск сравнения, просмотр findings и рекомендаций; API разделён на document, extraction и comparisons маршруты.",
+                "value": "Сценарий не заканчивается на upload или одном AI-вызове: пользователю доступен аналитический экран с изменениями и evidence.",
+                "verification": "source",
+                "evidence": [
+                  "src/components/document-workspace.tsx:1-260",
+                  "src/app/api/documents/route.ts:1-16",
+                  "src/app/api/comparisons/route.ts:1-41"
+                ]
+              },
+              {
+                "aspect": "Защита от ложной потери функции",
+                "implementation": "Сопоставление различает equivalent, partial, uncertain и not_found; при неполном ответе модели recoverMatches оставляет функцию на проверку и запрещает превращать неизвестность в потерю.",
+                "value": "Это важное качество результата именно для реорганизации: перенос функции другому владельцу не объявляется исчезновением автоматически.",
+                "verification": "source",
+                "evidence": [
+                  "src/lib/server/comparison.ts:178-222",
+                  "src/lib/server/comparison.ts:340-392"
+                ]
+              },
+              {
+                "aspect": "Пользователь видит не только findings",
+                "implementation": "ComparisonPanel содержит отдельные представления ключевых изменений, всех соответствий функций и преобразований подразделений, а также рекомендации и технические предупреждения.",
+                "value": "Разные уровни детализации позволяют перейти от сводки к конкретной строке документа и затем к действию для ответственного сотрудника.",
+                "verification": "source",
+                "evidence": [
+                  "src/components/comparison-panel.tsx:64-154"
+                ]
+              },
+              {
+                "aspect": "Наблюдаемая базовая работоспособность",
+                "implementation": "Production build прошёл, 80 unit/domain тестов прошли, а HTTP-проверка форматов загрузила synthetic PDF и XLSX, получила parsed fragments и подтвердила возврат исходных байтов.",
+                "value": "Это подтверждает целостность инфраструктурной части MVP, хотя не заменяет реальный AI-сценарий.",
+                "verification": "observed",
+                "evidence": [
+                  "captures/20260930T105215756832-build.stdout.log",
+                  "captures/20260930T105159296681-test.stdout.log",
+                  "captures/20260930T105410838556-documents2.stdout.log"
+                ]
+              }
+            ],
+            "scoreReasoning": "16/20 отражают сильную целостность кода и проверенные document/API слои. Четыре балла удержаны не за отсутствие ключа, а за проектное отсутствие зафиксированного offline результата (D-DEMO) и противоречивую вводную документацию, ухудшающую воспроизводимость (D-DOCS-API)."
+          },
+          {
+            "name": "Инновационность",
+            "score": 12,
+            "max": 15,
+            "awarded": "Нестандартность проявляется в канонической модели организации, типизации ответственности и строгой проверке provenance поверх AI.",
+            "deductions": "Снято 3 балла, поскольку оригинальные механизмы не подтверждены прогоном на реальном комплекте и остаются зависимыми от общего-purpose LLM.",
+            "evidence": [
+              "src/lib/canonical-organization.ts:1-220",
+              "src/lib/server/document-sources.ts:1-90",
+              "docs/COMPARISON.md:1-180"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "D-DEMO",
+                "reason": "Без результата на редакциях 8/9 нельзя подтвердить, что нестандартная схема классификации действительно даёт преимущество на целевом материале, а не только проходит synthetic fixtures."
+              },
+              {
+                "points": 1,
+                "findingId": "D-DOCS-API",
+                "reason": "Смешение описания старого demo-v1 и нового document intelligence API размывает объяснение того, где именно находится инновационная часть продукта."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Канонизация вместо поверхностного diff",
+                "implementation": "Extraction преобразуется в организации с units, positions, functions, owners, parent links и sources; стороны BEFORE и AFTER хранятся раздельно, proposed не становится current автоматически.",
+                "value": "Это позволяет сопоставлять смысловую функцию и владельца после переименования или переподчинения, а не только сравнивать строки.",
+                "verification": "source",
+                "evidence": [
+                  "src/lib/canonical-organization.ts:1-220",
+                  "docs/DATA_CONTRACT.md:1-150"
+                ]
+              },
+              {
+                "aspect": "Тип модальности и ответственности",
+                "implementation": "Схема extraction различает execution, oversight, approval, consulting, other и duty, permission, prohibition; инструкции сравнения отдельно запрещают путать исполнение и контроль.",
+                "value": "Такой контекст нужен для обнаружения реальных конфликтов, а не ложных совпадений одинаковых глаголов.",
+                "verification": "source",
+                "evidence": [
+                  "src/lib/server/extraction.ts:13-31",
+                  "src/lib/server/comparison.ts:12-29"
+                ]
+              },
+              {
+                "aspect": "AI с контролируемыми границами",
+                "implementation": "OpenAI вызывается только серверным transport, ответы проходят schema validation, ссылки ограничены переданными ID, а citation проверяется по parser-owned fragment.",
+                "value": "AI используется для смысловой работы, но публикация результата ограничивается детерминированными проверками происхождения и структуры.",
+                "verification": "source",
+                "evidence": [
+                  "src/lib/server/openai-json.ts:1-64",
+                  "src/lib/server/extraction.ts:34-75",
+                  "src/lib/server/comparison.ts:50-76"
+                ]
+              },
+              {
+                "aspect": "Параллельные и восстанавливаемые этапы сравнения",
+                "implementation": "Owner groups, function matches и risks обрабатываются пакетами, workers запускают независимые задания, а отдельные неверные строки восстанавливаются в uncertain/review_required вместо потери всего результата.",
+                "value": "Для длинных положений это даёт масштабируемую по времени обработку и безопасный частичный результат.",
+                "verification": "source",
+                "evidence": [
+                  "src/lib/server/comparison.ts:136-222",
+                  "src/lib/server/comparison.ts:320-410"
+                ]
+              }
+            ],
+            "scoreReasoning": "12/15 — заметная оригинальность есть на уровне data contract, evidence verification и семантического сравнения. Снижение связано с тем, что преимущество не продемонстрировано на организаторском комплекте, а документация частично смешивает поколения API."
+          },
+          {
+            "name": "Потенциал развития и масштабирования",
+            "score": 17,
+            "max": 20,
+            "awarded": "Архитектура рассчитана на несколько документов, большие наборы функций, разные форматы и отдельное расширение провайдера/хранилища.",
+            "deductions": "Снято 3 балла за отсутствие доступа/мультиарендности и за локальную, процессную модель фоновых задач и файлового хранения.",
+            "evidence": [
+              "README.md:114-172",
+              "docs/COMPARISON.md:100-170",
+              "src/lib/server/extraction-jobs.ts:1-85"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "D-AUTH",
+                "reason": "Хранилище является одним общим локальным рабочим пространством без авторизации и разделения проектов; это ограничивает безопасное масштабирование на нескольких пользователей и организации."
+              },
+              {
+                "points": 1,
+                "findingId": "D-LOCAL-JOBS",
+                "reason": "ExtractionJobs и extraction pool локальны процессу, лимиты не распределены, а документы и comparison cache зависят от persistent local disk; для горизонтального развёртывания нужен отдельный job/storage слой."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Расширение входных форматов и комплектов",
+                "implementation": "Parser layer отделён от extraction: есть DOCX ZIP/XML parser, PDF по страницам и XLSX по листам/ячейкам; document store принимает несколько документов на сторону.",
+                "value": "Новые типы документов или более сложные комплекты можно добавлять без переписывания comparison engine.",
+                "verification": "source",
+                "evidence": [
+                  "src/lib/server/document-parser.ts:13-146",
+                  "src/lib/server/document-store.ts:16-57",
+                  "docs/COMPARISON.md:100-170"
+                ]
+              },
+              {
+                "aspect": "Лимиты и пакетирование",
+                "implementation": "Код ограничивает размер файлов, fragments, число функций и владельцев; comparison режет функции на пакеты и делает до четырёх независимых workers.",
+                "value": "Это создаёт понятную основу для увеличения объёма, контроля стоимости и последующей очереди задач.",
+                "verification": "source",
+                "evidence": [
+                  "src/lib/server/extraction.ts:79-95",
+                  "src/lib/server/comparison.ts:8-10",
+                  "docs/COMPARISON.md:120-145"
+                ]
+              },
+              {
+                "aspect": "Провайдер и кэш отделены от доменной логики",
+                "implementation": "requestOpenAiJson передаётся как Provider, модель выбирается через окружение, а ключ сравнения включает версию алгоритма, модель и содержимое extraction.",
+                "value": "Это облегчает тестирование, смену модели и добавление другого провайдера без изменения UI-контракта.",
+                "verification": "source",
+                "evidence": [
+                  "src/lib/server/openai-json.ts:1-64",
+                  "src/lib/server/comparison.ts:286-345",
+                  "src/lib/server/ai-models.ts:1-65"
+                ]
+              },
+              {
+                "aspect": "Дальнейшие доменные расширения уже предусмотрены",
+                "implementation": "Comparison model отдельно хранит recommendations, source links, review_required, warnings и proposed organization, поэтому к нему можно добавлять нормативные проверки и benchmark-сценарии.",
+                "value": "Опциональные требования кейса — рекомендации, нормативное сопоставление и сравнение внешних структур — имеют естественные точки расширения.",
+                "verification": "source",
+                "evidence": [
+                  "src/lib/comparison.ts:1-240",
+                  "README.md:40-76"
+                ]
+              }
+            ],
+            "scoreReasoning": "17/20 заслужены хорошим разделением parser/extraction/comparison, пакетированием и расширяемым контрактом. Снижение по D-AUTH и D-LOCAL-JOBS относится к переходу от хакатонного локального прототипа к безопасному многопользовательскому сервису."
+          },
+          {
+            "name": "Презентация, демо и ответы на вопросы",
+            "score": 16,
+            "max": 20,
+            "awarded": "README подробно раскрывает проблему, архитектуру, запуск, пользовательский сценарий и ограничения; устная презентация и Q&A отсутствовали и не оценивались.",
+            "deductions": "Снято 4 балла за устаревший вводный текст docs/API.md и отсутствие репозиторного контрольного output-файла на реальных данных.",
+            "evidence": [
+              "README.md:1-172",
+              "docs/API.md:1-35",
+              "captures/20260930T105215756832-build.stdout.log"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "D-DOCS-API",
+                "reason": "Начало docs/API.md сообщает, что доступен только старый синтетический стенд и будущий analysis API, хотя далее описаны реализованные document/extraction/comparison endpoints; это снижает ясность демонстрационного маршрута."
+              },
+              {
+                "points": 2,
+                "findingId": "D-DEMO",
+                "reason": "README описывает шаги проверки, но в репозитории не представлен готовый результат сравнения контрольных редакций, который можно показать без внешнего API-ключа."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Понятная продуктовая история",
+                "implementation": "README последовательно объясняет проблему, вход/выход, основной сценарий, принцип «Документы → Структуры → Сравнение → Evidence → Рекомендации» и роли AI/серверной логики.",
+                "value": "Проверяющему легко связать экран с бизнес-задачей и понять, какие действия ожидаются от пользователя.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:1-76"
+                ]
+              },
+              {
+                "aspect": "Воспроизводимый технический старт",
+                "implementation": "Документированы Node 22+, npm ci, env-переменные, PGlite/Postgres, migrate/seed и npm run dev; package scripts согласованы с build/typecheck/test/lint.",
+                "value": "Это даёт достаточную основу для локального запуска и проверки инфраструктурной части.",
+                "verification": "observed",
+                "evidence": [
+                  "README.md:114-172",
+                  "package.json:1-38",
+                  "captures/20260930T105215756832-build.stdout.log"
+                ]
+              },
+              {
+                "aspect": "Ограничения явно названы",
+                "implementation": "README предупреждает о review-required, proposed state, внешнем OpenAI key, локальном storage и отсутствии production deployment.",
+                "value": "Документация не выдаёт синтетический стенд за готовую эксплуатационную систему.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:71-76",
+                  "docs/API.md:170-220"
+                ]
+              },
+              {
+                "aspect": "Есть проверяемые локальные артефакты",
+                "implementation": "Команды lint, typecheck, build, test и documents:check заявлены и фактически выполнены; build перечислил document/extraction/comparison маршруты.",
+                "value": "Даже без визуального осмотра README связан с реально существующими командами и маршрутами.",
+                "verification": "observed",
+                "evidence": [
+                  "captures/20260930T105159296681-test.stdout.log",
+                  "captures/20260930T105159296681-typecheck.stdout.log",
+                  "captures/20260930T105435419323-lint.stdout.log",
+                  "captures/20260930T105410838556-documents2.stdout.log"
+                ]
+              }
+            ],
+            "scoreReasoning": "16/20 — README существенно выше минимального уровня и подтверждён локальными командами. Ограничения относятся к качеству репозиторного демо и противоречивой API-документации, а не к отсутствию устного выступления."
+          }
+        ],
+        "total": 82
+      },
+      "case": {
+        "criteria": [
+          {
+            "name": "Соответствие задаче и работоспособность",
+            "score": 20,
+            "max": 25,
+            "awarded": "Все существенные must-have отражены в доменной модели и UI, а инфраструктурный сценарий работает; содержательный AI-прогон на редакциях кейса ограничен отсутствием ключа.",
+            "deductions": "Снято 5 баллов за отсутствие подтверждённого результата на редакциях 8/9 и за отсутствие готового кейс-демо без внешнего сервиса.",
+            "evidence": [
+              "cases/11/task.txt:1",
+              "README.md:45-112",
+              "src/lib/server/comparison.ts:286-410"
+            ],
+            "deductionItems": [
+              {
+                "points": 3,
+                "findingId": "D-DEMO",
+                "reason": "Требование проверки контрольного комплекта не закрыто репозиторным observed output: редакции организатора являются markdown-экспортом и не подавались в AI pipeline, а ключ OpenAI не предоставлен."
+              },
+              {
+                "points": 2,
+                "findingId": "D-AUTH",
+                "reason": "Основной сценарий для организационных документов реализован без доступа пользователей и разделения комплектов; это не ломает MVP, но препятствует безопасной рабочей эксплуатации заявленного сценария."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Структурные изменения",
+                "implementation": "Owner groups классифицируются как preserved, transformed, created, unmatched или needs_review; parent-child связи не объединяются с родителем, а неоднозначные сопоставления остаются на проверку.",
+                "value": "Это покрывает сохранённые, переименованные, созданные и исчезнувшие подразделения без необоснованного автоматического утверждения.",
+                "verification": "source",
+                "evidence": [
+                  "src/lib/server/comparison.ts:113-178",
+                  "src/components/comparison-panel.tsx:12-20"
+                ]
+              },
+              {
+                "aspect": "Сопоставление функций и потерь",
+                "implementation": "Для каждой before-функции запрашивается ровно одна relation по всему after-набору; equivalent, partial, uncertain и not_found ведут к разным статусам, а transferred не смешивается с lost.",
+                "value": "Это напрямую соответствует требованию выявлять переносы и возможную потерю функций.",
+                "verification": "source",
+                "evidence": [
+                  "src/lib/server/comparison.ts:340-366",
+                  "src/lib/comparison.ts:80-170"
+                ]
+              },
+              {
+                "aspect": "Дублирование и конфликт",
+                "implementation": "Отдельный risk stage проверяет пары функций ПОСЛЕ; инструкции исключают алиасы, разные области, execution/oversight и неподтверждённые конфликты, а UI выводит тип, риск, причину и evidence.",
+                "value": "Кейс-specific анализ не ограничен обычным diff текста и учитывает независимого владельца, запреты и контроль.",
+                "verification": "source",
+                "evidence": [
+                  "src/lib/server/comparison.ts:368-392",
+                  "src/components/comparison-panel.tsx:89-118"
+                ]
+              },
+              {
+                "aspect": "Загрузка и просмотр результата",
+                "implementation": "Документы загружаются по сторонам, парсятся, extraction хранится на диске, comparison читается из cache, а UI показывает структуры, findings, исходные цитаты и рекомендации.",
+                "value": "Заявленный рабочий прототип присутствует как связанный web flow, а не как отдельный CLI-скрипт.",
+                "verification": "source",
+                "evidence": [
+                  "src/app/api/documents/route.ts:1-16",
+                  "src/app/api/documents/[id]/extract/route.ts:1-80",
+                  "src/app/api/comparisons/route.ts:1-41"
+                ]
+              }
+            ],
+            "scoreReasoning": "20/25: код покрывает все must-have и безопасно маркирует неопределённость. Пять баллов удержаны за D-DEMO и D-AUTH; отсутствие нашего ключа само по себе не штрафовалось, но отсутствие сохранённого case-specific результата остаётся проектной границей воспроизводимого доказательства."
+          },
+          {
+            "name": "Техническая реализация",
+            "score": 22,
+            "max": 25,
+            "awarded": "Техническая реализация сильная для пятичасового MVP: разделены parser, evidence, extraction, canonicalization, comparison, storage и UI.",
+            "deductions": "Снято 3 балла за локальную process-bound очередь/хранилище и отсутствие security layer для документов.",
+            "evidence": [
+              "src/lib/server/document-parser.ts:1-146",
+              "src/lib/server/extraction.ts:1-156",
+              "src/lib/server/comparison.ts:1-410"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "D-AUTH",
+                "reason": "Документные endpoints не содержат авторизации или project scoping; README прямо фиксирует, что API нельзя открывать с реальными кадровыми данными без отдельного access layer."
+              },
+              {
+                "points": 1,
+                "findingId": "D-LOCAL-JOBS",
+                "reason": "ExtractionJobs хранит job state в памяти процесса, а comparison cache и документы зависят от локального диска; это ограничивает отказоустойчивость и горизонтальное масштабирование."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Парсеры с координатами источника",
+                "implementation": "DOCX читается через ZIP/XML, PDF разбивается по страницам, XLSX — по листам и ячейкам; parser-owned fragments имеют location, текст и границы.",
+                "value": "Требование ссылок на конкретные фрагменты реализовано на уровне данных, а не только на уровне текста ответа модели.",
+                "verification": "source",
+                "evidence": [
+                  "src/lib/server/document-parser.ts:13-146",
+                  "src/lib/server/docx-parser.ts:55-135",
+                  "src/lib/server/document-sources.ts:1-90"
+                ]
+              },
+              {
+                "aspect": "Structured Outputs и валидация",
+                "implementation": "Схемы extraction/comparison задают enum и ID-ограничения, OpenAI response проверяется по статусу и JSON, а citation и сущности валидируются до сохранения.",
+                "value": "Это уменьшает риск публикации свободного, неподтверждённого текста и делает ошибки явными.",
+                "verification": "source",
+                "evidence": [
+                  "src/lib/server/openai-json.ts:9-64",
+                  "src/lib/server/extraction.ts:13-75",
+                  "src/lib/server/comparison.ts:220-286"
+                ]
+              },
+              {
+                "aspect": "Кэш, отмена и атомарность",
+                "implementation": "Extraction job поддерживает фоновые статусы и отмену, extraction записывается через временный файл и rename, comparison cache keyed by algorithm/model/content и повторно проверяет вход.",
+                "value": "Для длинных документов это повышает устойчивость к повторным запросам и частичным сбоям.",
+                "verification": "source",
+                "evidence": [
+                  "src/lib/server/extraction-jobs.ts:18-85",
+                  "src/lib/server/comparison-store.ts:1-190",
+                  "src/lib/server/document-store.ts:44-57"
+                ]
+              },
+              {
+                "aspect": "Фактическая проверка качества кода",
+                "implementation": "80 тестов прошли без падений, typecheck и lint прошли, production build скомпилировал все document/comparison маршруты.",
+                "value": "Есть существенная автоматическая опора на доменную логику, а не только README.",
+                "verification": "observed",
+                "evidence": [
+                  "captures/20260930T105159296681-test.stdout.log",
+                  "captures/20260930T105159296681-typecheck.stdout.log",
+                  "captures/20260930T105435419323-lint.stdout.log",
+                  "captures/20260930T105215756832-build.stdout.log"
+                ]
+              }
+            ],
+            "scoreReasoning": "22/25 — высокая техническая зрелость и хорошее соответствие заявленной логике. D-AUTH и D-LOCAL-JOBS являются реальными границами архитектуры, но для локального MVP не обесценивают выбор PGlite, файлового storage и process-local jobs."
+          },
+          {
+            "name": "README и воспроизводимость",
+            "score": 20,
+            "max": 25,
+            "awarded": "README содержит запуск, env, архитектуру, сценарий и ограничения; локальная сборка и тесты воспроизводимы.",
+            "deductions": "Снято 5 баллов за противоречивый вводный API-документ и отсутствие готового кейс-результата.",
+            "evidence": [
+              "README.md:114-172",
+              "docs/API.md:1-35",
+              "package.json:7-35"
+            ],
+            "deductionItems": [
+              {
+                "points": 3,
+                "findingId": "D-DOCS-API",
+                "reason": "Вводный текст docs/API.md противоречит фактическому документному API, описанному ниже; новый проверяющий может решить, что анализ документов ещё не согласован или не реализован."
+              },
+              {
+                "points": 2,
+                "findingId": "D-DEMO",
+                "reason": "Нет сохранённого comparison JSON/fixture для редакций 8/9, поэтому воспроизводимость содержательного вывода требует OpenAI credential и ручного запуска полного сценария."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Инструкция запуска",
+                "implementation": "README фиксирует Node 22+, npm ci, env.local, модели, PGlite, optional Postgres, dev server и seed/migrate команды.",
+                "value": "Новый проверяющий понимает зависимости и знает, какой секрет является внешним prerequisite.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:114-157",
+                  "README.md:257-275"
+                ]
+              },
+              {
+                "aspect": "Архитектура и data flow",
+                "implementation": "Описаны отдельные слои Document Intelligence и Organization Audit, таблица директорий и диаграмма от parser до UI.",
+                "value": "Документация помогает сопоставить заявленные свойства с исходниками и тестами.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:77-113"
+                ]
+              },
+              {
+                "aspect": "Команды проекта реально согласованы",
+                "implementation": "package.json содержит test, typecheck, lint, build, documents:check, migrate/seed и AI checks; test, typecheck, lint, build и documents:check были выполнены.",
+                "value": "Воспроизводимость подтверждается командами, а не только декларацией.",
+                "verification": "observed",
+                "evidence": [
+                  "package.json:7-35",
+                  "captures/20260930T105159296681-test.stdout.log",
+                  "captures/20260930T105159296681-typecheck.stdout.log",
+                  "captures/20260930T105410838556-documents2.stdout.log"
+                ]
+              },
+              {
+                "aspect": "Документированы лимиты и failure modes",
+                "implementation": "README/docs описывают размеры, число функций, review_required, кэш, отмену, ошибки AI и необходимость ручной проверки.",
+                "value": "Проверяющий может отличить неполный результат от подтверждённой потери и не принять warning за успех.",
+                "verification": "source",
+                "evidence": [
+                  "docs/EXTRACTION.md:1-180",
+                  "docs/COMPARISON.md:100-180"
+                ]
+              }
+            ],
+            "scoreReasoning": "20/25 — воспроизводимость кода и инфраструктурной проверки хорошая. D-DOCS-API и D-DEMO снижают шанс безошибочно воспроизвести именно новый кейсный analysis flow, хотя README в целом подробен."
+          },
+          {
+            "name": "Ценность и применимость решения",
+            "score": 13,
+            "max": 15,
+            "awarded": "Решение практически применимо как помощник аудитора: оно сохраняет исходные документы, строит проверяемые findings и предлагает действия, не утверждая организацию автоматически.",
+            "deductions": "Снято 2 балла за отсутствие доступа и за то, что реальная полезность на данных кейса не подтверждена фактическим AI output.",
+            "evidence": [
+              "README.md:24-76",
+              "src/components/comparison-panel.tsx:49-154",
+              "docs/API.md:205-220"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "D-AUTH",
+                "reason": "Без авторизации и разделения проектов применять решение к реальным внутренним документам небезопасно."
+              },
+              {
+                "points": 1,
+                "findingId": "D-DEMO",
+                "reason": "Наиболее важная практическая проверка — корректность findings по редакциям 8/9 — осталась не подтверждена observed результатом."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Целевая аудитория и действие",
+                "implementation": "Основной пользователь определён как сотрудник, проводящий анализ организационных изменений; выход включает изменения, evidence, риски и рекомендации.",
+                "value": "Результат ориентирован на принятие решения и последующую проверку владельцем процесса, а не на технический score модели.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:1-32",
+                  "cases/11/task.txt:1"
+                ]
+              },
+              {
+                "aspect": "Снижение ручной нагрузки",
+                "implementation": "AI группирует владельцев, сопоставляет функции по смыслу, выделяет риски и показывает цитаты вместо ручного чтения двух комплектов целиком.",
+                "value": "Это отвечает исходной проблеме времени и риска пропуска изменений.",
+                "verification": "source",
+                "evidence": [
+                  "src/lib/server/comparison.ts:286-410",
+                  "src/components/comparison-panel.tsx:64-154"
+                ]
+              },
+              {
+                "aspect": "Безопасная роль рекомендаций",
+                "implementation": "UI явно сообщает, что AFTER — предлагаемое состояние, findings требуют проверки, рекомендации не утверждены и не изменяют организацию.",
+                "value": "Такой human-in-the-loop режим подходит для нормативного внутреннего аудита, где ложное автоматическое решение опаснее неполного вывода.",
+                "verification": "source",
+                "evidence": [
+                  "src/components/comparison-panel.tsx:49-58",
+                  "src/components/comparison-panel.tsx:140-154"
+                ]
+              },
+              {
+                "aspect": "Поддержка реального входа",
+                "implementation": "DOCX/PDF/XLSX parser и проверка исходных байтов были реально пройдены на synthetic PDF/XLSX HTTP-тесте.",
+                "value": "Ключевой форматный слой применим к указанным организатором типам входа.",
+                "verification": "observed",
+                "evidence": [
+                  "captures/20260930T105410838556-documents2.stdout.log"
+                ]
+              }
+            ],
+            "scoreReasoning": "13/15: практическая логика убедительна и соответствует роли аудитора. Удержаны только два балла за безопасность эксплуатации и отсутствие фактического case-specific output; отсутствие ключа как таковое не использовано как штраф."
+          },
+          {
+            "name": "Потенциал развития и оригинальность подхода",
+            "score": 8,
+            "max": 10,
+            "awarded": "Есть оригинальная evidence-first модель и естественные расширения к нормативным проверкам, benchmark и другим провайдерам.",
+            "deductions": "Снято 2 балла за отсутствие multi-tenant/security foundation и за отсутствие эмпирической проверки на реальном наборе кейса.",
+            "evidence": [
+              "src/lib/canonical-organization.ts:1-220",
+              "src/lib/server/comparison.ts:286-410",
+              "README.md:77-113"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "D-AUTH",
+                "reason": "Масштабирование на несколько организаций требует сначала добавить auth, project scoping и защищённое хранилище."
+              },
+              {
+                "points": 1,
+                "findingId": "D-DEMO",
+                "reason": "Потенциал подхода не подкреплён benchmark на редакциях 8/9; пока видны тесты алгоритма на synthetic fixtures."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Evidence-first как переносимый принцип",
+                "implementation": "Каждое entity/function имеет source_refs, quotes и location, а проверка источника выполняется до comparison publication.",
+                "value": "Подход можно переносить на другие нормативные и операционные документы, сохраняя аудируемость.",
+                "verification": "source",
+                "evidence": [
+                  "src/lib/server/document-sources.ts:1-90",
+                  "src/lib/canonical-organization.ts:1-220"
+                ]
+              },
+              {
+                "aspect": "Естественное расширение в compliance",
+                "implementation": "Canonical functions хранят modality, conditions, scope и responsibility_type, а result уже содержит warnings, review_required и recommendations.",
+                "value": "Это даёт основу для сопоставления с регламентом или картой контролей без разрушения текущего контракта.",
+                "verification": "source",
+                "evidence": [
+                  "src/lib/extraction.ts:1-180",
+                  "src/lib/comparison.ts:1-240"
+                ]
+              },
+              {
+                "aspect": "Модель пригодна для смены AI слоя",
+                "implementation": "Provider и model routing отделены от доменной валидации; synthetic providers используются в тестах, OpenAI transport — в production path.",
+                "value": "Команда может сравнивать модели, добавлять локальный провайдер или запускать offline replay, не меняя UI и canonical model.",
+                "verification": "source",
+                "evidence": [
+                  "src/lib/server/openai-json.ts:1-64",
+                  "tests/helpers/comparison-fixtures.ts:1-90"
+                ]
+              },
+              {
+                "aspect": "Контроль неопределённости",
+                "implementation": "Confidence не объявляется вероятностью, uncertain/needs_review сохраняются, а отсутствие доказательств не превращается в loss.",
+                "value": "Это оригинальный и важный для масштабирования принцип: рост объёма данных не должен автоматически увеличивать число ложных утверждений.",
+                "verification": "source",
+                "evidence": [
+                  "src/lib/server/comparison.ts:12-29",
+                  "src/lib/server/comparison.ts:178-222"
+                ]
+              }
+            ],
+            "scoreReasoning": "8/10: оригинальный подход и точки расширения присутствуют. Максимум удерживают D-AUTH и D-DEMO — сначала потребуется безопасная многопользовательская оболочка и измерение качества на контрольных комплектах."
+          }
+        ],
+        "total": 83
+      },
+      "judgeScore": 82.5,
+      "caseRequirements": [
+        {
+          "requirement": "Загрузить комплекты документов ДО и ПОСЛЕ в поддерживаемых форматах",
+          "status": "met",
+          "explanation": "Document API принимает DOCX, PDF и XLSX по стороне before/after, сохраняет оригинал и parsed representation; upload/parse/source/original проверены на synthetic PDF и XLSX.",
+          "evidence": [
+            "src/lib/server/document-store.ts:16-57",
+            "src/app/api/documents/route.ts:1-16",
+            "captures/20260930T105410838556-documents2.stdout.log"
+          ]
+        },
+        {
+          "requirement": "Определить сохранённые, изменённые и новые подразделения",
+          "status": "met",
+          "explanation": "Canonical owner groups поддерживают preserved, transformed, created, unmatched и needs_review; создавшееся подразделение показывается только как потенциальное при достаточной полноте.",
+          "evidence": [
+            "src/lib/server/comparison.ts:113-178",
+            "src/components/comparison-panel.tsx:12-20"
+          ]
+        },
+        {
+          "requirement": "Сопоставить функции и выявить возможную потерю или перенос",
+          "status": "met",
+          "explanation": "Comparison stage проходит все before functions по всему after-набору, различает equivalent/partial/uncertain/not_found и отдельно отображает переданные и возможные потерянные функции.",
+          "evidence": [
+            "src/lib/server/comparison.ts:340-366",
+            "src/components/comparison-panel.tsx:89-125"
+          ]
+        },
+        {
+          "requirement": "Найти дублирование и потенциальный конфликт интересов",
+          "status": "met",
+          "explanation": "Отдельный risk stage ищет duplicated/conflict только среди обоснованных пар и учитывает независимых владельцев, модальность и тип ответственности.",
+          "evidence": [
+            "src/lib/server/comparison.ts:368-392",
+            "src/lib/server/comparison.ts:12-29"
+          ]
+        },
+        {
+          "requirement": "Для существенных выводов показать документ и конкретный фрагмент/пункт",
+          "status": "met",
+          "explanation": "Parser-owned fragments имеют координаты; extraction проверяет цитаты по исходному фрагменту, а UI раскрывает документ, координату, quote и полный текст.",
+          "evidence": [
+            "src/lib/server/document-sources.ts:1-90",
+            "src/components/comparison-panel.tsx:21-43"
+          ]
+        },
+        {
+          "requirement": "Сформировать понятное аналитическое заключение и рекомендации",
+          "status": "met",
+          "explanation": "Result содержит conclusion, warnings и recommendations; UI разделяет изменения и рекомендации и явно оставляет решение за ответственным сотрудником.",
+          "evidence": [
+            "src/lib/comparison.ts:1-240",
+            "src/components/comparison-panel.tsx:140-154"
+          ]
+        },
+        {
+          "requirement": "Не выдавать неподтверждённые выводы за факт",
+          "status": "met",
+          "explanation": "Review-required, confidence, uncertain/needs_review, evidence validation и отказ от автоматической потери реализованы в серверной логике и отображении.",
+          "evidence": [
+            "src/lib/server/comparison.ts:70-113",
+            "src/components/comparison-panel.tsx:49-58"
+          ]
+        }
+      ],
+      "testData": {
+        "provided": [
+          "cases/11/case-data/HackAlem AI_ ИИ-агент «Анализ организационной структуры и функционала».md",
+          "cases/11/case-data/Положение_о_внутреннем_аудите_редакция_8_обезличено.docx.md",
+          "cases/11/case-data/Положение_о_внутреннем_аудите_редакция_9_обезличено.docx.md"
+        ],
+        "used": [
+          "cases/11/case-data/Положение_о_внутреннем_аудите_редакция_8_обезличено.docx.md",
+          "cases/11/case-data/Положение_о_внутреннем_аудите_редакция_9_обезличено.docx.md"
+        ],
+        "checks": [
+          {
+            "input": "Редакции 8 и 9 положений, построчное сравнение markdown-экспортов",
+            "method": "Прочитан и сравнён предоставленный вход; проверены изменения версии/протокола, п.1.3, п.1.5–1.6, состав департаментов в п.3 и переработка обязанностей в п.5.",
+            "result": "Обнаружены реальные различия: добавлены ДИТААД и ДОА, изменены состав и подчинённость, расширены положения о независимости, конфликте интересов и ИТ/операционном аудите.",
+            "conclusion": "Датасет содержит подходящие ground-truth различия для проверки структурных изменений, функций, переносов и рисков; фактический AI output проекта на нём не получен."
+          },
+          {
+            "input": "Подача самих файлов организатора в HTTP upload",
+            "method": "Сопоставлен формат входа parser API с расширениями и сигнатурами upload.",
+            "result": "Предоставленные файлы имеют суффикс .docx.md и являются текстовым markdown-экспортом, тогда как upload принимает только бинарные DOCX/PDF/XLSX и проверяет PK/PDF signature.",
+            "conclusion": "Прямой upload этих markdown-файлов не является корректным тестом продукта; это ограничение представленного тестового артефакта, поэтому результат не трактуется как дефект parser."
+          },
+          {
+            "input": "Синтетические PDF и XLSX fixtures из tests/helpers/document-fixtures",
+            "method": "npm run documents:check: HTTP upload, parser, GET parsed и возврат original bytes.",
+            "result": "Оба формата прошли: synthetic.pdf upload → parse → sources → original OK; synthetic.xlsx upload → parse → sources → original OK.",
+            "conclusion": "Форматный и source-preserving слой, используемый перед AI, наблюдаемо работает."
+          }
+        ],
+        "limitations": [
+          "Контрольные редакции предоставлены как markdown-экспорт DOCX, а не как загружаемые бинарные документы.",
+          "AI credentials намеренно не предоставлены, поэтому содержательное извлечение и сравнение редакций 8/9 не запускались.",
+          "Визуальная проверка UI не выполнялась по политике ревью; оценены исходники и HTTP/CLI слои."
+        ]
+      },
+      "runtime": {
+        "status": "partial",
+        "build": "Production build прошёл: Next.js 16.3.6 compiled successfully, TypeScript finished, страницы и API routes сгенерированы.",
+        "start": "Production server стартовал успешно на Node 22.13.0 после build; корневой HTTP ответ 200. После npm run db:migrate и npm run db:seed health/graph/search ответили 200.",
+        "scenario": "Загрузка и разбор PDF/XLSX воспроизведены отдельной HTTP-проверкой. Полный документ → AI extraction → comparison заблокирован отсутствующим OPENAI_API_KEY; код внешнего пути проверен статически.",
+        "environment": "Node 22.13.0, npm 10.9.2; зависимости установлены npm ci. Внешние credentials не предоставлялись.",
+        "summary": "Приложение реально собирается и запускается, инфраструктурный документный сценарий работает, основной содержательный AI-сценарий проверен только до границы внешнего провайдера.",
+        "checks": [
+          {
+            "command": "npm ci",
+            "result": "386 packages installed; audit reported 0 vulnerabilities.",
+            "id": "R-CI",
+            "stage": "build",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Dependencies install from package-lock without project installation error."
+          },
+          {
+            "command": "npm test",
+            "result": "80 tests passed, 0 failed, 0 cancelled.",
+            "id": "R-TEST",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Unit/domain tests cover parsers, extraction validation, comparison, stores, jobs and API validation."
+          },
+          {
+            "command": "npm run typecheck",
+            "result": "next typegen and tsc --noEmit completed successfully.",
+            "id": "R-TSC",
+            "stage": "build",
+            "status": "pass",
+            "cause": "none",
+            "expected": "No TypeScript errors."
+          },
+          {
+            "command": "npm run lint",
+            "result": "eslint . completed with exit code 0.",
+            "id": "R-LINT",
+            "stage": "build",
+            "status": "pass",
+            "cause": "none",
+            "expected": "No lint errors."
+          },
+          {
+            "command": "npm run build",
+            "result": "Next production build completed; routes /, /documents, /structure and document/extraction/comparison APIs listed.",
+            "id": "R-BUILD",
+            "stage": "build",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Optimized production build compiles successfully."
+          },
+          {
+            "command": "npm run db:migrate",
+            "result": "Database schema ready.",
+            "id": "R-MIGRATE",
+            "stage": "start",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Local PGlite schema can be initialized."
+          },
+          {
+            "command": "npm run db:seed",
+            "result": "Demo seed ready; 20,000 synthetic employees and 20,221 total nodes reported.",
+            "id": "R-SEED",
+            "stage": "start",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Optional synthetic graph data seeds successfully."
+          },
+          {
+            "command": "GET /api/health; GET /api/graph?mode=overview; GET /api/search?q=director",
+            "result": "HTTP 200 for all three after local migration/seed; health returned status ok and 20,221 nodes, graph returned JSON, search returned JSON.",
+            "id": "R-HTTP",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Started server responds to health and representative API routes."
+          },
+          {
+            "command": "npm run documents:check",
+            "result": "synthetic.pdf and synthetic.xlsx both passed upload → parse → sources → original checks.",
+            "id": "R-DOCS",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Supported binary document formats parse and preserve original/source data."
+          },
+          {
+            "command": "POST /api/documents/:id/extract?background=1 with no OPENAI_API_KEY",
+            "result": "Not run against organizer files; source path returns a clear AiError for missing key and is handled by extraction job as failed external-provider request.",
+            "id": "R-AI",
+            "stage": "scenario",
+            "status": "blocked",
+            "cause": "external_service",
+            "expected": "AI extraction accepts parsed documents and produces verified extraction result when provider credentials are available."
+          }
+        ],
+        "limitations": [
+          "No OpenAI credential or quota was provided; this prevents observing real extraction/comparison content.",
+          "Organizer files are markdown exports rather than binary upload formats.",
+          "Visual/browser behavior was not tested by policy; no UI score was reduced solely for that restriction."
+        ]
+      },
+      "liveDemo": {
+        "status": "none",
+        "url": null,
+        "notes": "Публичная Live URL в проверяемых материалах не предоставлена. Это отмечено только как статус демо; локальный production server и HTTP API проверены."
+      },
+      "fiveHourContext": "Для пятичасового MVP объём реализации высокий: команда собрала parser layer для трёх форматов, серверное AI extraction с проверкой цитат, canonical organization, пакетное comparison, рекомендации, persistent storage и интерфейс. Ожидания production security, distributed jobs и полноценной offline-демонстрации не применялись как обязательные, но подтверждённые границы D-AUTH, D-LOCAL-JOBS, D-DOCS-API и D-DEMO учтены в соответствующих критериях.",
+      "strengths": [
+        "Целостная evidence-first цепочка от загрузки исходного файла до finding и рекомендации.",
+        "Надёжная доменная защита от неподтверждённой потери, дублирования и ложной уверенности.",
+        "Хорошее разделение parser, extraction, canonical model, comparison и UI; 80 тестов прошли.",
+        "Реально подтверждены production build, TypeScript, lint, local server, health/graph/search и PDF/XLSX document flow."
+      ],
+      "gaps": [
+        "Результат на контрольных редакциях 8/9 не зафиксирован в репозитории и не воспроизведён через AI provider.",
+        "Вводный раздел docs/API.md противоречит фактически реализованному document intelligence API.",
+        "Документное хранилище и API не имеют авторизации, project scoping или multi-tenant isolation.",
+        "Фоновые jobs и storage привязаны к одному процессу и локальному диску."
+      ],
+      "futureAdvice": [
+        {
+          "principle": "Сначала создавайте replayable контрольный прогон на реальном входе кейса",
+          "why": "D-DEMO: synthetic fixtures подтверждают алгоритм, но не показывают, как extraction и comparison справляются с редакциями 8/9 и их конкретными изменениями.",
+          "how": "Для следующего хакатона подготовьте минимальный бинарный fixture или validated extraction fixture из контрольного комплекта, сохраните expected findings для добавленных подразделений, изменённых функций и конфликта, затем запускайте replay без сети после одного live extraction.",
+          "findingIds": [
+            "D-DEMO"
+          ],
+          "successCheck": "Один чистый запуск публикует JSON с ожидаемыми типами findings, source coordinates и conclusion; повторный offline replay даёт тот же структурный результат.",
+          "timeboxMinutes": 45
+        },
+        {
+          "principle": "Документация должна иметь один актуальный happy path",
+          "why": "D-DOCS-API: начало docs/API.md говорит о старом demo-v1 и будущих document API, хотя анализ документов уже реализован ниже.",
+          "how": "В начале API-документа оставьте только актуальную карту маршрутов и пошаговый document flow; старый synthetic graph перенесите в отдельный раздел legacy/demo и добавьте smoke-команду для нового пути.",
+          "findingIds": [
+            "D-DOCS-API"
+          ],
+          "successCheck": "Новый проверяющий по одному файлу docs/API.md находит upload, extraction, comparison и download endpoints без чтения исторического раздела.",
+          "timeboxMinutes": 25
+        },
+        {
+          "principle": "Безопасность документов проектируйте до подключения реальных данных",
+          "why": "D-AUTH: README и код подтверждают общее локальное хранилище без авторизации и разделения проектов.",
+          "how": "В следующем MVP добавьте project/user scope в metadata и API, серверную проверку сессии на каждом document/comparison route и отдельный защищённый storage adapter; затем проверьте, что cross-project UUID не читается.",
+          "findingIds": [
+            "D-AUTH"
+          ],
+          "successCheck": "Два тестовых пользователя не могут перечислить, скачать, извлечь или сравнить документы друг друга; все positive/negative HTTP проверки проходят.",
+          "timeboxMinutes": 60
+        }
+      ],
+      "uncertainties": [
+        "Не подтверждено качество OpenAI extraction/comparison на реальных редакциях 8/9 из-за отсутствия credentials.",
+        "Не выполнялась визуальная проверка layout, focus, responsive behavior и фактического взаимодействия браузера.",
+        "Построчное сравнение входных markdown-экспортов показывает ground-truth изменения, но не доказывает, какие именно findings вернул бы LLM."
+      ],
+      "reviewPolicyVersion": 2,
+      "assessmentStatus": "ready",
+      "findings": [
+        {
+          "id": "S-TESTS",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Основной набор локальных тестов, типизация, lint и production build проходят.",
+          "expected": "Репозиторий должен собираться и проходить заявленные автоматические проверки.",
+          "actual": "80 тестов, typecheck, lint и build завершились успешно.",
+          "evidence": [
+            "captures/20260930T105159296681-test.stdout.log",
+            "captures/20260930T105159296681-typecheck.stdout.log",
+            "captures/20260930T105435419323-lint.stdout.log",
+            "captures/20260930T105215756832-build.stdout.log"
+          ],
+          "checkIds": [
+            "R-TEST",
+            "R-TSC",
+            "R-LINT",
+            "R-BUILD"
+          ]
+        },
+        {
+          "id": "S-EVIDENCE",
+          "kind": "strength",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Цитаты AI проверяются по parser-owned fragments и координатам исходного документа до публикации comparison.",
+          "expected": "Существенный вывод должен быть связан с проверяемым входным фрагментом.",
+          "actual": "verifySource, source_refs, quote и UI Evidence реализованы в серверном и клиентском слоях.",
+          "evidence": [
+            "src/lib/server/document-sources.ts:1-90",
+            "src/lib/server/extraction.ts:34-75",
+            "src/components/comparison-panel.tsx:21-43"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "S-DOCS",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Поддержанные PDF/XLSX проходят upload, parse, source retrieval и сохранение оригинала.",
+          "expected": "Документный слой должен принимать заявленные форматы и не терять исходный файл.",
+          "actual": "Обе synthetic проверки завершились OK.",
+          "evidence": [
+            "captures/20260930T105410838556-documents2.stdout.log"
+          ],
+          "checkIds": [
+            "R-DOCS"
+          ]
+        },
+        {
+          "id": "D-AUTH",
+          "kind": "defect",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Документное API и локальное хранилище не имеют авторизации, project scoping или разделения пользователей.",
+          "expected": "Чувствительные комплекты должны быть доступны только своему проекту/пользователю.",
+          "actual": "README прямо сообщает, что авторизация не добавлена и API нельзя открывать с реальными кадровыми данными; routes принимают UUID без user scope.",
+          "evidence": [
+            "docs/API.md:205-220",
+            "src/app/api/documents/route.ts:1-16",
+            "src/app/api/comparisons/route.ts:1-41"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "D-DEMO",
+          "kind": "defect",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "В репозитории нет зафиксированного результата полного AI extraction/comparison на контрольных редакциях кейса.",
+          "expected": "Для заявленного demo желательно иметь воспроизводимый case-specific output или replayable extraction.",
+          "actual": "README описывает ручные шаги, tests используют synthetic provider fixtures, а реальный output редакций 8/9 отсутствует; provided files имеют markdown export формат.",
+          "evidence": [
+            "README.md:160-172",
+            "tests/helpers/comparison-fixtures.ts:1-90",
+            "cases/11/case-data/Положение_о_внутреннем_аудите_редакция_8_обезличено.docx.md:1",
+            "cases/11/case-data/Положение_о_внутреннем_аудите_редакция_9_обезличено.docx.md:1"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "D-DOCS-API",
+          "kind": "defect",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Вводный раздел docs/API.md противоречит фактически реализованному document/extraction/comparison API.",
+          "expected": "Документация должна начинать с актуального маршрута основного сценария.",
+          "actual": "В начале сказано, что доступен только synthetic demo-v1 и future analysis API, тогда как ниже уже описаны document routes и comparison contract.",
+          "evidence": [
+            "docs/API.md:1-35",
+            "docs/API.md:170-205",
+            "src/app/api/documents/route.ts:1-16",
+            "src/app/api/comparisons/route.ts:1-41"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "D-LOCAL-JOBS",
+          "kind": "defect",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Extraction jobs и файловое хранилище привязаны к одному process-local runtime и локальному persistent disk.",
+          "expected": "Для распределённого развёртывания состояние jobs/storage должно быть внешним и устойчивым.",
+          "actual": "ExtractionJobs хранит jobs в Map, а document/comparison data пишутся в локальные каталоги; README описывает это как MVP limitation.",
+          "evidence": [
+            "src/lib/server/extraction-jobs.ts:12-85",
+            "src/lib/server/document-store.ts:10-17",
+            "docs/COMPARISON.md:140-170"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "L-API-KEY",
+          "kind": "limitation",
+          "verification": "unverified",
+          "responsibility": "review_environment",
+          "claim": "Реальный AI-сценарий не наблюдался без OPENAI_API_KEY.",
+          "expected": "При доступном внешнем провайдере extraction и comparison должны завершить основной сценарий.",
+          "actual": "Ключ намеренно не предоставлялся; статически проверен вызов, обработка ошибок и формат результата, но не внешний ответ.",
+          "evidence": [
+            "src/lib/server/openai-json.ts:18-64",
+            "runtime check R-AI"
+          ],
+          "checkIds": [
+            "R-AI"
+          ]
+        }
+      ],
+      "gapFindingIds": [
+        "D-DEMO",
+        "D-DOCS-API",
+        "D-AUTH",
+        "D-LOCAL-JOBS"
+      ]
+    }
+  ],
+  "score": 82.5,
+  "status": "complete",
+  "expectedJudges": 1
+}

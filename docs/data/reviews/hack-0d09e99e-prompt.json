@@ -1,0 +1,956 @@
+{
+  "methodVersion": 4,
+  "repoId": "hack-0d09e99e-prompt",
+  "repoUrl": "https://github.com/BAITC-Hacks/hack-0d09e99e-prompt",
+  "caseId": 5,
+  "snapshot": "dbc3f440d8c30e41bc74b441de7642320dc375b7",
+  "judges": [
+    {
+      "methodVersion": 4,
+      "repoId": "hack-0d09e99e-prompt",
+      "caseId": 5,
+      "model": "GPT-5.6 Luna",
+      "snapshot": "dbc3f440d8c30e41bc74b441de7642320dc375b7",
+      "overallSummary": "Qor — сильный воспроизводимый прототип для основного IEK-сценария: Docker-сборки проходят, загруженные организаторами XLSX превращаются в заказ, а роли и ручное согласование работают через API. Реализованы CatBoost, очистка выбросов, компенсация stockout на уровне признаков, учёт остатка, товара в пути и MOQ. Оценку удерживают подтверждённые границы: файл сезонности фактически не читается и сезонный коэффициент в результате равен 1, компенсация потерянного спроса не попадает в строки заказа, ETA не выводится, а второй предоставленный поставщик SystemElectric падает на формате MOQ. Итоговая оценка по общей шкале — 80/100; отдельной шкалы кейса нет.",
+      "global": {
+        "criteria": [
+          {
+            "name": "Ценность решения",
+            "score": 23,
+            "max": 25,
+            "awarded": "Высокая практическая ценность для менеджера закупа: сервис заменяет ручной Excel-расчёт заказом с числовым обоснованием, риском дефицита и контролем руководителя.",
+            "deductions": "Сняты 2 балла за неполное раскрытие ценности в пользовательском результате: потерянный спрос не показывается по строке, а сценарий нескольких поставщиков не доведён до реально сгруппированного результата.",
+            "evidence": [
+              "README.md:1-43",
+              "backend/qor/pipeline.py:302-371",
+              "backend/main.py:107-148",
+              "check-iek-bundle",
+              "check-order-flow"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "D2",
+                "reason": "Для позиции с дефицитом ценность компенсации спроса не объясняется закупщику: поле lostDemand принудительно равно 0, поэтому решение выглядит менее проверяемым."
+              },
+              {
+                "points": 1,
+                "findingId": "D5",
+                "reason": "Ценность формулируется как заказы поставщикам, но рабочий bundle содержит только один выбранный supplier и не формирует общую разбивку по нескольким поставщикам из пакета данных."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Понятная операционная проблема",
+                "implementation": "README связывает ручной расчёт в Excel с дефицитом, избыточным запасом и искажением разовыми отгрузками. Основной результат — строки с артикулом, остатком, прогнозом, количеством к заказу и срочностью; это не только модельный score, а действие для закупщика.",
+                "value": "Целевая аудитория и следующий шаг очевидны: менеджер проверяет рекомендацию, корректирует количество и отправляет её руководителю. Реальный IEK-запуск сформировал 268 строк к заказу, из них 228 критичных.",
+                "verification": "observed",
+                "evidence": [
+                  "README.md:1-17",
+                  "check-iek-bundle"
+                ]
+              },
+              {
+                "aspect": "Объяснимое решение на уровне позиции",
+                "implementation": "pipeline.py собирает водопад из прогноза, safety stock, остатка, товара в пути и округления до MOQ. Frontend показывает эти шаги при раскрытии строки, а backend/explain.py строит текст из тех же чисел.",
+                "value": "Закупщик может проверить, почему из прогноза 3159.9 и safety stock 840.8 при остатке 64 и входящем количестве 2000 получилась рекомендация 1950 с MOQ 50, что заметно повышает доверие к автоматизации.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/qor/pipeline.py:302-371",
+                  "frontend/components/OrdersWorkspace.tsx:311-335",
+                  "check-iek-bundle"
+                ]
+              },
+              {
+                "aspect": "Человеческое согласование вместо автоматической отправки",
+                "implementation": "Заказ проходит состояния draft → pending_approval → approved/returned. submit доступен buyer, approve/return — director; сам approve меняет только состояние локального заказа.",
+                "value": "Это напрямую снижает риск ошибочной закупки: прототип автоматизирует расчёт, но не делает необратимую отправку поставщику без ответственного сотрудника.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/main.py:118-148",
+                  "backend/qor/orders.py:82-127",
+                  "check-order-flow"
+                ]
+              },
+              {
+                "aspect": "Польза подтверждена на данных организатора",
+                "implementation": "В API были переданы шесть IEK XLSX из case-data: продажи, остатки, динамика, путь, MOQ и сезонность. Ответ содержит 2463 SKU в исходном наборе, 268 рекомендаций, 107720 единиц в пути и 25 записей аномалий.",
+                "value": "Это показывает не макет с искусственными строками, а полезный результат на реальной структуре входных файлов кейса.",
+                "verification": "observed",
+                "evidence": [
+                  "check-iek-upload",
+                  "check-iek-bundle",
+                  "backend/qor/pipeline.py:231-244"
+                ]
+              }
+            ],
+            "scoreReasoning": "23 балла заслужены за точное попадание в ежедневную боль закупок, конкретную числовую пользу и реально работающий human-in-the-loop сценарий. До максимума не хватает прозрачности потерянного спроса и полноценной многопоставщической выдачи; это уменьшает очевидность пользы, но не отменяет ценность основного IEK MVP."
+          },
+          {
+            "name": "Результат и качество решения",
+            "score": 14,
+            "max": 20,
+            "awarded": "Основной IEK сценарий целостен от XLSX до API-бандла и согласования; веб-сборка и серверные компоненты запускаются.",
+            "deductions": "Снято 6 баллов за подтверждённые дефекты пользовательского результата: SystemElectric не обрабатывается, сезонность из отдельного файла не отражена, lost demand теряется на выходе, ETA не сохраняется.",
+            "evidence": [
+              "captures/20261002T055835062727-backend-tests-only.stdout.log",
+              "captures/20261002T055851298092-frontend-unit-tests.stderr.log",
+              "check-iek-upload",
+              "check-systeme"
+            ],
+            "deductionItems": [
+              {
+                "points": 3,
+                "findingId": "D4",
+                "reason": "На втором предоставленном поставщике расчёт не формирует результат: _load_moq вызывает StopIteration на существующей колонке Кратность."
+              },
+              {
+                "points": 1,
+                "findingId": "D1",
+                "reason": "Отдельный входной XLSX сезонности не участвует в build_workspace, а bundle отдаёт seasonOct=1 и пустой seasonParts; заявленный пользовательский seasonal output не воспроизводится."
+              },
+              {
+                "points": 1,
+                "findingId": "D2",
+                "reason": "В bundle есть 223 строки с stockout12m>0, но ни одна строка не имеет lostDemand>0, поэтому важная часть результата не объясняется."
+              },
+              {
+                "points": 1,
+                "findingId": "D3",
+                "reason": "Парсер суммирует количества в пути, но не извлекает ETA: у всех 7 строк с входящим товаром inTransitEta=null, что ухудшает качество приоритизации и объяснения."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Воспроизводимая сборка",
+                "implementation": "Образы ml, backend и frontend собираются из Dockerfile; frontend выполняет npm run build и собирает standalone Next.js, backend содержит FastAPI, а ml — CatBoost и pipeline.",
+                "value": "Прототип можно поднять повторяемым способом, а не только открыть как статический экран. Все три валидных build-проверки завершились кодом 0.",
+                "verification": "observed",
+                "evidence": [
+                  "captures/20261002T054652218469-build-ml-valid.stderr.log",
+                  "captures/20261002T054652233467-build-backend-valid.stderr.log",
+                  "captures/20261002T054652243466-build-frontend-valid.stderr.log"
+                ]
+              },
+              {
+                "aspect": "Рабочий IEK поток данных",
+                "implementation": "POST /v1/workspace передал шесть организаторских XLSX; pipeline расплавляет wide-месяцы, строит признаки, загружает demand_model_v2.cbm, присоединяет MOQ и incoming и возвращает workspace JSON.",
+                "value": "Основной сценарий кейса даёт содержательный результат: 2463 SKU в расчёте, 268 строк к заказу, 228 critical и 25 anomaly records.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/qor/pipeline.py:231-309",
+                  "check-iek-upload",
+                  "check-iek-bundle"
+                ]
+              },
+              {
+                "aspect": "Контроль качества кодом и тестами",
+                "implementation": "Backend-тесты покрывают auth, роли, контракт модели и переходы заказа; frontend-тесты покрывают каталог, чат, экраны директора/логина, безопасное имя upload и badge.",
+                "value": "36 backend-тестов и 45 frontend-тестов прошли, а Docker build дополнительно подтвердил компилируемость и согласованность deployment-артефактов.",
+                "verification": "observed",
+                "evidence": [
+                  "captures/20261002T055835062727-backend-tests-only.stdout.log",
+                  "captures/20261002T055851298092-frontend-unit-tests.stderr.log",
+                  "backend/tests/test_contract.py:11-31"
+                ]
+              },
+              {
+                "aspect": "Безопасное состояние заказа",
+                "implementation": "API требует Bearer token, проверяет роли и возвращает 403/409 для неправильного действия; approve не вызывает внешний supplier endpoint, а только записывает статус.",
+                "value": "Сценарий не просто рисует кнопку: фактически проверены submit buyer, запрет submit director, approve director и конфликт повторного approve.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/main.py:50-65",
+                  "backend/qor/orders.py:82-127",
+                  "check-order-flow"
+                ]
+              }
+            ],
+            "scoreReasoning": "14 баллов отражают работоспособный основной IEK результат и хорошую тестовую базу. Снижение существенно, потому что кейс поставляет два набора поставщика и отдельные входы сезонности/ETA, а часть этих входов либо игнорируется, либо приводит к падению, либо не доходит до пользовательского результата."
+          },
+          {
+            "name": "Инновационность",
+            "score": 12,
+            "max": 15,
+            "awarded": "Команда объединила robust-очистку спроса, CatBoost-прогноз, признаки stockout и объяснимую procurement policy с отдельным approval-контуром.",
+            "deductions": "Снято 3 балла за неполную реализацию заявленного нестандартного подхода: брендовая сезонность не подключена, schema handling не обобщён, а компенсация не раскрыта в результате.",
+            "evidence": [
+              "scripts/prepare_dataset_v2.py:284-376",
+              "scripts/prepare_dataset_v2.py:383-439",
+              "backend/qor/pipeline.py:256-305",
+              "check-iek-upload",
+              "check-systeme"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "D1",
+                "reason": "Инновационная сезонная часть описана, но реальный pipeline не читает предоставленный брендовый коэффициент и отдаёт константный сезонный meta output."
+              },
+              {
+                "points": 1,
+                "findingId": "D4",
+                "reason": "Подход не переносится на эквивалентный MOQ-формат второго поставщика: различие названия колонки приводит к падению вместо адаптера схемы."
+              },
+              {
+                "points": 1,
+                "findingId": "D2",
+                "reason": "Модельные признаки lost demand есть, но в explainable order line эта часть превращается в 0; собственное преимущество подхода недостаточно демонстрируется пользователю."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Robust-защита от разовых всплесков",
+                "implementation": "correct_outliers использует только прошлые шесть месяцев, rolling median и MAD; при нулевом MAD применяется ограниченный fallback threshold, а выброс заменяется медианой до построения лагов.",
+                "value": "Это содержательно отличается от простого среднего и прямо адресует проблему разовой крупной продажи, не протаскивая всплеск в регулярный спрос.",
+                "verification": "source",
+                "evidence": [
+                  "scripts/prepare_dataset_v2.py:284-376"
+                ]
+              },
+              {
+                "aspect": "Компенсация цензурированного спроса",
+                "implementation": "correct_stockouts отмечает stock<=0, оценивает ожидаемый спрос по предыдущим трём месяцам и формирует lost_demand_estimate/demand_adjusted. В pipeline для хронического дефицита предусмотрен fallback по месяцам с наличием.",
+                "value": "Команда распознала, что нулевая продажа при пустом складе не равна нулевому спросу; это сильнее наивной модели по фактическим продажам.",
+                "verification": "observed",
+                "evidence": [
+                  "scripts/prepare_dataset_v2.py:383-439",
+                  "backend/qor/pipeline.py:256-288",
+                  "check-iek-upload"
+                ]
+              },
+              {
+                "aspect": "Сочетание ML и явной политики закупки",
+                "implementation": "CatBoost предсказывает следующий месяц, затем явная формула pipeline.py добавляет 0.5×rolling_std_6, вычитает stock и incoming и округляет вверх до MOQ. Модельный контракт фиксирует 32 признака, включая growth, calendar, seasonality_index, outlier и stockout lags.",
+                "value": "Гибрид сохраняет преимущества модели и возможность аудита конечного количества; менеджер видит не только prediction, но и преобразование в заказ.",
+                "verification": "source",
+                "evidence": [
+                  "backend/qor/contract.py:8-36",
+                  "backend/qor/pipeline.py:294-370"
+                ]
+              },
+              {
+                "aspect": "Инновация в процессе ответственности",
+                "implementation": "Сайт и мобильный клиент разделяют расчёт/правку и согласование; FastAPI выдаёт единый bundle, а director-only approve/return реализованы сервером, а не только скрытием кнопки.",
+                "value": "Для закупочного MVP это полезная продуктовая инновация: автоматизация не подменяет контроль и оставляет аудируемую точку решения.",
+                "verification": "observed",
+                "evidence": [
+                  "docs/07-roles-and-screens.md:10-18",
+                  "backend/main.py:118-148",
+                  "check-order-flow"
+                ]
+              }
+            ],
+            "scoreReasoning": "12 баллов — за действительно нестандартную комбинацию robust time-series preprocessing, ML и объяснимой policy. Это не максимальный балл, поскольку часть заявленного seasonal/stockout преимущества существует только внутри признаков, но не полностью в подключённых входах и пользовательском объяснении."
+          },
+          {
+            "name": "Потенциал развития и масштабирования",
+            "score": 14,
+            "max": 20,
+            "awarded": "Архитектура разделяет frontend, API, ML-сервис и мобильный клиент; модельный контракт и upload-путь дают понятную основу для дальнейшего расширения.",
+            "deductions": "Снято 6 баллов за узкие места масштабирования: формат MOQ не нормализован для второго поставщика, bundle рассчитан на одного supplier, ETA не моделируется, а chat-процесс не воспроизводится из заявленной установки зависимостей.",
+            "evidence": [
+              "docker-compose.yml:1-30",
+              "backend/qor/ml_server.py:25-56",
+              "backend/qor/pipeline.py:67-109",
+              "frontend/components/ImportPanel.tsx:8-15",
+              "check-systeme",
+              "check-api-tests"
+            ],
+            "deductionItems": [
+              {
+                "points": 3,
+                "findingId": "D4",
+                "reason": "Расширение на SystemElectric из поставленного пакета невозможно без изменения парсера: существующий заголовок Кратность не поддержан."
+              },
+              {
+                "points": 2,
+                "findingId": "D5",
+                "reason": "pipeline принимает один supplier, workspace.suppliers формирует один элемент, а ImportPanel не даёт выбрать или объединить поставщиков; расширение каталога требует архитектурной доработки."
+              },
+              {
+                "points": 1,
+                "findingId": "D3",
+                "reason": "ETA из входного пути не сохраняется, поэтому будущая приоритизация lead time и сроков поставки не может опираться на уже имеющееся поле данных."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Сервисное разделение компонентов",
+                "implementation": "docker-compose описывает ML, backend и frontend отдельно; backend проксирует расчёт на /build ML-сервиса, а frontend обращается к API. Flutter и веб используют общий REST-контракт.",
+                "value": "Модель можно обновлять отдельно от UI, а клиентскую поверхность — расширять без переписывания расчётного ядра; это хорошая база для новых складов и клиентов.",
+                "verification": "source",
+                "evidence": [
+                  "docker-compose.yml:1-30",
+                  "backend/main.py:207-242",
+                  "backend/qor/ml_server.py:1-56"
+                ]
+              },
+              {
+                "aspect": "Фиксированный контракт модели",
+                "implementation": "backend/qor/contract.py задаёт FEATURES, CATEGORICAL и MODEL_NAME, а test_contract загружает cbm и сравнивает feature_names_ с контрактом.",
+                "value": "Это снижает риск незаметного рассинхрона train/live при добавлении новых признаков и делает развитие модели более управляемым.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/qor/contract.py:8-36",
+                  "backend/tests/test_contract.py:11-31",
+                  "check-backend-tests"
+                ]
+              },
+              {
+                "aspect": "Upload вместо вшитого каталога",
+                "implementation": "Frontend очищает старые uploads, ограничивает имена basename и передаёт новые XLSX в API; pipeline читает их по распознаваемым ролям.",
+                "value": "Для нового клиента можно заменить выгрузку без коммита коммерческих данных; это реалистичная основа масштабирования на разные периоды и организации.",
+                "verification": "source",
+                "evidence": [
+                  "frontend/server/import.ts:12-89",
+                  "frontend/server/upload-name.ts:3-13",
+                  "backend/main.py:179-242"
+                ]
+              },
+              {
+                "aspect": "Ограничение расширения выявлено тестом, а не предположено",
+                "implementation": "Попытка запустить тот же pipeline на шести SystemElectric XLSX прошла загрузку продаж/остатков и preprocessing, но остановилась на конкретной схеме MOQ с заголовком Кратность.",
+                "value": "Это точная граница переносимости MVP, которую можно устранить адаптером схемы; при этом IEK-путь остаётся рабочим.",
+                "verification": "observed",
+                "evidence": [
+                  "captures/20261002T060101636296-scenario-systeme.stdout.log",
+                  "captures/20261002T060101636296-scenario-systeme.stderr.log",
+                  "check-systeme"
+                ]
+              }
+            ],
+            "scoreReasoning": "14 баллов заслужены за модульное разделение, общий REST и проверяемый model contract. Потенциал не выше среднего, потому что предоставленный второй поставщик уже демонстрирует непереносимость схемы, а текущая выдача и входной контракт фактически одномерны по supplier и не используют ETA."
+          },
+          {
+            "name": "Презентация, демо и ответы на вопросы",
+            "score": 17,
+            "max": 20,
+            "awarded": "README подробно описывает цель, формулу, роли, запуск и проверочные шаги; локально воспроизводимое демо подтверждено HTTP и unit/domain проверками.",
+            "deductions": "Снято 3 балла за расхождения между описанным демо и фактическим output: seasonal/ETA объяснения неполны, отдельный чат не собирается из указанной установки без дополнительных зависимостей. Отсутствие публичной ссылки не использовалось как штраф.",
+            "evidence": [
+              "README.md:1-93",
+              "docs/06-datasets.md:98-113",
+              "check-iek-upload",
+              "check-frontend-build",
+              "check-api-tests"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "D1",
+                "reason": "README и docs описывают брендовый коэффициент сезонности, но фактический bundle показывает seasonOct=1 и seasonParts=[], поэтому заявленный walkthrough нельзя воспроизвести буквально."
+              },
+              {
+                "points": 1,
+                "findingId": "D3",
+                "reason": "В документации есть ETA и пример сроков, но строка результата содержит inTransitEta=null, а assistant/explain использует общий текст вместо фактического срока."
+              },
+              {
+                "points": 1,
+                "findingId": "D6",
+                "reason": "README предлагает отдельный uvicorn api.main, однако backend/requirements*.txt не содержат python-dotenv/openai; полный tests/test_agent.py не собирается на заявленной Python-установке из-за ModuleNotFoundError: dotenv."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "README как сценарий демонстрации",
+                "implementation": "README содержит проблему, роли, формулу, список признаков, Docker и non-Docker запуск, API endpoints, логины demo и семь шагов проверки. docs/07 описывает разделение сайта и телефона.",
+                "value": "Для оценки без устного выступления участник оставил достаточно контекста, чтобы понять intended demo и восстановить основной путь из репозитория.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:1-93",
+                  "docs/07-roles-and-screens.md:43-83"
+                ]
+              },
+              {
+                "aspect": "Доказанное локальное демо",
+                "implementation": "Сборки завершились успешно; /health вернул модель и ready=true; frontend root отдал HTML; upload IEK вернул HTTP 200 с bundle, а затем API workflow отработал.",
+                "value": "Это сильнее неподтверждённого claim в README: основной результат можно получить из репозитория в изолированном окружении без визуальной автоматизации.",
+                "verification": "observed",
+                "evidence": [
+                  "check-builds",
+                  "check-api-health",
+                  "check-frontend-root",
+                  "check-iek-upload",
+                  "check-order-flow"
+                ]
+              },
+              {
+                "aspect": "Ясное объяснение ограничений безопасности",
+                "implementation": "Документация прямо говорит, что клиентские идентификаторы не входят в расчёт, approval не отправляет поставщику заказ, а export остаётся отдельным ручным шагом.",
+                "value": "Это уменьшает риск неверной трактовки прототипа как полностью автономной закупочной системы.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:1-17",
+                  "backend/qor/orders.py:1-5",
+                  "api/agent.py:1-6"
+                ]
+              },
+              {
+                "aspect": "Автотесты поддерживают рассказ о продукте",
+                "implementation": "Репозиторий содержит отдельные tests для API agent, backend auth/orders/contract и frontend unit suites; проверенные backend и frontend наборы прошли.",
+                "value": "Демо-история подкреплена не только скриншотными ожиданиями, но и автоматической проверкой ролей, контрактов и ключевых компонентов.",
+                "verification": "observed",
+                "evidence": [
+                  "captures/20261002T055835062727-backend-tests-only.stdout.log",
+                  "captures/20261002T055851298092-frontend-unit-tests.stderr.log"
+                ]
+              }
+            ],
+            "scoreReasoning": "17 баллов — за один из наиболее полных README среди прототипов такого масштаба и подтверждённое локальное демо. Остаток связан только с конкретными расхождениями документации и реализации; отсутствие live URL, видео и устных ответов отдельно не штрафовалось по правилам проверки."
+          }
+        ],
+        "total": 80
+      },
+      "case": null,
+      "judgeScore": 80,
+      "caseRequirements": [
+        {
+          "requirement": "Расчёт базовой потребности по артикулу учитывает историю продаж, остатки, товары в пути, MOQ и доступные товарные признаки.",
+          "status": "partial",
+          "explanation": "На IEK продажи и остатки плавятся в признаки, incoming вычитается из net, MOQ применяется округлением вверх, а supplier/category попадают в модель или output. Однако отдельный XLSX сезонности не читается, а второй предоставленный поставщик не проходит MOQ-парсер.",
+          "evidence": [
+            "backend/qor/pipeline.py:231-309",
+            "scripts/prepare_dataset_v2.py:199-277",
+            "check-iek-bundle",
+            "check-systeme"
+          ]
+        },
+        {
+          "requirement": "Сезонность и устойчивый рост должны влиять на прогноз, а сезонный паттерн — быть видимым в результате.",
+          "status": "partial",
+          "explanation": "Рост и календарно-исторический seasonality_index входят в FEATURES, но готовый брендовый файл Сезонность не загружается; в фактическом bundle seasonOct равен 1, seasonParts пуст, поэтому обещанный коэффициент нельзя увидеть или проверить в UI/API.",
+          "evidence": [
+            "scripts/prepare_dataset_v2.py:687-808",
+            "backend/qor/contract.py:21-31",
+            "backend/qor/pipeline.py:409-424",
+            "check-iek-bundle"
+          ]
+        },
+        {
+          "requirement": "Периоды stockout должны компенсировать потерянный спрос по сравнению с сырыми продажами.",
+          "status": "partial",
+          "explanation": "Preprocessing действительно строит stockout_flag_v2, lost_demand_estimate и demand_adjusted; IEK запуск сообщил 21261 stockout observations и 27549 estimated lost demand, а хронический stockout имеет fallback по месяцам с наличием. Но line.lostDemand принудительно равен 0, поэтому компенсация не видна в объяснении конечного заказа.",
+          "evidence": [
+            "scripts/prepare_dataset_v2.py:383-439",
+            "backend/qor/pipeline.py:256-288,352-370",
+            "check-iek-upload",
+            "check-iek-output-fields"
+          ]
+        },
+        {
+          "requirement": "Разовые крупные продажи, включая крупную продажу одному клиенту, не должны раздувать регулярную потребность.",
+          "status": "partial",
+          "explanation": "Разовые всплески очищаются causal rolling median + MAD до обучения; IEK output содержит 25 anomaly records, включая документ 20000078071 для MVA20-1-016-C, а динамика используется для показа основной накладной. Но в предоставленной динамике нет обезличенного ID клиента, поэтому именно one-customer attribution не реализуема и не должна заявляться как проверенная.",
+          "evidence": [
+            "scripts/prepare_dataset_v2.py:284-376",
+            "backend/qor/pipeline.py:161-228",
+            "docs/06-datasets.md:31-40",
+            "check-iek-output-fields"
+          ]
+        },
+        {
+          "requirement": "Итоговый список должен иметь количество, объяснение и группировку по поставщикам.",
+          "status": "partial",
+          "explanation": "Каждая IEK строка содержит recommended, steps и category, а suppliers и summary присутствуют. Фактический bundle формирует только один supplier; UI не выбирает и не объединяет поставщиков. При запуске на SystemElectric аналогичный сценарий падает на MOQ до выдачи списка.",
+          "evidence": [
+            "backend/qor/pipeline.py:318-450",
+            "frontend/components/ImportPanel.tsx:8-15",
+            "frontend/components/OrdersWorkspace.tsx:197-248",
+            "check-iek-bundle",
+            "check-systeme"
+          ]
+        },
+        {
+          "requirement": "Заказ нельзя отправлять без ручного подтверждения; клиентские данные должны быть обезличены.",
+          "status": "met",
+          "explanation": "buyer submit и director approve разделены серверными ролями; неправильный submit даёт 403, повторный approve — 409. Approve меняет локальный статус и не вызывает поставщика. Парсер использует агрегированные monthly файлы и документ/количество, не принимает client ID в bundle.",
+          "evidence": [
+            "backend/main.py:50-65,118-148",
+            "backend/qor/orders.py:82-127",
+            "check-order-flow",
+            "docs/06-datasets.md:37-40"
+          ]
+        }
+      ],
+      "testData": {
+        "provided": [
+          "cases/5/case-data/HackAlem AI_ Автоматизация формирования заказов поставщикам.docx.md",
+          "cases/5/case-data/IEK/MOQ  ИЭК.xlsx",
+          "cases/5/case-data/IEK/Динамика продаж_2025-2026.xlsx",
+          "cases/5/case-data/IEK/Ежемесячные остатки продукции за последние 2 года  ИЭК.xlsx",
+          "cases/5/case-data/IEK/Ежемесячные продажи в количественном выражении за последние 2 года.xlsx",
+          "cases/5/case-data/IEK/Путь ИЭК 22.09.2026.xlsx",
+          "cases/5/case-data/IEK/Сезонность ИЭК.xlsx",
+          "cases/5/case-data/Systeme electric/MOQ SystemElectric.xlsx",
+          "cases/5/case-data/Systeme electric/Динамика продаж_Syseme Electric_2025-2026.xlsx",
+          "cases/5/case-data/Systeme electric/Ежемесячные остатки SystemElectric 2024-2026.xlsx",
+          "cases/5/case-data/Systeme electric/Ежемесячные продажи в кол-м выражении SystemElectric 2024-2026.xlsx",
+          "cases/5/case-data/Systeme electric/Сезонность SystemElectric 2024-2026.xlsx",
+          "cases/5/case-data/Systeme electric/Товар в пути_SystemElectric на 22.09.2026.xlsx"
+        ],
+        "used": [
+          "HackAlem AI_ Автоматизация формирования заказов поставщикам.docx.md",
+          "IEK/MOQ  ИЭК.xlsx",
+          "IEK/Динамика продаж_2025-2026.xlsx",
+          "IEK/Ежемесячные остатки продукции за последние 2 года  ИЭК.xlsx",
+          "IEK/Ежемесячные продажи в количественном выражении за последние 2 года.xlsx",
+          "IEK/Путь ИЭК 22.09.2026.xlsx",
+          "IEK/Сезонность ИЭК.xlsx",
+          "Systeme electric/MOQ SystemElectric.xlsx",
+          "Systeme electric/Динамика продаж_Syseme Electric_2025-2026.xlsx",
+          "Systeme electric/Ежемесячные остатки SystemElectric 2024-2026.xlsx",
+          "Systeme electric/Ежемесячные продажи в кол-м выражении SystemElectric 2024-2026.xlsx",
+          "Systeme electric/Сезонность SystemElectric 2024-2026.xlsx",
+          "Systeme electric/Товар в пути_SystemElectric на 22.09.2026.xlsx"
+        ],
+        "checks": [
+          {
+            "input": "Шесть IEK XLSX: продажи, остатки, динамика, путь, MOQ и сезонность.",
+            "method": "POST /v1/workspace?supplier=IEK с реальными файлами, затем GET /v1/bundle.",
+            "result": "HTTP 200; bundle содержит supplier=IEK, skuTotal=2463, toOrder=268, critical=228, inboundQty=107720 и 25 anomalies.",
+            "conclusion": "Основной IEK путь использует реальные данные и формирует содержательный результат."
+          },
+          {
+            "input": "Те же IEK файлы, включая пустые остатки и крупные отгрузки.",
+            "method": "Проверены stdout pipeline и поля итогового bundle.",
+            "result": "Preprocessing сообщил 3619 outlier-месяцев, 21261 stockout observations и 27549 estimated lost demand; output содержит 25 anomaly records и 223 строки с stockout12m>0.",
+            "conclusion": "Очистка выбросов и расчёт stockout-компенсации выполняются внутри ядра; пользовательское lostDemand поле затем теряется."
+          },
+          {
+            "input": "IEK строка CTG12-063-K04-050-R с stock=64, incoming=2000, forecast=3159.9, safety=840.8, MOQ=50.",
+            "method": "Сверка фактической строки bundle и шагов pipeline с формулой из README/source.",
+            "result": "Рекомендация 1950; steps содержат -2000 за В пути и округление до MOQ 50.",
+            "conclusion": "Количество товара в пути участвует в конечной policy-формуле; ETA при этом не сохранён."
+          },
+          {
+            "input": "IEK Сезонность.xlsx и SystemElectric Сезонность.xlsx.",
+            "method": "Файлы переданы в IEK upload/прочитаны при проверке, затем проверены поля meta и source loader.",
+            "result": "bundle возвращает seasonOct=1 и seasonParts=[]; load_supplier читает только ежемесячные продажи и остатки, а _load_moq/_load_incoming — отдельные роли.",
+            "conclusion": "Готовые сезонные коэффициенты из входных файлов не применяются и не показываются."
+          },
+          {
+            "input": "Шесть SystemElectric XLSX, supplier=Systeme.",
+            "method": "Запуск build_workspace на реальной папке SystemElectric.",
+            "result": "Продажи/остатки и feature engineering стартуют, затем StopIteration в backend/qor/pipeline.py:80 при поиске колонки с фрагментом мин; фактический заголовок MOQ — Кратность.",
+            "conclusion": "Второй предоставленный набор не доходит до результата из-за дефекта схемного адаптера."
+          }
+        ],
+        "limitations": [
+          "В динамике продаж нет обезличенного идентификатора клиента и цены, поэтому one-customer attribution проверена не была и не может быть честно выведена из этих файлов.",
+          "Визуальная проверка сайта и Flutter не выполнялась согласно пользовательской политике; проверены сборка, server/API и unit/domain результаты.",
+          "OPENAI_API_KEY намеренно не предоставлялся; LLM chat не подменялся mock-ответом. Основной расчёт и approval не зависят от этого ключа.",
+          "Live demo URL в материалах не заявлен; локальный HTTP-сценарий проверен отдельно."
+        ]
+      },
+      "runtime": {
+        "status": "working",
+        "build": "Docker build ml, backend и frontend завершились успешно; frontend npm run build сгенерировал standalone Next.js.",
+        "start": "Backend /health вернул ok=true, ready=true и demand_model_v2.cbm; frontend root отдал HTML через production server.",
+        "scenario": "IEK XLSX были загружены в расчёт, bundle получен по API, затем buyer отправил заказ, director утвердил его; повторное утверждение и действие неверной роли дали ожидаемые ошибки.",
+        "environment": "Изолированный Docker runtime с Python 3.11, Node 20, FastAPI, pandas/openpyxl/CatBoost и ограниченными ресурсами; браузерная и визуальная автоматизация не использовалась.",
+        "summary": "Основной IEK сценарий воспроизведён полностью на предоставленных данных. SystemElectric сценарий отдельно дошёл до project-level ошибки в парсере MOQ, поэтому это дефект переносимости, а не блокировка запуска основного приложения.",
+        "checks": [
+          {
+            "command": "docker build -f ml/Dockerfile .",
+            "result": "Код 0; образ ML собран с CatBoost и моделью.",
+            "id": "check-build-ml",
+            "stage": "build",
+            "status": "pass",
+            "cause": "none",
+            "expected": "ML image builds successfully and contains the model service."
+          },
+          {
+            "command": "docker build -f backend/Dockerfile .",
+            "result": "Код 0; FastAPI image собран.",
+            "id": "check-build-backend",
+            "stage": "build",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Backend image builds successfully."
+          },
+          {
+            "command": "npm run build",
+            "result": "Код 0; Next.js сгенерировал 13 маршрутов и standalone output.",
+            "id": "check-build-frontend",
+            "stage": "build",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Frontend production build completes."
+          },
+          {
+            "command": "GET /health",
+            "result": "HTTP 200; {ok:true, model:demand_model_v2.cbm, ready:true}.",
+            "id": "check-api-health",
+            "stage": "start",
+            "status": "pass",
+            "cause": "none",
+            "expected": "API starts and reports the expected model ready."
+          },
+          {
+            "command": "GET /",
+            "result": "HTTP 200; production Next.js returned Russian Qor HTML document.",
+            "id": "check-frontend-root",
+            "stage": "start",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Frontend server starts and serves the application shell."
+          },
+          {
+            "command": "POST /v1/workspace?supplier=IEK",
+            "result": "HTTP 200 after processing six IEK XLSX; bundle counts and output fields were inspected.",
+            "id": "check-iek-upload",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Real IEK inputs produce a non-empty order bundle with recommendations and explanations."
+          },
+          {
+            "command": "GET /v1/bundle",
+            "result": "HTTP 200 for buyer token; supplier IEK, 268 lines, 228 critical, 107720 inbound quantity.",
+            "id": "check-iek-bundle",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Authenticated user receives the same calculated bundle used by clients."
+          },
+          {
+            "command": "POST /v1/orders/iek-current/submit; POST /v1/orders/iek-current/approve",
+            "result": "buyer submit 200, director submit 403, director approve 200, repeat approve 409, final status approved.",
+            "id": "check-order-flow",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Manual role-gated approval works and invalid transitions are rejected."
+          },
+          {
+            "command": "python -m pytest backend/tests -q",
+            "result": "36 passed, 1 warning.",
+            "id": "check-backend-tests",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Backend auth, API, contract and order tests pass."
+          },
+          {
+            "command": "npm test -- --runInBand",
+            "result": "6 suites and 45 tests passed.",
+            "id": "check-frontend-tests",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Frontend unit tests pass without browser automation."
+          },
+          {
+            "command": "python -m pytest backend/tests tests -q",
+            "result": "Collection stopped at tests/test_agent.py: api.main imports dotenv, but python-dotenv is not declared in backend requirements; ModuleNotFoundError: dotenv.",
+            "id": "check-api-tests",
+            "stage": "scenario",
+            "status": "fail",
+            "cause": "project",
+            "expected": "The documented Python test/assistant package should collect with the repository installation instructions."
+          },
+          {
+            "command": "build_workspace(data_dir, supplier=Systeme)",
+            "result": "Feature engineering starts on the six SystemElectric XLSX, then StopIteration at backend/qor/pipeline.py:80 because MOQ SystemElectric.xlsx has Кратность rather than a header containing мин.",
+            "id": "check-systeme",
+            "stage": "scenario",
+            "status": "fail",
+            "cause": "project",
+            "expected": "The second supplied supplier dataset should produce a valid order bundle or a handled schema error."
+          }
+        ],
+        "limitations": [
+          "Chat endpoint requires an external OpenAI credential and was not called without it.",
+          "No visual/browser behavior was assessed; frontend start was verified only by HTTP response and build/test output.",
+          "The successful runtime status refers to the primary IEK scenario; the separately tested SystemElectric input has the project defect recorded in check-systeme."
+        ]
+      },
+      "liveDemo": {
+        "status": "none",
+        "url": null,
+        "notes": "Публичная live-ссылка в репозитории не заявлена. Это не использовано как причина снижения баллов; локальный HTTP/API сценарий проверен."
+      },
+      "fiveHourContext": "Для пятичасового хакатона объём результата высокий: отдельные web/mobile/API/ML слои, модельный контракт, robust preprocessing, approval workflow, README и тесты. Оценка не требует production-инфраструктуры. В то же время дефект SystemElectric виден на предоставленном входе, а сезонность/ETA/lost-demand расхождения затрагивают именно заявленные must-have и потому учитываются как конкретные ограничения MVP.",
+      "strengths": [
+        "Основной IEK расчёт воспроизведён на реальных XLSX: 268 рекомендаций, 228 critical и 25 аномалий.",
+        "Robust MAD/median preprocessing и stockout adjustment используют только доступную историю и не требуют клиентских идентификаторов.",
+        "Модельный контракт, Docker-сборки, 36 backend-тестов и 45 frontend-тестов дают хорошую воспроизводимость.",
+        "Ручное согласование реально защищено серверными ролями и переходами состояния; approve не отправляет заказ поставщику."
+      ],
+      "gaps": [
+        "Сезонность из предоставленного XLSX не подключена: bundle отдаёт seasonOct=1 и пустой seasonParts.",
+        "Компенсация lost demand выполняется внутри признаков, но конечные строки заказа всегда имеют lostDemand=0.",
+        "ETA товаров в пути не парсится и не сохраняется: inTransitEta остаётся null.",
+        "SystemElectric MOQ с колонкой Кратность вызывает необработанный StopIteration.",
+        "Архитектура выдачи и UI рассчитаны на один supplier, поэтому группировка нескольких поставщиков не реализована.",
+        "Отдельный api.main/test_agent путь не собирается по указанным Python-зависимостям из-за отсутствующего python-dotenv (после него также потребуется openai)."
+      ],
+      "futureAdvice": [
+        {
+          "principle": "Сначала нормализуйте входные схемы поставщиков в единый контракт.",
+          "why": "D4 показывает, что различие одного заголовка MOQ останавливает весь расчёт SystemElectric до результата.",
+          "how": "Для следующего кейса заведите schema adapter с явными алиасами для code, MOQ, incoming и ETA; до вызова модели прогоняйте каждый файл через проверку обязательных семантических полей и выдавайте контролируемую ошибку с названием колонки.",
+          "findingIds": [
+            "D4"
+          ],
+          "successCheck": "Оба набора поставщика формируют bundle в одном smoke-тесте, а незнакомый заголовок даёт структурированную ошибку вместо traceback.",
+          "timeboxMinutes": 45
+        },
+        {
+          "principle": "Проверяйте не только внутренний признак, но и пользовательскую проекцию результата.",
+          "why": "D1, D2 и D3: seasonal/lost-demand/ETA частично вычисляются или доступны во входе, но в bundle и объяснении становятся константами или null.",
+          "how": "После расчёта добавьте контрактный assertion на не-тривиальные fixture cases: сезонный коэффициент меняет forecast, stockout line содержит lostDemand>0, incoming line сохраняет ETA; затем отобразите эти значения в steps и API.",
+          "findingIds": [
+            "D1",
+            "D2",
+            "D3"
+          ],
+          "successCheck": "Три маленьких fixture-сценария дают различающиеся JSON-поля и совпадающие с ними объяснения строки заказа.",
+          "timeboxMinutes": 50
+        },
+        {
+          "principle": "Держите documented install path и optional integrations в одном проверяемом наборе зависимостей.",
+          "why": "D6: основной backend работает, но отдельный api.main и его tests не проходят импорт из-за отсутствия python-dotenv/openai в requirements.",
+          "how": "Выделите assistant requirements или extras, добавьте health/start smoke без ключа и тестируйте импорт приложения с credential-independent stub только на уровне transport; отсутствие ключа оставьте явным runtime limitation.",
+          "findingIds": [
+            "D6"
+          ],
+          "successCheck": "Чистый контейнер по README импортирует api.main и собирает тесты; при отсутствии ключа сервис отвечает понятной конфигурационной ошибкой, а не ModuleNotFoundError.",
+          "timeboxMinutes": 25
+        }
+      ],
+      "uncertainties": [
+        "Не оценивалось визуальное расположение таблиц, мобильных экранов и доступность интерфейса: это оставлено пользовательской визуальной проверке.",
+        "Без client ID нельзя установить, какие именно строки относятся к одному клиенту; проверена только robust-фильтрация крупных агрегированных отгрузок/накладных.",
+        "Не выполнялся внешний LLM вызов без предоставленного API-ключа; source path в api/main.py просмотрен статически, но live-ответ ассистента не заявляется.",
+        "Не измерялось качество прогноза заново на новых данных; репозиторные walk-forward CSV использованы как заявленные артефакты, а runtime проверял формирование заказа и контракты."
+      ],
+      "reviewPolicyVersion": 2,
+      "assessmentStatus": "ready",
+      "findings": [
+        {
+          "id": "S1",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Основной IEK сценарий реально создаёт bundle из шести предоставленных XLSX и выдаёт непустой заказ.",
+          "expected": "Реальные входы кейса должны приводить к содержательному результату расчёта.",
+          "actual": "HTTP 200; 2463 SKU, 268 рекомендаций, 228 critical, 107720 inbound quantity, 25 anomalies.",
+          "evidence": [
+            "check-iek-upload",
+            "check-iek-bundle",
+            "backend/qor/pipeline.py:231-244"
+          ],
+          "checkIds": [
+            "check-iek-upload",
+            "check-iek-bundle"
+          ]
+        },
+        {
+          "id": "S2",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "На IEK фактически выполняются robust outlier correction и stockout adjustment.",
+          "expected": "Выбросы и пустой склад должны влиять на подготовленный спрос, а не только быть описаны в README.",
+          "actual": "Лог pipeline сообщил 3619 outlier-месяцев, 21261 stockout observations и 27549 estimated lost demand; сформировано 25 anomaly records.",
+          "evidence": [
+            "check-iek-upload",
+            "scripts/prepare_dataset_v2.py:284-439",
+            "backend/qor/pipeline.py:161-228"
+          ],
+          "checkIds": [
+            "check-iek-upload"
+          ]
+        },
+        {
+          "id": "S3",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Ручное согласование защищено серверными ролями и корректными переходами.",
+          "expected": "Buyer отправляет, director утверждает/возвращает, неправильные роли и повторные переходы отвергаются.",
+          "actual": "buyer submit 200, director submit 403, director approve 200, repeat approve 409; статус approved.",
+          "evidence": [
+            "check-order-flow",
+            "backend/main.py:118-148",
+            "backend/qor/orders.py:82-127"
+          ],
+          "checkIds": [
+            "check-order-flow"
+          ]
+        },
+        {
+          "id": "S4",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Сборки и основные unit/domain тесты проходят.",
+          "expected": "Deployment artifacts и заявленные backend/frontend компоненты должны собираться и тестироваться.",
+          "actual": "Три Docker build завершились кодом 0; backend 36 passed; frontend 45 passed.",
+          "evidence": [
+            "captures/20261002T054652218469-build-ml-valid.stderr.log",
+            "captures/20261002T055835062727-backend-tests-only.stdout.log",
+            "captures/20261002T055851298092-frontend-unit-tests.stderr.log"
+          ],
+          "checkIds": [
+            "check-build-ml",
+            "check-build-backend",
+            "check-build-frontend",
+            "check-backend-tests",
+            "check-frontend-tests"
+          ]
+        },
+        {
+          "id": "D1",
+          "kind": "defect",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Provided seasonality XLSX is not used by the live workspace builder and seasonal output is constant/empty.",
+          "expected": "The provided seasonal coefficient or an equivalent seasonal effect should be applied and exposed for verification.",
+          "actual": "build_workspace calls load_supplier, _load_moq and _load_incoming only; resulting bundle has seasonOct=1 and seasonParts=[] even though seasonality file was supplied.",
+          "evidence": [
+            "backend/qor/pipeline.py:231-239",
+            "backend/qor/pipeline.py:409-424",
+            "check-iek-bundle",
+            "check-iek-output-fields"
+          ],
+          "checkIds": [
+            "check-iek-upload",
+            "check-iek-bundle"
+          ]
+        },
+        {
+          "id": "D2",
+          "kind": "defect",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Calculated lost-demand adjustment is not carried into the line-level result or explanation.",
+          "expected": "A stockout line should expose the positive compensation used in its recommendation when such compensation exists.",
+          "actual": "Pipeline computes demand_adjusted/lost_demand_estimate, but line construction sets lostDemand to 0; among 223 stockout lines, lostDemand_nonzero is 0.",
+          "evidence": [
+            "scripts/prepare_dataset_v2.py:418-439",
+            "backend/qor/pipeline.py:318-371",
+            "check-iek-output-fields"
+          ],
+          "checkIds": [
+            "check-iek-upload",
+            "check-iek-bundle"
+          ]
+        },
+        {
+          "id": "D3",
+          "kind": "defect",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Incoming quantities are summed but ETA is discarded from the supplied path files.",
+          "expected": "ETA should be parsed or explicitly represented so urgency and explanation can use the actual delivery date.",
+          "actual": "_load_incoming sums non-metadata columns only; line.inTransitEta is hard-coded None and all 7 IEK inbound lines have null ETA.",
+          "evidence": [
+            "backend/qor/pipeline.py:91-109",
+            "backend/qor/pipeline.py:333-370",
+            "check-iek-output-fields"
+          ],
+          "checkIds": [
+            "check-iek-upload",
+            "check-iek-bundle"
+          ]
+        },
+        {
+          "id": "D4",
+          "kind": "defect",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "SystemElectric input fails on its valid MOQ schema.",
+          "expected": "The second supplied supplier dataset should build a bundle, or the parser should return a handled schema error.",
+          "actual": "MOQ SystemElectric.xlsx has column Кратность; _load_moq searches only for a header containing мин and raises StopIteration at line 80.",
+          "evidence": [
+            "backend/qor/pipeline.py:73-88",
+            "captures/20261002T060101636296-scenario-systeme.stdout.log",
+            "captures/20261002T060101636296-scenario-systeme.stderr.log"
+          ],
+          "checkIds": [
+            "check-systeme"
+          ]
+        },
+        {
+          "id": "D5",
+          "kind": "defect",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "The product contract and UI process one selected supplier rather than grouping a multi-supplier result.",
+          "expected": "When inputs contain multiple suppliers, the result should expose grouped orders for each supplier or a clearly working supplier selector.",
+          "actual": "API defaults supplier to IEK, build_workspace receives one supplier, return object creates one suppliers element, and ImportPanel has no supplier selector.",
+          "evidence": [
+            "backend/main.py:234-243",
+            "backend/qor/pipeline.py:231-232,442-450",
+            "frontend/components/ImportPanel.tsx:8-15"
+          ],
+          "checkIds": [
+            "check-iek-bundle",
+            "check-systeme"
+          ]
+        },
+        {
+          "id": "D6",
+          "kind": "defect",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "The separately documented api.main assistant/test path is not installable from the repository's Python requirements.",
+          "expected": "The documented assistant command and its tests should at least import in a clean environment before an external API key is considered.",
+          "actual": "Full pytest collection fails with ModuleNotFoundError: dotenv; api/main.py imports dotenv and openai, while backend/requirements.txt and requirements-api.txt declare neither.",
+          "evidence": [
+            "api/main.py:1-22",
+            "backend/requirements.txt:1-8",
+            "backend/requirements-api.txt:1-4",
+            "captures/20261002T055810480082-backend-tests.stdout.log"
+          ],
+          "checkIds": [
+            "check-api-tests"
+          ]
+        },
+        {
+          "id": "L1",
+          "kind": "limitation",
+          "verification": "source",
+          "responsibility": "unknown",
+          "claim": "The provided transaction data has no client identifier or price, so exact one-customer outlier attribution cannot be assessed.",
+          "expected": "A client-level claim requires an anonymized stable client key in the input.",
+          "actual": "docs/06-datasets.md records fields without client ID/price; code uses monthly aggregation and invoice number/quantity.",
+          "evidence": [
+            "docs/06-datasets.md:31-40",
+            "docs/06-datasets.md:108-113"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "L2",
+          "kind": "limitation",
+          "verification": "unverified",
+          "responsibility": "external_service",
+          "claim": "The optional LLM assistant was not exercised against a real provider.",
+          "expected": "A provider credential and endpoint are needed for a live chat response.",
+          "actual": "No API credential was supplied; source requires OPENAI_API_KEY and raises a configuration error otherwise.",
+          "evidence": [
+            "api/main.py:20-27",
+            "README.md:50-62"
+          ],
+          "checkIds": []
+        }
+      ],
+      "gapFindingIds": [
+        "D1",
+        "D2",
+        "D3",
+        "D4",
+        "D5",
+        "D6"
+      ]
+    }
+  ],
+  "score": 80.0,
+  "status": "complete",
+  "expectedJudges": 1
+}

@@ -1,0 +1,791 @@
+{
+  "methodVersion": 4,
+  "repoId": "hack-110c2392-nolimits",
+  "repoUrl": "https://github.com/BAITC-Hacks/hack-110c2392-nolimits",
+  "caseId": 5,
+  "snapshot": "0f7e54f558cf1ae64663979acef68ae86fbcf492",
+  "judges": [
+    {
+      "methodVersion": 4,
+      "repoId": "hack-110c2392-nolimits",
+      "caseId": 5,
+      "model": "GPT-5.6 Luna",
+      "snapshot": "0f7e54f558cf1ae64663979acef68ae86fbcf492",
+      "overallSummary": "StockPilot — сильный воспроизводимый MVP для закупщика: расчёт соединяет историю продаж, календарный спрос, stockout-компенсацию, MAD-фильтр выбросов, сезонность и тренд, остатки, своевременный inbound, MOQ/Pack, объяснение и бюджет. В изолированном запуске успешно собраны backend и frontend; HTTP-сценарий загрузки стресс-датасета, пересчёта, аналитики, ручной корректировки, утверждения и экспорта пройден. Backend-тесты и независимая приёмка прошли полностью. Главный подтверждённый недостаток — предоставленные партнёром сырые рабочие книги не принимаются напрямую: файл динамики продаж отклонён из-за отсутствующих category, customer_id и price, а MOQ-файл — из-за supplier_id, supplier_name и lead_time_days. Рабочий путь доказан на нормализованных встроенных книгах, но интеграция именно исходного пакета кейса остаётся неполной.",
+      "global": {
+        "criteria": [
+          {
+            "name": "Ценность решения",
+            "score": 22,
+            "max": 25,
+            "awarded": "22/25",
+            "deductions": "Сняты 3 балла за подтверждённый разрыв между реальными исходными таблицами партнёра и входным контрактом импорта: закупщик не может загрузить предоставленную рабочую книгу динамики продаж напрямую, поэтому ценность автоматизации полного исходного процесса достигается только после отдельного преобразования данных.",
+            "evidence": [
+              "README.md:1-15",
+              "cases/5/case-data/HackAlem AI_ Автоматизация формирования заказов поставщикам.docx.md:2-10",
+              "R-CASE-SALES",
+              "R-LIVE-ANOMALIES"
+            ],
+            "deductionItems": [
+              {
+                "points": 3,
+                "findingId": "D1",
+                "reason": "Для целевого менеджера закупа прямой импорт продаж заканчивается rows_loaded=0 и ошибками по обязательным полям. Это уменьшает практическую ценность сквозного перехода от партнёрской выгрузки к заказу, хотя расчёт на подготовленных данных ценность демонстрирует."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Адресная проблема закупщика",
+                "implementation": "README описывает конкретный вопрос менеджера — что, сколько и почему заказать сейчас — и строит поток от исходных таблиц к рекомендации. API имеет отдельные операции загрузки, расчёта, просмотра, корректировки, утверждения и экспорта.",
+                "value": "Решение сокращает ручную консолидацию Excel и делает дефицит, остаток и inbound видимыми в одной рекомендации. Для пятичасового MVP это понятная бизнес-ценность с конкретным пользователем.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:1-15",
+                  "backend/app/main.py:135-223"
+                ]
+              },
+              {
+                "aspect": "Рекомендация объясняет экономический результат",
+                "implementation": "Строка содержит current_stock, in_transit, forecast_lead_time, safety_stock, raw/final quantity, urgency, supplier и total_cost_kzt. _explanation сообщает срок поставки, прогноз, запас, inbound, выбросы, lost demand, MOQ/Pack и бюджет.",
+                "value": "Закупщик получает не только число, но и причины изменения потребности; это помогает отличить риск дефицита от запаса в пути и уменьшает риск избыточного заказа.",
+                "verification": "source",
+                "evidence": [
+                  "backend/app/services/replenishment.py:147-199",
+                  "frontend/src/ItemDetail.tsx:29-35"
+                ]
+              },
+              {
+                "aspect": "Подтверждённый стресс-сценарий",
+                "implementation": "POST /api/data/load-anomalies обработал 20 294 строки продаж, 58 строк остатков, 30 inbound, 29 поставщиков и 3 stockout, сформировав 57 рекомендаций и 46 записей выбросов.",
+                "value": "На стресс-данных система не ограничилась демонстрационными строками: она сохранила аудируемые выбросы и выдала закупочные позиции на большом наборе.",
+                "verification": "observed",
+                "evidence": [
+                  "R-LIVE-ANOMALIES",
+                  "backend/data/README_ANOMALIES.md:1-20"
+                ]
+              },
+              {
+                "aspect": "Граница ценности для исходного пакета",
+                "implementation": "При отправке реального IEK-файла динамики в /api/data/upload/sales приложение вернуло rows_loaded=0 и явно указало отсутствующие category, customer_id и price.",
+                "value": "Без адаптера менеджер не получает результат из выданного файла. Это единственный существенный зафиксированный фактор, не позволяющий поставить полный балл ценности.",
+                "verification": "observed",
+                "evidence": [
+                  "R-CASE-SALES",
+                  "backend/app/services/validation.py:10-17",
+                  "backend/app/services/validation.py:114-123"
+                ]
+              }
+            ],
+            "scoreReasoning": "22 балла заслужены за ясную бизнес-проблему, объяснимый результат, работу на стресс-наборе и адресность интерфейса менеджеру закупа. До максимума удерживает не отсутствие production-функций, а конкретный входной разрыв D1: исходная sales workbook не загружается без предварительного преобразования."
+          },
+          {
+            "name": "Результат и качество решения",
+            "score": 18,
+            "max": 20,
+            "awarded": "18/20",
+            "deductions": "Сняты 2 балла за то, что проверенный пользовательский результат воспроизводится на нормализованной встроенной книге и стресс-книге проекта, но прямой импорт двух фактических рабочих книг из пакета кейса завершается валидационными ошибками и не переходит к расчёту.",
+            "evidence": [
+              "R-BUILD-BACKEND",
+              "R-BUILD-FRONTEND",
+              "R-BACKEND-TESTS",
+              "R-QA-TESTS",
+              "R-LIVE-LIFECYCLE",
+              "R-CASE-MOQ"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "D1",
+                "reason": "Сквозной результат нельзя получить непосредственно из supplied sales/MOQ workbooks: обе загрузки вернули 0 строк. Это ограничивает качество интеграционного сценария, хотя основной bundled сценарий и API-тесты работают."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Сборка и запуск",
+                "implementation": "Backend Dockerfile фиксирует Python 3.13-зависимости и запускает uvicorn; frontend Dockerfile устанавливает lock-файл и запускает Vite. Оба образа собраны с ограниченными ресурсами.",
+                "value": "Репозиторий поставляется как собираемое приложение, а не набор разрозненных исходников.",
+                "verification": "observed",
+                "evidence": [
+                  "R-BUILD-BACKEND",
+                  "R-BUILD-FRONTEND",
+                  "backend/Dockerfile:1-11",
+                  "frontend/Dockerfile:1-9"
+                ]
+              },
+              {
+                "aspect": "Целостный API-сценарий заказа",
+                "implementation": "Проверен путь: anomaly load, GET рекомендаций, detail, calculate, analytics, adjust, approve и CSV export. Все ответы успешны; analytics вернул 379 точек.",
+                "value": "Это доказывает результат сильнее наличия отдельных endpoint-ов: строка проходит от расчёта до ручного решения и выгрузки.",
+                "verification": "observed",
+                "evidence": [
+                  "R-LIVE-LIFECYCLE",
+                  "backend/app/main.py:444-579"
+                ]
+              },
+              {
+                "aspect": "Математика и граничные условия",
+                "implementation": "Расчёт вычитает stock и только inbound до lead time, применяет safety stock, MOQ, minimum order value и Pack; acceptance-набор проверяет остатки, transit, stockout, выброс, короткую историю, порядок строк и ограничения поставщика.",
+                "value": "Качество результата подтверждено предметными тестами, включая поздний inbound и нулевую потребность.",
+                "verification": "observed",
+                "evidence": [
+                  "R-BACKEND-TESTS",
+                  "R-QA-TESTS",
+                  "backend/app/services/replenishment.py:130-180",
+                  "qa/ACCEPTANCE.md:9-43"
+                ]
+              },
+              {
+                "aspect": "Ручное решение и экспорт",
+                "implementation": "approve блокирует нарушение MOQ/Pack/minimum order value, adjust пересчитывает бюджет, export отдаёт CSV/XLSX и экранирует формульные значения, SQLite хранит audit и историю.",
+                "value": "Результат пригоден для принятия решения: система не отправляет заказ автоматически и сохраняет финальное количество.",
+                "verification": "source",
+                "evidence": [
+                  "backend/app/main.py:508-579",
+                  "backend/app/repositories/database.py:73-118",
+                  "R-LIVE-LIFECYCLE"
+                ]
+              }
+            ],
+            "scoreReasoning": "18 баллов: основной сценарий реально работает, тесты покрывают доменную арифметику и lifecycle, а HTTP-проверка подтвердила пользовательский результат. Не хватает 2 баллов только из-за D1 — исходные partner workbooks не проходят тот же интеграционный путь без ручной подготовки."
+          },
+          {
+            "name": "Инновационность",
+            "score": 15,
+            "max": 15,
+            "awarded": "15/15",
+            "deductions": "Подтверждённых проектных дефектов, относящихся именно к нестандартности подхода, не установлено; неполный адаптер исходных таблиц относится к интеграции и отражён отдельно.",
+            "evidence": [
+              "backend/app/services/replenishment.py:19-104",
+              "backend/app/services/forecasting.py:7-99",
+              "backend/data/README_ANOMALIES.md:20-85",
+              "R-QA-TESTS"
+            ],
+            "deductionItems": [],
+            "awardedDetails": [
+              {
+                "aspect": "Агрегация заказа одного клиента",
+                "implementation": "prepare_demand агрегирует продажи по sku, warehouse, date и customer_id, затем применяет MAD к клиентским дневным итогам. Раздробленная закупка одного клиента рассматривается как одна коммерческая партия.",
+                "value": "Это защищает регулярный прогноз от способа записи заказа и оставляет событие в audit trail, а не просто удаляет максимум.",
+                "verification": "source",
+                "evidence": [
+                  "backend/app/services/replenishment.py:54-71",
+                  "qa/test_engine.py:165-174"
+                ]
+              },
+              {
+                "aspect": "Robust MAD вместо хрупкого среднего",
+                "implementation": "mad_outliers вычисляет median, MAD и modified z-score, затем применяет size gate; audit хранит клиента, дату, количество, типичное количество и причину.",
+                "value": "Для B2B-пополнения это обоснованный подход, отделяющий разовый тендер от устойчивого роста и объяснимый закупщику.",
+                "verification": "source",
+                "evidence": [
+                  "backend/app/services/forecasting.py:7-19",
+                  "backend/app/services/replenishment.py:66-71",
+                  "R-LIVE-ANOMALIES"
+                ]
+              },
+              {
+                "aspect": "Совместное моделирование stockout и сезонного тренда",
+                "implementation": "Пропущенные календарные дни разворачиваются в daily series, stockout отмечается маской, lost demand восстанавливается медианой сопоставимых дней. Для длинной истории вычисляются day-of-week и месячные факторы, тренд оценивается после deseasonalization.",
+                "value": "Нулевая продажа при пустой полке не трактуется как отсутствие спроса, а зимний пик не превращается в ошибочный долгосрочный спад.",
+                "verification": "source",
+                "evidence": [
+                  "backend/app/services/replenishment.py:80-104",
+                  "backend/app/services/forecasting.py:47-87",
+                  "qa/test_engine.py:187-198"
+                ]
+              },
+              {
+                "aspect": "Объяснимость как часть вычисления",
+                "implementation": "metadata хранит модель, горизонт, demand_std, service_factor, raw/rounded order, unit cost, outliers и stockout adjustments; explanation строится из тех же промежуточных величин.",
+                "value": "Это преимущество перед непрозрачным forecast endpoint: пользователь сопоставляет число с факторами и принимает решение вручную.",
+                "verification": "source",
+                "evidence": [
+                  "backend/app/services/replenishment.py:175-199",
+                  "frontend/src/ItemDetail.tsx:30-35"
+                ]
+              }
+            ],
+            "scoreReasoning": "Полный балл оправдан сочетанием клиент-дневной агрегации, robust MAD, восстановления потерянного спроса, сезонно скорректированного тренда и объяснимых промежуточных величин. D1 не уменьшает инновационную ценность уже реализованного алгоритма."
+          },
+          {
+            "name": "Потенциал развития и масштабирования",
+            "score": 18,
+            "max": 20,
+            "awarded": "18/20",
+            "deductions": "Сняты 2 балла за ограниченную переносимость входного слоя: расширение на новые организации и их реальные 1С-выгрузки потребует адаптеров до того, как общий расчёт сможет быть повторно использован.",
+            "evidence": [
+              "backend/app/services/validation.py:19-67",
+              "backend/app/main.py:151-223",
+              "backend/app/repositories/database.py:149-171",
+              "R-CASE-SALES",
+              "R-QA-TESTS"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "D1",
+                "reason": "Масштабирование на фактические выгрузки партнёра ограничено жёстким required-column контрактом и отсутствием адаптера для месячных матриц, MOQ-файлов и таблиц пути; перенос алгоритма на другой источник не является только настройкой."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Расширяемый контракт наборов данных",
+                "implementation": "Валидация и нормализация вынесены в service layer с русскими и английскими alias-ами; API разделяет sales, stock, transit, stockouts и suppliers.",
+                "value": "Можно менять адаптер, не переписывая engine прогноза и UI; поддержаны отдельные CSV/XLSX и multi-sheet workbook.",
+                "verification": "source",
+                "evidence": [
+                  "backend/app/services/validation.py:19-67",
+                  "backend/app/services/validation.py:207-272",
+                  "backend/app/main.py:151-223"
+                ]
+              },
+              {
+                "aspect": "Долговечность решений и каталога",
+                "implementation": "SQLite хранит dataset draft, ProductCatalog, OrderAudit, OrderHistory и InventoryMovement. При изменении исходного dataset подтверждённая версия архивируется, а новый расчёт становится draft; movements идемпотентны по client_request_id.",
+                "value": "Прототип рассчитан на продолжение работы после одного расчёта: каталог, решения и движения переживают перезапуск.",
+                "verification": "source",
+                "evidence": [
+                  "backend/app/repositories/database.py:16-63",
+                  "backend/app/repositories/database.py:73-102",
+                  "qa/test_acceptance_api.py:56-85",
+                  "qa/test_inventory_operations.py:24-65"
+                ]
+              },
+              {
+                "aspect": "Расширение в операционный контур",
+                "implementation": "Реализованы editor API, inventory catalog/stock/movements, приёмка, продажа, перемещение, корректировка, возврат и workbook-выгрузка; frontend имеет разделы данных, исключений, истории и политик.",
+                "value": "Естественная траектория уже видна: импорт → расчёт → подтверждение → движение → следующий пересчёт.",
+                "verification": "source",
+                "evidence": [
+                  "backend/app/main.py:226-443",
+                  "frontend/src/App.tsx:11-38",
+                  "README.md:20-42"
+                ]
+              },
+              {
+                "aspect": "Ограничение повторного использования",
+                "implementation": "normalize_columns знает плоские alias-ы, но не преобразует широкие месячные листы и не собирает supplier/lead time из MOQ и shipment columns. Попытки загрузки реальных файлов дали ноль строк.",
+                "value": "Входной слой пока привязан к подготовленному формату. Это локальная, но заметная граница масштабирования.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/app/services/validation.py:76-111",
+                  "R-CASE-SALES",
+                  "R-CASE-MOQ"
+                ]
+              }
+            ],
+            "scoreReasoning": "18 баллов отражают хорошее разделение validation/engine/API, SQLite-аудит, идемпотентные движения и операционный путь после расчёта. До максимума не хватает переносимого адаптера исходных партнёрских форматов: D1 делает масштабирование дороже, чем изменение конфигурации."
+          },
+          {
+            "name": "Презентация, демо и ответы на вопросы",
+            "score": 17,
+            "max": 20,
+            "awarded": "17/20",
+            "deductions": "Сняты 3 балла за воспроизводимость демонстрации именно на исходном пакете кейса: README ясно описывает bundled workflow, но raw sales и MOQ workbooks не проходят импорт без внешней подготовки. Устная презентация и ответы не проводились и за это отдельно баллы не снимались.",
+            "evidence": [
+              "README.md:1-15",
+              "README.md:47-124",
+              "qa/README.md:1-95",
+              "R-BUILD-FRONTEND",
+              "R-HTTP-FRONTEND",
+              "R-CASE-SALES"
+            ],
+            "deductionItems": [
+              {
+                "points": 3,
+                "findingId": "D1",
+                "reason": "README и acceptance-документация дают хороший сценарий для нормализованных файлов, но участник не может повторить его на выданной sales/MOQ-паре напрямую: загрузчик показывает missing fields и оставляет 0 строк."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "README как сценарий демонстрации",
+                "implementation": "README содержит Docker запуск, адреса сервисов, последовательность работы закупщика, API, формулы demand/safety/net requirement, MAD, stockout, сезонность, inbound, MOQ/Pack и перечень тестов.",
+                "value": "Репозиторий объясняет, что показывать и почему результат полезен. Это соответствует оценке README и локального демо вместо выдуманной презентации.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:1-15",
+                  "README.md:20-124"
+                ]
+              },
+              {
+                "aspect": "Доказуемая воспроизводимость backend demo",
+                "implementation": "Сборка двух образов успешна, health возвращает ok, anomaly load отдаёт размеры и число рекомендаций, lifecycle завершается approval и export.",
+                "value": "Демо можно показывать через API/CLI без ключей; результат подтверждён запуском, а не только README.",
+                "verification": "observed",
+                "evidence": [
+                  "R-BUILD-BACKEND",
+                  "R-BUILD-FRONTEND",
+                  "R-START-BACKEND",
+                  "R-LIVE-LIFECYCLE"
+                ]
+              },
+              {
+                "aspect": "Frontend объясняет рабочее решение",
+                "implementation": "Dashboard содержит группировку по поставщикам, фильтры, urgency/status, карточку формулы, actual/adjusted/forecast chart, маркеры stockout/outlier, ручное quantity, approve и export.",
+                "value": "Структура интерфейса соответствует сценарию закупщика. HTTP GET главной страницы вернул 200 и root markup; визуальные состояния намеренно не оценивались.",
+                "verification": "source",
+                "evidence": [
+                  "frontend/src/App.tsx:11-38",
+                  "frontend/src/Procurement.tsx:20-52",
+                  "frontend/src/ItemDetail.tsx:27-37",
+                  "R-HTTP-FRONTEND"
+                ]
+              },
+              {
+                "aspect": "Граница доказанной демонстрации",
+                "implementation": "Попытка показать импорт исходной IEK sales workbook API возвращает required-column error, а MOQ workbook не формирует supplier rows. Live visual demo не использовалась по правилу проверки.",
+                "value": "Вывод отделяет недостаток входного адаптера от недоступности браузера или отсутствия публичной ссылки: локальный API demo подтверждён, partner-file path ограничен.",
+                "verification": "observed",
+                "evidence": [
+                  "R-CASE-SALES",
+                  "R-CASE-MOQ",
+                  "R-HTTP-FRONTEND"
+                ]
+              }
+            ],
+            "scoreReasoning": "17 баллов: README и код дают ясный воспроизводимый сценарий, сборка и API-путь подтверждены. Устное выступление не существовало, поэтому не оценивалось как отсутствующий артефакт. Снижение связано только с D1."
+          }
+        ],
+        "total": 90
+      },
+      "case": null,
+      "judgeScore": 90,
+      "caseRequirements": [
+        {
+          "requirement": "Расчёт потребности по артикулу учитывает историю продаж, текущий остаток, товары в пути и срок поставки.",
+          "status": "met",
+          "explanation": "Engine строит календарный спрос, прогнозирует горизонт lead time, вычитает current stock и только inbound до конца горизонта, затем выдаёт quantity и объяснение. Acceptance отдельно проверяет остаток, transit и позднюю поставку.",
+          "evidence": [
+            "backend/app/services/replenishment.py:107-180",
+            "qa/README.md:54-75",
+            "R-QA-TESTS"
+          ]
+        },
+        {
+          "requirement": "Расчёт учитывает категорию и поддерживает фильтрацию рекомендаций по категории/складу.",
+          "status": "partial",
+          "explanation": "Category нормализуется, сохраняется и используется как фильтр расчёта и выдачи. Отдельного category-specific коэффициента или политики в формуле нет; категория — измерение данных, а не самостоятельный фактор прогноза.",
+          "evidence": [
+            "backend/app/services/replenishment.py:19-30",
+            "backend/app/main.py:444-468",
+            "frontend/src/Procurement.tsx:19-50"
+          ]
+        },
+        {
+          "requirement": "Сезонность и устойчивый рост должны влиять на прогноз.",
+          "status": "met",
+          "explanation": "Forecasting обнаруживает weekly/monthly seasonality, убирает месячную волну перед оценкой тренда и применяет trend factor. Тесты проверяют зимний пик и растущий ряд.",
+          "evidence": [
+            "backend/app/services/forecasting.py:22-99",
+            "qa/test_engine.py:187-198",
+            "R-QA-TESTS",
+            "R-LIVE-EKT"
+          ]
+        },
+        {
+          "requirement": "Упущенный спрос в периоды stockout должен компенсироваться.",
+          "status": "met",
+          "explanation": "История разворачивается по календарным дням, интервалы stockout отмечаются маской, expected берётся по сопоставимым дням, adjusted_demand и estimated_lost_demand повышаются без двойного счёта пересечений.",
+          "evidence": [
+            "backend/app/services/replenishment.py:80-104",
+            "qa/test_acceptance_api.py:153-167",
+            "qa/test_engine.py:80-127",
+            "R-QA-TESTS"
+          ]
+        },
+        {
+          "requirement": "Разовые крупные заказы, в том числе одного клиента, не должны раздувать регулярную закупку.",
+          "status": "met",
+          "explanation": "Продажи агрегируются на client/day/SKU/warehouse, затем MAD и size gate помечают единичные партии; adjusted_quantity не использует их как обычный спрос. Тесты покрывают крупную строку и 480 раздробленных строк одного клиента.",
+          "evidence": [
+            "backend/app/services/replenishment.py:54-71",
+            "backend/app/services/forecasting.py:7-19",
+            "qa/test_engine.py:142-174",
+            "R-LIVE-ANOMALIES"
+          ]
+        },
+        {
+          "requirement": "Выход группируется по поставщикам и каждая позиция получает обоснование количества.",
+          "status": "met",
+          "explanation": "Recommendation содержит supplier, lead time, промежуточные величины, urgency, стоимость и explanation; frontend группирует строки по supplier_id. Approve/export сохраняют финальное количество.",
+          "evidence": [
+            "backend/app/services/replenishment.py:128-180",
+            "frontend/src/Procurement.tsx:26-52",
+            "frontend/src/ItemDetail.tsx:30-35",
+            "R-LIVE-LIFECYCLE"
+          ]
+        },
+        {
+          "requirement": "Заказ не отправляется поставщику без ручного подтверждения.",
+          "status": "met",
+          "explanation": "Новые рекомендации DRAFT; approve проверяет ограничения и переводит строку в APPROVED. UI сообщает, что утверждение не отправляет заказ поставщику; внешнего send endpoint нет.",
+          "evidence": [
+            "backend/app/services/replenishment.py:180",
+            "backend/app/main.py:525-543",
+            "frontend/src/ItemDetail.tsx:36-37",
+            "R-LIVE-LIFECYCLE"
+          ]
+        },
+        {
+          "requirement": "Клиентские данные должны быть обезличены, а выход совместим с рабочим процессом.",
+          "status": "met",
+          "explanation": "В bundled data используются обезличенные ID формата CLNT-..., а client_id не публикуется в выходных заказах. Результат экспортируется в CSV/XLSX с полями заказа, бюджета, срочности, факторов и объяснения.",
+          "evidence": [
+            "backend/data/README_DATASET.md:17-39",
+            "backend/app/main.py:546-579",
+            "R-LIVE-LIFECYCLE"
+          ]
+        },
+        {
+          "requirement": "Чувствительность к inbound, сезонности, stockout и выбросу проверена на данных/сценариях.",
+          "status": "partial",
+          "explanation": "Domain/API-приёмка покрывает все четыре чувствительности и две bundled книги реально рассчитаны. Сырые partner files были проверены, но не включены в успешный расчёт: два прямых импорта дали rows_loaded=0.",
+          "evidence": [
+            "qa/README.md:54-89",
+            "R-QA-TESTS",
+            "R-LIVE-EKT",
+            "R-LIVE-ANOMALIES",
+            "R-CASE-SALES",
+            "R-CASE-MOQ"
+          ]
+        }
+      ],
+      "testData": {
+        "provided": [
+          "cases/5/case-data/HackAlem AI_ Автоматизация формирования заказов поставщикам.docx.md",
+          "cases/5/case-data/IEK/MOQ  ИЭК.xlsx",
+          "cases/5/case-data/IEK/Динамика продаж_2025-2026.xlsx",
+          "cases/5/case-data/IEK/Ежемесячные остатки продукции за последние 2 года  ИЭК.xlsx",
+          "cases/5/case-data/IEK/Ежемесячные продажи в количественном выражении за последние 2 года.xlsx",
+          "cases/5/case-data/IEK/Путь ИЭК 22.09.2026.xlsx",
+          "cases/5/case-data/IEK/Сезонность ИЭК.xlsx",
+          "cases/5/case-data/Systeme electric/MOQ SystemElectric.xlsx",
+          "cases/5/case-data/Systeme electric/Динамика продаж_Syseme Electric_2025-2026.xlsx",
+          "cases/5/case-data/Systeme electric/Ежемесячные остатки SystemElectric 2024-2026.xlsx",
+          "cases/5/case-data/Systeme electric/Ежемесячные продажи в кол-м выражении SystemElectric 2024-2026.xlsx",
+          "cases/5/case-data/Systeme electric/Сезонность SystemElectric 2024-2026.xlsx",
+          "cases/5/case-data/Systeme electric/Товар в пути_SystemElectric на 22.09.2026.xlsx"
+        ],
+        "used": [
+          "cases/5/case-data/IEK/Динамика продаж_2025-2026.xlsx — headers inspected and uploaded to /api/data/upload/sales",
+          "cases/5/case-data/Systeme electric/MOQ SystemElectric.xlsx — headers inspected and uploaded to /api/data/upload/suppliers",
+          "cases/5/case-data/IEK/MOQ  ИЭК.xlsx — headers inspected",
+          "cases/5/case-data/IEK/Ежемесячные остатки продукции за последние 2 года  ИЭК.xlsx — headers inspected",
+          "cases/5/case-data/IEK/Ежемесячные продажи в количественном выражении за последние 2 года.xlsx — headers inspected",
+          "cases/5/case-data/IEK/Путь ИЭК 22.09.2026.xlsx — headers inspected",
+          "cases/5/case-data/IEK/Сезонность ИЭК.xlsx — sheet inspected",
+          "cases/5/case-data/Systeme electric/Динамика продаж_Syseme Electric_2025-2026.xlsx — headers inspected",
+          "cases/5/case-data/Systeme electric/Ежемесячные остатки SystemElectric 2024-2026.xlsx — headers inspected",
+          "cases/5/case-data/Systeme electric/Ежемесячные продажи в кол-м выражении SystemElectric 2024-2026.xlsx — headers inspected",
+          "cases/5/case-data/Systeme electric/Сезонность SystemElectric 2024-2026.xlsx — sheet inspected",
+          "cases/5/case-data/Systeme electric/Товар в пути_SystemElectric на 22.09.2026.xlsx — sheets inspected",
+          "backend/data/ekt_sales_and_stock_history.xlsx — executed through /api/data/load-ekt",
+          "backend/data/ekt_extreme_anomalies_sales_and_stock.xlsx — executed through /api/data/load-anomalies"
+        ],
+        "checks": [
+          {
+            "input": "IEK/Динамика продаж_2025-2026.xlsx через /api/data/upload/sales",
+            "method": "HTTP multipart upload and inspect rows_loaded/errors",
+            "result": "HTTP 200; rows_loaded=0; missing category, customer_id and price",
+            "conclusion": "Raw partner sales workbook is not directly accepted; confirmed D1."
+          },
+          {
+            "input": "Systeme electric/MOQ SystemElectric.xlsx через /api/data/upload/suppliers",
+            "method": "HTTP multipart upload and inspect rows_loaded/errors",
+            "result": "HTTP 200; rows_loaded=0; missing lead_time_days, supplier_id and supplier_name",
+            "conclusion": "Raw MOQ workbook cannot populate supplier constraints without an adapter; confirms D1."
+          },
+          {
+            "input": "backend/data/ekt_sales_and_stock_history.xlsx",
+            "method": "POST /api/data/load-ekt and inspect dataset counts",
+            "result": "HTTP 200; sales=18861, stock=54, transit=21, suppliers=27, stockouts=3, products=132, recommendations=54, outliers=64",
+            "conclusion": "Normalized bundled EKT workbook is executable."
+          },
+          {
+            "input": "backend/data/ekt_extreme_anomalies_sales_and_stock.xlsx",
+            "method": "POST /api/data/load-anomalies and inspect dataset counts",
+            "result": "HTTP 200; sales=20294, stock=58, transit=30, suppliers=29, stockouts=3, products=134, recommendations=57, outliers=46",
+            "conclusion": "Stress dataset is processed and outlier audit is populated."
+          },
+          {
+            "input": "QA fixtures for formula, inbound, stockout, outlier, seasonality/trend, constraints and lifecycle",
+            "method": "python -m pytest -q tests and python -m pytest -q /review/qa in isolated containers",
+            "result": "25 backend tests passed; 76 acceptance/domain tests passed",
+            "conclusion": "Domain/API behavior is strongly covered on normalized fixtures; visual UI was not tested."
+          }
+        ],
+        "limitations": [
+          "Supplied partner files are wide monthly/operational workbooks, not the normalized five-dataset workbook consumed by the importer.",
+          "Supplied seasonality workbooks had no usable tabular headers in inspected sheets; seasonality was verified from daily histories and forecast tests.",
+          "No browser or visual inspection was performed; static, unit/domain and HTTP/CLI checks were used."
+        ]
+      },
+      "runtime": {
+        "status": "working",
+        "build": "Backend and frontend Docker images built successfully.",
+        "start": "Backend uvicorn and frontend Vite dev server both started; backend health and frontend root HTTP checks succeeded.",
+        "scenario": "The main API scenario was reproduced through anomaly workbook load, recommendations, calculation, analytics, manual adjustment, approval and CSV export.",
+        "environment": "Isolated Docker runs using Python 3.13 backend dependencies and Node 22 frontend dependencies, with no credentials or external API calls.",
+        "summary": "The application is working for normalized bundled datasets and repository acceptance fixtures. Raw partner-file uploads expose the project-owned D1 schema integration gap but do not prevent the primary bundled scenario from running.",
+        "checks": [
+          {
+            "command": "docker build ./backend",
+            "result": "Exit code 0; image built in 106.6 seconds. Full capture: captures/20261002T054541619298-build-backend.stderr.log",
+            "id": "R-BUILD-BACKEND",
+            "stage": "build",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Backend Docker image builds from the repository with declared dependencies."
+          },
+          {
+            "command": "docker build ./frontend",
+            "result": "Exit code 0; image built in 45.8 seconds; npm ci reported 0 vulnerabilities. Full capture: captures/20261002T054733866495-build-frontend.stderr.log",
+            "id": "R-BUILD-FRONTEND",
+            "stage": "build",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Frontend image builds and installs the locked dependency set."
+          },
+          {
+            "command": "GET /health",
+            "result": "HTTP 200 with status ok; uvicorn startup completed.",
+            "id": "R-START-BACKEND",
+            "stage": "start",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Backend starts and exposes a successful health response."
+          },
+          {
+            "command": "GET /",
+            "result": "HTTP 200; text/html; 639 bytes; root markup present. No browser rendering was performed.",
+            "id": "R-HTTP-FRONTEND",
+            "stage": "start",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Frontend starts and serves the application HTML shell."
+          },
+          {
+            "command": "python -m pytest -q tests",
+            "result": "25 passed, 2 warnings in 199.15 seconds. Full capture: captures/20261002T054843426427-backend-tests-python.stdout.log",
+            "id": "R-BACKEND-TESTS",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Repository backend tests pass in the declared Python environment."
+          },
+          {
+            "command": "python -m pytest -q /review/qa",
+            "result": "76 passed, 4 warnings in 11.64 seconds. Full capture: captures/20261002T055537965757-qa-tests.stdout.log",
+            "id": "R-QA-TESTS",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Independent domain, validation, API and inventory acceptance checks pass."
+          },
+          {
+            "command": "POST /api/data/load-ekt",
+            "result": "HTTP 200; 18861 sales, 54 stock, 21 transit, 27 suppliers, 3 stockouts; 54 recommendations and 64 outliers.",
+            "id": "R-LIVE-EKT",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Bundled EKT workbook loads and produces recommendations."
+          },
+          {
+            "command": "POST /api/data/load-anomalies",
+            "result": "HTTP 200; 20294 sales, 58 stock, 30 transit, 29 suppliers, 3 stockouts; 57 recommendations and 46 outliers.",
+            "id": "R-LIVE-ANOMALIES",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Stress workbook loads, calculations complete and anomalous transactions are audited."
+          },
+          {
+            "command": "GET /api/recommendations; POST /api/recommendations/calculate; GET /api/analytics/{sku}; POST /api/orders/{id}/adjust; POST /api/orders/{id}/approve; GET /api/orders/export?format=csv",
+            "result": "All requests succeeded. Selected EKT-AUT-001 at Astana; detail 200, calculate 200, analytics 200 with 379 points, adjust 200, approve 200, export 200 with a 30363-byte CSV.",
+            "id": "R-LIVE-LIFECYCLE",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "A recommendation can be inspected, recalculated, explained, adjusted, approved and exported."
+          },
+          {
+            "command": "POST /api/data/upload/sales",
+            "result": "HTTP 200; rows_loaded=0; missing category, customer_id and price for the supplied IEK sales workbook.",
+            "id": "R-CASE-SALES",
+            "stage": "scenario",
+            "status": "fail",
+            "cause": "project",
+            "expected": "The supplied partner sales workbook is accepted or adapted into the sales input needed by the case scenario."
+          },
+          {
+            "command": "POST /api/data/upload/suppliers",
+            "result": "HTTP 200; rows_loaded=0; missing lead_time_days, supplier_id and supplier_name for the supplied Systeme electric MOQ workbook.",
+            "id": "R-CASE-MOQ",
+            "stage": "scenario",
+            "status": "fail",
+            "cause": "project",
+            "expected": "The supplied MOQ workbook contributes supplier constraints or is adapted through the supported import flow."
+          }
+        ],
+        "limitations": [
+          "Visual/browser review is intentionally unverified; only frontend build, static source and HTTP HTML serving were checked.",
+          "No external credentials or provider integrations were required, so no external-service limitation affected the main scenario.",
+          "The raw partner schema mismatch is treated as a project defect because the upload path returned zero rows."
+        ]
+      },
+      "liveDemo": {
+        "status": "none",
+        "url": null,
+        "notes": "Публичная live-ссылка не подтверждена и не требовалась; локальное API-демо успешно воспроизведено."
+      },
+      "fiveHourContext": "Для пятичасового хакатона объём результата высокий: есть backend/frontend, доменная формула, robust outlier handling, stockout compensation, поставщики и inbound, ручное утверждение, SQLite-аудит, экспорт и независимая приёмка. Оценка не требует production-auth, отказоустойчивости или полноценной 1С-интеграции. Единственный существенный MVP-разрыв — отсутствует адаптер от выданных широких partner workbooks к нормализованным входным таблицам.",
+      "strengths": [
+        "Сквозной API-сценарий от загрузки стресс-книги до approve и CSV export подтверждён HTTP-проверкой.",
+        "25 backend и 76 acceptance/domain тестов прошли; проверки покрывают формулу, inbound, stockout, сезонность/тренд, выбросы, валидацию и lifecycle.",
+        "Клиент-дневная агрегация перед MAD устойчива к раздробленным крупным заказам одного клиента.",
+        "Рекомендация содержит промежуточные величины, объяснение, urgency, бюджет, аудит выбросов и восстановленный спрос.",
+        "SQLite сохраняет draft, подтверждённые решения, архив истории и движения."
+      ],
+      "gaps": [
+        "D1: прямой импорт исходных partner workbooks неполон. IEK sales workbook принята с rows_loaded=0 из-за category/customer_id/price, а Systeme electric MOQ workbook — с rows_loaded=0 из-за supplier_id/supplier_name/lead_time_days; без преобразования полный кейсовый путь не запускается на выданных файлах."
+      ],
+      "futureAdvice": [
+        {
+          "principle": "Сначала зафиксировать адаптер входных данных на реальном пакете, затем расширять общий engine.",
+          "why": "D1 показывает: расчётный слой работает, но исходные sales и MOQ книги дают ноль строк из-за обязательных полей и широкого формата, блокируя повторение демонстрации на partner export.",
+          "how": "В другом хакатоне выделить ingestion pass: сопоставить код/артикул, развернуть месячные колонки в date/quantity, собрать supplier constraints из MOQ и transit из shipment columns, а отсутствующие price/customer/category либо получить из связанной книги, либо показать предупреждение о неполном расчёте. Затем прогнать тот же engine.",
+          "findingIds": [
+            "D1"
+          ],
+          "successCheck": "Обе supplied sales/MOQ книги проходят upload или documented adapter с rows_loaded>0, видимыми warnings только для действительно отсутствующих данных, а позиция получает recommendation с supplier, transit и explanation.",
+          "timeboxMinutes": 45
+        }
+      ],
+      "uncertainties": [
+        "Визуальное качество, адаптивность и кликабельность не проверялись: визуальную проверку выполняет пользователь.",
+        "На supplied seasonality workbooks при чтении заголовков не обнаружено usable tabular structure, поэтому сезонность проверена по коду и bundled daily histories.",
+        "Не проверялись одновременная работа нескольких закупщиков и нагрузка; это не требовалось для пятичасового прототипа."
+      ],
+      "reviewPolicyVersion": 2,
+      "assessmentStatus": "ready",
+      "findings": [
+        {
+          "id": "S1",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Основной API-сценарий работает на bundled anomaly workbook: данные загружаются, рекомендации рассчитываются, позиция открывается, корректируется, утверждается и экспортируется.",
+          "expected": "Сквозной сценарий закупщика даёт успешный результат без внешних ключей.",
+          "actual": "load-anomalies вернул 200 и 57 рекомендаций; lifecycle дал 200 на detail/calculate/analytics/adjust/approve/export, analytics вернул 379 точек.",
+          "evidence": [
+            "R-LIVE-ANOMALIES",
+            "R-LIVE-LIFECYCLE",
+            "backend/app/main.py:444-579"
+          ],
+          "checkIds": [
+            "R-LIVE-ANOMALIES",
+            "R-LIVE-LIFECYCLE"
+          ]
+        },
+        {
+          "id": "S2",
+          "kind": "strength",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Доменное ядро объединяет календарный спрос, stockout compensation, robust MAD outliers, сезонность/тренд, timely inbound, safety stock и supplier constraints.",
+          "expected": "Расчёт использует существенные факторы кейса и сохраняет объяснение их влияния.",
+          "actual": "prepare_demand и calculate_recommendations реализуют этапы; metadata и explanation сохраняют промежуточные результаты.",
+          "evidence": [
+            "backend/app/services/replenishment.py:19-200",
+            "backend/app/services/forecasting.py:7-99",
+            "R-QA-TESTS"
+          ],
+          "checkIds": [
+            "R-QA-TESTS"
+          ]
+        },
+        {
+          "id": "S3",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Backend и независимая acceptance suite прошли полностью.",
+          "expected": "Тесты формулы, валидации, API и операций выполняются в заявленном окружении.",
+          "actual": "25 backend tests passed и 76 acceptance/domain tests passed.",
+          "evidence": [
+            "captures/20261002T054843426427-backend-tests-python.stdout.log",
+            "captures/20261002T055537965757-qa-tests.stdout.log"
+          ],
+          "checkIds": [
+            "R-BACKEND-TESTS",
+            "R-QA-TESTS"
+          ]
+        },
+        {
+          "id": "S4",
+          "kind": "strength",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Ручное утверждение, audit/history и экспорт защищают рабочий результат от автоматической отправки и потери решения.",
+          "expected": "Закупщик контролирует отправку, видит историю и выгружает финальное количество.",
+          "actual": "Новые rows имеют DRAFT, approve проверяет ограничения, SQLite архивирует изменённые решения, export использует final_quantity.",
+          "evidence": [
+            "backend/app/main.py:508-579",
+            "backend/app/repositories/database.py:73-118",
+            "frontend/src/ItemDetail.tsx:36-37"
+          ],
+          "checkIds": [
+            "R-LIVE-LIFECYCLE",
+            "R-QA-TESTS"
+          ]
+        },
+        {
+          "id": "D1",
+          "kind": "defect",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Загрузчик не принимает напрямую фактические сырые partner workbooks из пакета кейса.",
+          "expected": "Sales и supplier/MOQ таблицы принимаются через upload flow или преобразуются документированным адаптером.",
+          "actual": "IEK sales upload вернул rows_loaded=0 и missing category/customer_id/price; Systeme electric MOQ upload вернул rows_loaded=0 и missing lead_time_days/supplier_id/supplier_name. Нормализованный bundled workbook работает, поэтому проблема локализована во входном адаптере.",
+          "evidence": [
+            "R-CASE-SALES",
+            "R-CASE-MOQ",
+            "backend/app/services/validation.py:10-17",
+            "backend/app/services/validation.py:114-123",
+            "backend/app/services/validation.py:207-272"
+          ],
+          "checkIds": [
+            "R-CASE-SALES",
+            "R-CASE-MOQ"
+          ]
+        },
+        {
+          "id": "L1",
+          "kind": "limitation",
+          "verification": "unverified",
+          "responsibility": "review_environment",
+          "claim": "Визуальное поведение frontend не оценивалось.",
+          "expected": "Визуальные состояния, адаптивность и кликабельность проверяются пользовательским browser review.",
+          "actual": "Проверены только build, static source и HTTP 200 HTML shell; браузерная навигация и скриншоты намеренно не выполнялись.",
+          "evidence": [
+            "R-BUILD-FRONTEND",
+            "R-HTTP-FRONTEND",
+            "frontend/src/App.tsx:11-38"
+          ],
+          "checkIds": [
+            "R-BUILD-FRONTEND",
+            "R-HTTP-FRONTEND"
+          ]
+        }
+      ],
+      "gapFindingIds": [
+        "D1"
+      ]
+    }
+  ],
+  "score": 90.0,
+  "status": "complete",
+  "expectedJudges": 1
+}

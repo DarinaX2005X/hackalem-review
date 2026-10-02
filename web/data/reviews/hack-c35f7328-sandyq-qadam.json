@@ -1,0 +1,845 @@
+{
+  "methodVersion": 4,
+  "repoId": "hack-c35f7328-sandyq-qadam",
+  "repoUrl": "https://github.com/BAITC-Hacks/hack-c35f7328-sandyq-qadam",
+  "caseId": 5,
+  "snapshot": "f330826a280f7e29f414e29159457959c776d066",
+  "judges": [
+    {
+      "methodVersion": 4,
+      "repoId": "hack-c35f7328-sandyq-qadam",
+      "caseId": 5,
+      "model": "GPT-5.6 Luna",
+      "snapshot": "f330826a280f7e29f414e29159457959c776d066",
+      "overallSummary": "Проект содержит содержательное backend-MVP: сезонный по дням недели прогноз, коррекцию выбросов и stockout, расчёт заказа с учётом остатка и incoming, MOQ, риска, объяснения и группировку по поставщикам. Это подтверждено 57 прошедшими backend-тестами и отдельным синтетическим демо. Однако финальный snapshot не является единым запускаемым продуктом: основной коммит содержит README, функциональность распределена по неслитым веткам, Streamlit-файл в inventory-ветке пуст, а заявленный pipeline рассчитан на UCI/сгенерированные CSV, не на 12 предоставленных XLSX Электрокомплекта. Поэтому кейсовый сценарий на организаторских данных воспроизвести нельзя; итоговая оценка 55/100 готова и основана на наблюдаемом коде и проверках.",
+      "global": {
+        "criteria": [
+          {
+            "name": "Ценность решения",
+            "score": 14,
+            "max": 25,
+            "awarded": "Решение адресует реальную операционную проблему закупщика и связывает прогноз, остатки, товары в пути и поставщиков в один понятный результат, но ценность для Электрокомплекта доказана только на proxy/synthetic данных.",
+            "deductions": "Снято 11 баллов за отсутствие адаптера к фактическому входу кейса, несобранный сквозной сценарий и ограничение прогнозной логики только недельным паттерном без устойчивого роста.",
+            "evidence": [
+              "README.md:18-64",
+              "README_BACKEND.md:19-31",
+              "captures/20261002T090558867715-scenario-inventory.stdout.log",
+              "captures/20261002T090613389053-scenario-case.stdout.log"
+            ],
+            "deductionItems": [
+              {
+                "points": 6,
+                "findingId": "F-CASE-DATA",
+                "reason": "Польза для целевого закупщика не доведена до его фактических таблиц: загрузка первого предоставленного MOQ-файла завершается KeyError по sku вместо формирования входа расчёта."
+              },
+              {
+                "points": 3,
+                "findingId": "F-INTEGRATION",
+                "reason": "Нет одного проверяемого пути от входных данных до пользовательского результата: реализации находятся в раздельных ветках, а основной snapshot не содержит приложения."
+              },
+              {
+                "points": 2,
+                "findingId": "F-SEASONAL-GROWTH",
+                "reason": "Для заявленной ценности устойчивого пополнения модель использует средние значения последних одинаковых дней недели и не учитывает тренд роста."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Понятная боль закупок",
+                "implementation": "README связывает ручной Excel-расчёт с дефицитом, излишками, разовыми крупными заказами и необходимостью учитывать остаток, incoming, срок поставки и safety stock.",
+                "value": "Проблема непосредственно соответствует роли менеджера закупа и даёт понятный экономический эффект: меньше ручной консолидации и более регулярное решение о пополнении.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:18-35",
+                  "cases/5/task.txt"
+                ]
+              },
+              {
+                "aspect": "Полезный формат результата",
+                "implementation": "Inventory API возвращает forecast, stock, incoming, safety_stock, recommended_order, risk, supplier и explanation; batch-функция возвращает строки и словарь групп по поставщикам.",
+                "value": "Такой результат пригоден как основа рабочего листа закупщика: решение видно по SKU, можно объяснить количество и отдельно просмотреть положительные заказы поставщика.",
+                "verification": "observed",
+                "evidence": [
+                  "src/inventory/service.py:78-157",
+                  "src/inventory/order_calculator.py:43-70",
+                  "captures/20261002T090558867715-scenario-inventory.stdout.log"
+                ]
+              },
+              {
+                "aspect": "Снижение искажений спроса",
+                "implementation": "Data-модули агрегируют продажи по date/SKU/customer, выделяют сильные one-off-заказы и создают adjusted_demand, а stockout correction добавляет оценённый спрос к нулевым продажам в дни отсутствия товара.",
+                "value": "Это отвечает двум самым важным причинам плохого Excel-пополнения: крупный клиент не должен навсегда раздувать регулярную потребность, а нулевые продажи при отсутствии товара не должны выглядеть как отсутствие спроса.",
+                "verification": "source",
+                "evidence": [
+                  "src/data/anomaly_detection.py:70-130",
+                  "src/data/anomaly_detection.py:195-328",
+                  "src/data/stockout_correction.py:147-301"
+                ]
+              },
+              {
+                "aspect": "Граница применимости",
+                "implementation": "README честно указывает UCI Online Retail II как источник продаж, synthetic warehouse inputs, отсутствие ETA и отсутствие интеграции с 1С; фактический кейсовый формат отдельно не подключён.",
+                "value": "Прозрачное описание ограничений помогает не выдавать прототип за готовую закупочную систему, но одновременно ограничивает доказанную пользу именно для партнёра.",
+                "verification": "observed",
+                "evidence": [
+                  "README_BACKEND.md:91-128",
+                  "captures/20261002T090613389053-scenario-case.stdout.log"
+                ]
+              }
+            ],
+            "scoreReasoning": "14 баллов отражают сильную постановку прикладной задачи и полезную механику принятия решения, но не полноценную ценность в контексте партнёрских данных. Отсутствие кейсового адаптера и единого запускаемого сценария — прямые препятствия к применению закупщиком; отсутствие тренда удерживает решение от более высокой оценки прогноза. Это существенные ограничения для данного кейса, но не отменяют работающую основу расчёта."
+          },
+          {
+            "name": "Результат и качество решения",
+            "score": 7,
+            "max": 20,
+            "awarded": "Синтетический inventory-сценарий и backend-контракты реализованы качественно, но пользовательский результат по обязательному кейсовому набору не воспроизводится, а компоненты не собраны в одну поставляемую копию.",
+            "deductions": "Снято 13 баллов за несовместимость с тестовыми XLSX и отсутствие целостного запускаемого frontend/backend snapshot.",
+            "evidence": [
+              "captures/20261002T090751975068-test-inventory.stdout.log",
+              "captures/20261002T090759141361-test-full.stdout.log",
+              "captures/20261002T090613389053-scenario-case.stderr.log",
+              "README_FRONTEND.md:15-18"
+            ],
+            "deductionItems": [
+              {
+                "points": 7,
+                "findingId": "F-CASE-DATA",
+                "reason": "На предоставленном файле MOQ IEK загрузка даёт 1938 строк, но preprocessing ожидает UCI-поля и падает на отсутствии sku; обязательный вход → выход кейса не работает."
+              },
+              {
+                "points": 6,
+                "findingId": "F-INTEGRATION",
+                "reason": "57 тестов подтверждают отдельные backend-модули, но не единый продукт: main содержит только README, inventory app пуст, а frontend-документация требует ручного объединения веток."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Детерминированный расчёт заказа",
+                "implementation": "calculate_order считает target_stock = forecast + safety_stock, вычитает stock и incoming, ограничивает результат нулём и округляет вверх до кратности minimum_order_qty.",
+                "value": "Формула проста для аудита, не умножает суммарный прогноз на lead time повторно и даёт конкретное количество для заказа.",
+                "verification": "observed",
+                "evidence": [
+                  "src/inventory/order_calculator.py:18-70",
+                  "captures/20261002T090558867715-scenario-inventory.stdout.log"
+                ]
+              },
+              {
+                "aspect": "Проверенный синтетический сценарий",
+                "implementation": "demo_inventory.py читает synthetic inventory и mock forecasts, запускает pipeline и печатает строки заказов и группы Supplier_A/B/C с объяснением.",
+                "value": "Внутри заявленного synthetic-контракта пользовательский результат реально получен, включая влияние incoming, risk и MOQ.",
+                "verification": "observed",
+                "evidence": [
+                  "demo_inventory.py:1-21",
+                  "captures/20261002T090558867715-scenario-inventory.stdout.log"
+                ]
+              },
+              {
+                "aspect": "Контрактная устойчивость",
+                "implementation": "57 тестов покрывают forecast horizon, ошибки SKU и входов, safety stock, order quantity, risk, grouping, serializable output и Forecasting → Inventory integration.",
+                "value": "Для пятичасового MVP это хороший уровень локальной проверяемости базовой механики и снижает риск тихих ошибок в расчёте.",
+                "verification": "observed",
+                "evidence": [
+                  "captures/20261002T090759141361-test-full.stdout.log",
+                  "captures/20261002T090751975068-test-inventory.stdout.log",
+                  "tests/test_inventory_service.py:1-154"
+                ]
+              },
+              {
+                "aspect": "Непройденный основной путь",
+                "implementation": "demo_backend.py вызывает публичный сервис, который требует data/processed/final_demand.csv; в snapshot такого подготовленного входа нет. Попытка применить preprocessing к предоставленному MOQ XLSX завершается KeyError по sku.",
+                "value": "Без исторического входа и адаптера к организаторским таблицам нельзя получить обязательный список заказов по реальным входным данным, поэтому качество конечного пользовательского результата доказано лишь для synthetic demo.",
+                "verification": "observed",
+                "evidence": [
+                  "captures/20261002T090558891725-scenario-backend.stderr.log",
+                  "captures/20261002T090613389053-scenario-case.stdout.log",
+                  "captures/20261002T090613389053-scenario-case.stderr.log"
+                ]
+              }
+            ],
+            "scoreReasoning": "7 баллов оставлены за реально работающий и хорошо протестированный расчётный модуль. Основное требование результата — целостный сценарий с предоставленным набором — не выполнено: demo_backend не стартует без внешней UCI-подготовки, а case XLSX не проходит первый preprocessing-шаг. В рамках MVP это не требование production-инфраструктуры, но это прямой разрыв между демонстрационным backend и заявленным кейсом."
+          },
+          {
+            "name": "Инновационность",
+            "score": 9,
+            "max": 15,
+            "awarded": "Нестандартность есть в сочетании customer-aware one-off detection, stockout recovery, сезонного baseline и объяснимого inventory-слоя; подход остаётся скорее инженерно собранным baseline, чем новым методом прогнозирования.",
+            "deductions": "Снято 6 баллов за ограничение сезонности недельным средним и отсутствие устойчивого growth-компонента, а также за отсутствие проверки на реальных кейсовых таблицах.",
+            "evidence": [
+              "src/data/anomaly_detection.py:195-328",
+              "src/data/stockout_correction.py:147-253",
+              "src/forecasting/baseline.py:90-171",
+              "README.md:278-299"
+            ],
+            "deductionItems": [
+              {
+                "points": 4,
+                "findingId": "F-SEASONAL-GROWTH",
+                "reason": "Модель сравнивает одинаковые дни недели за последние 8 недель, но не моделирует месячную/годовую сезонность из кейса и не оценивает устойчивый рост."
+              },
+              {
+                "points": 2,
+                "findingId": "F-CASE-DATA",
+                "reason": "Инновационные claims про устойчивость к кейсовым аномалиям и сезонным таблицам не были доведены до предоставленного формата данных: входной адаптер отсутствует."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Customer-aware anomaly detection",
+                "implementation": "Продажи агрегируются по date, SKU и customer_id; thresholds используют SKU IQR/median и историю клиента, а strong one-off заменяется типичным q3/median только в adjusted demand.",
+                "value": "Учет крупной продажи одному клиенту — более адресный подход, чем простое обрезание всех верхних квантилей; фактическая продажа при этом сохраняется отдельно.",
+                "verification": "source",
+                "evidence": [
+                  "src/data/anomaly_detection.py:70-130",
+                  "src/data/anomaly_detection.py:195-310"
+                ]
+              },
+              {
+                "aspect": "Восстановление latent demand",
+                "implementation": "Для stockout-дней код исключает известные stockout из истории и оценивает потерянный спрос сначала по предыдущим одинаковым weekday, затем по положительным недавним дням.",
+                "value": "Это полезное для закупок отличие от наивного среднего: отсутствие товара не интерпретируется автоматически как нулевой спрос.",
+                "verification": "source",
+                "evidence": [
+                  "src/data/stockout_correction.py:147-253",
+                  "src/data/stockout_correction.py:256-301"
+                ]
+              },
+              {
+                "aspect": "Explainable decision layer",
+                "implementation": "Inventory-сервис сохраняет forecast metadata, формулу, risk, safety stock и объяснение, а supplier grouping отбрасывает нулевые заказы из положительных партий.",
+                "value": "Комбинация прогноза и проверяемого объяснения делает нестандартную обработку пригодной для ручной проверки менеджером, а не непрозрачным числом.",
+                "verification": "observed",
+                "evidence": [
+                  "src/inventory/service.py:106-140",
+                  "src/inventory/supplier_grouping.py:7-16",
+                  "captures/20261002T090558867715-scenario-inventory.stdout.log"
+                ]
+              },
+              {
+                "aspect": "Ограниченный baseline",
+                "implementation": "seasonal_weekday_forecast усредняет final_demand за последние 8 недель по day_of_week; README прямо называет это weekly seasonality.",
+                "value": "Для короткого MVP это разумный, объяснимый baseline и в README приведено backtesting-сравнение с simple mean, но он не покрывает более богатую сезонность и рост из задания.",
+                "verification": "source",
+                "evidence": [
+                  "src/forecasting/baseline.py:90-171",
+                  "README.md:261-299"
+                ]
+              }
+            ],
+            "scoreReasoning": "9 баллов — за удачное сочетание нескольких практических эвристик, а не за формальную новизну модели. Customer-aware выбросы и stockout recovery действительно выделяют прототип среди простого moving average. До максимума не хватает работы с месячной/долгосрочной сезонностью, growth и демонстрации на фактических кейсовых таблицах."
+          },
+          {
+            "name": "Потенциал развития и масштабирования",
+            "score": 10,
+            "max": 20,
+            "awarded": "Модульные контракты, batch API, supplier grouping и отделение UI от backend дают хорошую основу для следующего этапа, но масштабирование организационно не закреплено в одном репозитории и не связано с форматом партнёра.",
+            "deductions": "Снято 10 баллов за отсутствие единой ветки поставки, адаптера входных данных и growth/seasonality слоя, пригодного для расширения на предоставленные источники.",
+            "evidence": [
+              "src/inventory/service.py:143-157",
+              "src/inventory/pipeline.py:34-85",
+              "README_FRONTEND.md:15-18",
+              "README_BACKEND.md:113-128"
+            ],
+            "deductionItems": [
+              {
+                "points": 4,
+                "findingId": "F-INTEGRATION",
+                "reason": "Для масштабирования нужен один рабочий vertical slice, а README frontend требует вручную собрать dev forecasting, feature/inventory и frontend; main snapshot этого не содержит."
+              },
+              {
+                "points": 4,
+                "findingId": "F-CASE-DATA",
+                "reason": "Без нормализации IEK/Systeme electric XLSX расширение на новые склады и источники не имеет входного контракта, который можно повторно применить."
+              },
+              {
+                "points": 2,
+                "findingId": "F-SEASONAL-GROWTH",
+                "reason": "Недельный baseline не даёт доказанного механизма переноса на месячные сезонные ряды и устойчивый рост, присутствующие в кейсовом наборе."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Модульные границы",
+                "implementation": "Forecasting, data correction, inventory calculation, risk, explanation и supplier grouping разделены по src-модулям; public service принимает DataFrame или data_path.",
+                "value": "Компоненты можно заменять по одному: например, подключить другой прогноз или реальный загрузчик, не переписывая формулу заказа и UI-контракт.",
+                "verification": "source",
+                "evidence": [
+                  "src/inventory/service.py:47-157",
+                  "src/inventory/pipeline.py:34-85",
+                  "src/inventory/contracts.py:1-29"
+                ]
+              },
+              {
+                "aspect": "Batch и supplier expansion",
+                "implementation": "get_order_recommendations проверяет повторные SKU, строит решения по строкам склада и возвращает группы положительных заказов по поставщику.",
+                "value": "Это естественная точка расширения от одного SKU к нескольким поставщикам и последующей выгрузке, не требующая менять базовую арифметику.",
+                "verification": "observed",
+                "evidence": [
+                  "src/inventory/service.py:143-157",
+                  "tests/test_inventory_service.py:92-154"
+                ]
+              },
+              {
+                "aspect": "Явно обозначенные следующие шаги",
+                "implementation": "README перечисляет real warehouse balances, supplier lead-time history, category forecasting, probabilistic forecasting, ERP/1C, export и manager approval как дальнейшие направления.",
+                "value": "Команда видит разумную дорожную карту от MVP к эксплуатации и не маскирует отсутствующие production-компоненты.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:747-768",
+                  "README_BACKEND.md:113-128"
+                ]
+              },
+              {
+                "aspect": "Предел расширения текущего входа",
+                "implementation": "Текущий загрузчик предназначен для одного Online Retail II Excel и preprocessing переименовывает именно UCI-заголовки; предоставленные месячные, seasonal, MOQ и in-transit таблицы не преобразуются в единый контракт.",
+                "value": "Это делает масштабирование на партнёрские склады пока концептуальным: новый источник потребует отдельной схемы маппинга и проверки согласованности SKU/дат/поставщиков.",
+                "verification": "observed",
+                "evidence": [
+                  "src/data/load_data.py:6-26",
+                  "src/data/preprocess.py:22-71",
+                  "captures/20261002T090613389053-scenario-case.stderr.log"
+                ]
+              }
+            ],
+            "scoreReasoning": "10 баллов признают хорошую архитектурную декомпозицию и понятные точки роста. Но потенциал не равен реализованной переносимости: пока нет единого checkout, адаптера кейсовых файлов или доказанного трендового прогноза. Это ограничивает масштабирование именно в сторону партнёрского процесса, хотя модульные границы позволяют его продолжить."
+          },
+          {
+            "name": "Презентация, демо и ответы на вопросы",
+            "score": 15,
+            "max": 20,
+            "awarded": "README подробно раскрывает проблему, поток данных, формулы, ограничения, команды запуска и human-in-the-loop; локальное synthetic demo воспроизводимо. Публичной live-ссылки и устной презентации не было, что само по себе не штрафуется, но основной кейсовый demo-path не собран.",
+            "deductions": "Снято 5 баллов только за подтверждённые проектные недостатки в воспроизводимости: раздельные ветки и несоответствие входным файлам.",
+            "evidence": [
+              "README.md:38-64",
+              "README.md:503-651",
+              "README_BACKEND.md:1-31",
+              "captures/20261002T090558867715-scenario-inventory.stdout.log"
+            ],
+            "deductionItems": [
+              {
+                "points": 3,
+                "findingId": "F-INTEGRATION",
+                "reason": "Читателю README приходится вручную объединять ветки; основной snapshot не содержит runnable app, а inventory-ветка имеет пустой Streamlit-файл."
+              },
+              {
+                "points": 2,
+                "findingId": "F-CASE-DATA",
+                "reason": "Документация демонстрирует UCI/synthetic путь, но предоставленный кейсовый вход заканчивается ошибкой формата, поэтому заявленный результат нельзя показать на данных задания."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Понятная narrative-схема",
+                "implementation": "README последовательно показывает Sales History → preprocessing → one-off adjustment → stockout correction → forecast → inventory → risk → supplier grouping → dashboard.",
+                "value": "Такой маршрут позволяет быстро понять, где возникает бизнес-ценность и какой результат должен увидеть закупщик.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:38-64"
+                ]
+              },
+              {
+                "aspect": "Числовой разбор результата",
+                "implementation": "Документация приводит пример SKU 20685 с горизонтом 21 день, forecast 205.12, stock 80, incoming 40, safety stock 41.024 и итогом 127 через ceil.",
+                "value": "Пример делает формулу проверяемой и объясняет, почему система предлагает именно такое количество.",
+                "verification": "observed",
+                "evidence": [
+                  "README.md:353-390",
+                  "README_BACKEND.md:91-100",
+                  "captures/20261002T090558867715-scenario-inventory.stdout.log"
+                ]
+              },
+              {
+                "aspect": "Честные ограничения",
+                "implementation": "README отделяет UCI от синтетических складских полей, предупреждает про aggregate incoming, deterministic risk, 20% safety stock и отсутствие автоматической отправки.",
+                "value": "Это повышает доверие к демо и помогает не спутать прототип с production-системой.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:705-768",
+                  "README_BACKEND.md:113-128"
+                ]
+              },
+              {
+                "aspect": "Воспроизводимость с оговоркой",
+                "implementation": "README даёт команды установки, pytest и demo_backend, а отдельный inventory README — команды для 14 unit-тестов и synthetic demo; эти тесты/демо реально прошли в контейнере.",
+                "value": "Для локальной демонстрации backend-слоя инструкции достаточны, но они не заменяют один runnable кейсовый checkout.",
+                "verification": "observed",
+                "evidence": [
+                  "README_BACKEND.md:7-31",
+                  "README_INVENTORY.md:7-17",
+                  "captures/20261002T090751975068-test-inventory.stdout.log",
+                  "captures/20261002T090759141361-test-full.stdout.log"
+                ]
+              }
+            ],
+            "scoreReasoning": "15 баллов — за unusually подробный README, конкретные расчёты и честное описание ограничений, плюс реально воспроизводимое synthetic demo. До максимума удерживают только проектные проблемы воспроизводимости: читателю нужен ручной merge веток, а кейсовые файлы не запускаются через описанный pipeline. Отсутствие публичной ссылки, видео и устных ответов не использовалось как штраф."
+          }
+        ],
+        "total": 55
+      },
+      "case": null,
+      "judgeScore": 55,
+      "caseRequirements": [
+        {
+          "requirement": "Расчёт базовой потребности по артикулу с учётом истории продаж, текущего остатка, товаров в пути, поставщика/категории и прогноза.",
+          "status": "partial",
+          "explanation": "Inventory API учитывает forecast, stock, incoming, supplier, lead time, category metadata и MOQ на synthetic-контракте, но data layer не принимает предоставленные IEK/Systeme electric таблицы; кейсовый MOQ-файл падает на отсутствии sku.",
+          "evidence": [
+            "src/inventory/service.py:78-140",
+            "src/inventory/pipeline.py:34-85",
+            "src/data/preprocess.py:22-37",
+            "captures/20261002T090613389053-scenario-case.stderr.log"
+          ]
+        },
+        {
+          "requirement": "Учёт сезонности и устойчивого роста спроса при прогнозировании.",
+          "status": "partial",
+          "explanation": "Реализована недельная сезонность через среднее одинаковых дней недели за последние 8 недель. Месячные/годовые seasonal-файлы кейса и устойчивый trend/growth в формуле не используются.",
+          "evidence": [
+            "src/forecasting/baseline.py:90-171",
+            "README.md:261-299",
+            "cases/5/case-data/IEK/Сезонность ИЭК.xlsx",
+            "cases/5/case-data/Systeme electric/Сезонность SystemElectric 2024-2026.xlsx"
+          ]
+        },
+        {
+          "requirement": "Оценка и компенсация упущенного спроса в периоды stockout.",
+          "status": "partial",
+          "explanation": "Корректор есть и добавляет median спроса по предыдущим одинаковым weekday или fallback к недавним положительным дням. В рабочем пути он использует сгенерированную stockout-историю seed=42, а не stock/остатки из предоставленных файлов.",
+          "evidence": [
+            "src/data/stockout_correction.py:90-144",
+            "src/data/stockout_correction.py:147-253",
+            "src/data/stockout_correction.py:256-301",
+            "README_BACKEND.md:115-117"
+          ]
+        },
+        {
+          "requirement": "Выявление и исключение разовых крупных заказов, включая крупную продажу одному клиенту.",
+          "status": "partial",
+          "explanation": "Код группирует valid sales по customer_id и SKU, использует IQR/median и историю клиента, а прогноз строит на adjusted_quantity; однако этот путь ожидает UCI-поля Customer ID/Quantity и не был применён к case XLSX.",
+          "evidence": [
+            "src/data/anomaly_detection.py:70-130",
+            "src/data/anomaly_detection.py:195-328",
+            "src/data/preprocess.py:22-71",
+            "captures/20261002T090613389053-scenario-case.stdout.log"
+          ]
+        },
+        {
+          "requirement": "Список заказов, сгруппированный по поставщикам, с кратким объяснением количества по каждой позиции.",
+          "status": "partial",
+          "explanation": "На synthetic inventory demo это работает: pipeline возвращает положительные группы Supplier_A/B/C и human-readable explanation. Для набора задания не доказано из-за отсутствия case-data adapter.",
+          "evidence": [
+            "src/inventory/supplier_grouping.py:7-16",
+            "src/inventory/explanation.py:1-80",
+            "captures/20261002T090558867715-scenario-inventory.stdout.log"
+          ]
+        },
+        {
+          "requirement": "Не отправлять заказ поставщику без ручного подтверждения ответственного сотрудника.",
+          "status": "met",
+          "explanation": "Сервис только возвращает рекомендацию и группы; отправка поставщику не реализована. README явно фиксирует human-in-the-loop и отсутствие automatic submission.",
+          "evidence": [
+            "README.md:64",
+            "README.md:766-768",
+            "README_BACKEND.md:79-81",
+            "app/streamlit_app.py:25,97"
+          ]
+        },
+        {
+          "requirement": "Обезличивание данных клиентов и отсутствие публикации клиентских идентификаторов в результате.",
+          "status": "partial",
+          "explanation": "Customer ID используется в anomaly detection как ключ поведения и сохраняется в customer_order_anomalies.csv; в итоговую recommendation UI-структуру он не включён, но отдельный шаг anonymization отсутствует.",
+          "evidence": [
+            "src/data/anomaly_detection.py:103-107",
+            "src/data/anomaly_detection.py:312-328",
+            "src/inventory/service.py:124-138"
+          ]
+        },
+        {
+          "requirement": "Совместимость результата с текущей учётной системой и возможность использовать выгрузку для закупок.",
+          "status": "missing",
+          "explanation": "Есть Python dict/DataFrame и печать групп, но нет адаптера 1С, export-файла или маппинга case-таблиц; README относит ERP/1С и purchase order export к следующим шагам.",
+          "evidence": [
+            "README.md:689-701",
+            "README.md:747-762",
+            "README_BACKEND.md:128"
+          ]
+        }
+      ],
+      "testData": {
+        "provided": [
+          "cases/5/case-data/HackAlem AI_ Автоматизация формирования заказов поставщикам.docx.md",
+          "cases/5/case-data/IEK/MOQ  ИЭК.xlsx",
+          "cases/5/case-data/IEK/Динамика продаж_2025-2026.xlsx",
+          "cases/5/case-data/IEK/Ежемесячные остатки продукции за последние 2 года  ИЭК.xlsx",
+          "cases/5/case-data/IEK/Ежемесячные продажи в количественном выражении за последние 2 года.xlsx",
+          "cases/5/case-data/IEK/Путь ИЭК 22.09.2026.xlsx",
+          "cases/5/case-data/IEK/Сезонность ИЭК.xlsx",
+          "cases/5/case-data/Systeme electric/MOQ SystemElectric.xlsx",
+          "cases/5/case-data/Systeme electric/Динамика продаж_Syseme Electric_2025-2026.xlsx",
+          "cases/5/case-data/Systeme electric/Ежемесячные остатки SystemElectric 2024-2026.xlsx",
+          "cases/5/case-data/Systeme electric/Ежемесячные продажи в кол-м выражении SystemElectric 2024-2026.xlsx",
+          "cases/5/case-data/Systeme electric/Сезонность SystemElectric 2024-2026.xlsx",
+          "cases/5/case-data/Systeme electric/Товар в пути_SystemElectric на 22.09.2026.xlsx"
+        ],
+        "used": [
+          "cases/5/case-data/IEK/MOQ  ИЭК.xlsx",
+          "cases/5/case-data/IEK/Динамика продаж_2025-2026.xlsx",
+          "cases/5/case-data/IEK/Ежемесячные остатки продукции за последние 2 года  ИЭК.xlsx",
+          "cases/5/case-data/IEK/Ежемесячные продажи в количественном выражении за последние 2 года.xlsx",
+          "cases/5/case-data/IEK/Путь ИЭК 22.09.2026.xlsx",
+          "cases/5/case-data/IEK/Сезонность ИЭК.xlsx",
+          "cases/5/case-data/Systeme electric/MOQ SystemElectric.xlsx",
+          "cases/5/case-data/Systeme electric/Динамика продаж_Syseme Electric_2025-2026.xlsx",
+          "cases/5/case-data/Systeme electric/Ежемесячные остатки SystemElectric 2024-2026.xlsx",
+          "cases/5/case-data/Systeme electric/Ежемесячные продажи в кол-м выражении SystemElectric 2024-2026.xlsx",
+          "cases/5/case-data/Systeme electric/Сезонность SystemElectric 2024-2026.xlsx",
+          "cases/5/case-data/Systeme electric/Товар в пути_SystemElectric на 22.09.2026.xlsx"
+        ],
+        "checks": [
+          {
+            "input": "Все 12 XLSX из IEK и Systeme electric",
+            "method": "Прочитаны workbook sheet names и первая строка каждого листа через openpyxl; полные датасеты в отчёт не включались.",
+            "result": "Найдено 12 XLSX. Заголовки содержат поля Код 1с/Артикул поставщика/Наименование/Мин. разр. к отгр., месячные колонки, сезонность и отдельные таблицы товаров в пути; UCI-полей Invoice/StockCode/InvoiceDate/Quantity нет в MOQ-файле.",
+            "conclusion": "Структура кейса существенно отличается от ожидаемого Online Retail II и требует отдельного маппинга источников."
+          },
+          {
+            "input": "IEK/MOQ  ИЭК.xlsx",
+            "method": "Файл передан в src.data.load_data.load_retail_data, затем результат передан в src.data.preprocess.preprocess_transactions внутри изолированного Docker-сценария.",
+            "result": "Загрузчик объединил лист Лист7 и получил 1938 строк с колонками ['№', 'Код 1с', 'Артикул поставщика', 'Наименование', 'Мин. разр. к отгр.', 'source_sheet']; preprocessing завершился KeyError: ['sku'] на preprocess.py:37.",
+            "conclusion": "Проект не принимает даже первый обязательный кейсовый источник в заявленном основном pipeline."
+          },
+          {
+            "input": "Путь/сезонность/остатки/продажи Systeme electric и IEK",
+            "method": "Файлы использованы для структурной сверки наличия отдельных источников stock, incoming, seasonality и sales с требованиями кейса; кода-адаптера не найдено.",
+            "result": "Отдельные workbook/листы существуют, но runtime pipeline принимает final_demand.csv и synthetic inventory.csv, а не эти источники.",
+            "conclusion": "Проверка чувствительности к case incoming/seasonality/stockout/outlier на самих XLSX невозможна по конкретной причине отсутствия совместимого входного контракта, а не из-за отсутствия credentials."
+          }
+        ],
+        "limitations": [
+          "Кейсовые таблицы не содержат единую схему; после подтверждённого KeyError дальнейшее вычисление на них не выполнялось.",
+          "Тесты проекта используют synthetic/UCI-style fixtures и не заменяют проверку на организаторском наборе."
+        ]
+      },
+      "runtime": {
+        "status": "partial",
+        "build": "Inventory-зависимости установились, заявленные 14 inventory-тестов прошли; полный backend-набор с backend-зависимостями также прошёл 57 тестов.",
+        "start": "Отдельный HTTP-сервис не заявлен. Synthetic demo запускается как CLI; основной demo_backend стартует до вызова модели, но завершается из-за отсутствующего подготовленного final_demand.csv.",
+        "scenario": "Синтетический inventory pipeline воспроизведён с группировкой и объяснениями. Кейс-сценарий на предоставленных XLSX не воспроизведён: UCI-oriented preprocessing падает на KeyError sku.",
+        "environment": "Изолированный Docker-контейнер с Python 3.11, без API-ключей и без обращения к браузеру; проверены только CLI, unit/domain и data-format пути.",
+        "summary": "Статус partial: внутренний backend-сценарий работает на synthetic fixtures, но основной кейсовый сценарий и единая frontend/backend поставка не готовы.",
+        "checks": [
+          {
+            "command": "python -m pip install -r requirements-inventory.txt && python -m pytest tests/test_inventory.py -q",
+            "result": "14 passed in 0.86s.",
+            "id": "test-inventory",
+            "stage": "build",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Заявленный inventory-набор тестов проходит в чистом окружении."
+          },
+          {
+            "command": "python -m pip install -r requirements-backend.txt && python -m pytest -q",
+            "result": "57 passed in 13.65s.",
+            "id": "test-backend-full",
+            "stage": "build",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Все backend-тесты проверяют forecasting, inventory, service и интеграционный контракт."
+          },
+          {
+            "command": "python demo_inventory.py",
+            "result": "CLI напечатал рекомендации и группы Supplier_A, Supplier_B, Supplier_C; в строках присутствуют incoming, MOQ, risk и explanation.",
+            "id": "scenario-inventory",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Synthetic inventory demo выдаёт заказные количества и группировку по поставщику."
+          },
+          {
+            "command": "python demo_backend.py",
+            "result": "Exit code 1: FileNotFoundError для data/processed/final_demand.csv с подсказкой запускать preprocess/anomaly_detection/stockout_correction.",
+            "id": "scenario-backend",
+            "stage": "scenario",
+            "status": "fail",
+            "cause": "project",
+            "expected": "Исторический путь формирует recommendation через публичный сервис."
+          },
+          {
+            "command": "python -c \"load_retail_data(case_xlsx); preprocess_transactions(raw)\"",
+            "result": "MOQ IEK загружен как 1938 строк с case-заголовками; затем exit code 1, KeyError: ['sku'] в src/data/preprocess.py:37.",
+            "id": "scenario-case-format",
+            "stage": "scenario",
+            "status": "fail",
+            "cause": "project",
+            "expected": "Предоставленный тестовый XLSX преобразуется в вход основного расчёта."
+          },
+          {
+            "command": "streamlit run app/streamlit_app.py",
+            "result": "Не запускался: в наиболее полной feature/inventory ветке app/streamlit_app.py пуст; frontend-ветка документирует необходимость ручного объединения модулей.",
+            "id": "start-integrated-ui",
+            "stage": "start",
+            "status": "not_run",
+            "cause": "project",
+            "expected": "Один snapshot поднимает пользовательский интерфейс и связанный backend."
+          }
+        ],
+        "limitations": [
+          "Публичной live demo-ссылки нет; это отражено в liveDemo и не является штрафом.",
+          "Визуальную проверку Streamlit выполняет пользователь; браузерная автоматизация и скриншоты не использовались.",
+          "Отсутствие подготовленного UCI-файла ограничило именно исторический demo_backend, но не считалось отдельным штрафом сверх подтверждённого отсутствия адаптера к case XLSX."
+        ]
+      },
+      "liveDemo": {
+        "status": "none",
+        "url": null,
+        "notes": "В репозитории не обнаружена публичная рабочая live-ссылка. Оценка основана на локальных CLI/API-проверках; отсутствие URL само по себе баллы не снижало."
+      },
+      "fiveHourContext": "Для пятичасового хакатона разумно засчитать модульный backend, понятные контракты, 57 тестов, synthetic demo и честно обозначенные ограничения. Production ERP, база, authentication и автоматическая отправка заказов не требовались. При этом отсутствие единого runnable checkout и несовместимость с прямо предоставленными кейсовыми XLSX — не production-требование, а существенный пробел MVP этого кейса.",
+      "strengths": [
+        "S-TESTS: 57 backend-тестов проходят на заявленном backend-контракте.",
+        "S-INVENTORY: формула заказа, incoming, MOQ, риск, объяснение и группировка наблюдались в CLI demo.",
+        "S-ADJUSTMENTS: customer-aware one-off и stockout-correction логически выделены в отдельные этапы.",
+        "S-HITL: сервис генерирует рекомендацию и не отправляет заказ автоматически.",
+        "S-README: README содержит поток данных, формулы, команды и ограничения с конкретным примером."
+      ],
+      "gaps": [
+        "F-CASE-DATA: основной preprocessing ожидает UCI-поля и не принимает предоставленный IEK/Systeme electric формат; проверка заканчивается KeyError sku.",
+        "F-INTEGRATION: функциональность распределена по веткам, main содержит README, inventory app пуст, а frontend требует ручного объединения модулей.",
+        "F-SEASONAL-GROWTH: реализована только недельная сезонность; устойчивый рост и отдельные месячные/годовые seasonal-источники не входят в расчёт.",
+        "F-PRIVACY: customer_id сохраняется во внутреннем anomaly CSV без отдельного шага анонимизации, хотя в итоговую рекомендацию не попадает."
+      ],
+      "futureAdvice": [
+        {
+          "principle": "Сначала фиксировать входной контракт на реальном файле задания",
+          "why": "F-CASE-DATA показывает, что UCI-переименование запускается до нормализации партнёрских XLSX и приводит к KeyError, поэтому сильная математика не достигает пользователя.",
+          "how": "В другом хакатоне в первый час составить mapping для каждого реального листа: SKU, дата, количество, остаток, incoming, supplier, MOQ, seasonality; добавить один нормализованный DataFrame и контрактный fixture на одну позицию с изменением incoming.",
+          "findingIds": [
+            "F-CASE-DATA"
+          ],
+          "successCheck": "Все обязательные case-файлы либо загружаются, либо получают явное понятное сообщение о неподдержанном листе; изменение incoming на одной строке меняет recommended_order предсказуемо.",
+          "timeboxMinutes": 60
+        },
+        {
+          "principle": "Собирать вертикальный срез до параллельной полировки",
+          "why": "F-INTEGRATION подтверждён тем, что README требует вручную объединять dev, inventory и frontend, а main snapshot не запускается как приложение.",
+          "how": "Сначала собрать один checkout с app → pipeline → inventory → forecast, затем прогнать одну команду smoke-test на synthetic fixture; только после этого разделять UI и дополнительные модули по веткам.",
+          "findingIds": [
+            "F-INTEGRATION"
+          ],
+          "successCheck": "Из чистого checkout одной документированной командой получаются таблица рекомендаций, supplier groups и explanation без ручного копирования веток.",
+          "timeboxMinutes": 60
+        },
+        {
+          "principle": "Разделять сезонный паттерн и рост как отдельные проверяемые эффекты",
+          "why": "F-SEASONAL-GROWTH показывает, что среднее одинаковых weekday за 8 недель не может само по себе отражать устойчивый рост и месячные сезонные циклы.",
+          "how": "Для следующего кейса сделать две маленькие синтетические проверки: одинаковая форма с растущим уровнем и одинаковый уровень с сезонным пиком; отдельно измерить изменение прогноза при включении каждого фактора.",
+          "findingIds": [
+            "F-SEASONAL-GROWTH"
+          ],
+          "successCheck": "На trend fixture прогноз растёт относительно плоского baseline, на seasonal fixture меняется по месячному паттерну, а backtest показывает метрики обоих вариантов.",
+          "timeboxMinutes": 45
+        },
+        {
+          "principle": "Анонимизировать рабочие идентификаторы до записи артефактов",
+          "why": "F-PRIVACY: customer_id используется корректно для поведения клиента, но сохраняется в anomaly output без явно отделённого псевдонимизированного представления.",
+          "how": "Перед сохранением anomaly CSV заменить идентификатор устойчивым односторонним псевдонимом или агрегировать до customer/SKU признаков, а в тесте проверить, что исходная колонка не попадает в output и результат детектора не меняется.",
+          "findingIds": [
+            "F-PRIVACY"
+          ],
+          "successCheck": "Аномалии воспроизводимы по псевдонимам, исходный customer_id отсутствует во всех публичных/сохраняемых результатах, а UI и explanation не раскрывают клиента.",
+          "timeboxMinutes": 30
+        }
+      ],
+      "uncertainties": [
+        "Не проводилась визуальная проверка Streamlit по прямому запрету пользовательской инструкции; это не трактовалось как дефект UI.",
+        "Нет публичной live-ссылки и API-credentials; внешний сервис не заявлен, поэтому это не уменьшает баллы.",
+        "Точный состав и бизнес-смысл всех широких месячных колонок XLSX не интерпретировался сверх заголовочной структурной проверки после подтверждённого отсутствия адаптера.",
+        "Устные презентация и ответы на вопросы отсутствовали; в соответствующем критерии оценивались только README и воспроизводимое локальное demo.",
+        "Факт анонимности customer_id в исходном UCI-источнике отдельно не подтверждался; вывод о недостатке относится к отсутствию явного шага анонимизации в коде и сохранению customer_id в anomaly CSV."
+      ],
+      "reviewPolicyVersion": 2,
+      "assessmentStatus": "ready",
+      "findings": [
+        {
+          "id": "S-TESTS",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Backend-контракт покрыт автоматическими тестами и проходит в чистом окружении с backend-зависимостями.",
+          "expected": "Тесты forecasting, inventory, service и интеграции завершаются без ошибок.",
+          "actual": "57 passed; отдельно заявленный inventory suite дал 14 passed.",
+          "evidence": [
+            "captures/20261002T090759141361-test-full.stdout.log",
+            "captures/20261002T090751975068-test-inventory.stdout.log"
+          ],
+          "checkIds": [
+            "test-backend-full",
+            "test-inventory"
+          ]
+        },
+        {
+          "id": "S-INVENTORY",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Synthetic inventory demo формирует объяснимые рекомендации и группы поставщиков.",
+          "expected": "CLI печатает количество, incoming, MOQ/risk/explanation и supplier grouping.",
+          "actual": "Группы Supplier_A, Supplier_B и Supplier_C напечатаны, строки содержат расчёт и explanation.",
+          "evidence": [
+            "demo_inventory.py:1-21",
+            "captures/20261002T090558867715-scenario-inventory.stdout.log"
+          ],
+          "checkIds": [
+            "scenario-inventory"
+          ]
+        },
+        {
+          "id": "S-ADJUSTMENTS",
+          "kind": "strength",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "В коде есть отдельные customer-aware one-off и stockout correction этапы, которые передают метаданные в прогноз.",
+          "expected": "Выбросы уменьшают adjusted demand, а stockout-дни получают восстановленный спрос.",
+          "actual": "Оба этапа реализованы отдельными функциями и поля anomalies_found/stockout_adjustment попадают в service result.",
+          "evidence": [
+            "src/data/anomaly_detection.py:195-328",
+            "src/data/stockout_correction.py:147-301",
+            "src/inventory/service.py:106-140"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "S-HITL",
+          "kind": "strength",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Система возвращает рекомендацию, но не выполняет автоматическую отправку поставщику.",
+          "expected": "Финальное решение остаётся за менеджером закупок.",
+          "actual": "README и код описывают только recommendation/grouping, send-интеграции нет.",
+          "evidence": [
+            "README.md:64",
+            "README.md:766-768",
+            "README_BACKEND.md:79-81"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "S-README",
+          "kind": "strength",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "README содержит конкретный поток данных, формулу, пример и ограничения.",
+          "expected": "Локальное demo должно быть объяснимо без устной презентации.",
+          "actual": "Описаны UCI/synthetic inputs, 127-unit example, команды, тесты и human-in-the-loop.",
+          "evidence": [
+            "README.md:38-64",
+            "README.md:353-390",
+            "README.md:503-651",
+            "README_BACKEND.md:1-31"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "F-CASE-DATA",
+          "kind": "defect",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Основной preprocessing не принимает предоставленный кейсовый XLSX-формат.",
+          "expected": "Организаторские IEK/Systeme electric продажи, остатки, MOQ, seasonality и incoming должны быть преобразованы в расчётный вход.",
+          "actual": "IEK MOQ загружен как 1938 строк с полями Код 1с/Артикул поставщика/Наименование/Мин. разр. к отгр.; preprocess ожидает UCI и падает KeyError ['sku'].",
+          "evidence": [
+            "src/data/preprocess.py:22-37",
+            "src/data/load_data.py:6-26",
+            "captures/20261002T090613389053-scenario-case.stdout.log",
+            "captures/20261002T090613389053-scenario-case.stderr.log"
+          ],
+          "checkIds": [
+            "scenario-case-format"
+          ]
+        },
+        {
+          "id": "F-INTEGRATION",
+          "kind": "defect",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Финальный snapshot не содержит единого runnable vertical slice; реализации распределены по неслитым веткам.",
+          "expected": "Из одного проверяемого checkout запускаются приложение и связанный backend.",
+          "actual": "main содержит README с указанием проверять другие ветки; feature/inventory имеет пустой app/streamlit_app.py; frontend README требует ручного присутствия модулей dev и feature/inventory; integration tests skip до merge.",
+          "evidence": [
+            "README.md:5-6",
+            "README_FRONTEND.md:15-18",
+            "tests/test_frontend_integration.py:1-23",
+            "app/streamlit_app.py:1 (feature/inventory: пустой файл)"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "F-SEASONAL-GROWTH",
+          "kind": "defect",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Прогноз моделирует только недельную сезонность и не содержит устойчивого growth-компонента.",
+          "expected": "Прогноз должен отражать сезонность из кейсовых источников и устойчивый рост спроса.",
+          "actual": "seasonal_weekday_forecast берёт среднее final_demand последних 8 недель по day_of_week; отдельная features.py пустая, trend/monthly seasonal inputs не подключены.",
+          "evidence": [
+            "src/forecasting/baseline.py:90-171",
+            "README.md:261-299",
+            "README.md:689-701",
+            "cases/5/case-data/IEK/Сезонность ИЭК.xlsx"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "F-PRIVACY",
+          "kind": "defect",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Customer ID сохраняется во внутренний anomaly CSV без отдельного шага анонимизации.",
+          "expected": "Клиентские данные должны быть обезличены до использования/сохранения результатов.",
+          "actual": "Код заполняет customer_id значением UNKNOWN только при пропуске и сохраняет detected DataFrame, включающий customer_id, в customer_order_anomalies.csv.",
+          "evidence": [
+            "src/data/anomaly_detection.py:103-107",
+            "src/data/anomaly_detection.py:312-328"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "L-SYNTHETIC",
+          "kind": "limitation",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Демонстрационные warehouse fields и stockout history синтетические, продажи взяты из UCI proxy, incoming aggregate без ETA.",
+          "expected": "Production-совместимость не обязательна для пятичасового MVP, но ограничение должно быть явно обозначено.",
+          "actual": "README и backend documentation явно описывают synthetic/UCI источник, aggregate incoming и отсутствие ETA.",
+          "evidence": [
+            "README.md:68-118",
+            "README_BACKEND.md:113-128"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "L-VISUAL",
+          "kind": "limitation",
+          "verification": "unverified",
+          "responsibility": "review_environment",
+          "claim": "Визуальное поведение Streamlit не проверялось этим судейством.",
+          "expected": "Визуальную проверку выполняет пользователь.",
+          "actual": "Проведены только статические, CLI, unit/domain и data-format проверки.",
+          "evidence": [
+            "AGENTS.md: User-owned visual verification"
+          ],
+          "checkIds": []
+        }
+      ],
+      "gapFindingIds": [
+        "F-CASE-DATA",
+        "F-INTEGRATION",
+        "F-SEASONAL-GROWTH",
+        "F-PRIVACY"
+      ]
+    }
+  ],
+  "score": 55.0,
+  "status": "complete",
+  "expectedJudges": 1
+}

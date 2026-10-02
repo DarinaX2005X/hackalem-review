@@ -1,0 +1,1127 @@
+{
+  "methodVersion": 4,
+  "repoId": "hack-7ea5e17b-edubridge",
+  "repoUrl": "https://github.com/BAITC-Hacks/hack-7ea5e17b-edubridge",
+  "caseId": 1,
+  "snapshot": "02bef00820548ebcb01cc665edd02833a21a9f6a",
+  "judges": [
+    {
+      "methodVersion": 4,
+      "repoId": "hack-7ea5e17b-edubridge",
+      "caseId": 1,
+      "model": "GPT-5.6 Luna",
+      "snapshot": "02bef00820548ebcb01cc665edd02833a21a9f6a",
+      "overallSummary": "JelAI — сильный и практически воспроизводимый прототип архивного почасового прогноза для двух турбин. Основной сценарий реально развернулся в изолированном окружении: архивный режим FastAPI стартовал, исходные CSV кейса прошли штатный валидатор, а HTTP-проверка подтвердила все шесть комбинаций 24/48 часов и выбора одной/двух турбин с корректными почасовыми рядами, CSV и метаданными. Репозиторий особенно хорошо раскрывает происхождение погоды, временные границы, повторный расчёт, ревизии, модельный пакет и ограничения результата. Оценка снижена не за недоступность публичного URL или отсутствие февральской истины, а за подтверждённое методологическое ограничение реализации: поставленная в production-пакет HGB-модель уступает простому wind_curve на независимом holdout (MAE 0.2269 против 0.2095), а фактический fit использует только зимнее окно декабря–января при наличии истории с марта 2023 года. Это не отменяет рабочий MVP, но ограничивает доказанную практическую устойчивость прогноза.",
+      "global": {
+        "criteria": [
+          {
+            "name": "Ценность решения",
+            "score": 22,
+            "max": 25,
+            "awarded": "Решение адресует понятную операционную задачу ВЭС и выдаёт проверяемый прогнозный артефакт для оператора.",
+            "deductions": "3 балла сняты из-за подтвержденно ограниченной доказательной базы применимости: production-модель обучена только на зимнем окне, поэтому переносимость на остальные сезоны исходной истории не продемонстрирована.",
+            "evidence": [
+              "README.md:591-606, 808-843",
+              "models/wind-power-v1/metadata.json: поле metadata.training_target_start/ training_target_end",
+              "CHK_SCENARIO_API: все шесть сочетаний горизонта и турбин завершены с почасовыми рядами"
+            ],
+            "deductionItems": [
+              {
+                "points": 3,
+                "findingId": "D2",
+                "reason": "Для целевой аудитории полезен не только технический прогноз, но и устойчивость к смене сезона. В metadata зафиксировано, что delivered model fitted only on December 2025–January 2026 winter data, хотя входная история покрывает март 2023 — январь 2026; это ослабляет доказанную применимость за пределами зимнего режима."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Конкретная энергетическая задача",
+                "implementation": "README описывает оператора или энергетического аналитика как пользователя: он выбирает выпуск прогноза, турбины и горизонт, получает normalized_power, источник погоды, качество, анализ агента и CSV. API-контракт содержит отдельные маршруты для состояния, прогноза, анализа и оценки.",
+                "value": "Это превращает абстрактный ML-эксперимент в рабочий инструмент для краткосрочного планирования и проверки того, на каких входах построен прогноз.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:591-606, 743-751",
+                  "src/wind_agent/api/app.py:51-101"
+                ]
+              },
+              {
+                "aspect": "Понятный пользовательский результат",
+                "implementation": "Для запроса 2026-01-31T18:00:00Z на 48 часов сервис выдаёт 96 записей, по 48 на каждую турбину, с valid_time, lead_hours, prediction, target_unit, weather_run_time, training_cutoff и предупреждениями; тот же результат доступен в CSV.",
+                "value": "Оператор получает не только число, но и временную детализацию, единицу результата и происхождение входа, что делает прототип пригодным для предметной проверки.",
+                "verification": "observed",
+                "evidence": [
+                  "CHK_SCENARIO_API",
+                  "src/wind_agent/agent/service.py:222-290",
+                  "src/wind_agent/api/app.py:70-97"
+                ]
+              },
+              {
+                "aspect": "Честная граница полезности",
+                "implementation": "Проект не выдаёт normalized_power за MW/MWh, не публикует процент точности и явно сообщает об отсутствии фактической февральской генерации, некалиброванных интервалах и предположениях о часовом поясе и нормализации.",
+                "value": "Такая маркировка снижает риск неправильного использования демонстрационного результата и делает ценность более реалистичной, хотя одновременно ограничивает её доказанную производственную применимость.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:627, 816-843",
+                  "models/wind-power-v1/metadata.json: validation.february_ground_truth_available=false и validation.uncertainty_intervals=not calibrated"
+                ]
+              },
+              {
+                "aspect": "Проверка на реальном входном формате",
+                "implementation": "Оба организаторских CSV с пятью исходными колонками были переданы штатному data CLI. Получены 291859 строк, 50784 часовых строки и 48450 обучающих часов с явным cutoff.",
+                "value": "Ценность не основана на синтетическом fixture-only демо: прототип умеет принять именно предоставленный формат данных и аккуратно сообщить пропуски.",
+                "verification": "observed",
+                "evidence": [
+                  "CHK_CASE_DATA",
+                  "captures/20261002T194926660960-case-data.stdout.log",
+                  "src/wind_agent/data/loader.py:43-164"
+                ]
+              }
+            ],
+            "scoreReasoning": "22/25 заслужены тем, что проблема, пользователь и результат конкретны, а работающий сценарий подтверждён реальным входом и HTTP-проверкой. До максимума не хватает доказанной сезонной устойчивости: фактический model package использует зимнее окно, а не всю доступную историю, поэтому ценность для эксплуатации в иных режимах ветра пока не установлена."
+          },
+          {
+            "name": "Результат и качество решения",
+            "score": 17,
+            "max": 20,
+            "awarded": "Целостный сценарий расчёта, повторного использования входов и выдачи результата работает; качество прогноза измерено, но выбранный алгоритм не является лучшим baseline на независимом holdout.",
+            "deductions": "3 балла сняты за подтверждённое расхождение между выбранной production-моделью и простым baseline на holdout.",
+            "evidence": [
+              "CHK_BACKEND_TEST: 385 passed",
+              "CHK_SCENARIO_API: 24/48 часов, одна/две турбины, JSON/CSV",
+              "models/wind-power-v1/metadata.json: validation.holdout.hgb_medium и validation.holdout.wind_curve",
+              "docs/evidence/app-integration.json: baseline_comparison"
+            ],
+            "deductionItems": [
+              {
+                "points": 3,
+                "findingId": "D1",
+                "reason": "На независимом holdout selected hgb_medium имеет MAE 0.2269187055, тогда как доступный wind_curve имеет MAE 0.2094604765. Сценарий работает, но представленный quality result не подтверждает преимущество выбранной production-модели над более простым кандидатом."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Полный путь от запуска до результата",
+                "implementation": "FastAPI принимает POST /runs и ставит AgentService.execute в background task; затем доступны /runs/{id}, /forecast, /analysis, /forecast.csv и /evaluation. AgentService последовательно получает погоду, валидирует её, вызывает ModelBridge, анализирует и сохраняет revision.",
+                "value": "Это цельный пользовательский результат, а не изолированный ноутбук: результат можно получить, проверить и выгрузить через согласованный API.",
+                "verification": "observed",
+                "evidence": [
+                  "src/wind_agent/api/app.py:55-101",
+                  "src/wind_agent/agent/service.py:164-290",
+                  "CHK_START",
+                  "CHK_SCENARIO_API"
+                ]
+              },
+              {
+                "aspect": "Рабочие горизонты и выбор турбин",
+                "implementation": "Интеграционный скрипт проверил обе одиночные турбины и пару турбин для горизонтов 24 и 48 часов. Фактические результаты: соответственно 24, 24, 48, 48, 48 и 96 строк.",
+                "value": "Основной диапазон кейса закрыт с правильной почасовой кардинальностью и без подмены отсутствующих данных нулями.",
+                "verification": "observed",
+                "evidence": [
+                  "CHK_SCENARIO_API",
+                  "scripts/verify_app_integration.py:112-150",
+                  "src/wind_agent/model/interface.py:286-335"
+                ]
+              },
+              {
+                "aspect": "Проверяемая согласованность экспорта",
+                "implementation": "HTTP-проверка сравнивает все поля JSON и CSV, включая структурированные предупреждения, проверяет количество записей, единицу normalized_power и повторный запрос с тем же run_id/revision.",
+                "value": "Пользовательский экспорт не является отдельным приблизительным представлением результата и сохраняет технические оговорки модели.",
+                "verification": "observed",
+                "evidence": [
+                  "scripts/verify_app_integration.py:99-150",
+                  "CHK_SCENARIO_API",
+                  "src/wind_agent/api/app.py:82-97"
+                ]
+              },
+              {
+                "aspect": "Оценка отделена от production refit",
+                "implementation": "Evaluation report различает tuning, independent holdout и production_refit; код проверяет cutoff, принадлежность модельному пакету и отсутствие February truth.",
+                "value": "Команда не маскирует отсутствие февральских целей как accuracy и сохраняет границы того, что реально измерено.",
+                "verification": "source",
+                "evidence": [
+                  "src/wind_agent/agent/evaluation_report.py:100-228",
+                  "models/wind-power-v1/metadata.json: validation",
+                  "CHK_START"
+                ]
+              }
+            ],
+            "scoreReasoning": "17/20 отражают реально работающий и хорошо проверенный продуктовый путь. Ограничение существенно именно для качества результата: на независимом holdout простая wind_curve лучше выбранной hgb_medium, поэтому нельзя считать сложную модель доказанно лучшей. При этом корректность API, кардинальность, экспорт и предупреждения подтверждены, что не оправдывает более глубокое снижение."
+          },
+          {
+            "name": "Инновационность",
+            "score": 14,
+            "max": 15,
+            "awarded": "Нестандартность заключается в аудируемом архивном agentic-цикле и управлении ревизиями, а не в использовании модного LLM ради названия.",
+            "deductions": "1 балл снят за отсутствие подтверждённого преимущества выбранной ML-комбинации над простым baseline; оригинальность orchestration доказана лучше, чем оригинальность самого предиктора.",
+            "evidence": [
+              "src/wind_agent/weather/gfs.py:263-286, 305-370",
+              "src/wind_agent/agent/service.py:202-290",
+              "docs/evidence/controlled-real-revision.json",
+              "models/wind-power-v1/metadata.json: validation.baseline comparison"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "D1",
+                "reason": "Инновационная часть выбора модели не подкреплена преимуществом на holdout: hgb_medium хуже wind_curve. Поэтому балл почти полный за агентную проверяемость, но не максимальный за уникальную predictive advantage."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Исторически корректный выбор погодного выпуска",
+                "implementation": "GFSArchiveProvider перебирает инициализации, требует полный горизонт, проверяет S3 LastModified всех GRIB/index объектов и принимает только выпуск, доступный не позднее issue_time; затем декодирует конкретные байтовые диапазоны и сохраняет хеши.",
+                "value": "Это существенно отличается от обычного запроса текущего прогноза или hindcast и непосредственно отвечает на сложную часть кейса — воспроизвести, что было доступно оператору в прошлом.",
+                "verification": "source",
+                "evidence": [
+                  "src/wind_agent/weather/gfs.py:208-286, 305-364",
+                  "src/wind_agent/agent/service.py:110-129"
+                ]
+              },
+              {
+                "aspect": "Ревизии при обновлении входа",
+                "implementation": "Fingerprint объединяет стабильную погоду, модель, хеш весов и семантику. При неизменных входах revision сохраняется, при изменении допустимого weather release создаётся новая revision с анализом сравнения.",
+                "value": "Agentic-повторный расчёт реализован как наблюдаемое состояние и provenance, а не как одноразовый скрипт.",
+                "verification": "source",
+                "evidence": [
+                  "src/wind_agent/agent/service.py:194-210, 267-290",
+                  "docs/evidence/controlled-real-revision.json: revisions/actions/changed_predictions"
+                ]
+              },
+              {
+                "aspect": "Анализ без скрытого изменения прогноза",
+                "implementation": "analyse_forecast вычисляет минимумы, максимумы, средние, hourly ramp, ветровой диапазон, сравнение с предыдущей revision и next action. README отдельно указывает, что рекомендация не изменяет числовые predictions.",
+                "value": "Это полезный и аккуратный вариант agentic AI для оператора: агент объясняет и инициирует проверку, но не притворяется автономным контроллером оборудования.",
+                "verification": "source",
+                "evidence": [
+                  "src/wind_agent/agent/analysis.py:99-210",
+                  "README.md:591-606",
+                  "tests/agent/test_analysis.py:47-240"
+                ]
+              },
+              {
+                "aspect": "Осознанное отсутствие LLM-зависимости",
+                "implementation": "Численный forecast и анализ работают на правилах, NOAA GFS, pandas/scikit-learn и сохранённом model package; README прямо сообщает, что OpenAI и другие LLM API не участвуют.",
+                "value": "Для краткосрочного энергетического прогноза это делает систему детерминированной, объяснимой и запускаемой без ключей, сохраняя agentic свойства на уровне оркестрации.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:627",
+                  "src/wind_agent/agent/service.py:164-290",
+                  "CHK_START"
+                ]
+              }
+            ],
+            "scoreReasoning": "14/15: архивная доступность, байтовая provenance, fingerprint/revision и диагностический цикл — заметно более оригинальная реализация, чем обычный ML endpoint. Один балл удержан только потому, что predictive-часть не показывает преимущество над wind_curve на независимом holdout."
+          },
+          {
+            "name": "Потенциал развития и масштабирования",
+            "score": 17,
+            "max": 20,
+            "awarded": "Архитектура уже разделяет API, агент, источник погоды, model bridge, хранилище, монитор и frontend; расширение на новые выпуски и турбины предусмотрено контрактами.",
+            "deductions": "3 балла сняты за подтверждённое сезонное ограничение обученного пакета, которое требует расширения evaluation/training policy перед переносом на другие режимы.",
+            "evidence": [
+              "README.md:631-667, 715-735, 829-843",
+              "src/wind_agent/agent/monitor.py:110-261",
+              "src/wind_agent/config.py:23-44",
+              "models/wind-power-v1/metadata.json: training target window"
+            ],
+            "deductionItems": [
+              {
+                "points": 3,
+                "findingId": "D2",
+                "reason": "Для масштабирования на новые сезоны и площадки нужно сначала устранить узкую training window: metadata показывает fit только на декабре 2025 — январе 2026, при этом README сам признаёт, что это не all-season evaluation. Это уменьшает доказанную готовность к расширению."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Разделение компонентов",
+                "implementation": "В репозитории отдельно находятся data loader/hourly preparation, GFS provider, model/evaluation, AgentService/storage, FastAPI/CLI и React UI. ModelBridge позволяет менять адаптер, а settings задаёт список турбин и provider.",
+                "value": "Такое разделение снижает стоимость дальнейшего подключения другого погодного архива, модели или интерфейса без переписывания всего сценария.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:631-667",
+                  "src/wind_agent/config.py:23-44",
+                  "src/wind_agent/agent/model_bridge.py:1-38"
+                ]
+              },
+              {
+                "aspect": "Мониторинг и ускоренный historical replay",
+                "implementation": "AgentMonitor поддерживает исторические ticks без ожидания реального дня, retry/backoff, owner lock, сохранение last_session и отдельный monitor-jobs каталог. Репозиторий фиксирует 29 февральских выпусков и 1344 выбранные строки без пропусков.",
+                "value": "Это удобная основа для перехода от демо к регулярным расчётам и аудиту входных обновлений.",
+                "verification": "source",
+                "evidence": [
+                  "src/wind_agent/agent/monitor.py:110-261",
+                  "src/wind_agent/agent/service.py:350-385",
+                  "docs/evidence/february-replay.json: origin_count/selected_rows/missing_hours"
+                ]
+              },
+              {
+                "aspect": "Контракты для нескольких площадок и горизонтов",
+                "implementation": "Request и weather/model contracts проверяют timezone-aware issue_time, 24/48 часов, уникальные turbine_ids, exact hourly coverage и соответствие provenance. Frontend также валидирует run identity, revision, CSV и evaluation package.",
+                "value": "Явные контракты делают расширение безопаснее: новые источники не должны молча подменять архивную погоду, единицы или временную сетку.",
+                "verification": "source",
+                "evidence": [
+                  "src/wind_agent/contracts.py:50-220",
+                  "src/wind_agent/model/interface.py:65-112, 286-335",
+                  "ui/web/src/data/validation.ts:80-350"
+                ]
+              },
+              {
+                "aspect": "Ограничения масштабирования названы",
+                "implementation": "README не скрывает single-process MVP, отсутствие authorization/RBAC, coarse grid, некалиброванные интервалы и отсутствие отдельного моделирования curtailment/maintenance.",
+                "value": "Для пятиминутного прототипа это полезная карта следующего этапа: ограничения не маскируются как production readiness.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:829-843",
+                  "src/wind_agent/api/app.py:27-35"
+                ]
+              }
+            ],
+            "scoreReasoning": "17/20: модульность, монитор, контракты и сохранение provenance дают хороший путь роста. Снижение связано с реальной, а не инфраструктурной проблемой: модельный пакет основан на коротком зимнем окне, поэтому масштабирование по сезонам пока требует новой валидации и retraining policy."
+          },
+          {
+            "name": "Презентация, демо и ответы на вопросы",
+            "score": 20,
+            "max": 20,
+            "awarded": "README даёт ясный многоязычный walkthrough, команды запуска, API contract, ожидаемые ответы, ограничения и отдельные evidence-файлы; локальный демо-сценарий воспроизводим.",
+            "deductions": "Снятий нет: отсутствие публичного live URL и устного выступления не использовалось как штраф по правилам проверки.",
+            "evidence": [
+              "README.md:1-90, 671-807",
+              "docs/api-contract.md",
+              "docs/evidence/integration-clean-install.json",
+              "CHK_BACKEND_TEST, CHK_FRONTEND_BUILD, CHK_SCENARIO_API"
+            ],
+            "deductionItems": [],
+            "awardedDetails": [
+              {
+                "aspect": "Пошаговый основной сценарий",
+                "implementation": "README задаёт точные issue date/time, выбор двух турбин, горизонт 48 часов, ожидаемые 96 записей и диапазон valid_time, затем перечисляет, какие разделы результата проверить.",
+                "value": "Участнику и судье не нужно угадывать, что считать успешным запуском; сценарий демонстрации связан с реальными API-полями.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:743-751"
+                ]
+              },
+              {
+                "aspect": "Документация на нескольких языках",
+                "implementation": "README содержит казахскую, русскую и английскую версии описания, запуска, архитектуры, API и ограничений; frontend содержит соответствующие localization modules и тесты.",
+                "value": "Это повышает доступность результата для целевой региональной аудитории и одновременно сохраняет техническую точность.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:1-90, 285-360, 570-843",
+                  "ui/web/src/i18n.test.tsx:29-93",
+                  "CHK_FRONTEND_BUILD"
+                ]
+              },
+              {
+                "aspect": "Воспроизводимость через evidence",
+                "implementation": "Репозиторий содержит clean-install, model integration, monitor, controlled revision, replay и app-integration отчёты с хешами исходников/модели, количествами строк и явными scope/limitations.",
+                "value": "Демо можно проверять не только по обещанию README: сохранены конкретные ожидаемые результаты и границы каждого эксперимента.",
+                "verification": "source",
+                "evidence": [
+                  "docs/evidence/integration-clean-install.json",
+                  "docs/evidence/agent-monitor-integration.json",
+                  "docs/evidence/february-replay.json"
+                ]
+              },
+              {
+                "aspect": "Команды действительно запускаются",
+                "implementation": "В свежих контейнерах выполнены backend install/test, frontend npm ci/test/build, data CLI и реальный API integration flow; результаты сохранены через captures.",
+                "value": "Документация подтверждена executable path, а не только наличием README.",
+                "verification": "observed",
+                "evidence": [
+                  "CHK_BACKEND_BUILD",
+                  "CHK_BACKEND_TEST",
+                  "CHK_FRONTEND_BUILD",
+                  "CHK_CASE_DATA",
+                  "CHK_SCENARIO_API"
+                ]
+              }
+            ],
+            "scoreReasoning": "20/20: по этому критерию оценивались только README, объяснение и воспроизводимая локальная демонстрация, поскольку устной презентации не было. Все три части сильные и подтверждены запуском. Публичный URL не является обязательным условием и не использовался как причина снижения."
+          }
+        ],
+        "total": 90
+      },
+      "case": {
+        "criteria": [
+          {
+            "name": "Соответствие задаче и работоспособность",
+            "score": 23,
+            "max": 25,
+            "awarded": "Ключевой сценарий кейса реализован: два объекта, 24/48 часов, архивная погода, почасовая выдача, анализ и обновление входа.",
+            "deductions": "2 балла сняты за ограничение обученного пакета коротким зимним окном; основная функциональность при этом воспроизведена.",
+            "evidence": [
+              "CHK_SCENARIO_API",
+              "CHK_CASE_DATA",
+              "docs/evidence/february-replay.json",
+              "src/wind_agent/agent/service.py:132-294"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "D2",
+                "reason": "Кейс требует модель на исторической базе до 31.01.2026. Граница по времени соблюдена, но delivered model фактически fitted only on December 2025–January 2026, поэтому соответствие исторической базе полное по cutoff, но не по широте использования истории."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Две турбины и почасовой горизонт",
+                "implementation": "Конфигурация содержит turbine_1 и turbine_2, а request/model contracts разрешают ровно 24 или 48 часов. Реальный HTTP-прогон проверил одиночные и совместные запросы.",
+                "value": "Это непосредственно покрывает обязательный формат кейса без синтетического объединения турбин в одну кривую.",
+                "verification": "observed",
+                "evidence": [
+                  "config/archive-model.json:8-22, 30-32",
+                  "CHK_SCENARIO_API",
+                  "src/wind_agent/model/interface.py:286-313"
+                ]
+              },
+              {
+                "aspect": "Архивный прогноз на момент issue_time",
+                "implementation": "Provider выбирает полный выпуск GFS и проверяет доступность всех нужных объектов до issue_time; AgentService дополнительно отклоняет weather с forecast_available_at или model_run_time позже issue_time.",
+                "value": "Это выполняет самую важную защиту кейса от подмешивания будущей погоды.",
+                "verification": "source",
+                "evidence": [
+                  "src/wind_agent/weather/gfs.py:263-286",
+                  "src/wind_agent/agent/service.py:110-129",
+                  "src/wind_agent/model/interface.py:97-102"
+                ]
+              },
+              {
+                "aspect": "Полный agentic цикл",
+                "implementation": "execute фиксирует fetching_weather, validating, forecasting, analysing и completed; затем сохраняет weather, inputs, forecast и analysis. Watch/replay повторяют цикл для последовательных issue times.",
+                "value": "Кейс выполнен как оркестрация с наблюдаемыми этапами, а не как единственный вызов модели.",
+                "verification": "source",
+                "evidence": [
+                  "src/wind_agent/agent/service.py:164-290",
+                  "src/wind_agent/agent/monitor.py:242-261",
+                  "docs/evidence/agent-monitor-integration.json"
+                ]
+              },
+              {
+                "aspect": "Февральский последовательный replay",
+                "implementation": "В evidence зафиксированы 29 выпусков, 2784 строки полных 48-часовых прогнозов, 1344 выбранные строки, по 672 часа на турбину, failed_runs=0 и missing_hours=0; overlap policy выбирает последний issue_time для target hour, не используя truth.",
+                "value": "Это сильное подтверждение обязательного исторического режима февраля на уровне покрытия и временной политики.",
+                "verification": "source",
+                "evidence": [
+                  "src/wind_agent/agent/service.py:350-385",
+                  "docs/evidence/february-replay.json:41-70"
+                ]
+              }
+            ],
+            "scoreReasoning": "23/25: обязательный сценарий воспроизведён и фактически прошёл HTTP-проверку, а архивный февральский replay документирован без дыр. Небольшое снижение относится к тому, что при соблюдении cutoff production fit не использует всю доступную историческую глубину, что важно для обобщения, но не ломает MVP-сценарий."
+          },
+          {
+            "name": "Техническая реализация",
+            "score": 21,
+            "max": 25,
+            "awarded": "Архитектура, контракты, provenance, модельный пакет, API и монитор технически зрелы для пятичасового прототипа.",
+            "deductions": "4 балла сняты за подтверждённое качество model-selection result и узкое окно фактического обучения: сложная модель выбрана, хотя baseline лучше на holdout.",
+            "evidence": [
+              "CHK_BACKEND_TEST",
+              "CHK_SCENARIO_API",
+              "src/wind_agent/weather/gfs.py:208-370",
+              "models/wind-power-v1/metadata.json: validation"
+            ],
+            "deductionItems": [
+              {
+                "points": 3,
+                "findingId": "D1",
+                "reason": "Технический выбор hgb_medium не дал лучшего результата на independent holdout: MAE 0.2269 против 0.2095 у wind_curve. Это не ошибка запуска, но реальный дефект доказательства качества выбранного предиктора."
+              },
+              {
+                "points": 1,
+                "findingId": "D2",
+                "reason": "Metadata связывает production model с зимним target window 2025-11-30 — 2026-01-31, поэтому техническая устойчивость пайплайна к более широкому историческому распределению пока не доказана."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Жёсткие входные контракты",
+                "implementation": "Pydantic contracts проверяют timezone-aware даты, 24/48 horizon, уникальные идентификаторы, координаты, provenance и training cutoff. Data loader проверяет UTF-8 CSV, пять исходных колонок, числовые поля, 10-минутную сетку, дубликаты и отрицательный ветер.",
+                "value": "Ошибки входа и leakage не превращаются в тихо правдоподобный прогноз; это сильная техническая база для аудируемого MVP.",
+                "verification": "source",
+                "evidence": [
+                  "src/wind_agent/contracts.py:50-220",
+                  "src/wind_agent/data/loader.py:43-164",
+                  "tests/contracts/test_contracts.py:55-150"
+                ]
+              },
+              {
+                "aspect": "Реальная работа с NOAA GFS",
+                "implementation": "Provider использует AWS S3 listing, ETag/LastModified, index byte ranges, ecCodes и nearest grid point; cache хранит raw bytes, request metadata, extraction manifest и SHA256.",
+                "value": "Интеграция соответствует историческому характеру задания и оставляет технический след для проверки конкретного weather release.",
+                "verification": "source",
+                "evidence": [
+                  "src/wind_agent/weather/gfs.py:87-165, 245-364",
+                  "tests/weather/test_gfs.py:25-150",
+                  "CHK_SCENARIO_API"
+                ]
+              },
+              {
+                "aspect": "Связанный model package",
+                "implementation": "model/interface.py проверяет metadata.json, хеш model.joblib, bound artifact, две turbine models, feature semantics, cutoff и exact forecast horizon, затем возвращает typed DataFrame.",
+                "value": "Весам нельзя незаметно поменять метаданные, единицы или training boundary между обучением и выдачей.",
+                "verification": "source",
+                "evidence": [
+                  "src/wind_agent/model/interface.py:260-335",
+                  "models/wind-power-v1/metadata.json",
+                  "CHK_START"
+                ]
+              },
+              {
+                "aspect": "Рабочее состояние и повторный расчёт",
+                "implementation": "Run ID вычисляется из canonical request, fingerprint — из погоды/модели/семантики; unchanged input сохраняет revision, changed eligible input порождает новую revision. Controlled evidence показывает 1 → 1 → 2 и 48 изменившихся predictions.",
+                "value": "Это технически важная часть agentic поведения: обновление входа приводит к объяснимому повторному расчёту, а не к случайной перезаписи.",
+                "verification": "source",
+                "evidence": [
+                  "src/wind_agent/agent/service.py:69-90, 194-210",
+                  "docs/evidence/controlled-real-revision.json:8-33"
+                ]
+              }
+            ],
+            "scoreReasoning": "21/25: техническая реализация заметно выше минимального MVP — есть строгие контракты, архивная provenance, связанный package и реальный multi-route integration. Четыре балла удержаны именно за наблюдаемый методологический результат, а не за отсутствие внешних ключей: selected HGB хуже baseline на holdout, и fit ограничен зимним окном."
+          },
+          {
+            "name": "README и воспроизводимость",
+            "score": 25,
+            "max": 25,
+            "awarded": "Документация позволяет понять устройство, установить backend/frontend, запустить API/CLI, воспроизвести архивный сценарий, проверить результаты и интерпретировать ограничения.",
+            "deductions": "Снятий нет: требуемый локальный сценарий воспроизводим, а организаторские CSV штатно приняты data CLI.",
+            "evidence": [
+              "README.md:570-843",
+              "docs/api-contract.md",
+              "docs/DATA_PREPARATION.md",
+              "docs/MODEL_REPRODUCIBILITY.md",
+              "CHK_CASE_DATA, CHK_BACKEND_BUILD, CHK_FRONTEND_BUILD, CHK_SCENARIO_API"
+            ],
+            "deductionItems": [],
+            "awardedDetails": [
+              {
+                "aspect": "Установка и запуск",
+                "implementation": "README фиксирует Python 3.11, Node/npm, команды pip install, backend serve, frontend npm ci/dev, конфиги archive/demo и переменную proxy. Также описаны CLI watch, replay и Streamlit path.",
+                "value": "Новому проверяющему понятен путь от чистого checkout до работающего приложения, включая различие реального archive и синтетического demo режима.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:671-735"
+                ]
+              },
+              {
+                "aspect": "Воспроизводимый критерий успеха",
+                "implementation": "Раздел Main judging scenario задаёт issue_time, 96 expected values, точный диапазон времени, ожидаемые health flags, проверку analysis/source/model evaluation и повторный запрос.",
+                "value": "Документация связывает действие пользователя с проверяемым expected output, что редко присутствует в коротких hackathon README.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:743-807",
+                  "docs/api-contract.md"
+                ]
+              },
+              {
+                "aspect": "Reproducibility evidence",
+                "implementation": "В docs/evidence есть clean install, app integration, February replay, agent monitor, controlled revision, model integration, hourly/history quality и weather probe отчёты с хешами и scope.",
+                "value": "Даже длительные сетевые шаги имеют сохранённые количественные результаты, по которым можно сверить новый запуск.",
+                "verification": "source",
+                "evidence": [
+                  "docs/evidence/integration-clean-install.json",
+                  "docs/evidence/app-integration.json",
+                  "docs/evidence/february-replay.json"
+                ]
+              },
+              {
+                "aspect": "Ограничения объяснены рядом с результатом",
+                "implementation": "README отдельно сообщает про отсутствие February truth, provisional SCADA semantics, normalized_power, archive availability bound, no calibrated intervals, single-process local demo и отсутствие public deployment URL.",
+                "value": "Пользователь понимает, что именно демонстрируется и чего из результата нельзя заключать; это повышает воспроизводимость интерпретации, а не только воспроизводимость запуска.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:816-843",
+                  "models/wind-power-v1/metadata.json: validation.limitations"
+                ]
+              }
+            ],
+            "scoreReasoning": "25/25: документация подробная, согласована с кодом и подтверждена установкой, тестами, data CLI и HTTP-сценарием. Не снижено за отсутствие live URL, поскольку README прямо предлагает локальный запуск, а правила оценки не делают публичный deployment обязательным."
+          },
+          {
+            "name": "Ценность и применимость решения",
+            "score": 13,
+            "max": 15,
+            "awarded": "Решение применимо как auditable normalized-power forecast для оператора/аналитика и показывает, как безопасно обновлять прогноз при появлении нового архивного выпуска погоды.",
+            "deductions": "2 балла сняты за ограниченную доказанную переносимость модели между сезонами.",
+            "evidence": [
+              "README.md:591-606, 816-843",
+              "docs/evidence/february-replay.json",
+              "CHK_SCENARIO_API",
+              "models/wind-power-v1/metadata.json"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "D2",
+                "reason": "Практическая применимость за пределами зимнего окна не доказана: package fit выполнен на декабре–январе, а README называет оценку не all-season. Для энергетического пользователя это важное ограничение доверия к прогнозу в других погодных режимах."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Операторская проверяемость",
+                "implementation": "Каждая выдача содержит weather model/run, availability evidence, raw hash example, target unit, model version, training cutoff, warnings и analysis, а UI/API предоставляет source and quality и download CSV.",
+                "value": "Такой результат полезнее непрозрачного числа: оператор может понять, какой архивный выпуск и какая версия модели использованы.",
+                "verification": "source",
+                "evidence": [
+                  "src/wind_agent/agent/service.py:180-193, 232-240",
+                  "src/wind_agent/api/app.py:82-101",
+                  "CHK_SCENARIO_API"
+                ]
+              },
+              {
+                "aspect": "Практическая повторяемость",
+                "implementation": "Same request is idempotent by run ID/fingerprint, while changed eligible weather creates a revision. Monitor and replay provide a way to schedule this operation for daily issues.",
+                "value": "Это соответствует реальной эксплуатации, где прогноз пересчитывается при обновлении входных данных и должен сохранять историю решений.",
+                "verification": "source",
+                "evidence": [
+                  "src/wind_agent/agent/service.py:69-90, 194-210",
+                  "src/wind_agent/agent/monitor.py:242-261",
+                  "docs/evidence/controlled-real-revision.json"
+                ]
+              },
+              {
+                "aspect": "Безопасная интерпретация результата",
+                "implementation": "Проект не суммирует турбины в MW/MWh при неподтверждённой normalization formula, не показывает ложную February accuracy и маркирует некалиброванные uncertainty intervals.",
+                "value": "Для энергетического прототипа честная граница применимости — существенная часть практической ценности: она уменьшает риск принять демонстрацию за диспетчерскую гарантию.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:627, 829-843",
+                  "models/wind-power-v1/metadata.json"
+                ]
+              },
+              {
+                "aspect": "Работа на организаторских данных",
+                "implementation": "Оба предоставленных CSV реально проверены проектным loader/hourly pipeline, включая пропуски и cutoff; проект не заменяет их synthetic fixture в archive mode.",
+                "value": "Практическая применимость подтверждена на исходном формате кейса, а не только на внутренних unit fixtures.",
+                "verification": "observed",
+                "evidence": [
+                  "CHK_CASE_DATA",
+                  "src/wind_agent/config.py:63-72",
+                  "src/wind_agent/data/loader.py:64-109"
+                ]
+              }
+            ],
+            "scoreReasoning": "13/15: рабочий normalized-power сценарий, provenance и повторный расчёт имеют понятную прикладную ценность. Два балла удержаны потому, что сезонная устойчивость пока не доказана; это ограничивает применение, но не делает прототип бесполезным для заявленного исторического зимнего MVP."
+          },
+          {
+            "name": "Потенциал развития и оригинальность подхода",
+            "score": 8,
+            "max": 10,
+            "awarded": "Потенциал высок: есть отдельные provider/model/evaluation/monitor/UI слои, а оригинальность — в исторически корректной доступности данных и audit trail ревизий.",
+            "deductions": "2 балла сняты за необходимость расширить training/evaluation policy за пределы зимнего окна до масштабирования на новые сезоны.",
+            "evidence": [
+              "README.md:631-667, 715-735, 829-843",
+              "src/wind_agent/agent/monitor.py:110-261",
+              "docs/evidence/controlled-real-revision.json",
+              "models/wind-power-v1/metadata.json"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "D2",
+                "reason": "Расширение на новые сезоны нельзя считать доказанным, пока production fit остаётся зимним и README прямо ограничивает evaluation recent winter window. Следующий масштабируемый вариант должен подтвердить несколько хронологических периодов и сравнить baseline/model на одинаковых ключах."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Расширяемый weather provider",
+                "implementation": "GFS provider изолирован контрактом WeatherRecord и сохраняет raw cache/provenance; service проверяет operational_archive, coordinates, complete horizon и one weather run per turbine.",
+                "value": "Это даёт естественный путь подключить другой архив или forecast source, не смешивая его с модельным кодом и не теряя leakage checks.",
+                "verification": "source",
+                "evidence": [
+                  "src/wind_agent/weather/gfs.py:208-370",
+                  "src/wind_agent/agent/service.py:110-129"
+                ]
+              },
+              {
+                "aspect": "Расширение наблюдаемого agent loop",
+                "implementation": "Monitor поддерживает issue advancement, retry, owner lock, persisted state и revision comparison; controlled-real-revision показывает обновление данных при том же issue_time.",
+                "value": "Подход можно перенести на другие прогнозные задачи, где нужно объяснимо реагировать на появление новой версии внешнего входа.",
+                "verification": "source",
+                "evidence": [
+                  "src/wind_agent/agent/monitor.py:110-261",
+                  "docs/evidence/controlled-real-revision.json"
+                ]
+              },
+              {
+                "aspect": "Масштабирование интерфейса и потребителей",
+                "implementation": "FastAPI и typed frontend отделены от CLI/replay, а CSV/JSON/analysis/evaluation маршруты позволяют использовать тот же результат в dashboard или downstream-процессе.",
+                "value": "Потенциальные новые пользователи и интеграции не обязаны запускать ML-код напрямую.",
+                "verification": "source",
+                "evidence": [
+                  "src/wind_agent/api/app.py:20-103",
+                  "ui/web/src/data/client.ts:260-322",
+                  "README.md:631-667"
+                ]
+              },
+              {
+                "aspect": "Оригинальность без зависимости от LLM",
+                "implementation": "Agentic properties выражены через выбор исторического выпуска, fingerprint, revision, analysis и action decision; numerical forecast остаётся детерминированным.",
+                "value": "Это обоснованный перенос agentic идеи на задачу, где auditability и временная корректность важнее генеративного текста.",
+                "verification": "source",
+                "evidence": [
+                  "src/wind_agent/agent/service.py:194-290",
+                  "src/wind_agent/agent/analysis.py:99-210",
+                  "README.md:627"
+                ]
+              }
+            ],
+            "scoreReasoning": "8/10: архитектура и идея audit-first agentic cycle хорошо переносятся на другие источники и площадки. Два балла удержаны за конкретный барьер роста — узкое зимнее обучение и отсутствие multi-season доказательства, а не за отсутствие production-инфраструктуры, которая не требовалась от пятичасового MVP."
+          }
+        ],
+        "total": 90
+      },
+      "judgeScore": 90,
+      "caseRequirements": [
+        {
+          "requirement": "Почасовой прогноз для двух ВЭС на горизонте 24–48 часов",
+          "status": "met",
+          "explanation": "Конфигурация содержит две реальные турбины; HTTP-прогон подтвердил 24 и 48 часов для каждой отдельной турбины и для пары, с 24/48/48/96 корректными строками.",
+          "evidence": [
+            "config/archive-model.json:8-22, 30-32",
+            "CHK_SCENARIO_API",
+            "src/wind_agent/model/interface.py:286-335"
+          ]
+        },
+        {
+          "requirement": "Модель обучена только на информации, доступной до 31.01.2026",
+          "status": "met",
+          "explanation": "Model artifact и archive config имеют training_cutoff=2026-01-31T18:00:00Z; сервис отклоняет модель, обученную позже issue_time или configured cutoff. Фактическое окно fit уже, чем вся история, что отражено отдельно в D2.",
+          "evidence": [
+            "config/archive-model.json:24-30",
+            "src/wind_agent/agent/service.py:140-163",
+            "models/wind-power-v1/metadata.json"
+          ]
+        },
+        {
+          "requirement": "Для каждого исторического issue_time используется архивный прогноз погоды, доступный в тот момент",
+          "status": "met",
+          "explanation": "GFS provider требует полный выпуск, все GRIB/index объекты и LastModified не позже issue_time; service и model interface повторно проверяют availability, run time и operational_archive provenance.",
+          "evidence": [
+            "src/wind_agent/weather/gfs.py:263-286",
+            "src/wind_agent/agent/service.py:110-129",
+            "src/wind_agent/model/interface.py:65-112",
+            "CHK_SCENARIO_API"
+          ]
+        },
+        {
+          "requirement": "Agentic-цикл: погода → подготовка → модель → прогноз → анализ → повторный расчёт при обновлении входа",
+          "status": "met",
+          "explanation": "AgentService фиксирует этапы fetching_weather, validating, forecasting, analysing и completed; fingerprint/revision policy сохраняет неизменный результат и пересчитывает его при смене eligible input. Контролируемый real revision документирует 1 → 1 → 2.",
+          "evidence": [
+            "src/wind_agent/agent/service.py:164-290",
+            "src/wind_agent/agent/analysis.py:99-210",
+            "docs/evidence/controlled-real-revision.json"
+          ]
+        },
+        {
+          "requirement": "Последовательный historical replay для всех дней февраля 2026",
+          "status": "met",
+          "explanation": "Сохранённый replay report содержит 29 выпусков, 2784 полных forecast rows, 1344 выбранных февральских rows, 672 часа на турбину, failed_runs=0 и missing_hours=0.",
+          "evidence": [
+            "src/wind_agent/agent/service.py:350-385",
+            "docs/evidence/february-replay.json:41-70",
+            "outputs/forecast/february-2026-48h.json"
+          ]
+        },
+        {
+          "requirement": "Не подмешивать фактическую будущую погоду или февральскую целевую выработку",
+          "status": "met",
+          "explanation": "Forecast path принимает только WeatherRecord и model artifact, а архивная availability проверяется до issue_time. Оба CSV кейса заканчиваются 31 января; в committed February output нет actual/target/observed_power полей. Accuracy по февралю не заявляется.",
+          "evidence": [
+            "src/wind_agent/model/interface.py:115-145, 286-335",
+            "CHK_CASE_DATA",
+            "CHK_OUTPUTS",
+            "models/wind-power-v1/metadata.json: validation.february_ground_truth_available=false"
+          ]
+        },
+        {
+          "requirement": "Проверить структуру, временные столбцы и неполные входные часы исходных CSV",
+          "status": "met",
+          "explanation": "Штатный loader проверяет пять исходных колонок, формат timestamp, 10-минутную сетку, дубли и числовые поля, а hourly stage не заполняет пропуски нулями и исключает неполные часы из training_frame.",
+          "evidence": [
+            "CHK_CASE_DATA",
+            "src/wind_agent/data/loader.py:64-164",
+            "src/wind_agent/data/hourly.py:66-170"
+          ]
+        },
+        {
+          "requirement": "Выдавать аудитируемый пользовательский результат и модельную оценку",
+          "status": "met",
+          "explanation": "API возвращает JSON, CSV, analysis и evaluation; проверка подтвердила JSON/CSV consistency, provenance fields, evaluation status ready и отсутствие fixture в archive mode.",
+          "evidence": [
+            "src/wind_agent/api/app.py:70-101",
+            "scripts/verify_app_integration.py:112-150, 207-250",
+            "CHK_SCENARIO_API",
+            "CHK_START"
+          ]
+        },
+        {
+          "requirement": "Доказать точность прогноза на февральских фактических целях",
+          "status": "unverified",
+          "explanation": "В предоставленном пакете нет фактической февральской выработки, а проект корректно оставляет February MAE/RMSE пустыми. Это граница данных кейса, а не дефект запуска.",
+          "evidence": [
+            "cases/1/case-data/*.csv: история заканчивается 31.01.2026",
+            "models/wind-power-v1/metadata.json",
+            "README.md:829-831",
+            "docs/evidence/february-replay.json:70"
+          ]
+        }
+      ],
+      "testData": {
+        "provided": [
+          "cases/1/case-data/Dataset HackAlemAI для участников 11.03.2023-28.02.2026 - turbine 1.csv",
+          "cases/1/case-data/Dataset HackAlemAI для участников 11.03.2023-28.02.2026 - turbine 2.csv",
+          "cases/1/case-data/HackAlem AI_ Agentic AI для прогнозирования выработки ВЭС.md"
+        ],
+        "used": [
+          "cases/1/case-data/Dataset HackAlemAI для участников 11.03.2023-28.02.2026 - turbine 1.csv",
+          "cases/1/case-data/Dataset HackAlemAI для участников 11.03.2023-28.02.2026 - turbine 2.csv",
+          "cases/1/case-data/HackAlem AI_ Agentic AI для прогнозирования выработки ВЭС.md"
+        ],
+        "checks": [
+          {
+            "input": "Два организаторских CSV, по одному на turbine_1 и turbine_2",
+            "method": "Штатная команда проекта python -m wind_agent.data с --hourly, заданными history_timezone=Etc/GMT-5, interval_start, reporting_delay=0 и cutoff=2026-01-31T18:00:00Z.",
+            "result": "Команда завершилась с exit code 0. Хеши совпали с ожидаемыми: turbine_1 c4c341582fb2dd348b7187f0128cff265fe055f469413871ebb5db50eef58b5b и turbine_2 820578cd18bb557cd30c2e102f3ae5a386dfc6c489a5a15743339c2b017305e5. Прочитано 291859 строк.",
+            "conclusion": "Входной формат кейса принят штатным loader без изменения исходных файлов; обе истории соответствуют заявленным пяти колонкам и проходят hash pinning."
+          },
+          {
+            "input": "Те же два CSV на hourly preparation",
+            "method": "Тот же data CLI с явными часовыми предположениями и training cutoff; проверены quality-report.json и hourly-report.json.",
+            "result": "Получено 50784 часовых строк и 48450 training hours. Для turbine_1: 23667 complete, 96 partial, 1629 missing, 23666 training hours. Для turbine_2: 24785 complete, 219 partial, 388 missing, 24784 training hours. После cutoff по одной complete hour на турбину, February observations в training frame не попали.",
+            "conclusion": "Временная сетка и отсечение будущего обработаны корректно; пропуски не заполнены нулями. Часовой пояс/конвенция явно остаются provisional assumptions, как и должен предупреждать MVP."
+          },
+          {
+            "input": "Committed outputs/forecast/february-2026-48h.json и outputs/forecast/february-2026-48h.csv",
+            "method": "Структурная проверка JSON/CSV в окружении проекта: количество строк, одинаковая кардинальность, непрерывность valid_time по каждой турбине и отсутствие полей actual/target/observed_power.",
+            "result": "JSON и CSV содержат по 1344 строки; по 672 на турбину; valid_time непрерывен с 2026-01-31T20:00:00Z по 2026-02-28T19:00:00Z; JSON/CSV согласованы по числу строк. Поля фактической будущей цели отсутствуют.",
+            "conclusion": "Репозиторный февральский результат покрывает требуемые часы и не демонстрирует утечку target в forecast output, но не может доказать February accuracy без truth."
+          }
+        ],
+        "limitations": [
+          "Предоставленные CSV заканчиваются 31.01.2026, поэтому фактическую точность за февраль оценить нельзя.",
+          "Часть проверки архивной погоды использует сетевой NOAA/AWS источник; в репозитории сохранены результаты и hashes, но постоянная доступность внешнего архива не является свойством исходных CSV.",
+          "Нормализация активной мощности, timezone и reporting delay отмечены проектом как assumptions; результат следует интерпретировать как normalized_power, а не MW/MWh."
+        ]
+      },
+      "runtime": {
+        "status": "working",
+        "build": "Backend package и weather/model/UI Python dependencies установлены в изолированном Python 3.11 окружении без секретов; frontend npm ci завершился успешно, Vite production build собрал 2481 module.",
+        "start": "Archive backend стартовал с config/archive-model.json; GET /health вернул HTTP 200, mode=archive, is_demo=false, model_ready=true, weather_ready=true; GET /evaluation вернул HTTP 200 и status=ready.",
+        "scenario": "Реальный HTTP-сценарий на issue_time 2026-01-31T18:00:00Z выполнен через архивную погоду и сохранённую модель. Все шесть комбинаций 24/48 часов и выбора турбин завершены; отдельный результат для обеих турбин на 48 часов содержит 96 строк, normalized_power, JSON/CSV и analysis.",
+        "environment": "Изолированные Docker-контейнеры с ограничениями 3 GB/2 CPU для backend и 2 GB/2 CPU для frontend; секреты и домашние каталоги не монтировались. UI проверен статически/unit/build-путём, без браузера и визуальной автоматизации.",
+        "summary": "Основной сценарий воспроизведён, поэтому runtime status=working. Один запуск wrapper-скрипта завершился ненулевым кодом уже после успешных шести HTTP-прогонов на git metadata в минимальном контейнере: это ограничение review environment, не ошибка приложения.",
+        "checks": [
+          {
+            "command": "python -m pip install -e \".[dev,weather,model]\" -r ui/requirements.txt",
+            "result": "exit code 0; editable wind-agent и зависимости fastapi/pandas/numpy/scikit-learn/eccodes/streamlit установлены.",
+            "id": "CHK_BACKEND_BUILD",
+            "stage": "build",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Проект и заявленные backend/weather/model зависимости устанавливаются в чистом Python 3.11 окружении."
+          },
+          {
+            "command": "python -m pip check && python -m pytest -q",
+            "result": "No broken requirements found; 385 passed, 1 предупреждение о deprecation в Starlette/anyio, exit code 0.",
+            "id": "CHK_BACKEND_TEST",
+            "stage": "build",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Backend unit/domain/API/model/weather/contracts/UI-Python тесты проходят без ошибок зависимостей."
+          },
+          {
+            "command": "npm ci && npm test -- --run && npm run build",
+            "result": "83 теста в 7 test files прошли; Vite build завершился успешно, преобразовано 2481 module.",
+            "id": "CHK_FRONTEND_BUILD",
+            "stage": "build",
+            "status": "pass",
+            "cause": "none",
+            "expected": "React frontend устанавливается, unit/component тесты проходят и production bundle собирается."
+          },
+          {
+            "command": "python -m wind_agent.data --turbine-1 <case CSV turbine 1> --turbine-2 <case CSV turbine 2> --output-dir <temporary output> --hourly --history-timezone Etc/GMT-5 --source-timestamp-convention interval_start --reporting-delay-seconds 0 --training-cutoff 2026-01-31T18:00:00Z",
+            "result": "exit code 0; 291859 source rows, 50784 hourly rows, 48450 training hours; hashes и per-turbine quality reports совпали с ожидаемыми.",
+            "id": "CHK_CASE_DATA",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Штатный data pipeline принимает предоставленные CSV, проверяет temporal grid и формирует training frame до cutoff."
+          },
+          {
+            "command": "python -m wind_agent --config config/archive-model.json serve",
+            "result": "HTTP GET /health=200 с archive/non-demo/model_ready/weather_ready; HTTP GET /evaluation=200, status=ready, test_truth_available=false.",
+            "id": "CHK_START",
+            "stage": "start",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Archive backend стартует и отдельно сообщает readiness без необходимости API ключа."
+          },
+          {
+            "command": "POST /runs + polling GET /runs/{run_id} + GET /forecast + GET /forecast.csv + GET /analysis для issue_time=2026-01-31T18:00:00Z",
+            "result": "Все шесть комбинаций прошли: turbine_1/24=24 rows, turbine_2/24=24, both/24=48, turbine_1/48=48, turbine_2/48=48, both/48=96. Повторный запрос сохранил run identity/revision; JSON/CSV consistency, provenance, target_unit и non-fixture checks прошли.",
+            "id": "CHK_SCENARIO_API",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Реальный archive scenario выдаёт почасовой прогноз для всех разрешённых горизонтов/турбин, анализ и согласованный CSV."
+          },
+          {
+            "command": "scripts/verify_app_integration.py --base-url <running archive API> --issue-time 2026-01-31T18:00:00Z",
+            "result": "Первые шесть HTTP-проверок прошли. Wrapper завершился с exit code 1 только на финальном subprocess git rev-parse HEAD: минимальный контейнер не содержал git, а смонтированный Windows worktree .git ссылался на недоступный в контейнере путь. Это не изменило результаты HTTP-проверок.",
+            "id": "CHK_VERIFY_WRAPPER",
+            "stage": "scenario",
+            "status": "blocked",
+            "cause": "review_environment",
+            "expected": "Полный verify wrapper после HTTP-проверок также сохраняет report с git/source hashes."
+          }
+        ],
+        "limitations": [
+          "Визуальное поведение React/Streamlit не проверялось: по правилам этого ревью визуальную проверку выполняет пользователь.",
+          "Один wrapper-отчёт не смог собрать git metadata в контейнере с Windows worktree; отдельные HTTP checks до этого места прошли.",
+          "Постоянная сетевой доступность NOAA archive и февральская фактическая точность не являются полностью локальным доказательством; для них использованы кодовые проверки и сохранённые project evidence."
+        ]
+      },
+      "liveDemo": {
+        "status": "none",
+        "url": null,
+        "notes": "Публичный deployment URL в репозитории не указан. Локальный archive API реально проверен по HTTP; отсутствие публичной ссылки не использовано как причина снижения баллов."
+      },
+      "fiveHourContext": "Для пятичасового хакатона это результат существенно выше минимального прототипа: команда довела до runnable состояния backend, model package, архивную погодную интеграцию, монитор, historical replay, typed API, CSV/JSON provenance и frontend build. Оценка не требует production authorization, all-season scientific validation или calibrated uncertainty от MVP. При этом подтверждённые методологические ограничения всё ещё важны: selected hgb_medium проигрывает wind_curve на holdout, fit ограничен зимним окном, а February truth отсутствует в данных кейса.",
+      "strengths": [
+        "Реально воспроизведённый archive HTTP-сценарий для всех 24/48-часовых и single/both-turbine комбинаций.",
+        "Строгая temporal/provenance защита: доступность погоды до issue_time, один выпуск на горизонт, хеши raw bytes и запрет fixture в archive mode.",
+        "Полный audit trail AgentService: events, fingerprint, immutable revisions, analysis, weather.json, inputs.json, forecast.json и CSV.",
+        "Штатная обработка предоставленных CSV с hash pinning, отчётом пропусков и явными часовыми assumptions.",
+        "Сильная README и evidence-база, которая честно отделяет replay/coverage от accuracy и не скрывает ограничения модели.",
+        "Backend и frontend тестовые наборы прошли: 385 Python тестов, 83 TypeScript/Vitest теста и production build."
+      ],
+      "gaps": [
+        "Production model package фактически обучен только на зимнем target window декабря 2025 — января 2026, хотя кейс предоставил историю с марта 2023 года; all-season устойчивость не доказана. [D2]",
+        "На independent holdout выбранная hgb_medium имеет MAE 0.2269187055, хуже доступной wind_curve с MAE 0.2094604765; преимущество сложной модели не подтверждено. [D1]"
+      ],
+      "futureAdvice": [
+        {
+          "principle": "Сначала закрепляйте predictive baseline на нескольких независимых временных окнах, затем замораживайте production-модель.",
+          "why": "В D1 выбранная hgb_medium уступает wind_curve на independent holdout, хотя технический пайплайн и подбор модели уже реализованы. Это оставляет риск, что сложность модели не превращается в качество.",
+          "how": "В другом хакатоне добавьте минимум два новых chronological holdout периода и одну общую таблицу сравнения baseline/кандидатов с одинаковыми turbine/hour keys. Зафиксируйте selection cutoff заранее, а production choice принимайте только по train+tune; holdout используйте только для финальной проверки.",
+          "findingIds": [
+            "D1"
+          ],
+          "successCheck": "Для каждого временного окна сохранён отчёт с MAE/RMSE обоих кандидатов, selection не использует holdout, а выбранная production-модель имеет заранее объяснимое преимущество или осознанно остаётся baseline.",
+          "timeboxMinutes": 45
+        },
+        {
+          "principle": "Training coverage должна соответствовать заявленной исторической области применения.",
+          "why": "D2 показывает, что history audit охватывает март 2023 — январь 2026, но delivered fit использует только декабрь–январь. Это ограничивает переносимость на новые сезоны.",
+          "how": "Для следующего кейса сначала сформируйте таблицу доступных complete hours по сезонам, затем выберите rolling-origin train/tune/holdout policy, которая включает representative seasons, и явно объясните любое исключение в model card.",
+          "findingIds": [
+            "D2"
+          ],
+          "successCheck": "Model metadata содержит coverage по нескольким сезонам, отдельные chronological metrics для них и согласованный production cutoff; новые сезонные прогнозы проходят тот же leakage/provenance contract.",
+          "timeboxMinutes": 50
+        }
+      ],
+      "uncertainties": [
+        "Фактическая февральская генерация отсутствует в предоставленных данных, поэтому February MAE/RMSE и реальная точность не установлены.",
+        "Команда сама маркирует SCADA timezone, interval convention, reporting delay и normalization как provisional assumptions; оценка не трактует normalized_power как MW/MWh.",
+        "S3 LastModified является заявленной availability bound для архивных объектов, но не полной реконструкцией исходного времени публикации NOAA.",
+        "Визуальные детали React/Streamlit не проверялись по политике пользовательской визуальной верификации; unit/build/API доказательства сохранены отдельно.",
+        "Полный wrapper verify не создал итоговый report в контейнере из-за недоступного Git worktree metadata, хотя все шесть HTTP-прогонов до финального metadata шага прошли."
+      ],
+      "reviewPolicyVersion": 2,
+      "assessmentStatus": "ready",
+      "findings": [
+        {
+          "id": "S1",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Archive backend и основной forecast scenario реально работают для двух турбин, горизонтов 24/48 и JSON/CSV/analysis маршрутов.",
+          "expected": "Для каждого разрешённого запроса сервис должен завершить run и вернуть полный почасовой набор без fixture substitution.",
+          "actual": "CHK_SCENARIO_API подтвердил шесть комбинаций: 24, 24, 48, 48, 48 и 96 строк; все runs completed, target_unit normalized_power, provenance присутствует, повторный запрос идемпотентен.",
+          "evidence": [
+            "CHK_SCENARIO_API",
+            "scripts/verify_app_integration.py:112-150",
+            "src/wind_agent/api/app.py:55-101",
+            "captures/20261002T195525105159-scenario-api.stdout.log"
+          ],
+          "checkIds": [
+            "CHK_SCENARIO_API"
+          ]
+        },
+        {
+          "id": "S2",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Штатный data pipeline принял оба предоставленных организатором CSV и сформировал часовую обучающую выборку с cutoff.",
+          "expected": "Проект должен проверить исходную схему, hash, temporal grid, пропуски и исключить incomplete/future hours из training frame.",
+          "actual": "Оба hash совпали; прочитано 291859 строк; сформировано 50784 hourly rows и 48450 training hours; неполные часы не заполнены, February observations не вошли в training frame.",
+          "evidence": [
+            "CHK_CASE_DATA",
+            "captures/20261002T194926660960-case-data.stdout.log",
+            "src/wind_agent/data/loader.py:64-164",
+            "src/wind_agent/data/hourly.py:143-203"
+          ],
+          "checkIds": [
+            "CHK_CASE_DATA"
+          ]
+        },
+        {
+          "id": "S3",
+          "kind": "strength",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Реализация системно блокирует погодную утечку и связывает прогноз с доступным на issue_time архивным выпуском.",
+          "expected": "Future weather, mixed releases, missing hours, fixture provenance и forecast after issue_time должны быть отвергнуты.",
+          "actual": "GFS selection требует complete horizon и run/LastModified <= issue_time; service проверяет exact turbine/hour coverage, coordinates, provenance и availability; model interface проверяет same constraints.",
+          "evidence": [
+            "src/wind_agent/weather/gfs.py:263-286",
+            "src/wind_agent/agent/service.py:110-129",
+            "src/wind_agent/model/interface.py:65-112",
+            "tests/weather/test_gfs.py:25-150"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "S4",
+          "kind": "strength",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Agentic orchestration имеет наблюдаемые этапы, fingerprint и корректную политику immutable revisions.",
+          "expected": "Unchanged input должен сохранять revision, а обновлённый eligible input — создавать новую revision с анализом изменения.",
+          "actual": "Service сохраняет события fetch/validate/forecast/analyse, fingerprint и artifacts; controlled evidence показывает revisions 1,1,2 и 48 changed predictions при смене реального archived release.",
+          "evidence": [
+            "src/wind_agent/agent/service.py:194-210, 267-290",
+            "docs/evidence/controlled-real-revision.json:8-33",
+            "src/wind_agent/agent/monitor.py:242-261"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "S5",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Репозиторий deployable и хорошо покрыт автоматическими проверками для заявленного MVP.",
+          "expected": "Чистая установка backend/frontend должна завершиться, тесты должны пройти, frontend должен собраться.",
+          "actual": "Backend install/pip check/pytest: 385 passed; frontend npm ci/Vitest: 83 passed в 7 files; Vite build: 2481 modules transformed и exit code 0.",
+          "evidence": [
+            "CHK_BACKEND_BUILD",
+            "CHK_BACKEND_TEST",
+            "CHK_FRONTEND_BUILD",
+            "captures/20261002T194826224187-backend-test.stdout.log",
+            "captures/20261002T195010787822-frontend-test.stdout.log"
+          ],
+          "checkIds": [
+            "CHK_BACKEND_BUILD",
+            "CHK_BACKEND_TEST",
+            "CHK_FRONTEND_BUILD"
+          ]
+        },
+        {
+          "id": "D1",
+          "kind": "defect",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Выбранная production hgb_medium не превосходит простой wind_curve на независимом holdout.",
+          "expected": "Если HGB заморожена как delivered model, evaluation должна подтверждать её качество относительно доступного baseline или объяснять осознанный trade-off.",
+          "actual": "Independent holdout MAE hgb_medium=0.2269187054537401, wind_curve=0.20946047652086966; evaluation также сообщает wind_curve_better=true. Selection holdout не использовала, поэтому это честная, но негативная проверка результата.",
+          "evidence": [
+            "models/wind-power-v1/metadata.json: validation.holdout.hgb_medium.overall и validation.holdout.wind_curve.overall",
+            "docs/evidence/app-integration.json: baseline_comparison",
+            "CHK_START"
+          ],
+          "checkIds": [
+            "CHK_START"
+          ]
+        },
+        {
+          "id": "D2",
+          "kind": "defect",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Фактический delivered fit использует только короткое зимнее окно, хотя кейс предоставляет историю с марта 2023 года до января 2026.",
+          "expected": "Для заявленного исторического прогноза использование истории до cutoff должно быть либо representative по сезонам, либо явно обосновано и подтверждено multi-season evaluation.",
+          "actual": "README указывает, что delivered model fitted only on December 2025–January 2026 winter data; metadata training_target_start=2025-11-30T19:00:00Z, training_target_end=2026-01-31T18:00:00Z и validation limitation говорит, что это не all-season evaluation.",
+          "evidence": [
+            "README.md:816",
+            "models/wind-power-v1/metadata.json: training_target_start/training_target_end и validation.limitations",
+            "docs/evidence/hourly-quality.json: история и training report"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "L1",
+          "kind": "limitation",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Результат остаётся normalized_power и не конвертируется в MW/MWh.",
+          "expected": "Для физической интерпретации станции нужны подтверждённые normalization formula и rated capacities.",
+          "actual": "Проект сознательно сохраняет target_unit=normalized_power и предупреждает, что normalization/rated capacities не подтверждены.",
+          "evidence": [
+            "README.md:627, 829-843",
+            "src/wind_agent/model/interface.py:295-304",
+            "models/wind-power-v1/metadata.json"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "L2",
+          "kind": "limitation",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Uncertainty intervals не калиброваны, а maintenance/curtailment/shutdown не моделируются отдельно.",
+          "expected": "Production decision support обычно требует uncertainty calibration и явного учёта недоступности оборудования.",
+          "actual": "Warnings и model validation limitation прямо сообщают uncertainty_intervals=not calibrated; агент даёт review recommendation, но не управляет оборудованием.",
+          "evidence": [
+            "README.md:829-843",
+            "models/wind-power-v1/metadata.json: validation.uncertainty_intervals",
+            "src/wind_agent/agent/analysis.py:147-210"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "L3",
+          "kind": "limitation",
+          "verification": "source",
+          "responsibility": "unknown",
+          "claim": "Февральская фактическая генерация в предоставленном наборе отсутствует, поэтому февральская accuracy остаётся неизвестной.",
+          "expected": "Для MAE/RMSE февраля нужна фактическая target series с теми же временными semantics.",
+          "actual": "CSV кейса заканчиваются 31.01.2026; evaluation и February replay помечают test_truth_available=false и не подменяют это нулями или accuracy percentage.",
+          "evidence": [
+            "cases/1/case-data/*.csv",
+            "models/wind-power-v1/metadata.json",
+            "docs/evidence/february-replay.json:70",
+            "README.md:829-831"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "L4",
+          "kind": "limitation",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Текущая эксплуатационная форма — локальный single-process MVP без authorization/RBAC и public deployment.",
+          "expected": "Production multi-user deployment потребует внешнего auth, process ownership и HTTPS/routing policy.",
+          "actual": "API description требует one worker; README обозначает local demonstration, отсутствие authorization/RBAC и отсутствие public URL.",
+          "evidence": [
+            "src/wind_agent/api/app.py:27-35",
+            "README.md:829-843"
+          ],
+          "checkIds": []
+        }
+      ],
+      "gapFindingIds": [
+        "D2",
+        "D1"
+      ]
+    }
+  ],
+  "score": 90.0,
+  "status": "complete",
+  "expectedJudges": 1
+}

@@ -1,0 +1,917 @@
+{
+  "methodVersion": 4,
+  "repoId": "hack-ca2b30ac-novacoders",
+  "repoUrl": "https://github.com/BAITC-Hacks/hack-ca2b30ac-novacoders",
+  "caseId": 5,
+  "snapshot": "e7c0d72112674499d5b9ccf5d88861cf8cb94e9f",
+  "judges": [
+    {
+      "methodVersion": 4,
+      "repoId": "hack-ca2b30ac-novacoders",
+      "caseId": 5,
+      "model": "GPT-5.6 Luna",
+      "snapshot": "e7c0d72112674499d5b9ccf5d88861cf8cb94e9f",
+      "overallSummary": "SupplyLens — содержательный прототип закупочного контура с хорошей защитой от подмены неизвестных данных: Go импортирует шесть XLSX, Python детерминированно рассчитывает спрос, сезонность, stockout-компенсацию, товары в пути и MOQ, а интерфейс предусматривает ручную проверку, подтверждение и CSV-экспорт. Статические и локальные проверки прошли, включая реальные наборы IEK и Systeme electric. Однако основной сценарий на предоставленном наборе Systeme electric не воспроизводится в штатной конфигурации: импорт находит 724 товара, а AI Service отвергает больше 500 товаров с HTTP 422. При поднятии лимита до 4000 тот же сценарий упирается в 30-секундный deadline и возвращает HTTP 504. Поэтому сильная архитектура и доменная логика заслуживают 66/100, но целостный результат для фактических тестовых данных остаётся частичным.",
+      "global": {
+        "criteria": [
+          {
+            "name": "Ценность решения",
+            "score": 21,
+            "max": 25,
+            "awarded": "Решение адресует понятную и существенную проблему закупщика: сводит разрозненные Excel-отчёты в проверяемую рекомендацию заказа.",
+            "deductions": "Сняты 4 балла: фактический набор Systeme electric импортируется, но штатный расчёт для него блокируется лимитом размера батча; кроме того, идентификатор клиента не проходит из Go-контракта в анонимизированный AI-контекст.",
+            "evidence": [
+              "README.md:7-18",
+              "README.md:210-231",
+              "backend/internal/importer/importer.go:50-89",
+              "check.data-both",
+              "check.e2e-limit"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "D1",
+                "reason": "Ценность для закупщика снижается, потому что 724 товара из предоставленного Systeme electric набора нельзя довести до рекомендаций в штатной конфигурации: AI_MAX_PRODUCTS=500 даёт HTTP 422."
+              },
+              {
+                "points": 2,
+                "findingId": "D3",
+                "reason": "Требование учитывать разовую покупку одного клиента не обеспечено по полному пути: Go передаёт транзакцию без client_id, поэтому AI не может сгруппировать такие операции по клиенту."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Целевая аудитория и рабочая боль",
+                "implementation": "README описывает закупщика, который вручную сводит продажи, остатки, сезонность, MOQ и товары в пути. Архитектура разделяет React-интерфейс, Go-импорт и Python-расчёт, то есть соответствует этому процессу, а не подменяет его абстрактным чат-ответом.",
+                "value": "Проблема сформулирована прикладно: решение сокращает ручную сверку и оставляет менеджеру контроль над заказом. Это даёт высокую практическую ценность даже при прототипном хранении данных в памяти.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:7-18",
+                  "README.md:27-58"
+                ]
+              },
+              {
+                "aspect": "Полезный количественный результат",
+                "implementation": "Python считает forecastDemand, safetyStock и rawRequirement, затем вычитает свободный запас и допустимый товар в пути и округляет потребность до совместного шага MOQ/quantityStep. Объяснение содержит саму формулу и промежуточные величины.",
+                "value": "Закупщик получает не только статус BUY/NO_BUY/REVIEW, но и объяснимое число, которое можно проверить по исходным данным.",
+                "verification": "source",
+                "evidence": [
+                  "ai-service/app/algorithm.py:223-263",
+                  "ai-service/app/algorithm.py:307-324",
+                  "ai-service/app/pipeline.py:92-107"
+                ]
+              },
+              {
+                "aspect": "Проверка на реальных предоставленных книгах",
+                "implementation": "Импорт реально обработал 3185 товаров IEK и 724 товара Systeme electric, сохранил транзакции, месячные ряды и сезонность, а неизвестные значения оставил неизвестными.",
+                "value": "Это подтверждает применимость к формату задания, а не только к маленькому синтетическому примеру; импорт не маскирует проблемы исходных таблиц нулевыми значениями.",
+                "verification": "observed",
+                "evidence": [
+                  "check.data-iek",
+                  "check.data-both",
+                  "check.backend-import"
+                ]
+              },
+              {
+                "aspect": "Граница применимости",
+                "implementation": "Сервис явно возвращает диагностические ошибки и сохраняет импорт при ошибке расчёта. Вместе с тем default AI_MAX_PRODUCTS=500 меньше фактического Systeme electric набора в 724 товара, а клиентская интеграция не делает разбиение.",
+                "value": "Честное поведение с ошибками лучше молчаливого неверного заказа, но для заявленной аудитории оно оставляет основной демонстрационный набор без результата.",
+                "verification": "observed",
+                "evidence": [
+                  "ai-service/app/settings.py:23-26",
+                  "ai-service/app/http_guard.py:87-89",
+                  "check.e2e-limit"
+                ]
+              }
+            ],
+            "scoreReasoning": "21/25 отражает сильную связь с реальной задачей закупок, объяснимую формулу и проверку на организаторских XLSX. До максимума не хватает воспроизводимого результата на полном предоставленном наборе и прохождения клиентского контекста через интеграцию; оба ограничения наблюдаются в коде и HTTP-сценарии."
+          },
+          {
+            "name": "Результат и качество решения",
+            "score": 11,
+            "max": 20,
+            "awarded": "Код образует цельный импортно-расчётно-подтверждающий контур, но основной сценарий на реальном размере данных завершается ошибкой до формирования рекомендаций.",
+            "deductions": "Сняты 9 баллов за HTTP 422 на штатном размере Systeme electric, последующий HTTP 504 при снятии лимита и неполную поддержку клиентского измерения выбросов.",
+            "evidence": [
+              "backend/internal/service/recommendations.go:16-108",
+              "frontend/src/App.tsx:59-91",
+              "check.ai-scenario",
+              "check.e2e-limit",
+              "check.e2e-timeout"
+            ],
+            "deductionItems": [
+              {
+                "points": 5,
+                "findingId": "D1",
+                "reason": "Главный пользовательский результат — рекомендации по заказу — не создаётся для 724 товаров: AI guard возвращает AI_PRODUCT_LIMIT_EXCEEDED, хотя импорт успешно завершён."
+              },
+              {
+                "points": 2,
+                "findingId": "D2",
+                "reason": "После экспериментального увеличения лимита весь батч всё равно не укладывается в AI request timeout 30 секунд и backend возвращает 504; штатного батчинга, очереди или частичного результата нет."
+              },
+              {
+                "points": 2,
+                "findingId": "D3",
+                "reason": "Аномалия одного клиента не может быть надёжно выделена из Go-пути, потому что client_id отсутствует в outgoing Transaction; это уменьшает качество фильтрации разовых покупок."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Импорт и нормализация",
+                "implementation": "Go требует шесть XLSX, ищет заголовки в первых строках листов, сохраняет ведущие нули кодов 1С, различает пустое и нулевое значение, считает диагностику и не подставляет исторический остаток вместо текущего.",
+                "value": "Это качественная основа для последующего расчёта: ошибки входных данных видны менеджеру, а не превращаются в тихо неверный заказ.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/internal/importer/importer.go:92-159",
+                  "backend/internal/importer/importer.go:184-214",
+                  "check.data-iek",
+                  "check.data-both"
+                ]
+              },
+              {
+                "aspect": "Расчёт и предупреждения",
+                "implementation": "Алгоритм обрабатывает закрытые месяцы, не считает пропущенные месяцы нулевым спросом, компенсирует подтверждённые stockout-дни, учитывает сезонные коэффициенты, ограничивает тренд 0.75–1.25 и формирует REVIEW при критически неполных данных.",
+                "value": "Детерминированные числа и обязательные предупреждения не зависят от формулировки LLM и пригодны для аудита.",
+                "verification": "source",
+                "evidence": [
+                  "ai-service/app/algorithm.py:40-161",
+                  "ai-service/app/algorithm.py:163-219",
+                  "ai-service/app/pipeline.py:83-106"
+                ]
+              },
+              {
+                "aspect": "Контур менеджерского решения",
+                "implementation": "Backend принимает явное approvedQuantity, валидирует диапазон, хранит approved отдельно, сбрасывает старое подтверждение при изменении доказательств аномалии и экспортирует только подтверждённые позиции.",
+                "value": "Это соответствует требованию не отправлять заказ автоматически и защищает CSV от случайного включения неподтверждённой рекомендации.",
+                "verification": "source",
+                "evidence": [
+                  "backend/internal/service/service.go:75-155",
+                  "backend/internal/service/recommendations.go:111-194",
+                  "frontend/src/App.tsx:78-91",
+                  "frontend/src/api/recommendations.ts:23-35"
+                ]
+              },
+              {
+                "aspect": "Фактическая deployability",
+                "implementation": "Go-тесты, Python-тесты и frontend-проверки прошли; AI health и однопозиционный mock HTTP сценарий вернули 200, а импорт реальных книг вернул 201 и полные сводки.",
+                "value": "Компоненты действительно собираются и стартуют, а не существуют только как README-макет. Ограничение результата локализовано в полном размере батча.",
+                "verification": "observed",
+                "evidence": [
+                  "check.backend-tests",
+                  "check.ai-tests",
+                  "check.frontend",
+                  "check.ai-health",
+                  "check.ai-scenario",
+                  "check.backend-import"
+                ]
+              }
+            ],
+            "scoreReasoning": "11/20 — это признание работающих отдельных слоёв и сильного контроля подтверждения, но не целостного основного результата. Для реального SystemElectric импорт проходит, а расчёт не проходит штатный лимит; при снятии лимита появляется timeout. Это существеннее обычной недоступности внешнего API, потому что воспроизводится на локальном mock-контуре проекта."
+          },
+          {
+            "name": "Инновационность",
+            "score": 11,
+            "max": 15,
+            "awarded": "Нестандартность решения — в сочетании детерминированной формулы, аудируемых источников и AI как помощника для аномалий и объяснений, а не как генератора количества.",
+            "deductions": "Сняты 4 балла за отсутствие масштабируемого исполнения полного набора и неполный путь клиентского признака, из-за чего заявленный AI-анализ остаётся ограниченным.",
+            "evidence": [
+              "ai-service/app/pipeline.py:25-35",
+              "ai-service/app/pipeline.py:83-146",
+              "ai-service/app/analysis/context.py:67-109",
+              "check.ai-scenario",
+              "check.e2e-timeout"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "D1",
+                "reason": "Инновационный полный контур не демонстрируется на размере данных кейса: guard останавливает 724 позиции до анализа и расчёта."
+              },
+              {
+                "points": 2,
+                "findingId": "D3",
+                "reason": "Анонимизация задумана в Python-контексте, но Go не передаёт client_id; поэтому важный для кейса сигнал одного клиента не становится частью инновационного анализа во внешнем сервисе."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Разделение ответственности кода и модели",
+                "implementation": "pipeline всегда считает количество через calculate_product, а AI proposals не превращает автоматически в бизнес-подтверждение; ошибки анализа переводятся в needs_review/fallback.",
+                "value": "Это зрелее прямого доверия к генеративному ответу: число остаётся воспроизводимым, а модель используется там, где она полезна — для спорных операций и текста.",
+                "verification": "source",
+                "evidence": [
+                  "ai-service/app/pipeline.py:46-88",
+                  "ai-service/app/pipeline.py:133-146"
+                ]
+              },
+              {
+                "aspect": "Сквозная объяснимость",
+                "implementation": "В ответе сохраняются calculation, analytical_history, adjustments, warnings, assumptions и RESULT_SOURCES; frontend показывает отдельные вкладки объяснения и расчёта.",
+                "value": "Такой формат позволяет закупщику проверить, почему количество изменилось из-за stockout, сезонности, транзита или MOQ, вместо получения непрозрачной рекомендации.",
+                "verification": "source",
+                "evidence": [
+                  "ai-service/app/schemas.py:229-256",
+                  "ai-service/app/pipeline.py:99-136",
+                  "frontend/src/components/RecommendationDrawer.tsx:23-40"
+                ]
+              },
+              {
+                "aspect": "Безопасное обращение с аномалиями",
+                "implementation": "Контекст анализа хеширует client_id перед передачей модели, ограничивает число строк и явно говорит, что monthly sales не идентифицируют клиентов; предложения модели имеют статус needs_review.",
+                "value": "В прототипе соединены privacy-by-design и управляемая неопределённость: модель не может незаметно исправить исходную историю или разрешить заказ.",
+                "verification": "source",
+                "evidence": [
+                  "ai-service/app/analysis/context.py:67-75",
+                  "ai-service/app/analysis/context.py:97-112",
+                  "ai-service/AGENTS.md:34-43"
+                ]
+              },
+              {
+                "aspect": "Практическое ограничение идеи",
+                "implementation": "Полный запрос идёт последовательно по продуктам, а внешняя проверка выявила лимит 500 и 30-секундный deadline для фактических 724 позиций.",
+                "value": "Подход интересен концептуально, но его преимущество пока нельзя реализовать на полном кейсовом наборе без архитектурного решения по батчам или асинхронной обработке.",
+                "verification": "observed",
+                "evidence": [
+                  "ai-service/app/pipeline.py:38-46",
+                  "ai-service/app/settings.py:23-26",
+                  "check.e2e-limit",
+                  "check.e2e-timeout"
+                ]
+              }
+            ],
+            "scoreReasoning": "11/15: AI не используется как магическая замена расчёту, а встроен в проверяемый детерминированный pipeline; это заметное и хорошо обоснованное решение для короткого хакатона. Снижение связано с тем, что наиболее отличительная часть не масштабируется на полный вход и не получает клиентский признак из Go-пути."
+          },
+          {
+            "name": "Потенциал развития и масштабирования",
+            "score": 9,
+            "max": 20,
+            "awarded": "Слои и контракты разделены достаточно чисто для дальнейшего развития, но текущий throughput и размер запроса прямо конфликтуют с предоставленным набором данных.",
+            "deductions": "Сняты 11 баллов: лимит 500 меньше фактического набора, последовательный pipeline превышает deadline при разрешённом размере, а клиентская аналитика не проходит через Go-контракт.",
+            "evidence": [
+              "README.md:27-58",
+              "ai-service/app/settings.py:19-27",
+              "ai-service/app/pipeline.py:38-46",
+              "backend/internal/recommendation/request.go:35-40",
+              "check.e2e-limit",
+              "check.e2e-timeout"
+            ],
+            "deductionItems": [
+              {
+                "points": 5,
+                "findingId": "D1",
+                "reason": "Фактический 724-товарный набор блокируется лимитом 500; это подтверждённая граница масштабирования, а не отсутствие production-инфраструктуры."
+              },
+              {
+                "points": 4,
+                "findingId": "D2",
+                "reason": "После увеличения лимита 724 позиции обрабатываются так, что общий запрос превышает 30 секунд и получает 504; отсутствует безопасная декомпозиция на батчи или возобновляемый прогресс."
+              },
+              {
+                "points": 2,
+                "findingId": "D3",
+                "reason": "Go outgoing Transaction не содержит client_id, поэтому расширение анализа выбросов на уровень клиента потребует изменения межсервисного контракта, а не только настройки модели."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Модульная архитектура",
+                "implementation": "Frontend говорит только с Go, Go нормализует XLSX и вызывает отдельный FastAPI AI Service, а Python хранит формулу и контракт отдельно.",
+                "value": "Такое разделение позволяет заменить provider, добавить хранилище или другой импорт без переписывания всей пользовательской части.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:27-58",
+                  "backend/internal/recommendation/client.go:36-68",
+                  "ai-service/app/routes.py:21-29"
+                ]
+              },
+              {
+                "aspect": "Контракты и проверки границ",
+                "implementation": "Pydantic запрещает лишние поля и проверяет связи SKU, Go валидирует response coverage и nullable quantities, frontend проверяет структуру run и CSV.",
+                "value": "Контрактная дисциплина снижает риск скрытого несовместимого расширения при подключении новых поставщиков.",
+                "verification": "source",
+                "evidence": [
+                  "ai-service/app/schemas.py:19-23",
+                  "ai-service/app/schemas.py:167-206",
+                  "backend/internal/recommendation/response.go:76-131",
+                  "frontend/src/api/recommendations.ts:5-15"
+                ]
+              },
+              {
+                "aspect": "Расширение формулы",
+                "implementation": "В модели уже выделены review horizon, growth factor, seasonality factor, stockout compensation, inventory policy, minimum order quantity и quantity step.",
+                "value": "Предусмотрены явные точки расширения для новых поставщиков и политик запасов, а не зашит один нерасшифрованный итог.",
+                "verification": "source",
+                "evidence": [
+                  "ai-service/app/schemas.py:128-165",
+                  "ai-service/app/algorithm.py:57-75",
+                  "ai-service/app/algorithm.py:281-321"
+                ]
+              },
+              {
+                "aspect": "Фактический scalability gap",
+                "implementation": "Реальные данные прошли импорт, но 724 товара больше AI_MAX_PRODUCTS=500; при override до 4000 сеть и token уже проходят, однако запрос завершается 504.",
+                "value": "Это даёт точный roadmap: сначала согласовать лимит с входными данными, затем вынести расчёт в батчевый/асинхронный процесс с частичными результатами и сохранением run.",
+                "verification": "observed",
+                "evidence": [
+                  "check.data-both",
+                  "check.e2e-limit",
+                  "check.e2e-timeout",
+                  "ai-service/app/http_guard.py:87-89"
+                ]
+              }
+            ],
+            "scoreReasoning": "9/20: архитектурные seams и контракты дают хороший фундамент, но масштабирование оценивается по доступному прототипу и фактическим входам. Основной supplied dataset не проходит ни штатный лимит, ни временную границу после его снятия; это удерживает критерий существенно ниже среднего."
+          },
+          {
+            "name": "Презентация, демо и ответы на вопросы",
+            "score": 14,
+            "max": 20,
+            "awarded": "README достаточно подробно объясняет запуск, формат шести файлов, формулу, статусы и ручное подтверждение; локальные команды и API-контракты воспроизводимы частично.",
+            "deductions": "Сняты 6 баллов за то, что описанный полный сценарий не доходит до результатов на фактическом наборе, а после обхода лимита упирается в timeout. Отсутствие публичной ссылки и отсутствие устного выступления баллы не уменьшали.",
+            "evidence": [
+              "README.md:60-153",
+              "README.md:210-356",
+              "ai-service/contracts/README.md:1-80",
+              "check.frontend",
+              "check.e2e-limit",
+              "liveDemo"
+            ],
+            "deductionItems": [
+              {
+                "points": 4,
+                "findingId": "D1",
+                "reason": "README обещает локальную демонстрацию через набор SystemElectric, но при его фактических 724 товарах запуск рекомендаций возвращает AI_PRODUCT_LIMIT_EXCEEDED."
+              },
+              {
+                "points": 2,
+                "findingId": "D2",
+                "reason": "Даже с увеличенным лимитом описанный единый сценарий не завершается в deadline и возвращает 504, поэтому воспроизводимое демо полного набора отсутствует."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Понятность README",
+                "implementation": "Документ показывает архитектуру, роли Frontend/Backend/AI Service, порядок запуска, переменные окружения, endpoints, формат шести книг и ограничения MVP.",
+                "value": "Участнику или проверяющему понятны границы системы и порядок действий; это сильная часть презентационного критерия.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:27-58",
+                  "README.md:60-153",
+                  "README.md:210-287"
+                ]
+              },
+              {
+                "aspect": "Объяснение пользовательского сценария",
+                "implementation": "README последовательно описывает импорт, проверку найденных товаров, настройку горизонта, расчёт, REVIEW, изменение количества, подтверждение и CSV.",
+                "value": "Сценарий хорошо сопоставлен с задачей закупщика и показывает, где принимает решение человек.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:194-231",
+                  "README.md:302-356",
+                  "frontend/src/App.tsx:59-91"
+                ]
+              },
+              {
+                "aspect": "Проверяемость из репозитория",
+                "implementation": "Команды frontend, Go и Python задокументированы; контракты и тесты покрывают импорт, API, расчёт, ручные изменения и export.",
+                "value": "Это позволяет показать значительную часть результата без устной презентации и без публичного URL.",
+                "verification": "observed",
+                "evidence": [
+                  "README.md:288-301",
+                  "check.backend-tests",
+                  "check.ai-tests",
+                  "check.frontend"
+                ]
+              },
+              {
+                "aspect": "Фактическая граница демо",
+                "implementation": "Health и однопозиционный mock сценарий проходят, но полный supplied SystemElectric сценарий останавливается на 422/504.",
+                "value": "Документация сильная, однако её наиболее важный end-to-end пример не подтверждён на реальном размере входа.",
+                "verification": "observed",
+                "evidence": [
+                  "check.ai-health",
+                  "check.ai-scenario",
+                  "check.backend-import",
+                  "check.e2e-limit",
+                  "check.e2e-timeout"
+                ]
+              }
+            ],
+            "scoreReasoning": "14/20: README и локальные тестовые команды заметно лучше минимального хакатонного описания, а отсутствие live URL и устного выступления не штрафовалось. Удержание от максимума связано только с подтверждённой непроходимостью полного сценария на предоставленных данных."
+          }
+        ],
+        "total": 66
+      },
+      "case": null,
+      "judgeScore": 66,
+      "caseRequirements": [
+        {
+          "requirement": "Импортировать шесть XLSX-источников одного поставщика и сопоставить товары по коду 1С",
+          "status": "met",
+          "explanation": "Go importer требует MOQ, детальные продажи, месячные остатки, месячные продажи, сезонность и in-transit; реальные IEK и Systeme electric наборы импортированы с шестью файлами и без потери товара/транзакций по контрактной проверке.",
+          "evidence": [
+            "backend/internal/importer/importer.go:22-39",
+            "backend/internal/importer/directory.go:47-92",
+            "check.data-both",
+            "check.backend-import"
+          ]
+        },
+        {
+          "requirement": "Рассчитывать заказ по истории продаж, текущему остатку, товару в пути, категории и прогнозу роста",
+          "status": "partial",
+          "explanation": "Алгоритм и контракт имеют history, inventory, incoming shipments, category и growth/additionalGrowthRate; расчёт формирует forecast, safety stock, raw и rounded requirement. Но полный пользовательский расчёт по supplied SystemElectric не завершается из-за D1/D2.",
+          "evidence": [
+            "ai-service/app/algorithm.py:57-75",
+            "ai-service/app/algorithm.py:265-321",
+            "backend/internal/recommendation/request.go:18-48",
+            "check.e2e-limit",
+            "check.e2e-timeout"
+          ]
+        },
+        {
+          "requirement": "Отражать сезонность и устойчивый рост",
+          "status": "met",
+          "explanation": "История нормализуется по сезонным коэффициентам, прогноз умножается на будущие коэффициенты, а тренд сравнивает раннюю и позднюю половины истории с ограничением 0.75–1.25; дополнительный рост применяется отдельно.",
+          "evidence": [
+            "ai-service/app/algorithm.py:163-170",
+            "ai-service/app/algorithm.py:197-263",
+            "ai-service/tests/test_calculation.py"
+          ]
+        },
+        {
+          "requirement": "Компенсировать потерянный спрос при stockout",
+          "status": "met",
+          "explanation": "Для подтверждённых stockout-интервалов код считает дни, ищет сопоставимые периоды без stockout, добавляет компенсацию к estimated_regular_demand и отражает её в calculation.stockout_compensation; неоднозначные интервалы дают предупреждение.",
+          "evidence": [
+            "ai-service/app/algorithm.py:172-219",
+            "ai-service/tests/test_calculation.py",
+            "ai-service/tests/test_live_pipeline.py"
+          ]
+        },
+        {
+          "requirement": "Убирать разовые крупные покупки, включая одного клиента",
+          "status": "partial",
+          "explanation": "Детерминированная часть умеет исключать только подтверждённые one-off строки/месяцы с business reason, а AI-контекст хеширует client_id. Но backend Transaction не содержит client_id и не передаёт его из импортированных книг в Go→Python запрос, поэтому сквозная группировка по одному клиенту не доказана и по коду недоступна в этом пути.",
+          "evidence": [
+            "ai-service/app/algorithm.py:113-151",
+            "ai-service/app/analysis/context.py:67-75",
+            "backend/internal/recommendation/request.go:35-40",
+            "D3"
+          ]
+        },
+        {
+          "requirement": "Выдавать количество с объяснением и группировкой по поставщикам",
+          "status": "partial",
+          "explanation": "Ответ содержит расчёт, историю, предупреждения и шаблонное/AI-объяснение; frontend группирует строки таблицы по supplier. Однопозиционный mock ответ с количеством 90 и полным расчётным объектом прошёл, но полный supplied batch не формируется из-за D1/D2.",
+          "evidence": [
+            "ai-service/app/pipeline.py:92-146",
+            "frontend/src/components/RecommendationTable.tsx:8-20",
+            "check.ai-scenario",
+            "check.e2e-limit"
+          ]
+        },
+        {
+          "requirement": "Не отправлять заказ без ручного подтверждения",
+          "status": "met",
+          "explanation": "Export вызывается только после approvedQuantity/approved, backend разрешает CSV только для подтверждённых положительных позиций, а frontend явно показывает, что рекомендация сама по себе не подтверждает количество.",
+          "evidence": [
+            "backend/internal/service/service.go:75-87",
+            "frontend/src/App.tsx:87-91",
+            "frontend/src/components/ExportBar.tsx:5-7",
+            "backend/internal/transport/http/http.go:184-188"
+          ]
+        },
+        {
+          "requirement": "Обезличивать клиентские данные",
+          "status": "partial",
+          "explanation": "Python хеширует имеющийся client_id перед AI-контекстом и не передаёт raw identifier. Однако текущий Go request contract вообще не содержит client_id, поэтому privacy-защита есть для прямого Python-входа, но кейсовый клиентский сигнал не проходит из XLSX/Backend.",
+          "evidence": [
+            "ai-service/app/analysis/context.py:67-75",
+            "ai-service/app/schemas.py:84-93",
+            "backend/internal/recommendation/request.go:35-40",
+            "D3"
+          ]
+        },
+        {
+          "requirement": "Проверить чувствительность к товарам в пути, сезонности, stockout и выбросу",
+          "status": "partial",
+          "explanation": "Статические и unit/domain тесты покрывают соответствующие ветви, а формула явно отражает transit cutoff, сезонность, stockout compensation и anomaly adjustments. Реальный полный batch sensitivity run на организаторских книгах не выполнен до пользовательского результата, потому что основной run блокируется D1/D2.",
+          "evidence": [
+            "ai-service/app/algorithm.py:257-306",
+            "ai-service/tests/test_calculation.py",
+            "ai-service/tests/test_live_pipeline.py",
+            "check.ai-tests",
+            "check.e2e-limit"
+          ]
+        }
+      ],
+      "testData": {
+        "provided": [
+          "cases/5/case-data/HackAlem AI_ Автоматизация формирования заказов поставщикам.docx.md",
+          "cases/5/case-data/IEK/MOQ  ИЭК.xlsx",
+          "cases/5/case-data/IEK/Динамика продаж_2025-2026.xlsx",
+          "cases/5/case-data/IEK/Ежемесячные остатки продукции за последние 2 года  ИЭК.xlsx",
+          "cases/5/case-data/IEK/Ежемесячные продажи в количественном выражении за последние 2 года.xlsx",
+          "cases/5/case-data/IEK/Путь ИЭК 22.09.2026.xlsx",
+          "cases/5/case-data/IEK/Сезонность ИЭК.xlsx",
+          "cases/5/case-data/Systeme electric/MOQ SystemElectric.xlsx",
+          "cases/5/case-data/Systeme electric/Динамика продаж_Syseme Electric_2025-2026.xlsx",
+          "cases/5/case-data/Systeme electric/Ежемесячные остатки SystemElectric 2024-2026.xlsx",
+          "cases/5/case-data/Systeme electric/Ежемесячные продажи в кол-м выражении SystemElectric 2024-2026.xlsx",
+          "cases/5/case-data/Systeme electric/Сезонность SystemElectric 2024-2026.xlsx",
+          "cases/5/case-data/Systeme electric/Товар в пути_SystemElectric на 22.09.2026.xlsx"
+        ],
+        "used": [
+          "cases/5/case-data/IEK/MOQ  ИЭК.xlsx",
+          "cases/5/case-data/IEK/Динамика продаж_2025-2026.xlsx",
+          "cases/5/case-data/IEK/Ежемесячные остатки продукции за последние 2 года  ИЭК.xlsx",
+          "cases/5/case-data/IEK/Ежемесячные продажи в количественном выражении за последние 2 года.xlsx",
+          "cases/5/case-data/IEK/Путь ИЭК 22.09.2026.xlsx",
+          "cases/5/case-data/IEK/Сезонность ИЭК.xlsx",
+          "cases/5/case-data/Systeme electric/MOQ SystemElectric.xlsx",
+          "cases/5/case-data/Systeme electric/Динамика продаж_Syseme Electric_2025-2026.xlsx",
+          "cases/5/case-data/Systeme electric/Ежемесячные остатки SystemElectric 2024-2026.xlsx",
+          "cases/5/case-data/Systeme electric/Ежемесячные продажи в кол-м выражении SystemElectric 2024-2026.xlsx",
+          "cases/5/case-data/Systeme electric/Сезонность SystemElectric 2024-2026.xlsx",
+          "cases/5/case-data/Systeme electric/Товар в пути_SystemElectric на 22.09.2026.xlsx"
+        ],
+        "checks": [
+          {
+            "input": "Шесть IEK XLSX из cases/5/case-data/IEK",
+            "method": "go test -run TestRealIEKContract -v ./internal/recommendation",
+            "result": "PASS: 3185 товаров, 171603 транзакции, 115 отрицательных возвратов, 18 неизвестных количеств, 81279 месячных продаж, 94149 месячных остатков, 12 коэффициентов сезонности; payload 30611160 bytes; диагностика сохранила 8 DUPLICATE_PRODUCT_ROW, 15 INVALID_CELL и 18 MISSING_CODE.",
+            "conclusion": "Импорт применяет реальные книги, не теряет возвраты и неизвестные количества и не изобретает текущий остаток из исторического; исходные проблемы данных явно диагностируются."
+          },
+          {
+            "input": "Оба каталога IEK и Systeme electric, переименованные только внутри изолированного тестового окружения для проверки directory discovery",
+            "method": "go test -run TestLocalDatasetsContract -v ./internal/recommendation",
+            "result": "PASS: IEK — 3185 товаров, 171603 транзакции, payload 30610956 bytes; Systeme electric — 724 товара, 77312 транзакций, payload 11454868 bytes. Для IEK обнаружены 7275 SOURCE_CONFLICT и 318 SOURCE_COMPARISON_UNAVAILABLE; для Systeme electric — 4292 и 442 соответственно.",
+            "conclusion": "Оба предоставленных набора проходят импортный контракт и сохраняют диагностику конфликтов источников; эти конфликты относятся к входным данным и не были ошибочно превращены в нули."
+          },
+          {
+            "input": "Локальный backend import из шести реальных SystemElectric XLSX",
+            "method": "POST /api/v1/imports/local",
+            "result": "HTTP 201, READY, 724 товара, 6 файлов; аналогичный импорт IEK вернул HTTP 201, READY, 3185 товаров, 6 файлов.",
+            "conclusion": "Старт backend и пользовательский шаг импорта воспроизведены на обоих поставщиках."
+          },
+          {
+            "input": "Контрактный однопозиционный request.example.json",
+            "method": "GET /health; POST /v1/recommendations",
+            "result": "Health HTTP 200, mode mock; recommendation HTTP 200, COMPLETED_WITH_WARNINGS, 1 recommendation, recommendedQuantity=90.0.",
+            "conclusion": "AI Service запускается без внешнего ключа и выдаёт детерминированный результат на малом входе; это не заменяет полный supplied batch."
+          },
+          {
+            "input": "SystemElectric import с 724 товарами и штатными настройками AI",
+            "method": "POST /api/v1/imports/{importId}/recommendations",
+            "result": "HTTP 422 AI_PRODUCT_LIMIT_EXCEEDED, сообщение «Превышено число товаров»; default AI_MAX_PRODUCTS=500.",
+            "conclusion": "Основной сценарий на фактическом наборе заблокирован проектным лимитом; подтверждает D1."
+          },
+          {
+            "input": "Тот же 724-товарный запрос с synthetic token и AI_MAX_PRODUCTS=4000 только для диагностического разделения причин",
+            "method": "POST /api/v1/imports/{importId}/recommendations",
+            "result": "HTTP 504 AI_REQUEST_TIMEOUT после прохождения размера; AI pipeline последовательно обрабатывает продукты, общий deadline 30 секунд.",
+            "conclusion": "Даже после обхода лимита единый batch не завершается в установленное проектом время; подтверждает D2 и не является штрафом за отсутствие внешнего OpenAI ключа."
+          }
+        ],
+        "limitations": [
+          "Предоставленные книги содержат реальные SOURCE_CONFLICT, SOURCE_COMPARISON_UNAVAILABLE, неизвестные количества и неполные поля; отчёт не подменяет их синтетическими значениями.",
+          "Полный чувствительный прогон по всем товарам нельзя получить из штатного API из-за подтверждённых D1/D2; ветви чувствительности дополнительно проверены статическими и unit/domain тестами.",
+          "Визуальная проверка интерфейса не выполнялась по правилам ревью; frontend проверен сборкой, lint, typecheck и контрактными тестами."
+        ]
+      },
+      "runtime": {
+        "status": "partial",
+        "build": "Go tests прошли; Python pytest/compileall/pip check прошли; frontend lint, typecheck, 16 Vitest-тестов и production build прошли.",
+        "start": "AI Service и Go backend реально стартовали в изолированных окружениях; GET /health и GET /healthz вернули HTTP 200.",
+        "scenario": "Однопозиционный AI mock сценарий и импорт обоих реальных наборов прошли. Полный SystemElectric расчёт частично заблокирован проектным AI_PRODUCT_LIMIT_EXCEEDED; диагностический запуск с увеличенным лимитом завершился AI_REQUEST_TIMEOUT.",
+        "environment": "Изолированные Docker-проверки без participant credentials; использованы Python 3.12, Go 1.26.1 и Node 22.13.",
+        "summary": "Сборка и запуск компонентов подтверждены, но runtime=partial, потому что основной end-to-end результат для реального набора из 724 позиций не сформирован.",
+        "checks": [
+          {
+            "command": "go test ./...",
+            "result": "Все Go-пакеты прошли, включая importer, recommendation, service и transport/http.",
+            "id": "check.backend-tests",
+            "stage": "build",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Собрать и проверить backend-домен и HTTP-контракты без внешнего API."
+          },
+          {
+            "command": "python -m pytest -q; python -m compileall -q app tests; python -m pip check",
+            "result": "152 passed; compileall без ошибок; No broken requirements found.",
+            "id": "check.ai-tests",
+            "stage": "build",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Проверить Python pipeline, API, расчёт и зависимости."
+          },
+          {
+            "command": "npm ci --ignore-scripts; npm run lint; npm run typecheck; npm test; npm run build",
+            "result": "Lint и typecheck без ошибок; 3 test files и 16 tests passed; Vite production build завершён.",
+            "id": "check.frontend",
+            "stage": "build",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Собрать frontend и пройти доступные статические и контрактные проверки."
+          },
+          {
+            "command": "GET /health",
+            "result": "HTTP 200: status=ok, pythonCalculationAvailable=true, mode=mock, livePipelineAvailable=false.",
+            "id": "check.ai-health",
+            "stage": "start",
+            "status": "pass",
+            "cause": "none",
+            "expected": "AI Service должен стартовать без OpenAI ключа в явном mock/local режиме."
+          },
+          {
+            "command": "GET /healthz",
+            "result": "HTTP 200: {\"status\":\"ok\"}.",
+            "id": "check.backend-health",
+            "stage": "start",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Go backend должен стартовать при заданном AI_SERVICE_URL и отвечать health check."
+          },
+          {
+            "command": "POST /v1/recommendations",
+            "result": "HTTP 200, COMPLETED_WITH_WARNINGS, 1 recommendation, quantity=90.0 на request.example.json.",
+            "id": "check.ai-scenario",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Для валидного малого запроса вернуть typed recommendation с calculation и объяснением."
+          },
+          {
+            "command": "POST /api/v1/imports/local",
+            "result": "HTTP 201 для IEK и SystemElectric; соответственно 3185 и 724 товара, по 6 файлов.",
+            "id": "check.backend-import",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Импортировать предоставленные XLSX и вернуть READY dataset."
+          },
+          {
+            "command": "go test -run TestRealIEKContract -v ./internal/recommendation",
+            "result": "PASS: 3185 товаров, 171603 транзакции, 115 возвратов, 18 неизвестных количеств; payload 30611160 bytes; исходные диагностические ошибки сохранены.",
+            "id": "check.data-iek",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Применить полный предоставленный IEK набор к importer и recommendation request contract."
+          },
+          {
+            "command": "go test -run TestLocalDatasetsContract -v ./internal/recommendation",
+            "result": "PASS для IEK и SystemElectric: 3185 и 724 товара; payload 30610956 и 11454868 bytes; конфликты источников выданы диагностикой.",
+            "id": "check.data-both",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Применить оба предоставленных набора и проверить сохранность товаров, транзакций, сезонности и diagnostics."
+          },
+          {
+            "command": "POST /api/v1/imports/{importId}/recommendations",
+            "result": "Для SystemElectric HTTP 422 AI_PRODUCT_LIMIT_EXCEEDED: 724 товаров против default AI_MAX_PRODUCTS=500.",
+            "id": "check.e2e-limit",
+            "stage": "scenario",
+            "status": "fail",
+            "cause": "project",
+            "expected": "После успешного импорта 724 позиций сформировать рекомендации по штатному пользовательскому сценарию."
+          },
+          {
+            "command": "POST /api/v1/imports/{importId}/recommendations",
+            "result": "При диагностическом AI_MAX_PRODUCTS=4000 тот же batch получил HTTP 504 AI_REQUEST_TIMEOUT после прохождения size guard.",
+            "id": "check.e2e-timeout",
+            "stage": "scenario",
+            "status": "fail",
+            "cause": "project",
+            "expected": "Разрешённый размер фактического набора должен завершаться в заявленном общем deadline или иметь воспроизводимый batch/progress путь."
+          }
+        ],
+        "limitations": [
+          "Платный OpenAI live pipeline не запускался: credentials намеренно не предоставлялись. Mock/local режим и путь ошибок проверены; это ограничение проверки, не deduction.",
+          "Визуальный браузерный сценарий не выполнялся; UI поведение не объявляется наблюдённым.",
+          "HTTP full-batch sensitivity run ограничен подтверждёнными D1/D2."
+        ]
+      },
+      "liveDemo": {
+        "status": "none",
+        "url": null,
+        "notes": "Публичная live-ссылка в репозитории не подтверждена. Это не уменьшало балл; локальные HTTP и build проверки выполнены, визуальная проверка пользователем не дублировалась."
+      },
+      "fiveHourContext": "Для пятичасового MVP объём реализации высокий: три слоя, строгие контракты, реальный XLSX importer, deterministic baseline, anomaly-review lifecycle, объяснения и ручной export. Такой уровень инженерной защиты заслуживает существенных баллов. При этом оценка учитывает именно доступный короткий прототип: не требовались production database, авторизация пользователей или отключаемые enterprise-интеграции. Снижение связано не с отсутствием production-функций, а с тем, что фактический организаторский набор из 724 позиций не проходит штатный end-to-end путь.",
+      "strengths": [
+        "Детерминированный расчёт отделён от LLM: количество не придумывается моделью, а формируется кодом с сохранением промежуточных величин.",
+        "Реальные IEK и Systeme electric XLSX импортируются с сохранением ведущих нулей, возвратов, пустых значений и диагностик конфликтов.",
+        "Seasonality, trend/growth, stockout compensation, transit cutoff и MOQ rounding покрыты отдельными доменными ветвями и тестами.",
+        "Ручное подтверждение встроено в backend и frontend: CSV экспортируется только после явного количества менеджера.",
+        "README, API contracts и набор тестов дают воспроизводимую основу для локального демо без OpenAI ключа."
+      ],
+      "gaps": [
+        "D1 — штатный AI guard ограничивает продукты 500 позициями, тогда как предоставленный SystemElectric импорт содержит 724; POST расчёта возвращает HTTP 422 AI_PRODUCT_LIMIT_EXCEEDED.",
+        "D2 — после диагностического увеличения лимита до 4000 724-позиционный pipeline всё равно получает HTTP 504 по 30-секундному deadline; полного batch/progress механизма нет.",
+        "D3 — Python умеет хешировать client_id, но Go outgoing Transaction не содержит этот атрибут, поэтому требование анализа разовой покупки одного клиента не проходит сквозным контрактом."
+      ],
+      "futureAdvice": [
+        {
+          "principle": "Согласовывать ресурсные лимиты с реальным входом до демо",
+          "why": "D1 показывает рассогласование: импорт принимает 724 товара, а downstream guard принимает только 500, поэтому основной happy path заканчивается до расчёта.",
+          "how": "В другом хакатоне сразу после импорта вычислить размер нормализованного payload и прогнать его через тот же guard; затем выбрать батчи с correlation/run id либо явно ограничить импорт тем же лимитом с понятной диагностикой.",
+          "findingIds": [
+            "D1"
+          ],
+          "successCheck": "Полный предоставленный набор проходит от import до сохранённого run без PRODUCT_LIMIT_EXCEEDED, а число позиций в ответе совпадает с числом импортированных товаров.",
+          "timeboxMinutes": 35
+        },
+        {
+          "principle": "Разделять долгий расчёт на проверяемые батчи",
+          "why": "D2 показывает, что последовательная обработка допустимого большого набора превышает общий deadline и превращает уже начатый run в 504.",
+          "how": "Для следующего прототипа сделать ограниченные батчи с промежуточным статусом, повторяемым batch key и агрегированием результатов; перед демо измерить время на 1, 100 и полном наборе.",
+          "findingIds": [
+            "D2"
+          ],
+          "successCheck": "На полном тестовом наборе API возвращает run/status с прогрессом или итогом до deadline, а повтор запроса не пересчитывает уже завершённые батчи.",
+          "timeboxMinutes": 50
+        },
+        {
+          "principle": "Проносить privacy-safe признаки через весь контракт",
+          "why": "D3 показывает, что хеширование client_id существует только в Python-модели, потому что Go Transaction его не передаёт.",
+          "how": "В другом кейсе сначала определить минимальный обезличенный ключ на границе импорта, передавать только стабильный hash/группу без raw PII и добавить contract test на его наличие и отсутствие исходного значения.",
+          "findingIds": [
+            "D3"
+          ],
+          "successCheck": "Контракт содержит стабильный anonymized client group, raw client data отсутствует в JSON/logs, а one-client synthetic fixture даёт объяснимый anomaly proposal.",
+          "timeboxMinutes": 30
+        }
+      ],
+      "uncertainties": [
+        "Live OpenAI provider не запускался без намеренно не предоставленных credentials; его путь оценён по исходникам и offline tests.",
+        "Визуальное поведение React в браузере не проверялось по пользовательской политике; выводы о frontend ограничены source, build, lint, typecheck и API contract tests.",
+        "Конфликты между monthly и detailed sales, неизвестные количества и неполные inventory-поля являются свойствами предоставленных книг; они могут переводить отдельные позиции в REVIEW и не считаются автоматически дефектами команды.",
+        "Демонстрация с AI_MAX_PRODUCTS=4000 была диагностическим override окружения, а не штатной конфигурацией; её 504 использован только для подтверждения D2 после наблюдаемого D1."
+      ],
+      "reviewPolicyVersion": 2,
+      "assessmentStatus": "ready",
+      "findings": [
+        {
+          "id": "S1",
+          "kind": "strength",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Количество заказа рассчитывается детерминированным Python baseline с сезонностью, trend/growth, stockout compensation, transit cutoff и MOQ rounding; LLM не назначает число.",
+          "expected": "Расчёт должен быть воспроизводимым и объяснимым по входным данным.",
+          "actual": "calculate_product формирует Calculation и pipeline добавляет deterministic source, warnings, assumptions и explanation.",
+          "evidence": [
+            "ai-service/app/algorithm.py:40-75",
+            "ai-service/app/algorithm.py:163-219",
+            "ai-service/app/algorithm.py:223-324",
+            "ai-service/app/pipeline.py:83-146"
+          ],
+          "checkIds": [
+            "check.ai-tests",
+            "check.ai-scenario"
+          ]
+        },
+        {
+          "id": "S2",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Импортёр применён к обоим предоставленным наборам XLSX и сохранил диагностируемые проблемы входных данных.",
+          "expected": "Шесть источников каждого поставщика должны быть обнаружены, распарсены и нормализованы без подмены неизвестных значений.",
+          "actual": "IEK дал 3185 товаров/171603 транзакции, Systeme electric — 724 товара/77312 транзакций; оба directory contract test прошли.",
+          "evidence": [
+            "backend/internal/importer/importer.go:50-89",
+            "check.data-iek",
+            "check.data-both",
+            "check.backend-import"
+          ],
+          "checkIds": [
+            "check.data-iek",
+            "check.data-both",
+            "check.backend-import"
+          ]
+        },
+        {
+          "id": "S3",
+          "kind": "strength",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Заказ не экспортируется автоматически: backend хранит отдельное approvedQuantity, а export строится после явного подтверждения.",
+          "expected": "Рекомендация должна требовать ручного решения и в CSV попадать только подтверждённые позиции.",
+          "actual": "PATCH валидирует approvedQuantity/approved, а frontend блокирует export при отсутствии положительных подтверждённых позиций.",
+          "evidence": [
+            "backend/internal/service/service.go:75-87",
+            "backend/internal/service/recommendations.go:157-190",
+            "frontend/src/App.tsx:78-91",
+            "frontend/src/components/ExportBar.tsx:5-7"
+          ],
+          "checkIds": [
+            "check.backend-tests",
+            "check.frontend"
+          ]
+        },
+        {
+          "id": "S4",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Локальные сборки и тестовые проверки всех трёх слоёв проходят без внешнего AI ключа.",
+          "expected": "Репозиторий должен быть deployable в заявленном mock/local режиме.",
+          "actual": "Go tests прошли, Python 152 tests прошли, frontend 16 tests/build прошли, health endpoints вернули 200.",
+          "evidence": [
+            "check.backend-tests",
+            "check.ai-tests",
+            "check.frontend",
+            "check.ai-health",
+            "check.backend-health"
+          ],
+          "checkIds": [
+            "check.backend-tests",
+            "check.ai-tests",
+            "check.frontend",
+            "check.ai-health",
+            "check.backend-health"
+          ]
+        },
+        {
+          "id": "D1",
+          "kind": "defect",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Штатный AI Service отвергает фактический SystemElectric batch из 724 товаров.",
+          "expected": "Импортированный supplied dataset должен доходить до расчёта рекомендаций или иметь согласованный с импортом limit.",
+          "actual": "POST /api/v1/imports/{importId}/recommendations возвращает HTTP 422 AI_PRODUCT_LIMIT_EXCEEDED, потому что Settings.ai_max_products=500.",
+          "evidence": [
+            "ai-service/app/settings.py:23-26",
+            "ai-service/app/http_guard.py:87-89",
+            "check.backend-import",
+            "check.e2e-limit"
+          ],
+          "checkIds": [
+            "check.backend-import",
+            "check.e2e-limit"
+          ]
+        },
+        {
+          "id": "D2",
+          "kind": "defect",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Полный 724-позиционный pipeline не имеет рабочего пути после прохождения size guard в пределах собственного deadline.",
+          "expected": "Допустимый для кейса batch должен завершаться до deadline либо обрабатываться воспроизводимыми батчами/прогрессом.",
+          "actual": "При AI_MAX_PRODUCTS=4000 ответ backend — HTTP 504 AI_REQUEST_TIMEOUT; pipeline последовательно итерирует products, а ai_request_timeout_seconds по умолчанию 30.",
+          "evidence": [
+            "ai-service/app/pipeline.py:38-46",
+            "ai-service/app/settings.py:23-26",
+            "check.e2e-timeout"
+          ],
+          "checkIds": [
+            "check.e2e-timeout"
+          ]
+        },
+        {
+          "id": "D3",
+          "kind": "defect",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Client identity is not carried from Go transaction contract into the AI request, so one-client grouping cannot work through the advertised backend path.",
+          "expected": "Для требования одного клиента должен передаваться только обезличенный стабильный client group/hash, без raw PII.",
+          "actual": "Python schemas/context умеют принять и хешировать client_id, но backend/internal/recommendation.Transaction содержит только code1C, transactionId, date, warehouse и quantity.",
+          "evidence": [
+            "backend/internal/recommendation/request.go:35-40",
+            "ai-service/app/schemas.py:84-93",
+            "ai-service/app/analysis/context.py:67-75"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "L1",
+          "kind": "limitation",
+          "verification": "source",
+          "responsibility": "external_service",
+          "claim": "Live OpenAI explanation/analysis не был фактически вызван в ревью.",
+          "expected": "Live mode требует внешнего provider credential и allow_external_ai.",
+          "actual": "Доступен и проверен mock/local режим; код явно выдаёт LiveConfigurationError без настроенного ключа.",
+          "evidence": [
+            "ai-service/app/pipeline.py:25-31",
+            "ai-service/app/settings.py:41-51",
+            "runtime.limitations"
+          ],
+          "checkIds": [
+            "check.ai-health",
+            "check.ai-scenario"
+          ]
+        }
+      ],
+      "gapFindingIds": [
+        "D1",
+        "D2",
+        "D3"
+      ]
+    }
+  ],
+  "score": 66.0,
+  "status": "complete",
+  "expectedJudges": 1
+}

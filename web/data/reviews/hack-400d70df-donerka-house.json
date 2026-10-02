@@ -1,0 +1,943 @@
+{
+  "methodVersion": 4,
+  "repoId": "hack-400d70df-donerka-house",
+  "repoUrl": "https://github.com/BAITC-Hacks/hack-400d70df-donerka-house",
+  "caseId": 10,
+  "snapshot": "d299e2a6982aafb2395022d375058df0304d6ce6",
+  "judges": [
+    {
+      "methodVersion": 4,
+      "repoId": "hack-400d70df-donerka-house",
+      "caseId": 10,
+      "model": "GPT-5.6 Luna",
+      "snapshot": "d299e2a6982aafb2395022d375058df0304d6ce6",
+      "overallSummary": "Репозиторий содержит достаточно цельный Go-прототип консультанта: сервер загружает локальный каталог, умеет обогащать его данными публичного и аутентифицированного EKT, возвращает проверенные характеристики и наличие, предлагает объяснимые аналоги, отвечает по условиям покупки и защищает изменения корзины серверным подтверждением. Сборка Docker и запуск прошли, /health, сессия, каталог и защитные HTTP-проверки ответили штатно; все обычные Go-тесты и go vet прошли. В runtime без предоставленных credentials добавление к реальному каталогу закономерно остановилось на повторной проверке актуальной цены и остатка, поэтому основной пользовательский сценарий в контейнере подтверждён частично, а не объявлен полностью working. Два подтверждённых ограничения проекта удерживают оценку: заявленные вложения фото/Excel/Word/PDF/JPEG не представлены ни в HTTP-модели, ни в UI, а ссылка после добавления ведёт в локальную корзину прототипа без интеграции с корзиной или checkout ekt.kz. Эти ограничения явно описаны командой в README и не превращают прототип в неработающий: серверная корзина, подтверждение, лимиты остатка, приватность и аналоги хорошо покрыты исходниками и тестами.",
+      "global": {
+        "criteria": [
+          {
+            "name": "Ценность решения",
+            "score": 22,
+            "max": 25,
+            "awarded": "Решение адресует конкретную и понятную проблему EKT: типовые вопросы о товаре, наличии, аналогах и условиях покупки переводятся в единый чат с безопасным переходом к корзине.",
+            "deductions": "Снято 3 балла за неполный пользовательский контур: вложенные спецификации и фотографии не принимаются, а локальная корзина не доводит пользователя до корзины/checkout платформы EKT.",
+            "evidence": [
+              "README.md:3",
+              "README.md:37",
+              "README.md:59",
+              "static/index.html:328",
+              "models/types.go:155"
+            ],
+            "deductionItems": [
+              {
+                "points": 1.5,
+                "findingId": "F-ATTACH",
+                "reason": "Без входа фото и офисных/PDF-файлов закупщик не может передать ассистенту спецификацию из обязательного сценария кейса, поэтому ценность автоматизации распространяется только на текстовый чат."
+              },
+              {
+                "points": 1.5,
+                "findingId": "F-LOCAL-CHECKOUT",
+                "reason": "После подтверждения пользователь получает локальную корзину помощника, но не интегрированный переход в корзину или оформление на ekt.kz; ценность сокращения пути до покупки поэтому неполная."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Понятная проблема закупщика",
+                "implementation": "README описывает консультацию по ассортименту, цене, остаткам, характеристикам и аналогам как один серверный сценарий. Поиск понимает артикул и название, а диалог сохраняет последние сообщения и выбранные товары для уточняющих вопросов.",
+                "value": "Это прямо сокращает повторяющиеся обращения менеджеру и время принятия решения для частного покупателя или закупщика электротехнической продукции.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:3",
+                  "README.md:37",
+                  "handlers/chat.go:95",
+                  "handlers/conversation.go:33"
+                ]
+              },
+              {
+                "aspect": "Проверяемые коммерческие факты",
+                "implementation": "Для карточек используются EKT API и публичные страницы; перед добавлением выполняется отдельная проверка, а неподтверждённые цена и наличие не выдаются как актуальные. В runtime lookup существующего артикула вернул карточку с verified_at, ценой, наличием, остатком и характеристиками.",
+                "value": "Пользователь получает полезную информацию с видимой границей достоверности, а не свободный ответ модели с выдуманной ценой или остатком.",
+                "verification": "observed",
+                "evidence": [
+                  "handlers/chat.go:739",
+                  "handlers/ekt_api.go:154",
+                  "handlers/live_catalog.go:92",
+                  "CHK-LIVE-INFO"
+                ]
+              },
+              {
+                "aspect": "Безопасный переход к действию",
+                "implementation": "Добавление начинается предложением с артикулом, количеством, ценой и суммой; изменение корзины выполняется только после явного подтверждения и повторной проверки товара. В обычных тестах до подтверждения корзина остаётся пустой, после подтверждения получает заявленное количество.",
+                "value": "Пользовательский результат полезен не только как консультация: он сохраняет контроль клиента над коммерческим действием и уменьшает риск ошибочной покупки.",
+                "verification": "observed",
+                "evidence": [
+                  "handlers/chat.go:532",
+                  "handlers/chat.go:578",
+                  "handlers/cart_test.go:86",
+                  "CHK-TEST"
+                ]
+              },
+              {
+                "aspect": "Адекватный MVP-контур",
+                "implementation": "Команда явно ограничила прототип локальной корзиной и не притворяется завершённой системой заказов или платежей; README отдельно описывает отсутствие order endpoint и синхронизации с кабинетом EKT.",
+                "value": "Для пятичасового прототипа такая граница делает заявленную демонстрацию честной и оставляет понятную точку интеграции с владельцем платформы.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:59",
+                  "README.md:121",
+                  "README.md:125"
+                ]
+              }
+            ],
+            "scoreReasoning": "22/25 заслужены за точное попадание в проблему каталожной консультации и за реально реализованный безопасный переход от вопроса к локальной корзине. Не максимальный балл обусловлен не качеством базового чата, а неполнотой бизнес-входа и финального перехода: обязательный сценарий с вложением отсутствует, а локальная корзина не является корзиной ekt.kz. Для MVP это существенные, но локализованные границы, потому что основной текстовый сценарий и защитные инварианты работают."
+          },
+          {
+            "name": "Результат и качество решения",
+            "score": 16,
+            "max": 20,
+            "awarded": "Получился работающий и достаточно хорошо протестированный серверный прототип с каталогом, консультацией, аналогами, условиями, подтверждением, ограничением количества и защитой состояния корзины.",
+            "deductions": "Снято 4 балла: два за отсутствие вложений в основном входном контракте и два за то, что результат после добавления остаётся локальным и не создаёт платформенный заказ/checkout.",
+            "evidence": [
+              "handlers/chat.go:532",
+              "handlers/cart.go:145",
+              "handlers/restrictions_test.go:71",
+              "handlers/cart_test.go:86",
+              "CHK-BUILD",
+              "CHK-TEST"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "F-ATTACH",
+                "reason": "Описанный кейсом путь входа с фото, Excel, Word, PDF или JPEG невозможно выполнить: ChatRequest принимает только message и confirmation_token, а фронтенд отправляет JSON текста."
+              },
+              {
+                "points": 2,
+                "findingId": "F-LOCAL-CHECKOUT",
+                "reason": "Успешная операция формирует cart_url /#cart и локальный снимок, но в исходниках нет endpoint заказа или интеграции корзины EKT; это оставляет пользовательский результат на шаге прототипной корзины."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Воспроизводимая сборка и запуск",
+                "implementation": "Dockerfile собирает статический Go-бинарник, переносит бинарник, data и static в минимальный Alpine-образ. Полная сборка образа завершилась с кодом 0, сервер стартовал и /health вернул status ok и 40 товаров.",
+                "value": "Результат можно поднять из репозитория, а не только прочитать по README; это важная часть качества хакатонного прототипа.",
+                "verification": "observed",
+                "evidence": [
+                  "Dockerfile:1",
+                  "main.go:87",
+                  "captures/20261002T112104815781-build.stderr.log",
+                  "captures/20261002T112129271909-start.stdout.log",
+                  "CHK-BUILD",
+                  "CHK-START"
+                ]
+              },
+              {
+                "aspect": "Каталог и обогащение товара",
+                "implementation": "Локальные 40 позиций загружаются сразу, EKT API поддерживает пагинацию и detail endpoint с обязательными id/article/price/quantity, а публичный парсер достаёт описание, характеристики, наличие, регион и сертификаты. Runtime lookup существующего товара реально вернул обогащённую карточку.",
+                "value": "Карточка пригодна для предметной консультации и не сводится к имени товара; путь от источника до JSON-результата прослежен в коде.",
+                "verification": "observed",
+                "evidence": [
+                  "main.go:25",
+                  "handlers/ekt_api.go:154",
+                  "handlers/live_catalog.go:168",
+                  "handlers/live_catalog.go:196",
+                  "handlers/live_catalog.go:219",
+                  "CHK-CATALOG",
+                  "CHK-LIVE-INFO"
+                ]
+              },
+              {
+                "aspect": "Согласованный сценарий корзины",
+                "implementation": "Сервер сохраняет pending selection, создаёт одноразовый токен сроком 10 минут, потребляет его под блокировкой, повторно проверяет цену и остаток, блокирует превышение доступного количества и возвращает текущую корзину с ссылкой.",
+                "value": "Это целостный сценарий с конкретным пользовательским результатом, а не декоративная кнопка на фронтенде. Тесты покрывают повтор, параллельный запрос, истёкший токен, изменение цены, сбой API и нулевой остаток.",
+                "verification": "observed",
+                "evidence": [
+                  "handlers/conversation.go:82",
+                  "handlers/conversation.go:117",
+                  "handlers/chat.go:539",
+                  "handlers/cart.go:145",
+                  "handlers/restrictions_test.go:71",
+                  "handlers/restrictions_test.go:167",
+                  "CHK-TEST"
+                ]
+              },
+              {
+                "aspect": "Качество защитных границ",
+                "implementation": "BrowserSecurity требует сессию, CSRF и JSON для мутаций; direct POST /api/cart отвергается, отсутствие CSRF вернуло 403. Платёжное сообщение отсекается до истории и upstream; тесты также проверяют владение корзиной и приватность транспорта OpenAI.",
+                "value": "Критические ошибки пользователя и злоупотребления не маскируются UI-логикой: защита находится на сервере и проверяется отдельно.",
+                "verification": "observed",
+                "evidence": [
+                  "handlers/security.go:45",
+                  "handlers/security.go:73",
+                  "handlers/privacy.go:14",
+                  "handlers/restrictions_test.go:32",
+                  "handlers/restrictions_test.go:144",
+                  "CHK-CART-GUARD",
+                  "CHK-PAYMENT"
+                ]
+              }
+            ],
+            "scoreReasoning": "16/20: код и тесты показывают высокое качество основных текстовых и корзинных инвариантов, а Docker и HTTP-проверки подтверждают deployability. Сценарий не получает максимум не из-за отсутствия платного ключа, а из-за подтверждённых границ продукта: часть заявленного входа невозможно подать, а финальный cart_url ведёт только в локальную корзину. Runtime без credentials не использовался как штраф за неработоспособность; это вынесено в ограничения проверки."
+          },
+          {
+            "name": "Инновационность",
+            "score": 13,
+            "max": 15,
+            "awarded": "Нестандартная часть решения — разделение свободного ответа модели и серверных фактов/разрешений: модель объясняет технические свойства, а цена, наличие, аналоги и изменения корзины контролируются кодом.",
+            "deductions": "Снято 2 балла за отсутствие мультимодального и документного входа, из-за чего инновационный слой ограничен текстовой консультацией.",
+            "evidence": [
+              "handlers/chat.go:26",
+              "handlers/chat.go:532",
+              "handlers/chat.go:709",
+              "handlers/privacy.go:21",
+              "README.md:41"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "F-ATTACH",
+                "reason": "Для кейса с фотографией или спецификацией нет parser/attachment-пути, поэтому наиболее естественное нестандартное расширение ассистента для закупщика не реализовано."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Разделение знаний и полномочий",
+                "implementation": "System prompt запрещает модели сообщать цену, наличие и менять корзину; отдельные серверные ветви формируют quoteReply, аналоги и подтверждённые cart actions. Даже текст модели с коммерческим claim заменяется серверным ответом.",
+                "value": "Это более надёжный подход для commerce-assistant, чем передать модели прямой инструмент корзины и доверять её формулировке; он снижает prompt-injection и hallucination risk в критических местах.",
+                "verification": "source",
+                "evidence": [
+                  "handlers/chat.go:26",
+                  "handlers/chat.go:705",
+                  "handlers/chat.go:709",
+                  "README.md:41"
+                ]
+              },
+              {
+                "aspect": "Серверное подтверждение как capability",
+                "implementation": "Pending purchase хранит точный серверный выбор, quantity и token; confirmation берётся из этого состояния, а prose истории не авторизует действие. Токен одноразовый, с expiry и повторной проверкой всех строк.",
+                "value": "Такой паттерн переносим на другие действия с побочными эффектами: модель предлагает, сервер валидирует и только пользователь выдаёт короткоживущую capability.",
+                "verification": "observed",
+                "evidence": [
+                  "handlers/conversation.go:94",
+                  "handlers/conversation.go:119",
+                  "handlers/cart_test.go:194",
+                  "handlers/restrictions_test.go:71",
+                  "CHK-TEST"
+                ]
+              },
+              {
+                "aspect": "Объяснимый аналог",
+                "implementation": "analogSimilarity учитывает совпадение характеристик и слов названия, отдельно добавляет бонус за наличие, а analogReason возвращает конкретные пары свойство=значение или совпавшие слова и прямо говорит, что совместимость не подтверждена.",
+                "value": "Рекомендация становится проверяемой пользователем и не выдаёт простое совпадение бренда или наличия за техническую совместимость.",
+                "verification": "observed",
+                "evidence": [
+                  "handlers/chat.go:360",
+                  "handlers/chat.go:419",
+                  "handlers/cart_test.go:248",
+                  "handlers/cart_test.go:287",
+                  "CHK-TEST"
+                ]
+              },
+              {
+                "aspect": "Достоверность нулевого остатка",
+                "implementation": "applyProductDetail сначала заменяет цену и остатки актуальным detail, включая ноль, а validateQuantity запрещает добавление при неизвестном или нулевом остатке; отдельные тесты проверяют, что старый stock не переиспользуется.",
+                "value": "Это важная для торговли инновационная дисциплина данных: устаревшая положительная карточка не превращается в ложное обещание доступности.",
+                "verification": "observed",
+                "evidence": [
+                  "handlers/ekt_api.go:201",
+                  "handlers/cart.go:145",
+                  "handlers/restrictions_test.go:203",
+                  "CHK-TEST"
+                ]
+              }
+            ],
+            "scoreReasoning": "13/15: архитектурное разделение model/prose, server facts и mutation authority заметно сильнее типичного демо-чатбота, а объяснимые аналоги и защита нулевого остатка добавляют предметную глубину. До максимума не хватает именно входной мультимодальности из кейса; это подтверждённый пробел реализации, не требование production-уровня."
+          },
+          {
+            "name": "Потенциал развития и масштабирования",
+            "score": 18,
+            "max": 20,
+            "awarded": "Проект имеет ясные точки расширения: отдельный EKT API client, live catalog adapter, JSON API, локальные аккаунты, conversation store и документированные границы production-интеграции.",
+            "deductions": "Снято 2 балла за отсутствие завершённого адаптера платформенной корзины/заказа; масштабирование консультации возможно, но коммерческий контур ещё не подключён к владельцу сайта.",
+            "evidence": [
+              "handlers/ekt_api.go:23",
+              "handlers/live_catalog.go:29",
+              "main.go:116",
+              "README.md:121",
+              "README.md:125"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "F-LOCAL-CHECKOUT",
+                "reason": "Для дальнейшего применения на ekt.kz потребуется customer-auth/cart/order contract и синхронизация локального состояния с платформой; в текущем коде этого адаптера нет."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Разделённые интеграционные слои",
+                "implementation": "EKTAPI отвечает за Basic Auth, пагинацию и detail, LiveCatalog — за публичные HTML-карточки, а ChatHandler получает их через явные зависимости. Это не зашитый в UI вызов одного удалённого сервиса.",
+                "value": "Слои можно заменять или расширять под другой источник каталога, не переписывая подтверждение корзины и диалоговую модель.",
+                "verification": "source",
+                "evidence": [
+                  "handlers/ekt_api.go:23",
+                  "handlers/ekt_api.go:72",
+                  "handlers/live_catalog.go:29",
+                  "main.go:82",
+                  "main.go:109"
+                ]
+              },
+              {
+                "aspect": "Bounded synchronization",
+                "implementation": "Загрузка каталога ограничена 1200 уникальными товарами, выполняется в фоне после немедленного старта, а публикация происходит после завершения snapshot-загрузки. Enrich ограничен первыми четырьмя релевантными товарами.",
+                "value": "Для MVP это разумная защита latency и памяти с понятной точкой замены лимитов и хранения при росте каталога.",
+                "verification": "source",
+                "evidence": [
+                  "main.go:14",
+                  "main.go:60",
+                  "handlers/ekt_api.go:181",
+                  "handlers/live_catalog.go:92"
+                ]
+              },
+              {
+                "aspect": "Готовые границы миграции",
+                "implementation": "README прямо указывает на необходимость общего хранилища сессий/корзин/подтверждений для нескольких экземпляров, транзакций, reverse-proxy rate limits, HTTPS и customer-auth/cart/order API.",
+                "value": "Потенциал масштабирования описан конкретно: следующий инженер видит, какие состояния сейчас in-memory и какие контракты должен предоставить владелец EKT.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:121",
+                  "README.md:125"
+                ]
+              },
+              {
+                "aspect": "Локальные аккаунты и приватность",
+                "implementation": "Есть salted password hashes, account-owned carts, явное согласие на merge гостевой корзины, короткая история и очистка по сроку; credentials каталога не передаются модели.",
+                "value": "Это даёт основу для авторизованных сценариев и безопасного расширения без смешения сервисного Basic Auth и аккаунта покупателя.",
+                "verification": "observed",
+                "evidence": [
+                  "handlers/auth.go:39",
+                  "handlers/cart.go:74",
+                  "handlers/auth_test.go:37",
+                  "README.md:82",
+                  "CHK-TEST"
+                ]
+              }
+            ],
+            "scoreReasoning": "18/20: расширяемость выше средней для хакатонного прототипа благодаря отделённым источникам данных, bounded sync и честной документации миграции. Два балла удержаны за конкретный следующий продуктовый барьер — отсутствие адаптера реальной корзины/заказа EKT. Это не штраф за то, что production-инфраструктура не была предоставлена, а оценка отсутствующего в самом проекте интеграционного слоя."
+          },
+          {
+            "name": "Презентация, демо и ответы на вопросы",
+            "score": 19,
+            "max": 20,
+            "awarded": "README очень подробно объясняет архитектуру, запуск, ограничения, HTTP API, инварианты корзины, приватность и сценарий ручной проверки; локальное демо воспроизводится через Docker и HTTP.",
+            "deductions": "Снят 1 балл за то, что README не предлагает воспроизводимый интерфейс загрузки вложений, хотя такой вход есть в исходном кейсе; устная презентация и ответы не оценивались, поскольку их не было.",
+            "evidence": [
+              "README.md:7",
+              "README.md:37",
+              "README.md:49",
+              "README.md:89",
+              "README.md:106",
+              "README.md:130",
+              "CHK-BUILD",
+              "CHK-START"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "F-ATTACH",
+                "reason": "Документация хорошо описывает текстовый и корзинный путь, но не содержит runnable/demo-инструкции для вложений, потому что соответствующий проектный вход отсутствует."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Запуск от чистого репозитория",
+                "implementation": "README даёт Docker Compose и запуск без Docker, переменные окружения, health check и пример запросов с cookie/CSRF. Полная Docker-сборка и старт были выполнены, health ответил HTTP 200.",
+                "value": "Проверяющий или участник может быстро получить работающий сервер и увидеть результат без устной презентации.",
+                "verification": "observed",
+                "evidence": [
+                  "README.md:7",
+                  "README.md:106",
+                  "Dockerfile:1",
+                  "captures/20261002T112104815781-build.stderr.log",
+                  "CHK-BUILD",
+                  "CHK-START"
+                ]
+              },
+              {
+                "aspect": "Ясная карта HTTP API",
+                "implementation": "README перечисляет session, catalog, chat, cart, confirmation, auth и health endpoints, а также требования к CSRF/origin/content-type; фронтенд использует те же относительные URL.",
+                "value": "Демо можно показывать через CLI/HTTP даже без браузерной автоматизации, а контракт понятен для следующего разработчика.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:89",
+                  "README.md:93",
+                  "static/chat.js:3",
+                  "main.go:116"
+                ]
+              },
+              {
+                "aspect": "Честное описание границ",
+                "implementation": "README не называет локальную корзину кабинетом EKT, отдельно говорит об отсутствии заказа и платежей, предупреждает о неполной совместимости production-платформы и о неопределённости скрытых платёжных реквизитов.",
+                "value": "Такое объяснение повышает доверие к демо и позволяет жюри правильно интерпретировать MVP, не принимая ограниченный прототип за production.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:59",
+                  "README.md:85",
+                  "README.md:121",
+                  "README.md:125"
+                ]
+              },
+              {
+                "aspect": "Регрессионная доказательная база",
+                "implementation": "README перечисляет проверки, а репозиторий содержит тесты для подтверждения, CSRF, cookie isolation, цены, нулевого остатка, аналогов, payment privacy и Basic Auth. В ревью go test и go vet прошли, JS syntax check прошёл в изолированном Node-контейнере.",
+                "value": "Даже без устных ответов проект способен показать существенную часть поведения воспроизводимыми проверками.",
+                "verification": "observed",
+                "evidence": [
+                  "handlers/restrictions_test.go:32",
+                  "handlers/restrictions_test.go:144",
+                  "handlers/ekt_api_test.go:14",
+                  "captures/20261002T112039350130-test.stdout.log",
+                  "captures/20261002T112039472132-test.stdout.log",
+                  "CHK-TEST",
+                  "CHK-VET",
+                  "CHK-JS"
+                ]
+              }
+            ],
+            "scoreReasoning": "19/20: README и репозиторий дают редкую для пятичасового MVP степень воспроизводимости и честно разделяют то, что сделано, от того, что требует EKT. Единственное содержательное снятие относится к незаявленному в проекте attachment-demo пути; отсутствие публичной live-ссылки, видео или устной презентации баллы не снижает."
+          }
+        ],
+        "total": 88
+      },
+      "case": null,
+      "judgeScore": 88,
+      "caseRequirements": [
+        {
+          "requirement": "Консультация по существующему товару: характеристики, цена/наличие и сертификаты из каталога",
+          "status": "partial",
+          "explanation": "EKT API detail и HTML-парсер реализованы, в runtime публичный lookup существующего артикула вернул проверенные цену, наличие, остаток, описание и характеристики; сертификаты выводятся, если источник их содержит. Аутентифицированный тестовый API без credentials не вызывался, а локальный detail.json сохраняется отдельно от карточек каталога, поэтому offline fallback не заменяет внешний источник.",
+          "evidence": [
+            "handlers/ekt_api.go:154",
+            "handlers/live_catalog.go:196",
+            "handlers/live_catalog.go:219",
+            "main.go:49",
+            "CHK-LIVE-INFO",
+            "CHK-CREDENTIAL-LIMIT",
+            "F-LOCAL-DETAIL"
+          ]
+        },
+        {
+          "requirement": "При нулевом остатке предложить релевантный аналог с кратким обоснованием",
+          "status": "met",
+          "explanation": "findAnalogs исключает недоступные позиции, учитывает совпадение характеристик/названия и доступность, а analogReason показывает совпавшие характеристики или слова и предупреждает, что полная совместимость не доказана. Unit/domain тесты подтвердили выдачу аналога для нулевого остатка и отсутствие рекомендации только по факту наличия.",
+          "evidence": [
+            "handlers/chat.go:388",
+            "handlers/chat.go:419",
+            "handlers/cart_test.go:248",
+            "handlers/cart_test.go:287",
+            "handlers/restrictions_test.go:218",
+            "CHK-TEST"
+          ]
+        },
+        {
+          "requirement": "Ответить об условиях оплаты, доставки и минимальной партии",
+          "status": "met",
+          "explanation": "purchaseTermsReply возвращает минимальную партию 1 шт., ссылку на актуальные условия оплаты/доставки и прямо сообщает, что помощник не оформляет и не оплачивает заказ. Тест проверяет наличие минимальной партии и текст условий.",
+          "evidence": [
+            "handlers/chat.go:351",
+            "handlers/cart_test.go:153",
+            "CHK-TEST"
+          ]
+        },
+        {
+          "requirement": "Добавлять только после явного подтверждения, с учётом количества и остатка",
+          "status": "met",
+          "explanation": "До подтверждения создаётся pending selection и корзина не меняется; подтверждение использует одноразовый token, повторно проверяет товар и отклоняет нулевой/неизвестный остаток, превышение количества, изменение цены и сбой upstream. Тесты проверяют обычное подтверждение, bare yes, replay, параллельный повтор и лимит stock; runtime direct POST в корзину также вернул 409.",
+          "evidence": [
+            "handlers/chat.go:532",
+            "handlers/chat.go:643",
+            "handlers/cart.go:145",
+            "handlers/cart_test.go:86",
+            "handlers/cart_test.go:166",
+            "handlers/restrictions_test.go:71",
+            "handlers/restrictions_test.go:167",
+            "CHK-TEST",
+            "CHK-CART-GUARD"
+          ]
+        },
+        {
+          "requirement": "После добавления дать прямую ссылку на актуальную корзину/оформление",
+          "status": "partial",
+          "explanation": "После подтверждённого добавления ChatResponse содержит текущий Cart и cart_url=/#cart, а UI строит ссылку на локальную панель корзины. Это актуальное состояние локальной корзины помощника, но не ссылка на корзину или оформление заказа ekt.kz; README прямо признаёт отсутствие order endpoint и синхронизации.",
+          "evidence": [
+            "handlers/chat.go:578",
+            "static/chat.js:126",
+            "README.md:59",
+            "README.md:121",
+            "F-LOCAL-CHECKOUT"
+          ]
+        },
+        {
+          "requirement": "Принимать текст, фото и Excel/Word/PDF/JPEG как вход ассистента",
+          "status": "missing",
+          "explanation": "HTTP-модель содержит только message и confirmation_token, фронтенд содержит текстовое поле и отправляет JSON. Multipart, file upload, MIME handling или parsers для фото/Excel/Word/PDF/JPEG в репозитории не обнаружены.",
+          "evidence": [
+            "models/types.go:155",
+            "static/index.html:328",
+            "static/chat.js:81",
+            "F-ATTACH"
+          ]
+        },
+        {
+          "requirement": "Не выдумывать цену/наличие, не менять корзину без подтверждения, не хранить платежные данные",
+          "status": "met",
+          "explanation": "Сервер маркирует свежесть фактов, блокирует добавление без цены и остатка, повторно получает detail, отсекает платёжные темы до истории и upstream, а модель не получает credentials EKT. Тесты privacy/transport и HTTP-проверки direct cart и CSRF подтверждают защитные ветки.",
+          "evidence": [
+            "handlers/chat.go:739",
+            "handlers/cart.go:145",
+            "handlers/privacy.go:14",
+            "handlers/privacy.go:21",
+            "handlers/restrictions_test.go:144",
+            "handlers/restrictions_test.go:226",
+            "CHK-CART-GUARD",
+            "CHK-PAYMENT"
+          ]
+        },
+        {
+          "requirement": "Учесть приватность, защиту корзины, объяснимость аналогов и совместимость с текущей платформой",
+          "status": "partial",
+          "explanation": "Приватность, session ownership, CSRF, confirmation scope и объяснение аналогов реализованы и покрыты тестами. Совместимость ограничена отдельной локальной корзиной, отсутствием customer-auth/cart/order contract и отсутствием attachment-входа; README эти границы не скрывает.",
+          "evidence": [
+            "handlers/security.go:45",
+            "handlers/cart.go:74",
+            "handlers/chat.go:419",
+            "README.md:121",
+            "README.md:125",
+            "F-LOCAL-CHECKOUT",
+            "F-ATTACH"
+          ]
+        },
+        {
+          "requirement": "Поддержать десктопный и мобильный интерфейс",
+          "status": "unverified",
+          "explanation": "В static описаны адаптивные каталог, чат и видимая корзина, но визуальная и браузерная проверка запрещена пользовательскими инструкциями. За непроверенность баллы не снижены.",
+          "evidence": [
+            "README.md:140",
+            "static/style.css:1",
+            "static/index.html:328",
+            "UNC-VISUAL"
+          ]
+        }
+      ],
+      "testData": {
+        "provided": [
+          "cases/10/task.txt",
+          "cases/10/case-data/HackAlem AI_ ИИ-ассистент для чата на сайте ekt.kz.md",
+          "cases/10/case-data/ИИ-ассистент для чата на сайте ekt.kz ДАННЫЕ.docx.md"
+        ],
+        "used": [
+          "cases/10/task.txt",
+          "cases/10/case-data/HackAlem AI_ ИИ-ассистент для чата на сайте ekt.kz.md",
+          "cases/10/case-data/ИИ-ассистент для чата на сайте ekt.kz ДАННЫЕ.docx.md",
+          "data/products.json",
+          "data/products2.json",
+          "data/detail.json"
+        ],
+        "checks": [
+          {
+            "input": "Контракт из документа данных: GET /api/products с пагинацией и GET /api/products/detail?id=515291 с Basic Auth",
+            "method": "Сопоставил пути и Basic Auth в EKTAPI; запустил TestEKTAPILoadsPagesAndDetailsWithBasicAuth на синтетическом HTTP-сервере теста и проверил обогащение stores/properties/certificates",
+            "result": "Тест прошёл; код формирует products и products/detail, устанавливает Basic Auth, требует id/article/price/quantity и переносит detail в Product",
+            "conclusion": "Путь интеграции и формат обработки подтверждены статически и domain-тестом; реальный authenticated EKT endpoint отдельно не вызывался без предоставленных credentials."
+          },
+          {
+            "input": "Существующий товар из данных кейса: id 515291, артикул 200300285_",
+            "method": "Загрузил локальные data/products.json и data/detail.json в приложение; проверил GET /api/catalog и POST /api/chat с вопросом о наличии/характеристиках существующего артикула",
+            "result": "GET /api/catalog вернул 40 позиций; публичный live lookup вернул verified_at, текущую цену, наличие, остаток, регион, описание и свойства товара",
+            "conclusion": "Основной текстовый lookup реально воспроизводится через публичный источник; authenticated API-факты и сертификат для конкретного ответа остались не подтверждены из-за отсутствия credentials."
+          },
+          {
+            "input": "Нулевой/неизвестный остаток и аналог",
+            "method": "Запустил TestZeroAndMissingEKTStockCannotReuseOldStock, TestFindAnalogsForUnavailableProduct и TestDemoChatSuggestsAnalogForUnavailableProduct в go test ./...",
+            "result": "Тесты прошли: нулевой detail заменяет старый stock и блокирует add; релевантный аналог возвращается с объяснением, нерелевантный товар только из-за наличия не предлагается",
+            "conclusion": "Требование аналогов и защита от stale stock подтверждены domain-тестами на предоставленном проектном сценарии."
+          },
+          {
+            "input": "Корзина до/после явного подтверждения и количество",
+            "method": "Запустил cart/restrictions tests и HTTP-проверки GET /api/session, POST /api/cart, POST /api/chat; визуальный браузер не использовал",
+            "result": "Unit tests подтверждают пустую корзину до confirmation, добавление после него, replay protection, price-change/upstream-failure rollback и stock limit; HTTP direct POST /api/cart дал 409, missing CSRF дал 403",
+            "conclusion": "Серверные инварианты корзины подтверждены; runtime end-to-end add на реальном приложении остановился на отсутствии authenticated EKT verification, что отмечено как ограничение среды."
+          },
+          {
+            "input": "Условия покупки и платёжная приватность",
+            "method": "Запустил TestPurchaseTermsAnswerIncludesMinimumBatch и TestPaymentInputNeverReachesHistoryOrUpstream; отдельно отправил HTTP CVV-сообщение",
+            "result": "Тесты прошли; HTTP ответ на CVV содержит privacy warning без передачи платёжной темы в обычный chat flow",
+            "conclusion": "Условия и серверная payment-data gate подтверждены без ключей OpenAI."
+          }
+        ],
+        "limitations": [
+          "Credentials из документа данных намеренно не использовались и не включены в отчёт.",
+          "Реальные authenticated GET /api/products и /api/products/detail не выполнялись без переданных credentials; это ограничение проверки, а не автоматический дефект.",
+          "Вложенные файлы и визуальное поведение не тестировались: attachment-путь отсутствует, визуальную проверку выполняет пользователь."
+        ]
+      },
+      "runtime": {
+        "status": "partial",
+        "build": "working: full Docker image build завершился с кодом 0; статический Go binary собран.",
+        "start": "working: контейнер запустился с пустыми API credentials; GET /health ответил HTTP 200.",
+        "scenario": "partial: локальный каталог, live informational lookup и защитные HTTP-ветки воспроизведены; добавление в реальную runtime-корзину заблокировано корректной проверкой из-за отсутствия authenticated EKT credentials. Контролируемый confirmation/stock сценарий прошёл в unit/domain tests.",
+        "environment": "Изолированный Linux/Alpine runtime без OPENAI_API_KEY и EKT credentials; UI/browser automation не использовались.",
+        "summary": "Приложение deployable и отвечает по HTTP, но полный коммерческий сценарий с актуальной authenticated EKT проверкой не был доступен в окружении ревью. Это partial, а не failed: запуск успешен, а блокировка добавления соответствует защитной логике проекта.",
+        "checks": [
+          {
+            "command": "docker build --target builder .",
+            "result": "exit 0; go build CGO_ENABLED=0 GOOS=linux завершён",
+            "id": "CHK-BUILD",
+            "stage": "build",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Репозиторий собирает серверный бинарник внутри Docker builder."
+          },
+          {
+            "command": "docker build .",
+            "result": "exit 0; final Alpine image assembled with binary, data and static assets",
+            "id": "CHK-IMAGE",
+            "stage": "build",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Полный deployable image собирается из Dockerfile."
+          },
+          {
+            "command": "go test ./...",
+            "result": "exit 0; handlers package ok 0.545s; root/models без тестов",
+            "id": "CHK-TEST",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Unit/domain tests проходят на чистом исходном коде без API-ключей."
+          },
+          {
+            "command": "go vet ./...",
+            "result": "exit 0; диагностик нет",
+            "id": "CHK-VET",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Статическая проверка Go-кода не выявляет vet-проблем."
+          },
+          {
+            "command": "node --check static/chat.js",
+            "result": "exit 0 в отдельном Node 22 Alpine container",
+            "id": "CHK-JS",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Frontend JavaScript синтаксически корректен."
+          },
+          {
+            "command": "go test -race ./...",
+            "result": "blocked before tests: -race requires cgo, а builder image собран/настроен CGO-disabled; это ограничение тестового toolchain",
+            "id": "CHK-RACE",
+            "stage": "scenario",
+            "status": "blocked",
+            "cause": "review_environment",
+            "expected": "Запустить race-enabled Go test suite."
+          },
+          {
+            "command": "GET /health",
+            "result": "HTTP 200; {status:ok, products:40}; сервер отвечает после старта",
+            "id": "CHK-START",
+            "stage": "start",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Сервер стартует и отдаёт health response."
+          },
+          {
+            "command": "GET /api/session; GET /api/catalog",
+            "result": "HTTP 200; session вернула csrf_token и cookie, catalog вернул count=40",
+            "id": "CHK-HTTP",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Сессия/CSRF и локальный опубликованный каталог доступны по API."
+          },
+          {
+            "command": "POST /api/chat (lookup existing article)",
+            "result": "HTTP 200; live-enriched result contained verified_at, price 62040, availability В наличии, stock_quantity 8, region Астана, description and properties",
+            "id": "CHK-LIVE-INFO",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "По существующему артикулу ответить фактами каталога, не выдумывая их."
+          },
+          {
+            "command": "POST /api/cart; POST /api/cart without X-CSRF-Token; POST /api/chat with CVV",
+            "result": "Direct cart mutation HTTP 409; missing CSRF HTTP 403; CVV response was privacy warning and did not enter normal catalog flow",
+            "id": "CHK-CART-GUARD",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Защитить прямое изменение корзины, CSRF и платёжные данные."
+          },
+          {
+            "command": "POST /api/chat (add existing article, then explicit confirmation)",
+            "result": "Runtime proposal could not be created because authenticated current EKT price/stock verification was unavailable without credentials; response kept cart unchanged. Controlled fixture equivalent passed in CHK-TEST.",
+            "id": "CHK-CREDENTIAL-LIMIT",
+            "stage": "scenario",
+            "status": "blocked",
+            "cause": "review_environment",
+            "expected": "Проверить end-to-end add after explicit confirmation against current EKT stock."
+          }
+        ],
+        "limitations": [
+          "OPENAI_API_KEY и EKT credentials не предоставлялись; OpenAI live completion и authenticated EKT API calls не выполнялись.",
+          "Race test blocked by CGO-disabled builder toolchain; ordinary tests, vet and JS syntax check passed.",
+          "Визуальная проверка desktop/mobile запрещена пользовательскими инструкциями и не влияет на баллы автоматически."
+        ]
+      },
+      "liveDemo": {
+        "status": "none",
+        "url": null,
+        "notes": "Публичная live-ссылка, видео и слайды в репозитории не предоставлены. Это не использовалось как причина снятия баллов; локальное HTTP-демо из Docker было запущено и проверено отдельно. Визуальная проверка пользователем не дублировалась."
+      },
+      "fiveHourContext": "Для пятичасового хакатона оценён цельный MVP, а не production-система: локальный каталог, JSON API, live/API adapters, server-side confirmation, приватность и регрессионные тесты — существенный объём завершённой работы. Не считалось недостатком отсутствие платных ключей, platform order API, публичного URL или устной презентации. Снижены только зафиксированные в самом проекте функциональные границы: attachment input отсутствует, а cart result остаётся локальным и не синхронизируется с ekt.kz.",
+      "strengths": [
+        "F-SECURITY: подтверждение, CSRF, session ownership, stock/price recheck и one-time tokens реализованы на сервере и проверены тестами.",
+        "F-CATALOG: EKT Basic Auth/detail и public HTML adapters дают предметные характеристики, наличие и сертификатные ссылки без передачи credentials модели.",
+        "F-ANALOG: аналоги объясняются конкретными совпадениями характеристик и не выдаются за доказанную совместимость.",
+        "F-TESTS: Docker build, обычные Go tests, go vet, JS syntax check и HTTP guard checks воспроизводимы без секретов."
+      ],
+      "gaps": [
+        "F-ATTACH: обязательный кейсом вход фото/Excel/Word/PDF/JPEG отсутствует в ChatRequest и интерфейсе; доступен только текстовый JSON.",
+        "F-LOCAL-CHECKOUT: после добавления выдаётся ссылка на локальную панель /#cart; platform cart/order/checkout ekt.kz не интегрированы."
+      ],
+      "uncertainties": [
+        "Authenticated EKT endpoints из документа данных не вызывались, потому что credentials намеренно не передавались; обработка входа, Basic Auth, пагинация и detail проверены по исходникам и синтетическому domain-тесту.",
+        "OPENAI completion path статически прослежен до privateCompletionTransport/store:false и response sanitization, но live completion не выполнялся без OPENAI_API_KEY.",
+        "Актуальное поведение desktop/mobile UI визуально не проверялось по пользовательскому запрету на браузерную автоматизацию; это не основание для deductions.",
+        "В runtime публичная live-страница обогатила существующий товар, но это не заменяет проверку authenticated EKT API и не доказывает production checkout compatibility."
+      ],
+      "futureAdvice": [
+        {
+          "principle": "Сначала зафиксировать все каналы входа в единый нормализованный контракт",
+          "why": "F-ATTACH показывает, что сильная текстовая и серверная часть не покрывает вход закупочной спецификацией: в models/types.go и static UI нет файла, поэтому сценарий нельзя даже начать.",
+          "how": "В другом хакатоне добавьте attachment metadata и multipart/object-storage adapter в первом вертикальном срезе: MIME allow-list, размер, извлечение текста/таблиц и image path должны возвращать один очищенный context object для того же ассистента.",
+          "findingIds": [
+            "F-ATTACH"
+          ],
+          "successCheck": "Есть воспроизводимый тест для одного JPEG и одного XLSX/PDF: файл принимается, извлечённые поля видны в контексте ответа, платёжные данные из файла не попадают в историю, а обычный текстовый сценарий не ломается.",
+          "timeboxMinutes": 60
+        },
+        {
+          "principle": "Отделять прототипный state от платформенного checkout через явный adapter contract",
+          "why": "F-LOCAL-CHECKOUT оставляет полезную локальную корзину, но пользователь не может продолжить покупку в реальном контуре EKT.",
+          "how": "Для следующего кейса сначала опишите минимальные customer/cart/order interfaces и capability mapping: подтверждённая строка должна либо атомарно синхронизироваться с платформой, либо получать явный handoff URL с актуальным cart id; local fallback должен быть обозначен пользователю.",
+          "findingIds": [
+            "F-LOCAL-CHECKOUT"
+          ],
+          "successCheck": "После подтверждения тестовый adapter возвращает platform cart URL, повтор запроса идемпотентен, цена/остаток повторно проверяются, а при недоступности platform API UI показывает отдельный fallback без ложного утверждения об оформленном заказе.",
+          "timeboxMinutes": 45
+        }
+      ],
+      "reviewPolicyVersion": 2,
+      "assessmentStatus": "ready",
+      "findings": [
+        {
+          "id": "F-SECURITY",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Сервер защищает мутации корзины и account actions session/CSRF/origin проверками, а подтверждение товара является одноразовым и scoped.",
+          "expected": "Нельзя изменить корзину поддельной cookie, без CSRF, без явного подтверждения или повторным token.",
+          "actual": "HTTP direct POST /api/cart дал 409, missing CSRF дал 403; tests покрывают forged cookie, CSRF, replay, expiry, параллельный повтор и scoped removal.",
+          "evidence": [
+            "handlers/security.go:45",
+            "handlers/security.go:73",
+            "handlers/conversation.go:117",
+            "handlers/restrictions_test.go:18",
+            "handlers/restrictions_test.go:71",
+            "CHK-CART-GUARD",
+            "CHK-TEST"
+          ],
+          "checkIds": [
+            "CHK-CART-GUARD",
+            "CHK-TEST"
+          ]
+        },
+        {
+          "id": "F-CATALOG",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Каталожный путь поддерживает локальный snapshot, EKT Basic Auth API/detail и public live enrichment с характеристиками, наличием и сертификатными ссылками.",
+          "expected": "Ответы о товаре должны строиться из каталожных полей и явно отделять неподтверждённые факты.",
+          "actual": "Build/runtime подняли 40 локальных товаров; live lookup существующего артикула вернул verified price, stock, region, description and properties; API/detail and parser tests passed.",
+          "evidence": [
+            "main.go:25",
+            "handlers/ekt_api.go:57",
+            "handlers/ekt_api.go:154",
+            "handlers/live_catalog.go:196",
+            "handlers/live_catalog.go:219",
+            "handlers/ekt_api_test.go:14",
+            "CHK-LIVE-INFO",
+            "CHK-TEST"
+          ],
+          "checkIds": [
+            "CHK-LIVE-INFO",
+            "CHK-TEST"
+          ]
+        },
+        {
+          "id": "F-ANALOG",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Аналоги выбираются по содержательному совпадению характеристик/названия и сопровождаются объяснением, а не объявляются совместимыми автоматически.",
+          "expected": "Нулевой остаток должен приводить к релевантному, объяснимому кандидату; unrelated in-stock item не должен быть аналогом.",
+          "actual": "Unit/domain tests подтвердили ALT-80A как аналог по Полюсам/Току и отвергли unrelated product; response содержит recommendation_reason.",
+          "evidence": [
+            "handlers/chat.go:360",
+            "handlers/chat.go:419",
+            "handlers/cart_test.go:248",
+            "handlers/restrictions_test.go:218",
+            "CHK-TEST"
+          ],
+          "checkIds": [
+            "CHK-TEST"
+          ]
+        },
+        {
+          "id": "F-TESTS",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Репозиторий имеет существенную регрессионную базу и deployable build.",
+          "expected": "Основные инварианты кейса должны быть проверяемы без UI и платных credentials.",
+          "actual": "Docker build, go test ./..., go vet ./... and node --check passed; tests cover cart, stock, price change, privacy, auth, API and parser paths.",
+          "evidence": [
+            "captures/20261002T112104815781-build.stderr.log",
+            "captures/20261002T112039350130-test.stdout.log",
+            "captures/20261002T112039472132-test.stdout.log",
+            "captures/20261002T112609067284-test.stderr.log",
+            "CHK-BUILD",
+            "CHK-TEST",
+            "CHK-VET",
+            "CHK-JS"
+          ],
+          "checkIds": [
+            "CHK-BUILD",
+            "CHK-TEST",
+            "CHK-VET",
+            "CHK-JS"
+          ]
+        },
+        {
+          "id": "F-ATTACH",
+          "kind": "defect",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Заявленные кейсом вложения фото и Excel/Word/PDF/JPEG не являются входом ассистента.",
+          "expected": "Клиент может передать файл/фото, а сервер принимает, валидирует и подаёт извлечённый контекст в консультацию.",
+          "actual": "ChatRequest содержит только Message и ConfirmationToken; UI имеет единственное text input, chat.js отправляет JSON {message, confirmation_token}; multipart/file/MIME parser отсутствуют.",
+          "evidence": [
+            "models/types.go:155",
+            "models/types.go:157",
+            "static/index.html:328",
+            "static/chat.js:81",
+            "static/chat.js:98"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "F-LOCAL-CHECKOUT",
+          "kind": "defect",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Пользовательский cart handoff остаётся локальной корзиной прототипа и не подключён к корзине/checkout ekt.kz.",
+          "expected": "После подтверждения ссылка должна вести к актуальному cart/checkout платформы, либо проект должен иметь реальный platform adapter.",
+          "actual": "ChatResponse формирует CartURL \"/#cart\"; README прямо говорит, что order endpoint отсутствует, cart локальная и с ekt.kz не синхронизируется.",
+          "evidence": [
+            "handlers/chat.go:578",
+            "static/chat.js:126",
+            "README.md:59",
+            "README.md:121"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "F-LOCAL-DETAIL",
+          "kind": "limitation",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Локальная детализация загружается в Catalog.Detail, но не мержится в карточку товара, которую используют поиск и ответы.",
+          "expected": "При отсутствии внешнего источника локальный snapshot/detail должен давать полноценный контекст существующего товара.",
+          "actual": "loadCatalog присваивает detail только в catalog.Detail; searchProducts и productsForResults работают по catalog.Products.",
+          "evidence": [
+            "main.go:49",
+            "main.go:53",
+            "models/types.go:60",
+            "handlers/chat.go:312"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "F-CREDENTIAL-LIMIT",
+          "kind": "limitation",
+          "verification": "observed",
+          "responsibility": "review_environment",
+          "claim": "Полная authenticated EKT verification не выполнена в runtime без credentials.",
+          "expected": "Для end-to-end add нужен доступ к текущему EKT detail/stock источнику.",
+          "actual": "Контейнер стартовал; informational public lookup работал, но add path оставил корзину пустой с сообщением о неподтверждённых цене/остатке.",
+          "evidence": [
+            ".env.example:2",
+            ".env.example:5",
+            "CHK-START",
+            "CHK-CREDENTIAL-LIMIT"
+          ],
+          "checkIds": [
+            "CHK-START",
+            "CHK-CREDENTIAL-LIMIT"
+          ]
+        },
+        {
+          "id": "F-RACE-TOOLCHAIN",
+          "kind": "limitation",
+          "verification": "observed",
+          "responsibility": "review_environment",
+          "claim": "Race-enabled suite не запустилась из-за CGO-disabled builder toolchain.",
+          "expected": "go test -race ./... должен запускаться в cgo-enabled Go environment.",
+          "actual": "Команда остановилась до тестов с `-race requires cgo`; обычный go test прошёл.",
+          "evidence": [
+            "captures/20261002T112023368435-test.stderr.log",
+            "CHK-RACE"
+          ],
+          "checkIds": [
+            "CHK-RACE"
+          ]
+        },
+        {
+          "id": "F-VISUAL",
+          "kind": "limitation",
+          "verification": "unverified",
+          "responsibility": "review_environment",
+          "claim": "Визуальные desktop/mobile свойства не подтверждены этим ревью.",
+          "expected": "UI должен быть проверен в браузере на desktop и mobile viewport.",
+          "actual": "По пользовательской политике visual/browser inspection не выполнялась; source содержит static UI/CSS, но runtime visual conclusion не делается.",
+          "evidence": [
+            "README.md:140",
+            "static/style.css:1",
+            "UNC-VISUAL"
+          ],
+          "checkIds": []
+        }
+      ],
+      "gapFindingIds": [
+        "F-ATTACH",
+        "F-LOCAL-CHECKOUT"
+      ]
+    }
+  ],
+  "score": 88.0,
+  "status": "complete",
+  "expectedJudges": 1
+}

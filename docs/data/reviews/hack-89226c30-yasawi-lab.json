@@ -1,0 +1,1157 @@
+{
+  "methodVersion": 4,
+  "repoId": "hack-89226c30-yasawi-lab",
+  "repoUrl": "https://github.com/BAITC-Hacks/hack-89226c30-yasawi-lab",
+  "caseId": 1,
+  "snapshot": "ab6154f19434e7073fe47f6453df6a786351f16f",
+  "judges": [
+    {
+      "methodVersion": 4,
+      "repoId": "hack-89226c30-yasawi-lab",
+      "caseId": 1,
+      "model": "GPT-5.6 Luna",
+      "snapshot": "ab6154f19434e7073fe47f6453df6a786351f16f",
+      "overallSummary": "Проект представляет собой сильный воспроизводимый backend-MVP для исторического почасового прогноза двух турбин. В изолированной среде реально выполнены установка backend, 27 тестов, запуск FastAPI и первый origin: получены 96 валидированных строк прогноза, по 48 на турбину, с архивной погодой Open-Meteo, cutoff до 31 января и сохранёнными provenance/model-артефактами. Архитектура аккуратно запрещает утечки будущих данных, фиксирует eligibility архивного weather-run, повторное использование и пересчёт. Оценка снижена за то, что подключаемый React-клиент ожидает mock DTO, отличающийся от фактического backend DTO, за непереносимый явный win32-пакет в frontend lockfile и за устаревшие утверждения README о том, что frontend отсутствует и что в checkout уже лежат конкретные live-run файлы. Визуальное поведение браузера не проверялось по установленной политике; это ограничение проверки, а не штраф.",
+      "global": {
+        "criteria": [
+          {
+            "name": "Ценность решения",
+            "score": 23,
+            "max": 25,
+            "awarded": "Практическая ценность для оператора ВЭС доказана backend-сценарием и аудитируемым результатом.",
+            "deductions": "Снято 2 балла: live-представление результата через React не доведено до фактического backend DTO, поэтому ценность готового пользовательского контура ниже ценности самого расчётного ядра.",
+            "evidence": [
+              "README.md:3,16,36-40",
+              "backend/src/agentic_forecast/api.py:35-48",
+              "CHK-FIRST-ORIGIN",
+              "CHK-DTO-SOURCE"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "DEF-001",
+                "reason": "Пользовательская ценность заявленного dashboard ограничена несогласованностью реального provenance-ответа backend с полями, которые отображает React; расчёт доступен, но часть ключевого объяснения результата не будет показана при реальном подключении."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Понятная прикладная задача",
+                "implementation": "Система связывает два исторических CSV, координаты турбин и архивные погодные циклы с почасовым прогнозом нормализованной мощности. Backend выдаёт отдельные 48-часовые серии для turbine_1 и turbine_2 и не пытается из неизвестной нормализации вывести MW/MWh.",
+                "value": "Это соответствует рабочей потребности оператора видеть ожидаемую форму выработки по каждой турбине на ближайшие 24-48 часов, при этом не создаёт ложной точности относительно мощности станции.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:7-16",
+                  "backend/src/agentic_forecast/config.py:10-16",
+                  "backend/src/agentic_forecast/agents.py:238-247"
+                ]
+              },
+              {
+                "aspect": "Аудируемый результат вместо чёрного ящика",
+                "implementation": "Каждая forecast-строка содержит origin, valid interval, lead_hours, model_version и weather_snapshot_id; итог также содержит data_quality, evaluation, agent stages, warnings и errors. Первый реальный запуск сохранил 96 строк и отдельные модели/погодные snapshot для двух турбин.",
+                "value": "Оператор или проверяющий может связать число в прогнозе с конкретным запуском модели и погодным входом, что существенно повышает пригодность решения для расследования расхождений.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/src/agentic_forecast/agents.py:238-247",
+                  "backend/artifacts/runs/36be4e0b4d274400ad00f1c68b097174.json",
+                  "CHK-FIRST-ORIGIN"
+                ]
+              },
+              {
+                "aspect": "Честная граница применимости",
+                "implementation": "Run-result явно возвращает farm_aggregate=null и AGGREGATION_RULE_UNAVAILABLE, потому что в исходных материалах нет правила агрегации и знаменателя нормализации. February actual-based evaluation также остаётся unavailable, а actual_power_normalized в прогнозных строках равен null.",
+                "value": "Такой отказ от выдуманного station total полезнее фиктивного суммирования нормализованных величин: результат можно использовать как прогноз по турбинам, не выдавая неизвестную величину за выработку станции.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/src/agentic_forecast/agents.py:40-47",
+                  "backend/artifacts/runs/36be4e0b4d274400ad00f1c68b097174.json",
+                  "README.md:16"
+                ]
+              },
+              {
+                "aspect": "Ограничение пользовательского контура",
+                "implementation": "frontend/src/api/forecast.js при отсутствии VITE_API_BASE_URL сознательно возвращает mockForecast.json, а при наличии переменной запрашивает runId, по умолчанию взятый из mock. Реальный backend DTO имеет другие provenance-имена.",
+                "value": "Для демонстрации mock-режим удобен, но для реального оператора между готовым расчётом и объясняющим dashboard остаётся интеграционный разрыв; это и есть небольшая причина не давать максимум.",
+                "verification": "source",
+                "evidence": [
+                  "frontend/src/api/forecast.js:1-15",
+                  "frontend/src/App.jsx:259-261,381-398",
+                  "backend/src/agentic_forecast/weather.py:260-283",
+                  "DEF-001"
+                ]
+              }
+            ],
+            "scoreReasoning": "23/25 заслужены за конкретную энергетическую задачу, два отдельных прогноза, аудитируемость и корректное обозначение неизвестных station-level величин. До максимума не хватает согласованного real-data пользовательского слоя: backend расчёт работает, но React-представление provenance ориентировано на другой DTO. Это ограничивает доступность результата, однако не отменяет ценности и работоспособности расчётного ядра пятичасового MVP."
+          },
+          {
+            "name": "Результат и качество решения",
+            "score": 17,
+            "max": 20,
+            "awarded": "Основной backend-сценарий воспроизведён и выдаёт целостный результат.",
+            "deductions": "Снято 3 балла за незавершённую интеграцию реального backend результата с React-клиентом.",
+            "evidence": [
+              "backend/tests/test_first_milestone.py:162-221",
+              "backend/src/agentic_forecast/agents.py:136-313",
+              "CHK-TESTS",
+              "CHK-FIRST-ORIGIN",
+              "CHK-API-CONTEXT"
+            ],
+            "deductionItems": [
+              {
+                "points": 3,
+                "findingId": "DEF-001",
+                "reason": "При real API подключении frontend использует поля source_model/requested_coordinates/provider_grid/raw_response_sha256 и объектные variables, тогда как backend отдаёт model/requested_coordinate/provider_grid_coordinate/raw_sha256 и массив строк; часть provenance UI будет пустой или undefined."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "End-to-end первый origin",
+                "implementation": "Выполнена команда backend CLI для 2026-01-31. Процесс загрузил два CSV, обучил две HistGradientBoostingRegressor модели, получил eligible archived weather и записал completed run.",
+                "value": "Это наблюдаемое подтверждение целостного сценария от данных до пользовательски пригодного JSON, а не только наличие файлов или описание в README.",
+                "verification": "observed",
+                "evidence": [
+                  "CHK-FIRST-ORIGIN",
+                  "backend/artifacts/runs/36be4e0b4d274400ad00f1c68b097174.json"
+                ]
+              },
+              {
+                "aspect": "Форма и непрерывность прогноза",
+                "implementation": "Результат содержит по 48 lead_hours 1..48 для каждой турбины; valid_start/valid_end идут последовательными часовыми интервалами, первые 24 часа находятся за январской границей, следующие 24 имеют in_test_period=true.",
+                "value": "Ключевой пользовательский результат задачи — почасовой горизонт 24-48 часов — фактически сформирован в требуемой форме без заполнения пропусков фиктивными значениями.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/src/agentic_forecast/agents.py:235-247",
+                  "backend/tests/test_first_milestone.py:173-183",
+                  "backend/artifacts/runs/36be4e0b4d274400ad00f1c68b097174.json"
+                ]
+              },
+              {
+                "aspect": "Контролируемые ошибки",
+                "implementation": "Код различает blocked weather eligibility, provider unavailable и model runtime faults, не выдаёт прогноз при неполном или невалидном входе, ограничивает retry, сохраняет ошибочные manifest и добавляет safe error codes.",
+                "value": "Результат не маскирует отсутствие погодного входа успешным mock-ответом и тем самым пригоден для повторного запуска и диагностики.",
+                "verification": "source",
+                "evidence": [
+                  "backend/src/agentic_forecast/agents.py:249-272",
+                  "backend/src/agentic_forecast/weather.py:182-200",
+                  "backend/tests/test_first_milestone.py:118-137,329-378"
+                ]
+              },
+              {
+                "aspect": "Реальный UI-контур не равен mock preview",
+                "implementation": "React имеет previewStatus и mockForecast путь, но при real API не запускает новый run, а читает фиксированный mock runId; кроме того, его selectors не совпадают с фактическими weather fields backend.",
+                "value": "Это не ломает CLI/API результат, но уменьшает оценку целостности именно продукта: готовый расчёт не гарантирует корректное отображение того же результата в пользовательском интерфейсе.",
+                "verification": "source",
+                "evidence": [
+                  "frontend/src/api/forecast.js:3-15",
+                  "frontend/src/App.jsx:259-261,381-398",
+                  "backend/src/agentic_forecast/weather.py:260-283",
+                  "DEF-001"
+                ]
+              }
+            ],
+            "scoreReasoning": "17/20: backend даёт наблюдаемый completed результат с корректной формой и ошибочными состояниями, а тесты покрывают основные ветви. Три балла удержаны за то, что реальная UI-интеграция не является тем же целостным сценарием: она по умолчанию остаётся mock и при подключении backend читает несовместимое provenance-представление."
+          },
+          {
+            "name": "Инновационность",
+            "score": 15,
+            "max": 15,
+            "awarded": "Полный балл за обоснованный audit-first подход к agentic replay.",
+            "deductions": "Снятий нет.",
+            "evidence": [
+              "README.md:24-38",
+              "backend/src/agentic_forecast/weather.py:51-135,203-304",
+              "backend/src/agentic_forecast/agents.py:20-21,105-133,214-234"
+            ],
+            "deductionItems": [],
+            "awardedDetails": [
+              {
+                "aspect": "Agentic state machine без декоративного LLM",
+                "implementation": "Вместо необязательного чатового слоя команда построила bounded deterministic state machine с load_data, validation, aggregation, model, weather eligibility, features, forecast, analyze, recalculation и persist.",
+                "value": "Для численного прогноза это более проверяемый нестандартный выбор: agentic-свойство выражено в управлении внешним входом, стадиями и решениями, а не в непредсказуемом тексте.",
+                "verification": "source",
+                "evidence": [
+                  "backend/src/agentic_forecast/agents.py:20-21,79-83",
+                  "backend/src/agentic_forecast/agents.py:282-310"
+                ]
+              },
+              {
+                "aspect": "Историческая eligibility как часть прогноза",
+                "implementation": "Weather adapter перебирает циклы newest-first, вычисляет conservative availability bound, проверяет 48-часовое покрытие и умеет откатиться к более старому eligible cycle. В первом origin 12Z отбрасывается по bound, 06Z выбирается.",
+                "value": "Это адресует наиболее сложную часть кейса — не использовать погоду, которая стала доступна после момента расчёта — и заметно отличается от обычного запроса текущего weather API.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/src/agentic_forecast/weather.py:57-135",
+                  "backend/tests/test_first_milestone.py:105-115,224-245",
+                  "CHK-FIRST-ORIGIN"
+                ]
+              },
+              {
+                "aspect": "Frozen input и повторный расчёт",
+                "implementation": "Выбранный raw response сохраняется с digest и manifest; повторный вызов проверяет frozen snapshot и не заменяет его новыми upstream bytes. Fingerprint включает origin, dataset hash, model, snapshot и coordinate; изменение effective input создаёт recalculate, previous_run_id и revision_delta.",
+                "value": "Получается воспроизводимый historical replay и объяснимое поведение при обновлении входа, что является сильной оригинальной чертой для короткого MVP.",
+                "verification": "source",
+                "evidence": [
+                  "backend/src/agentic_forecast/weather.py:208-228,247-304",
+                  "backend/src/agentic_forecast/agents.py:207-233",
+                  "backend/tests/test_first_milestone.py:247-273,329-363"
+                ]
+              },
+              {
+                "aspect": "Надёжность provider boundary",
+                "implementation": "Постоянные HTTP 4xx не повторяются, transient 408/425/429/5xx и timeout получают максимум два retry с ограниченным Retry-After/backoff; invalid units, timezone, model, timestamps и coverage блокируют вход.",
+                "value": "Это не просто выбор ML-модели, а самостоятельная стратегия безопасного поведения агента на внешней границе, проверенная отдельными тестами.",
+                "verification": "source",
+                "evidence": [
+                  "backend/src/agentic_forecast/weather.py:138-200",
+                  "backend/tests/test_first_milestone.py:276-326"
+                ]
+              }
+            ],
+            "scoreReasoning": "15/15: проект предлагает собственный и хорошо обоснованный audit-first replay-подход. Deterministic state machine, историческая доступность циклов, frozen snapshots и revision fingerprints дают преимущество проверяемости над наивным 'получить погоду и предсказать'. Ограничение UI относится к интеграции и уже учтено в других критериях, а не в самой идее."
+          },
+          {
+            "name": "Потенциал развития и масштабирования",
+            "score": 18,
+            "max": 20,
+            "awarded": "Архитектура хорошо подготовлена к расширению на новые origins, турбины и провайдеры.",
+            "deductions": "Снято 2 балла: масштабирование пользовательского продукта и кросс-платформенная frontend-сборка не доведены до воспроизводимого состояния.",
+            "evidence": [
+              "backend/src/agentic_forecast/config.py:19-51",
+              "backend/src/agentic_forecast/agents.py:316-395",
+              "README.md:34-55",
+              "CHK-FE-INSTALL",
+              "DEF-001",
+              "DEF-002"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "DEF-001",
+                "reason": "Контрактный разрыв между backend и React создаёт дополнительную работу перед масштабированием на новые поля provenance или новые объекты прогноза."
+              },
+              {
+                "points": 1,
+                "findingId": "DEF-002",
+                "reason": "Чистая npm ci установка frontend в стандартной Linux-среде останавливается на явном win32-only devDependency, что снижает переносимость CI/deployment workflow."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Последовательный replay на 29 origins",
+                "implementation": "run_replay строит ежедневный диапазон 31 января–28 февраля, вызывает общий run_first_origin, сохраняет child run IDs, per-origin status, weather provenance, errors и aggregate reason.",
+                "value": "Добавление нового дня или ограниченного поддиапазона не требует отдельной архитектуры и естественно переносит MVP с одного расчёта на backfill/replay batch.",
+                "verification": "source",
+                "evidence": [
+                  "backend/src/agentic_forecast/agents.py:316-395",
+                  "backend/tests/test_first_milestone.py:380-397"
+                ]
+              },
+              {
+                "aspect": "Компонентные границы",
+                "implementation": "Конфигурация отделяет timezone/provider/timeout, data.py — качество CSV и hourly audit, model.py — fit/predict/manifests, weather.py — provider/provenance, agents.py — orchestration, api.py — HTTP DTO.",
+                "value": "Такое разделение позволяет заменить модель или погодный adapter, не переписывая весь replay-цикл; это разумная основа для нескольких площадок.",
+                "verification": "source",
+                "evidence": [
+                  "backend/src/agentic_forecast/config.py:19-51",
+                  "backend/src/agentic_forecast/data.py:68-149",
+                  "backend/src/agentic_forecast/model.py:46-100",
+                  "backend/src/agentic_forecast/api.py:17-125"
+                ]
+              },
+              {
+                "aspect": "Масштабирование качества данных",
+                "implementation": "Загрузка строит полный hourly index, различает missing/incomplete hours, сохраняет raw/sample/distinct/valid slot counts и исключает неполные часы из fit; source hashes и model identities делают входы адресуемыми.",
+                "value": "При подключении новых турбин или более длинной истории качество не скрывается средними значениями и остаётся сопоставимым между объектами.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/src/agentic_forecast/data.py:115-145",
+                  "backend/artifacts/runs/36be4e0b4d274400ad00f1c68b097174.json",
+                  "CHK-FIRST-ORIGIN"
+                ]
+              },
+              {
+                "aspect": "Необходимая инженерная доработка перед масштабированием",
+                "implementation": "Frontend-путь не имеет запуска run/context discovery и использует mock runId, а package-lock содержит @rolldown/binding-win32-x64-msvc как корневую devDependency.",
+                "value": "Без общего DTO и portable install pipeline расширение на CI, Linux deployment или дополнительные provenance поля будет ломаться не в расчётном ядре, а на delivery-слое.",
+                "verification": "observed",
+                "evidence": [
+                  "frontend/src/api/forecast.js:3-15",
+                  "frontend/package-lock.json:14-20",
+                  "CHK-FE-INSTALL",
+                  "DEF-001",
+                  "DEF-002"
+                ]
+              }
+            ],
+            "scoreReasoning": "18/20: replay abstraction, artifact boundaries, data-quality audit и per-origin persistence дают убедительный путь к масштабированию. Два балла удержаны за delivery-риск: несовместимый real DTO и platform-specific frontend install need correction before the same product can be reliably deployed across environments."
+          },
+          {
+            "name": "Презентация, демо и ответы на вопросы",
+            "score": 17,
+            "max": 20,
+            "awarded": "README подробно объясняет backend, команды и ограничения; первый origin воспроизводим из checkout.",
+            "deductions": "Снято 3 балла за фактически устаревшую часть README про frontend и сохранённые live artifacts.",
+            "evidence": [
+              "README.md:1-94",
+              "BACKEND_TASK.md:181-203",
+              "CHK-TESTS",
+              "CHK-FIRST-ORIGIN",
+              "DEF-003"
+            ],
+            "deductionItems": [
+              {
+                "points": 3,
+                "findingId": "DEF-003",
+                "reason": "README.md:88 утверждает, что frontend/ отсутствует, хотя каталог и package.json есть; README.md:92 называет конкретные e1f... и 69a... run-файлы, которых в исходном checkout нет. Это мешает повторить именно описанное demo без догадки о том, какой run ID использовать."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Документация сценария",
+                "implementation": "README последовательно описывает входные CSV и hashes, координаты, timezone, hourly aggregation, cutoff, модель, weather eligibility, agent stages, artifacts, API contract, команды запуска и ограничения.",
+                "value": "Проверяющий может понять не только 'что установлено', но и почему 06Z допустим, почему station aggregate null и где искать итоговый JSON.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:5-40",
+                  "README.md:42-73"
+                ]
+              },
+              {
+                "aspect": "Воспроизводимый backend demo",
+                "implementation": "Команды `python -m pip install -e '.[test]'`, `python -m agentic_forecast.cli --first-origin` и `python -m pytest -q tests` соответствуют фактическим entrypoints; в проверке 27 тестов прошли и CLI создал completed run.",
+                "value": "Это сильнее статического README: основной численный результат реально получен из репозитория в изолированной среде.",
+                "verification": "observed",
+                "evidence": [
+                  "README.md:42-55",
+                  "CHK-TESTS",
+                  "CHK-FIRST-ORIGIN"
+                ]
+              },
+              {
+                "aspect": "Хорошее объяснение ограничений",
+                "implementation": "Документ явно отделяет measured historical weather от forecast weather, предупреждает про неизвестную высоту датчика, отсутствие February actuals, отсутствие station aggregation и schedule-bound вместо exact publication timestamp.",
+                "value": "Такая честная рамка помогает жюри правильно интерпретировать MAE/RMSE и не принять нормализованный per-turbine output за MW/MWh.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:12-16,20-30,55,88-94"
+                ]
+              },
+              {
+                "aspect": "Устаревшая часть handoff",
+                "implementation": "В README одновременно заявлено отсутствие frontend и присутствует отдельный frontend package/src/dist; также приведены live run IDs и утверждение о live full replay, не присутствующие как такие файлы в исходном checkout.",
+                "value": "Это не мешает понять backend, но снижает воспроизводимость демонстрации: новый проверяющий может искать несуществующие файлы или не понять, как связать React с API.",
+                "verification": "observed",
+                "evidence": [
+                  "README.md:88,92",
+                  "frontend/package.json:1-28",
+                  "frontend/src/api/forecast.js:1-15",
+                  "DEF-003"
+                ]
+              }
+            ],
+            "scoreReasoning": "17/20: README заметно выше среднего по содержательности и первый origin/тесты воспроизводимы. Три балла удержаны только за конкретную stale documentation проблему, а не за отсутствие публичной ссылки, презентации или визуального просмотра: такие материалы не были обязательны для этого разбора."
+          }
+        ],
+        "total": 90
+      },
+      "case": {
+        "criteria": [
+          {
+            "name": "Соответствие задаче и работоспособность",
+            "score": 23,
+            "max": 25,
+            "awarded": "Основной заявленный backend-сценарий выполнен на первом origin и корректно моделирует February replay boundaries.",
+            "deductions": "Снято 2 балла за несовпадающий real-data UI-контур.",
+            "evidence": [
+              "task.md:19-38",
+              "backend/src/agentic_forecast/agents.py:136-313",
+              "CHK-FIRST-ORIGIN",
+              "CHK-TESTS",
+              "DEF-001"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "DEF-001",
+                "reason": "Расчёт и API соответствуют задаче, но frontend при подключении фактического run не гарантирует корректное отображение weather provenance и по умолчанию не запускает реальный run; это уменьшает полноту заявленного пользовательского сценария."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Исторический вход до cutoff",
+                "implementation": "fit_or_load выбирает только complete hours, где час заканчивается не позднее origin и source_last_utc строго меньше origin; для первого origin manifest заканчивается 2026-01-30T23:00+05:00, cutoff равен 2026-01-31T00:00+05:00.",
+                "value": "Выполнено ключевое требование не использовать записи после момента прогноза и не подмешивать февральскую целевую величину.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/src/agentic_forecast/model.py:46-56",
+                  "backend/artifacts/models/turbine_1-657d876e2ff5d73e.json",
+                  "CHK-FIRST-ORIGIN"
+                ]
+              },
+              {
+                "aspect": "Два отдельных 48-часовых результата",
+                "implementation": "run_first_origin создаёт по 48 rows для каждой turbine, сохраняет model_version/weather_snapshot_id, отмечает 24 February hours и оставляет actual_power_normalized=null.",
+                "value": "Фактический shape соответствует 24-48 часовому hourly прогнозу на двух турбинах и проверен не только unit-тестом, но и реальным запуском.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/src/agentic_forecast/agents.py:235-248",
+                  "backend/artifacts/runs/36be4e0b4d274400ad00f1c68b097174.json",
+                  "CHK-FIRST-ORIGIN"
+                ]
+              },
+              {
+                "aspect": "Архивная погода по координатам",
+                "implementation": "weather.py формирует запрос с двумя координатами, ECMWF IFS, wind_speed_100m/temperature_2m, UTC и 96 forecast hours, затем выбирает 48 valid hours и проверяет eligibility bound.",
+                "value": "Система реализует именно ретроспективный вход, а не подменяет его будущей фактической погодой.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/src/agentic_forecast/config.py:13-16",
+                  "backend/src/agentic_forecast/weather.py:231-236,259-283",
+                  "CHK-FIRST-ORIGIN"
+                ]
+              },
+              {
+                "aspect": "Agentic повторный цикл",
+                "implementation": "Состояния и решения включают select_older_eligible_run, retry_provider, reuse_unchanged_calculation и recalculate с previous_run_id/revision_delta; replay повторяет тот же путь по ежедневным origins.",
+                "value": "Это покрывает получение-подготовку-модель-прогноз-анализ-повторный расчёт как управляемый процесс, а не единичный notebook forecast.",
+                "verification": "source",
+                "evidence": [
+                  "backend/src/agentic_forecast/agents.py:105-133,214-234,282-310",
+                  "backend/tests/test_first_milestone.py:224-245,329-363"
+                ]
+              }
+            ],
+            "scoreReasoning": "23/25: все существенные case requirements присутствуют в backend и первый origin реально завершён. Остаток — интеграционный, не математический: пользовательский React слой не согласован с real DTO и не является самостоятельным запускателем run."
+          },
+          {
+            "name": "Техническая реализация",
+            "score": 23,
+            "max": 25,
+            "awarded": "Техническая реализация зрелая для пятичасового MVP: строгие данные, модели, weather adapter, persistence и API согласованы в backend.",
+            "deductions": "Снято 2 балла: 1 за frontend/backend DTO mismatch и 1 за platform-specific frontend installation.",
+            "evidence": [
+              "backend/src/agentic_forecast/data.py:15-149",
+              "backend/src/agentic_forecast/model.py:46-100",
+              "backend/src/agentic_forecast/weather.py:103-304",
+              "backend/src/agentic_forecast/api.py:35-125",
+              "DEF-001",
+              "DEF-002"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "DEF-001",
+                "reason": "HTTP/backend data model и React data access layer не используют один provenance contract; это подтверждённая проблема взаимодействия компонентов."
+              },
+              {
+                "points": 1,
+                "findingId": "DEF-002",
+                "reason": "Корневой @rolldown/binding-win32-x64-msvc в frontend package-lock вызывает EBADPLATFORM при чистой npm ci на Linux; техническая воспроизводимость клиентского слоя зависит от платформы."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Строгий ingestion и hourly aggregation",
+                "implementation": "data.py проверяет точные пять headers, ID, timestamps, numeric ranges, duplicate times, ambiguous local times, шесть 10-minute slots и строит quality flags без zero-fill power.",
+                "value": "Входная таблица превращается в контролируемую часовую матрицу; плохие строки не незаметно меняют обучение.",
+                "verification": "source",
+                "evidence": [
+                  "backend/src/agentic_forecast/data.py:15-145",
+                  "backend/tests/test_first_milestone.py:24-83"
+                ]
+              },
+              {
+                "aspect": "Модель и cutoff",
+                "implementation": "Для каждой турбины используется HistGradientBoostingRegressor с фиксированными параметрами/seed, двумя погодными features, temporal holdout и manifest identity с dataset hash, cutoff, training count и sklearn version.",
+                "value": "Подход прост, быстрый и воспроизводимый в условиях hackathon; при этом он отделяет measured historical evaluation от forecast inference.",
+                "verification": "source",
+                "evidence": [
+                  "backend/src/agentic_forecast/model.py:22-25,46-94",
+                  "backend/artifacts/models/turbine_1-657d876e2ff5d73e.json"
+                ]
+              },
+              {
+                "aspect": "Weather adapter с provenance",
+                "implementation": "Сохраняются raw response bytes, raw_sha256, request parameters, requested/provider coordinates, units, run time, availability evidence, selected 48 timestamps и coverage. Frozen pointer блокирует бесшумную замену upstream ответа.",
+                "value": "Это редкая для короткого MVP глубина контроля исторического внешнего входа; она делает повторный расчёт проверяемым.",
+                "verification": "source",
+                "evidence": [
+                  "backend/src/agentic_forecast/weather.py:208-228,231-304",
+                  "backend/artifacts/weather/585baea32b7ab144df29.manifest.json",
+                  "backend/tests/test_first_milestone.py:139-160,247-273"
+                ]
+              },
+              {
+                "aspect": "API и state/error semantics",
+                "implementation": "FastAPI валидирует origin/config/mode, сохраняет queued record перед ответом 202, ограничивает один active run и отдаёт 404/409/422. Agent result различает completed/partial/blocked/failed и не фабрикует rows при blocked.",
+                "value": "Компоненты имеют явные границы и семантику отказа, что поддерживает будущий scheduler или UI без неявных исключений.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/src/agentic_forecast/api.py:17-125",
+                  "backend/tests/test_first_milestone.py:195-221",
+                  "CHK-API-CONTEXT"
+                ]
+              },
+              {
+                "aspect": "Интеграционный технический долг",
+                "implementation": "Реальный backend weather manifest и frontend selectors используют разные имена и разные типы variables; кроме того, npm lockfile закрепляет только win32 native binding как root devDependency.",
+                "value": "Это локальные, исправимые проблемы delivery-слоя, но они мешают считать техническую реализацию полностью цельной вне backend.",
+                "verification": "observed",
+                "evidence": [
+                  "frontend/src/App.jsx:320-322,381-398",
+                  "frontend/package-lock.json:14-17",
+                  "CHK-FE-INSTALL",
+                  "DEF-001",
+                  "DEF-002"
+                ]
+              }
+            ],
+            "scoreReasoning": "23/25: backend реализован последовательно и покрыт тестами от CSV до API/error semantics. Два балла удержаны за конкретные интеграционные defects, не за отсутствие LLM: case допускает выбор модели, а deterministic agentic workflow здесь технически обоснован."
+          },
+          {
+            "name": "README и воспроизводимость",
+            "score": 21,
+            "max": 25,
+            "awarded": "Backend-документация и тестовая воспроизводимость сильные, но handoff содержит устаревшие frontend/live-artifact сведения.",
+            "deductions": "Снято 4 балла за stale claims в README и отсутствие документированного рабочего пути React к реальному run.",
+            "evidence": [
+              "README.md:1-94",
+              "frontend/package.json:1-28",
+              "backend/tests/test_first_milestone.py:1-397",
+              "CHK-TESTS",
+              "CHK-FIRST-ORIGIN",
+              "DEF-003"
+            ],
+            "deductionItems": [
+              {
+                "points": 4,
+                "findingId": "DEF-003",
+                "reason": "README.md:88 говорит, что frontend/ отсутствует, хотя он tracked; README.md:92 ссылается на конкретные live run artifacts, отсутствующие в исходном checkout, и не описывает реальное VITE_API_BASE_URL/mock-to-live подключение."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Полный backend runbook",
+                "implementation": "README даёт install, first-origin, replay, uvicorn, pytest команды, API examples, environment variables, artifact directories, status codes и поля результата.",
+                "value": "Для основного backend пути документация достаточна, чтобы независимый проверяющий повторил расчёт и нашёл JSON.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:42-73"
+                ]
+              },
+              {
+                "aspect": "Тесты отражают требования case",
+                "implementation": "Единственный тестовый модуль содержит проверки schema/hash, time localization, hourly shape, cutoff, availability, coverage, frozen snapshot, retry classification, blocked/failed, API contract, recalculation и replay count.",
+                "value": "Это не smoke-only набор: большинство рискованных мест задачи представлены воспроизводимыми assertions.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/tests/test_first_milestone.py:1-397",
+                  "CHK-TESTS"
+                ]
+              },
+              {
+                "aspect": "Фактический первый origin",
+                "implementation": "Команда из README была выполнена в окружении Python 3.11; Open-Meteo retrieval прошёл, output JSON сохранился и содержит completed/96 rows/0 errors.",
+                "value": "Документация подтверждена практикой для основного сценария, а не только статическим чтением.",
+                "verification": "observed",
+                "evidence": [
+                  "CHK-FIRST-ORIGIN",
+                  "backend/artifacts/runs/36be4e0b4d274400ad00f1c68b097174.json"
+                ]
+              },
+              {
+                "aspect": "Несогласованный release handoff",
+                "implementation": "README называется Wind Replay backend и на строке 88 отрицает frontend, но в repository есть frontend/src, package.json и dist; frontend build/install instructions отсутствуют, а указанные e1f.../69a... artifacts отсутствуют до запуска.",
+                "value": "Проверяющий получает неопределённость, является ли UI частью сдачи и какой именно persisted run является воспроизводимым доказательством.",
+                "verification": "observed",
+                "evidence": [
+                  "README.md:1,88,92",
+                  "frontend/package.json:1-28",
+                  "DEF-003"
+                ]
+              }
+            ],
+            "scoreReasoning": "21/25: backend runbook, source links и 27 passing tests обеспечивают хорошую воспроизводимость расчёта. Четыре балла сняты за фактическое расхождение документации с checkout и за неописанный real frontend path; это исправимо документацией/контрактом и не обесценивает backend evidence."
+          },
+          {
+            "name": "Ценность и применимость решения",
+            "score": 14,
+            "max": 15,
+            "awarded": "Подход применим как per-turbine operational forecast MVP и аккуратно ограничивает невалидные station-level выводы.",
+            "deductions": "Снят 1 балл за то, что dashboard-представление provenance не гарантировано для реального результата.",
+            "evidence": [
+              "README.md:12-16,20-22",
+              "backend/src/agentic_forecast/agents.py:278-310",
+              "CHK-FIRST-ORIGIN",
+              "DEF-001"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "DEF-001",
+                "reason": "Без исправления DTO оператор real UI не увидит часть координат, модели, variables и hash, нужных для практической интерпретации прогноза; backend JSON эти данные сохраняет, но delivery не показывает их надёжно."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Практический per-turbine output",
+                "implementation": "Каждая турбина получает отдельные 48 normalized-power values, summary mean/min/max и quality metadata; результаты не смешиваются в неподтверждённый farm total.",
+                "value": "Это пригодно для локального сравнения turbine forecasts и планирования, даже когда официальная мощность станции/normalization denominator не предоставлены.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/artifacts/runs/36be4e0b4d274400ad00f1c68b097174.json",
+                  "README.md:16"
+                ]
+              },
+              {
+                "aspect": "Применимость внешней погоды",
+                "implementation": "Forecast features используют weather variables, выбранные для каждой координаты и исторического run; response units/timezone/coverage проверяются до модели.",
+                "value": "Путь ближе к эксплуатационному входу, чем прогноз только по последнему power lag, и сохраняет информацию о происхождении погодного риска.",
+                "verification": "source",
+                "evidence": [
+                  "backend/src/agentic_forecast/weather.py:138-179,231-283",
+                  "backend/src/agentic_forecast/model.py:22-25"
+                ]
+              },
+              {
+                "aspect": "Безопасное обращение с неизвестными величинами",
+                "implementation": "Проект явно сообщает отсутствие February actuals, capacity, normalization denominator и aggregation rule; farm_aggregate остаётся null с кодом причины.",
+                "value": "Для владельца задачи это снижает риск принять красивый, но физически неверный total за доказанную выработку.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/src/agentic_forecast/agents.py:40-47",
+                  "README.md:12-16",
+                  "backend/artifacts/runs/36be4e0b4d274400ad00f1c68b097174.json"
+                ]
+              },
+              {
+                "aspect": "Граница прикладной готовности",
+                "implementation": "Указание `actual_power_normalized: null` и unavailable February evaluation честно оставляет post-test accuracy как будущую задачу; UI contract issue мешает полному объяснению real run.",
+                "value": "Подход уже имеет полезный MVP-результат, но перед operational adoption потребуется связать UI с теми же provenance и добавить фактическую валидацию, когда появятся actuals.",
+                "verification": "source",
+                "evidence": [
+                  "backend/src/agentic_forecast/agents.py:44-45,241",
+                  "frontend/src/api/forecast.js:5-15",
+                  "DEF-001"
+                ]
+              }
+            ],
+            "scoreReasoning": "14/15: backend отвечает реальной задаче и не выдаёт неизвестный station total за факт. Один балл удержан только за потерю части прикладной объяснимости при подключении React к real response, а не за отсутствие February actuals, которые не были предоставлены кейсом."
+          },
+          {
+            "name": "Потенциал развития и оригинальность подхода",
+            "score": 9,
+            "max": 10,
+            "awarded": "Есть оригинальная и расширяемая основа historical replay, provenance и recalculation.",
+            "deductions": "Снят 1 балл за незавершённый delivery contract, который придётся исправить перед масштабированием.",
+            "evidence": [
+              "README.md:24-40",
+              "backend/src/agentic_forecast/agents.py:316-395",
+              "backend/src/agentic_forecast/weather.py:203-304",
+              "DEF-001"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "DEF-001",
+                "reason": "Несовпадение DTO означает, что добавление новых provenance полей/площадок сначала потребует ручного согласования двух независимых схем; это снижает готовность к расширению, хотя backend boundaries уже хорошие."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Расширение по времени и площадкам",
+                "implementation": "Settings параметризует root/timezone/weather URL/timeout; replay принимает contiguous range, а run artifacts и model versions сохраняются отдельно для каждого origin.",
+                "value": "Новые площадки и периоды можно добавлять через конфигурацию и повторяемые origins без введения брокера, базы или скрытого глобального состояния.",
+                "verification": "source",
+                "evidence": [
+                  "backend/src/agentic_forecast/config.py:19-51",
+                  "backend/src/agentic_forecast/agents.py:316-395"
+                ]
+              },
+              {
+                "aspect": "Оригинальная модель доверия к архиву",
+                "implementation": "Проект хранит raw bytes, digest, schedule-bound evidence и frozen pointer, причём изменившийся upstream response не меняет уже выбранный исторический вход.",
+                "value": "Это сильная идея для любых retrospective ML/evaluation кейсов, где важно доказать, что данные были доступны на момент принятия решения.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:24-32",
+                  "backend/src/agentic_forecast/weather.py:208-228",
+                  "backend/tests/test_first_milestone.py:247-273"
+                ]
+              },
+              {
+                "aspect": "Расширение агентных решений",
+                "implementation": "Decisions уже имеют машинные action/reason/retries/previous_run_id/recalculation_count поля, а status model различает blocked, partial и failed.",
+                "value": "На эту основу можно добавить scheduler, human review или provider fallback, сохранив объяснимую историю решений вместо переписывания orchestration.",
+                "verification": "source",
+                "evidence": [
+                  "backend/src/agentic_forecast/agents.py:105-133,214-234,284-310",
+                  "backend/src/agentic_forecast/api.py:51-73"
+                ]
+              },
+              {
+                "aspect": "Что нужно перед следующим масштабом",
+                "implementation": "Frontend integration сейчас привязана к mockRun и несогласованным полям, поэтому расширение на real multi-origin dashboard не имеет общего typed contract.",
+                "value": "Единая схема результата и contract test — небольшая, но важная ступень между сильным backend prototype и масштабируемым продуктом.",
+                "verification": "source",
+                "evidence": [
+                  "frontend/src/api/forecast.js:1-15",
+                  "frontend/src/App.jsx:259-261,381-398",
+                  "DEF-001"
+                ]
+              }
+            ],
+            "scoreReasoning": "9/10: historical eligibility, frozen provenance, replay and recalculation are meaningful original building blocks. Один балл снят за delivery-layer contract gap; он не отменяет потенциал backend, но требует исправления перед переносом на несколько объектов и реальный UI."
+          }
+        ],
+        "total": 90
+      },
+      "judgeScore": 90,
+      "caseRequirements": [
+        {
+          "requirement": "Строить модель на предоставленной истории до 31.01.2026 без будущего target leakage",
+          "status": "met",
+          "explanation": "Оба organizer CSV совпали с data/dataset_1.csv и data/dataset_2.csv по размеру и SHA-256. Для first origin модельный manifest заканчивается часом 2026-01-30 23:00 local, cutoff 2026-01-31 00:00; February target нигде не подаётся в predict.",
+          "evidence": [
+            "data/dataset_1.csv",
+            "data/dataset_2.csv",
+            "backend/src/agentic_forecast/model.py:46-56",
+            "backend/artifacts/models/turbine_1-657d876e2ff5d73e.json",
+            "CHK-DATA-HASH",
+            "CHK-FIRST-ORIGIN"
+          ]
+        },
+        {
+          "requirement": "Использовать два заданных набора данных и корректно агрегировать 10-minute samples в часы",
+          "status": "met",
+          "explanation": "Загрузка проверяет точные пять заголовков, временные значения и диапазоны, строит hourly bins, counts и flags; неполные часы исключаются из fit. Реальный run записал 23666 и 24784 complete hours для двух турбин соответственно.",
+          "evidence": [
+            "backend/src/agentic_forecast/data.py:15-145",
+            "backend/artifacts/runs/36be4e0b4d274400ad00f1c68b097174.json",
+            "CHK-TESTS",
+            "CHK-FIRST-ORIGIN"
+          ]
+        },
+        {
+          "requirement": "Для каждого origin получать архивный forecast по координатам, доступный на момент расчёта",
+          "status": "met",
+          "explanation": "Weather adapter использует обе проверенные координаты, Open-Meteo Single Runs/ECMWF IFS, schedule-bound eligibility, coverage check, raw response и provenance. В первом origin реально выбран eligible 06Z cycle после отбрасывания более нового кандидата.",
+          "evidence": [
+            "backend/src/agentic_forecast/config.py:13-16",
+            "backend/src/agentic_forecast/weather.py:57-135,231-304",
+            "backend/artifacts/weather/585baea32b7ab144df29.manifest.json",
+            "CHK-FIRST-ORIGIN"
+          ]
+        },
+        {
+          "requirement": "Формировать почасовой прогноз на 24-48 часов по каждой из двух турбин",
+          "status": "met",
+          "explanation": "Наблюдаемый completed first-origin run содержит 96 rows: 48 последовательных hourly values для каждой turbine, с valid_start/valid_end, lead_hours 1..48 и 24 строками February test period на турбину.",
+          "evidence": [
+            "backend/src/agentic_forecast/agents.py:235-247",
+            "backend/artifacts/runs/36be4e0b4d274400ad00f1c68b097174.json",
+            "CHK-FIRST-ORIGIN"
+          ]
+        },
+        {
+          "requirement": "Выполнить полный agentic цикл: погода, подготовка, модель, прогноз, анализ и решение о повторном расчёте",
+          "status": "met",
+          "explanation": "STAGES и сохранённые agent steps покрывают load_data, validate_data, aggregate_hourly, train_or_load_models, retrieve_weather, validate_eligibility, prepare_features, forecast, analyze, decide_recalculation и persist. Тесты отдельно проверяют reuse unchanged calculation и changed-input recalculate.",
+          "evidence": [
+            "backend/src/agentic_forecast/agents.py:20-21,79-83,282-310",
+            "backend/tests/test_first_milestone.py:329-363",
+            "backend/artifacts/runs/36be4e0b4d274400ad00f1c68b097174.json"
+          ]
+        },
+        {
+          "requirement": "Повторять расчёт последовательно для 31.01-28.02 и отражать per-origin outcome",
+          "status": "partial",
+          "explanation": "run_replay реализует 29 daily origins и тест проверяет посещение всех 29 с корректным подсчётом success/blocked/failed. В этом review live end-to-end запуск ограничен первым origin; полный replay подтверждён кодом и unit/domain тестом, но не отдельным live запуском.",
+          "evidence": [
+            "backend/src/agentic_forecast/agents.py:316-395",
+            "backend/tests/test_first_milestone.py:380-397",
+            "README.md:49-55",
+            "CHK-TESTS"
+          ]
+        },
+        {
+          "requirement": "Не смешивать future actual weather/February target в forecast input",
+          "status": "met",
+          "explanation": "Model использует только wind_speed и temperature из eligible historical rows для fit; predict получает только validated weather snapshot; actual_power_normalized для forecast rows остаётся null. Кейс CSV заканчивается 31 января и не содержит February actual generation.",
+          "evidence": [
+            "backend/src/agentic_forecast/model.py:65-83,97-100",
+            "backend/src/agentic_forecast/agents.py:238-247",
+            "backend/artifacts/runs/36be4e0b4d274400ad00f1c68b097174.json",
+            "CHK-DATA-HASH"
+          ]
+        },
+        {
+          "requirement": "Возвращать ошибки и ограничения прозрачно, без fabricated fallback",
+          "status": "met",
+          "explanation": "Invalid units/coverage/eligibility, provider faults и invalid model output приводят к blocked/failed с machine codes; farm aggregate остаётся null с причиной. Тесты проверяют отсутствие forecast rows при blocked и разделение blocked/failed.",
+          "evidence": [
+            "backend/src/agentic_forecast/weather.py:138-200",
+            "backend/src/agentic_forecast/agents.py:249-307",
+            "backend/tests/test_first_milestone.py:162-193,329-378"
+          ]
+        },
+        {
+          "requirement": "Предоставить воспроизводимый API/UI результат",
+          "status": "partial",
+          "explanation": "FastAPI API contract реально стартует и /api/context вернул 200 с horizon_hours=48 и replay capability; backend first origin воспроизводим. React-клиент существует, но его default mock path, runId и provenance selectors не согласованы с real backend response.",
+          "evidence": [
+            "backend/src/agentic_forecast/api.py:35-125",
+            "frontend/src/api/forecast.js:1-15",
+            "frontend/src/App.jsx:259-261,381-398",
+            "CHK-API-CONTEXT",
+            "CHK-FIRST-ORIGIN",
+            "DEF-001"
+          ]
+        }
+      ],
+      "testData": {
+        "provided": [
+          "cases/1/task.txt",
+          "cases/1/case-data/Dataset HackAlemAI для участников 11.03.2023-28.02.2026 - turbine 1.csv",
+          "cases/1/case-data/Dataset HackAlemAI для участников 11.03.2023-28.02.2026 - turbine 2.csv",
+          "cases/1/case-data/HackAlem AI_ Agentic AI для прогнозирования выработки ВЭС.md"
+        ],
+        "used": [
+          "cases/1/case-data/Dataset HackAlemAI для участников 11.03.2023-28.02.2026 - turbine 1.csv",
+          "cases/1/case-data/Dataset HackAlemAI для участников 11.03.2023-28.02.2026 - turbine 2.csv",
+          "cases/1/case-data/HackAlem AI_ Agentic AI для прогнозирования выработки ВЭС.md"
+        ],
+        "checks": [
+          {
+            "input": "Два предоставленных CSV и data/dataset_1.csv/data/dataset_2.csv",
+            "method": "Сравнены размер и SHA-256 каждого organizer CSV с тем файлом, который читает backend.",
+            "result": "Turbine 1: 6049266 bytes, SHA-256 c4c341582fb2dd348b7187f0128cff265fe055f469413871ebb5db50eef58b5b; turbine 2: 6354725 bytes, SHA-256 820578cd18bb557cd30c2e102f3ae5a386dfc6c489a5a15743339c2b017305e5; пары совпали byte-for-byte.",
+            "conclusion": "Вход проверки соответствует данным кейса; подмена другим CSV не обнаружена."
+          },
+          {
+            "input": "Оба case CSV через CLI first-origin",
+            "method": "Выполнен реальный backend сценарий с теми же repository data paths внутри изолированного окружения.",
+            "result": "Run completed, 96 forecast rows, 48 per turbine, 0 blocked, 0 failed, errors=[]; оба weather snapshot и обе model manifests сохранены.",
+            "conclusion": "Основной результат на предоставленной истории воспроизведён."
+          },
+          {
+            "input": "Временные столбцы и quality audit из run result",
+            "method": "Проверены data_quality и model manifest после запуска; дополнительно выполнены соответствующие unit/domain assertions.",
+            "result": "Обе турбины имеют first_local 2023-03-11 и last_local 2026-01-31T23:50+05:00; по 6 ambiguous rows исключены. Complete hours: 23666/24784; cutoff manifest: 2026-01-31T00:00+05:00.",
+            "conclusion": "Timezone/aggregation/cutoff обработаны явно; неполные и ambiguous строки не скрыты."
+          },
+          {
+            "input": "Forecast rows и evaluation поля",
+            "method": "Извлечены counts, lead_hours, in_test_period и actual_power_normalized из сохранённого JSON.",
+            "result": "На каждую турбину 48 rows, lead 1..48, 24 February rows, actual_power_normalized null во всех 48; February MAE/RMSE status=unavailable с причиной отсутствия actuals.",
+            "conclusion": "Будущая целевая выработка не использовалась и не была выдана как accuracy evidence."
+          }
+        ],
+        "limitations": [
+          "Полный 29-origin live replay в этом review не запускался; его последовательность и outcome counting проверены исходниками и тестом test_replay_visits_all_29_origins_and_counts_outcomes.",
+          "Тестовые CSV не содержат February actual power, поэтому accuracy на тестовом месяце нельзя вычислить из предоставленных данных.",
+          "Визуальная проверка React не выполнялась по политике user-owned visual verification; статический контракт и сборочная установка проверены отдельно."
+        ]
+      },
+      "runtime": {
+        "status": "working",
+        "build": "Backend editable installation succeeded and the full backend test command passed. Frontend clean npm install/build was not completed because npm ci failed before build with EBADPLATFORM for the root win32-only rolldown binding; this is recorded as a project finding, while the primary backend scenario remains working.",
+        "start": "FastAPI started in an isolated container and GET /api/context returned HTTP 200 with horizon_hours=48 and replay=true.",
+        "scenario": "CLI first-origin run completed with status=completed, 96 rows, 1 completed origin, 0 blocked, 0 failed and no errors. The result JSON, model manifests, hourly audits and raw weather/provenance files were written.",
+        "environment": "Backend checked with Python 3.11 and declared dependencies in an isolated container; frontend install check used Node 22. No API key or secret was supplied. Open-Meteo was reachable for the first-origin run.",
+        "summary": "Основной численный сценарий реально работает. Runtime status=working относится к backend/API/CLI; frontend build has a confirmed portability failure and real-API field mismatch, so the UI portion is not treated as fully verified.",
+        "checks": [
+          {
+            "command": "python -m pytest -q tests",
+            "result": "27 passed, 1 dependency deprecation warning in 11.10s.",
+            "id": "CHK-TESTS",
+            "stage": "build",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Все repository unit/domain/API tests проходят без изменения case inputs."
+          },
+          {
+            "command": "SHA-256 comparison of case CSVs with data/dataset_1.csv and data/dataset_2.csv",
+            "result": "Both organizer files matched the repository inputs byte-for-byte: turbine 1 6049266 bytes and turbine 2 6354725 bytes, with the documented hashes.",
+            "id": "CHK-DATA-HASH",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Backend must consume the supplied case datasets, not a different or modified input."
+          },
+          {
+            "command": "npm ci --ignore-scripts && npm run build",
+            "result": "fail до build: npm error EBADPLATFORM, @rolldown/binding-win32-x64-msvc@1.2.9 требует os=win32, текущая чистая среда linux-x64.",
+            "id": "CHK-FE-INSTALL",
+            "stage": "build",
+            "status": "fail",
+            "cause": "project",
+            "expected": "Чистая установка frontend dependencies и Vite build должны завершаться успешно в поддерживаемом Node окружении без ручной правки lockfile."
+          },
+          {
+            "command": "python -m uvicorn agentic_forecast.api:app --host 127.0.0.1 --port 8000; GET /api/context",
+            "result": "HTTP 200; horizon_hours=48; capabilities.replay=true; контекст содержит две турбины и origin range.",
+            "id": "CHK-API-CONTEXT",
+            "stage": "start",
+            "status": "pass",
+            "cause": "none",
+            "expected": "FastAPI стартует и возвращает стабильный context DTO без API key."
+          },
+          {
+            "command": "python -m agentic_forecast.cli --first-origin",
+            "result": "status=completed; forecast_rows=96; completed_origins=1; blocked_origins=0; failed_origins=0; errors=[]; per turbine coverage_count=48.",
+            "id": "CHK-FIRST-ORIGIN",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Первый origin строит по 48 validated hourly normalized predictions на каждую турбину и сохраняет artifacts."
+          },
+          {
+            "command": "Сопоставление frontend selectors с backend weather manifest",
+            "result": "Backend keys: model, requested_coordinate, provider_grid_coordinate, variables:string[], raw_sha256; frontend reads source_model, requested_coordinates, provider_grid, variables[].name/unit, raw_response_sha256.",
+            "id": "CHK-DTO-SOURCE",
+            "stage": "scenario",
+            "status": "fail",
+            "cause": "project",
+            "expected": "Real API weather evidence should populate the same provider/model/coordinates/variables/hash fields in the React UI."
+          }
+        ],
+        "limitations": [
+          "Визуальное поведение, layout и browser interaction не проверялись по прямому запрету пользователя; это не основание для снижения оценки.",
+          "Полный replay live не запускался после успешного first-origin; доступность каждого отдельного historical cycle подтверждена кодом, тестами и первым live origin.",
+          "Public live demo URL в материалах не заявлен; это отражено отдельно в liveDemo и не использовано как deduction."
+        ]
+      },
+      "liveDemo": {
+        "status": "none",
+        "url": null,
+        "notes": "Публичная live-ссылка, видео и слайды в проверяемом checkout не заявлены. Локально воспроизводимые CLI/API проверки выполнены; отсутствие публичного URL не использовалось как причина снятия баллов. Визуальный браузерный просмотр не выполнялся по политике проверки."
+      },
+      "fiveHourContext": "Для пятичасового hackathon MVP объём backend сделан амбициозно и уместно: строгий ingestion, timezone edge case, временной cutoff, модель на турбину, историческая weather eligibility, frozen raw snapshots, bounded retries, replay state machine, API и тесты. Не требовались production queue/database, LLM объяснение или station MW conversion; их отсутствие само по себе не снижает баллы. Наиболее заметный незавершённый участок — handoff между backend и уже существующим React preview: это небольшой, но реальный delivery debt, который следует отделять от сильной математической и provenance-части.",
+      "strengths": [
+        "Наблюдаемый first-origin completed: 96 rows, по 48 на турбину, с двумя моделями и архивными погодными snapshot.",
+        "Byte-for-byte совпадение предоставленных case CSV с backend data inputs и сохранение source hashes.",
+        "Строгий cutoff и отсутствие February target leakage; неполные/ambiguous часы явно отражаются в quality audit.",
+        "Историческая eligibility, raw response digest, frozen snapshot и fallback на older eligible weather cycle.",
+        "27 passing backend tests покрывают data, model, weather, retry, blocked/failed, API, recalculation и replay semantics.",
+        "Честные null/limitations для farm aggregate и February accuracy вместо выдуманного operational metric."
+      ],
+      "gaps": [
+        "React real-API adapter и backend weather DTO используют разные имена и типы полей; provenance-панель не гарантирует отображение фактического run.",
+        "Чистая npm ci установка frontend падает на явной win32-only rolldown devDependency в Linux-среде до запуска Vite build.",
+        "README устарел относительно checkout: отрицает наличие frontend и ссылается на конкретные live run artifacts, которых нет в исходном снимке; real frontend startup/integration path не описан."
+      ],
+      "futureAdvice": [
+        {
+          "principle": "Сначала зафиксировать единый typed contract между API и UI",
+          "why": "DEF-001 показывает, что backend сохраняет полную provenance, но React ищет mock-поля и не запускает/не обнаруживает реальный run; эффектом будут пустые model/site/hash/variables значения в real dashboard.",
+          "how": "Для следующего хакатона вынести weather snapshot DTO в один JSON fixture/schema, заменить selectors на backend имена или добавить явный mapper, а затем прогнать frontend against сохранённый completed run до polishing UI.",
+          "findingIds": [
+            "DEF-001"
+          ],
+          "successCheck": "При подстановке реального completed JSON на экране/в компонентных assertions непусты provider, model, run time, requested coordinate, grid, variables и raw hash; mock и live режимы явно различаются.",
+          "timeboxMinutes": 30
+        },
+        {
+          "principle": "Проверять чистую установку на целевой платформе до финального demo",
+          "why": "DEF-002 подтверждён чистым npm ci: root dependency @rolldown/binding-win32-x64-msvc блокирует Linux install до Vite build.",
+          "how": "Убрать platform-specific binding из root devDependencies либо объявить корректные optional platform packages через поддерживаемый Vite/Rolldown путь; проверить `npm ci` и `npm run build` в чистых Node 20/22 Linux и Windows jobs.",
+          "findingIds": [
+            "DEF-002"
+          ],
+          "successCheck": "Чистый checkout устанавливает зависимости и успешно строит dist без ручного удаления пакета на каждой целевой платформе.",
+          "timeboxMinutes": 25
+        },
+        {
+          "principle": "Перед сдачей сверять README с фактическим checkout и demo commands",
+          "why": "DEF-003 оставляет неверное утверждение об отсутствии frontend и ссылки на отсутствующие конкретные run artifacts, поэтому независимый reviewer может не повторить описанное demo.",
+          "how": "Сделать release checklist: проверить каждый path и artifact ID на clean checkout, описать frontend env/start/real-run discovery, разделить mock preview и live backend, затем выполнить команды README из чистой директории.",
+          "findingIds": [
+            "DEF-003"
+          ],
+          "successCheck": "Все перечисленные README paths существуют или создаются указанной командой, а новый reviewer может получить run ID и открыть его через описанный API/UI путь без догадок.",
+          "timeboxMinutes": 20
+        }
+      ],
+      "uncertainties": [
+        "Full 29-origin live replay не запускался в этом review; его loop, counters и error categories подтверждены source/tests, но не отдельным сетевым прогоном.",
+        "Historical Open-Meteo publication moment не доступен как exact provider timestamp; проект использует явно обозначенный conservative schedule bound, что является documented assumption.",
+        "February actual generation отсутствует в предоставленных CSV, поэтому operational MAE/RMSE за тестовый месяц не установлены.",
+        "Визуальное отображение React и browser interaction не наблюдались из-за user-owned visual verification policy."
+      ],
+      "reviewPolicyVersion": 2,
+      "assessmentStatus": "ready",
+      "findings": [
+        {
+          "id": "STR-001",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Основной first-origin backend сценарий реально завершился с 96 прогнозными строками.",
+          "expected": "По 48 последовательных hourly normalized predictions для каждой из двух турбин и completed status.",
+          "actual": "CHK-FIRST-ORIGIN: completed, 96 rows, 48+48, 0 blocked, 0 failed, errors=[]; run JSON и manifests сохранены.",
+          "evidence": [
+            "backend/artifacts/runs/36be4e0b4d274400ad00f1c68b097174.json",
+            "CHK-FIRST-ORIGIN"
+          ],
+          "checkIds": [
+            "CHK-FIRST-ORIGIN"
+          ]
+        },
+        {
+          "id": "STR-002",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Предоставленные case CSV используются без изменения, а cutoff исключает будущие target rows.",
+          "expected": "Repository input hashes совпадают с organizer files; training ends before first origin; February actual is not an input.",
+          "actual": "CHK-DATA-HASH: оба размера и SHA-256 совпали; model manifest last_training_hour=2026-01-30T23:00+05:00 and cutoff=2026-01-31T00:00+05:00; actual_power_normalized null.",
+          "evidence": [
+            "data/dataset_1.csv",
+            "data/dataset_2.csv",
+            "backend/src/agentic_forecast/model.py:46-56",
+            "backend/artifacts/models/turbine_1-657d876e2ff5d73e.json",
+            "CHK-DATA-HASH"
+          ],
+          "checkIds": [
+            "CHK-DATA-HASH",
+            "CHK-FIRST-ORIGIN"
+          ]
+        },
+        {
+          "id": "STR-003",
+          "kind": "strength",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Historical weather input получает provenance и eligibility validation, а frozen snapshot защищает replay от новых upstream bytes.",
+          "expected": "Только eligible 48-hour archive run используется; raw response, digest, coverage and availability evidence сохраняются.",
+          "actual": "weather.py проверяет units/timezone/model/coverage, schedule-bound, raw_sha256 и frozen manifest; tests проверяют immutability и older-cycle fallback.",
+          "evidence": [
+            "backend/src/agentic_forecast/weather.py:103-135,208-228,231-304",
+            "backend/tests/test_first_milestone.py:105-160,224-273"
+          ],
+          "checkIds": [
+            "CHK-TESTS",
+            "CHK-FIRST-ORIGIN"
+          ]
+        },
+        {
+          "id": "STR-004",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Repository backend tests проходят полным набором.",
+          "expected": "Все тесты из backend/tests/test_first_milestone.py должны пройти.",
+          "actual": "CHK-TESTS: 27 passed, 1 deprecation warning.",
+          "evidence": [
+            "backend/tests/test_first_milestone.py:1-397",
+            "CHK-TESTS"
+          ],
+          "checkIds": [
+            "CHK-TESTS"
+          ]
+        },
+        {
+          "id": "LIM-001",
+          "kind": "limitation",
+          "verification": "source",
+          "responsibility": "unknown",
+          "claim": "Нельзя доказать February actual accuracy или станционный aggregate из данных кейса.",
+          "expected": "Для actual accuracy нужны February target values, для aggregate — официальное правило и normalization denominator.",
+          "actual": "Кейс CSV заканчивается 31 января; result evaluation unavailable, farm_aggregate=null с structured reason.",
+          "evidence": [
+            "README.md:12-16",
+            "backend/src/agentic_forecast/agents.py:40-47",
+            "backend/artifacts/runs/36be4e0b4d274400ad00f1c68b097174.json"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "LIM-002",
+          "kind": "limitation",
+          "verification": "source",
+          "responsibility": "external_service",
+          "claim": "Exact historical publication timestamp Open-Meteo не доказан, поэтому выбран conservative schedule bound.",
+          "expected": "Exact timestamp был бы более сильным evidence availability на момент origin.",
+          "actual": "Проект явно записывает schedule_bound, исходные URL, delay and safety margin; это не объявляется exact publication log.",
+          "evidence": [
+            "README.md:28-30",
+            "backend/src/agentic_forecast/weather.py:69-100"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "LIM-003",
+          "kind": "limitation",
+          "verification": "unverified",
+          "responsibility": "review_environment",
+          "claim": "Визуальное поведение React в браузере не установлено.",
+          "expected": "Visual/browser testing выполняется пользователем согласно заданной политике.",
+          "actual": "Проверены только source contract, npm installation behavior и backend/API; screenshot/browser automation не применялись.",
+          "evidence": [
+            "frontend/src/App.jsx:193-463",
+            "frontend/src/styles.css:1-281"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "DEF-001",
+          "kind": "defect",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Frontend real-API provenance DTO не совпадает с backend weather snapshot DTO.",
+          "expected": "При подключении real GET /api/runs/{run_id} React должен отобразить provider/model/time, requested coordinate, grid point, variables, raw hash и availability из фактического ответа.",
+          "actual": "Backend отдаёт model, requested_coordinate, provider_grid_coordinate, variables как массив строк и raw_sha256; React читает source_model, requested_coordinates, provider_grid, variables[].name/unit и raw_response_sha256. getForecastRun также default-ит mock runId и не создаёт run.",
+          "evidence": [
+            "backend/src/agentic_forecast/weather.py:260-283",
+            "frontend/src/api/forecast.js:1-15",
+            "frontend/src/App.jsx:259-261,320-322,381-398",
+            "CHK-DTO-SOURCE"
+          ],
+          "checkIds": [
+            "CHK-DTO-SOURCE"
+          ]
+        },
+        {
+          "id": "DEF-002",
+          "kind": "defect",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Чистая frontend установка блокируется platform-specific root dependency.",
+          "expected": "Комбинация `npm ci` и `npm run build` из frontend должна быть воспроизводима в обычном Node окружении без ручной правки lockfile.",
+          "actual": "CHK-FE-INSTALL: npm ci --ignore-scripts завершился EBADPLATFORM, потому что @rolldown/binding-win32-x64-msvc@1.2.9 требует win32, а проверяемый Node контейнер был linux-x64; Vite build не начался.",
+          "evidence": [
+            "frontend/package-lock.json:14-17",
+            "frontend/package.json:12-25",
+            "CHK-FE-INSTALL"
+          ],
+          "checkIds": [
+            "CHK-FE-INSTALL"
+          ]
+        },
+        {
+          "id": "DEF-003",
+          "kind": "defect",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "README содержит устаревшие и неполные сведения о frontend и persisted demo artifacts.",
+          "expected": "Документация должна соответствовать tracked checkout и позволять повторить описанный demo path.",
+          "actual": "README.md:88 утверждает, что frontend/ отсутствует, хотя frontend/package.json и frontend/src существуют; README.md:92 ссылается на e1f... и 69a... run files, отсутствующие в исходном checkout, и не описывает VITE_API_BASE_URL/mock-to-live integration.",
+          "evidence": [
+            "README.md:88,92",
+            "frontend/package.json:1-28",
+            "frontend/src/api/forecast.js:1-15"
+          ],
+          "checkIds": []
+        }
+      ],
+      "gapFindingIds": [
+        "DEF-001",
+        "DEF-002",
+        "DEF-003"
+      ]
+    }
+  ],
+  "score": 90.0,
+  "status": "complete",
+  "expectedJudges": 1
+}

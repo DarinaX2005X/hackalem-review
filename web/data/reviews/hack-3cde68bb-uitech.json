@@ -1,0 +1,859 @@
+{
+  "methodVersion": 4,
+  "repoId": "hack-3cde68bb-uitech",
+  "repoUrl": "https://github.com/BAITC-Hacks/hack-3cde68bb-uitech",
+  "caseId": 5,
+  "snapshot": "78b0c7d98b1b898bd2507e050bfcb11b38b0ec1e",
+  "judges": [
+    {
+      "methodVersion": 4,
+      "repoId": "hack-3cde68bb-uitech",
+      "caseId": 5,
+      "model": "GPT-5.6 Luna",
+      "snapshot": "78b0c7d98b1b898bd2507e050bfcb11b38b0ec1e",
+      "overallSummary": "SupplyMind — целостный MVP для расчёта пополнения склада. На синтетическом контракте воспроизведён основной путь от набора данных до расчёта, ручного утверждения и CSV по поставщику; чувствительность к транзиту, сезонности, stockout, выбросам, росту и единицам закупки подтверждена HTTP-проверками и тестами. Импорт предоставленных реальных книг IEK и Systeme Electric также работает, но корректно оставляет наборы в PARTIAL: в IEK нет подтверждённого текущего свободного остатка и дневного календаря наличия, а в Systeme Electric не подтверждены область остатков/транзита, категории и полнота продаж. Это сильная и честная пятичасовая реализация, но бизнес-эффект и точность на данных компании пока не измерены backtest-ом, а совместимость CSV с конкретным форматом учётной системы не доказана.",
+      "global": {
+        "criteria": [
+          {
+            "name": "Ценность решения",
+            "score": 24,
+            "max": 25,
+            "awarded": "Высокая практическая ценность для менеджера закупа; почти полный балл.",
+            "deductions": "1 балл удержан за отсутствие измерения фактического снижения дефицита, избыточного запаса или трудозатрат на историческом срезе.",
+            "evidence": [
+              "README.md:1-18",
+              "docs/business_process.md:1-29",
+              "docs/algorithms.md:111",
+              "captures/20261002T064449424604-api-scenario.stdout.log"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "F-BACKTEST",
+                "reason": "Без исторического backtest-а решение показывает корректность механики на синтетических примерах, но не подтверждает величину экономического эффекта и точность прогноза для целевой закупочной команды."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Понятная операционная проблема",
+                "implementation": "README и business_process описывают замену редкого ручного Excel-расчёта единым циклом: загрузить источники, увидеть дефицит и рекомендуемое количество, проверить основания, скорректировать и утвердить.",
+                "value": "Решение адресует одновременно две дорогие ошибки процесса — дефицит и закупку под разовый всплеск — поэтому ценность понятна именно целевому пользователю, а не только технической аудитории.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:1-18",
+                  "docs/business_process.md:1-29"
+                ]
+              },
+              {
+                "aspect": "Решение объединяет факторы, которые обычно разнесены по таблицам",
+                "implementation": "CalculationEngine индексирует продажи, остатки, транзит, наличие, покрытия продаж и входящих поставок; затем строит потребность из спроса, страхового запаса, свободного остатка и подходящего транзита.",
+                "value": "Менеджер получает одно проверяемое решение вместо ручного сведения нескольких выгрузок. Особенно полезно, что приход после горизонта не маскирует ранний дефицит.",
+                "verification": "source",
+                "evidence": [
+                  "backend/src/main/java/kz/uitech/CalculationEngine.java:34-58",
+                  "backend/src/main/java/kz/uitech/CalculationEngine.java:136-171",
+                  "captures/20261002T064501984337-api-07_confirmed_stockout.stdout.log"
+                ]
+              },
+              {
+                "aspect": "Эксплицитная польза от защиты регулярного спроса",
+                "implementation": "Детектор группирует продажи по документу и по клиенту за день, применяет медиану/MAD и сохраняет anomaly-журнал; исключённое количество попадает в факторы расчёта и объяснение.",
+                "value": "Разовая покупка не превращается автоматически в повторную закупочную норму. Это непосредственно отвечает проблеме кейса и делает пользу для оборотного капитала очевидной.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/src/main/java/kz/uitech/CalculationEngine.java:204-232",
+                  "captures/20261002T064502012447-api-08_one_off_order.stdout.log",
+                  "captures/20261002T064502006457-api-09_split_customer_order.stdout.log"
+                ]
+              },
+              {
+                "aspect": "Польза сохраняется при реальных неполных данных",
+                "implementation": "Импортеры не подставляют месячный остаток вместо текущего снимка, не превращают неподтверждённый транзит в доступный и возвращают PARTIAL с issues/reported-полями.",
+                "value": "Для закупок безопаснее получить объяснимую блокировку позиции, чем получить уверенно выглядящий, но неверный заказ. Это снижает риск автоматизировать ошибку в исходных Excel.",
+                "verification": "observed",
+                "evidence": [
+                  "captures/20261002T064725629036-real-iek-import311.stdout.log",
+                  "captures/20261002T064821937309-real-systeme-import311.stdout.log",
+                  "backend/src/main/java/kz/uitech/IekImporter.java:102-111"
+                ]
+              }
+            ],
+            "scoreReasoning": "Практическая ценность доказана связным пользовательским сценарием и конкретными чувствительностями, а не только заявлением в README. Один балл удержан не за отсутствие production-интеграции, которая не требовалась для MVP, а за подтверждённое в документации отсутствие количественного backtest-а: пока нельзя сказать, насколько расчёт улучшит реальные KPI закупок."
+          },
+          {
+            "name": "Результат и качество решения",
+            "score": 18,
+            "max": 20,
+            "awarded": "Рабочий и хорошо защищённый прототип с прозрачным результатом.",
+            "deductions": "2 балла удержаны: 1 за отсутствие backtest-а качества прогноза и 1 за отсутствие проверенного контракта совместимости с учётной системой.",
+            "evidence": [
+              "captures/20261002T064449424604-api-scenario.stdout.log",
+              "backend/src/test/java/kz/uitech/ApiTest.java:63-86",
+              "backend/src/test/java/kz/uitech/CalculationTest.java:25-92",
+              "docs/algorithms.md:111-112",
+              "docs/algorithms.md:212"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "F-BACKTEST",
+                "reason": "Функциональные assertions подтверждают арифметику и статусы, но не проверяют ошибку прогноза на временном отложенном периоде; для качества результата это оставляет важную границу."
+              },
+              {
+                "points": 1,
+                "findingId": "F-ACCOUNTING-CONTRACT",
+                "reason": "CSV формируется и защищён утверждением, но репозиторий сам отмечает, что совместимость с конкретным форматом учётной системы ещё нужно проверить; пользовательский результат не доказан как готовый к импорту в 1С."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Основной сценарий реально исполняется",
+                "implementation": "POST /datasets принимает fixture, POST /calculations создаёт DRAFT, расчёт возвращает строки по товарам, POST /approve переводит актуальную версию в APPROVED, GET /export отдаёт CSV выбранного поставщика.",
+                "value": "Это полноценный результат для MVP, а не только библиотека формул: пользователь может дойти до проверяемого файла заказа.",
+                "verification": "observed",
+                "evidence": [
+                  "captures/20261002T064449424604-api-scenario.stdout.log",
+                  "backend/src/main/java/kz/uitech/ApiController.java:23-66"
+                ]
+              },
+              {
+                "aspect": "Результат объясним по каждой строке",
+                "implementation": "Строка содержит factors, history, forecast, anomalies, assumptions, warnings, first_stockout_date, urgency и текстовую формулу спрос − запас − остаток − транзит.",
+                "value": "Закупщик может проверить происхождение количества и увидеть, почему позиция готова, требует допущения или заблокирована; это materially лучше непрозрачного числа.",
+                "verification": "source",
+                "evidence": [
+                  "backend/src/main/java/kz/uitech/CalculationEngine.java:144-171",
+                  "backend/src/main/java/kz/uitech/CalculationEngine.java:175-179",
+                  "frontend/src/ItemDetail.tsx:1-260"
+                ]
+              },
+              {
+                "aspect": "Контроль ручного решения и версии",
+                "implementation": "Изменение финального количества требует причины, проверяет MOQ/кратность, увеличивает revision и сбрасывает approval; устаревшая revision получает конфликт, экспорт разрешён только для актуальной утверждённой версии.",
+                "value": "Запрет автоматической отправки из кейса соблюдён технически, а не декларативно. Одновременно сохраняется аудируемость ручного решения.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/src/main/java/kz/uitech/LocalStore.java:76-128",
+                  "backend/src/test/java/kz/uitech/ApiTest.java:63-82",
+                  "captures/20261002T064449424604-api-scenario.stdout.log"
+                ]
+              },
+              {
+                "aspect": "Неполные данные не превращаются в нулевой заказ",
+                "implementation": "Validation и CalculationEngine проверяют покрытие продаж, наличие, inbound coverage, единицы закупки, политики и возвраты; NEEDS_INPUT выдаёт null-количество и не допускает approve.",
+                "value": "Это важная характеристика качества результата для закупок: отсутствие факта остановит утверждение вместо того, чтобы незаметно исказить арифметику.",
+                "verification": "source",
+                "evidence": [
+                  "backend/src/main/java/kz/uitech/CalculationEngine.java:68-96",
+                  "backend/src/main/java/kz/uitech/Validation.java:89-107",
+                  "backend/src/test/java/kz/uitech/ApiTest.java:85"
+                ]
+              }
+            ],
+            "scoreReasoning": "Функциональная целостность высокая: она подтверждена unit/domain, API и PostgreSQL persistence тестами, а также живым HTTP-сценарием. До максимума не хватает не ещё одной UI-функции, а доказательства качества прогноза на историческом отложенном периоде и проверенного downstream-контракта экспорта."
+          },
+          {
+            "name": "Инновационность",
+            "score": 15,
+            "max": 15,
+            "awarded": "Сильный нестандартный для быстрого MVP подход: устойчивый, объяснимый расчёт с явной неопределённостью.",
+            "deductions": "Снятий нет.",
+            "evidence": [
+              "backend/src/main/java/kz/uitech/CalculationEngine.java:94-172",
+              "backend/src/main/java/kz/uitech/CalculationEngine.java:204-232",
+              "docs/algorithms.md:40-91",
+              "captures/20261002T064501984337-api-07_confirmed_stockout.stdout.log"
+            ],
+            "deductionItems": [],
+            "awardedDetails": [
+              {
+                "aspect": "Устойчивое обнаружение выбросов вместо простого порога",
+                "implementation": "Продажи нормализуются по сезонности, документные и клиентские дневные группы сравниваются с медианой и MAD; повторяющийся крупный паттерн сохраняется, а изолированный получает reason и decision.",
+                "value": "Подход одновременно снижает влияние разовой продажи и не обещает, что вся крупная оптовая продажа всегда является ошибкой. Для пятичасового прототипа это содержательная собственная методология.",
+                "verification": "source",
+                "evidence": [
+                  "backend/src/main/java/kz/uitech/CalculationEngine.java:204-232",
+                  "docs/algorithms.md:40-64"
+                ]
+              },
+              {
+                "aspect": "Stockout моделируется как упущенный спрос, а не как нулевая история",
+                "implementation": "На подтверждённых днях наличия строится базовая дневная скорость, на днях stockout добавляется estimated_lost_qty; наблюдаемое состояние и оценка остаются отдельными полями history.",
+                "value": "Это нестандартно относительно наивного среднего по фактическим продажам и напрямую уменьшает систематическое занижение заказа после дефицита.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/src/main/java/kz/uitech/CalculationEngine.java:113-147",
+                  "captures/20261002T064501984337-api-07_confirmed_stockout.stdout.log"
+                ]
+              },
+              {
+                "aspect": "Сезонность снимается и возвращается в правильных местах пути",
+                "implementation": "Исторические продажи делятся на сезонный индекс для оценки базы, а прогноз умножается на индекс будущего месяца; provided-профиль выбирается с приоритетом product → category → supplier, estimate требует достаточной истории.",
+                "value": "Решение не просто прибавляет сезонный коэффициент к среднему, а избегает двойного учёта сезонности и блокирует недоказанную оценку.",
+                "verification": "source",
+                "evidence": [
+                  "backend/src/main/java/kz/uitech/CalculationEngine.java:94-105",
+                  "backend/src/main/java/kz/uitech/CalculationEngine.java:113-142",
+                  "captures/20261002T064502090453-api-06_seasonal_peak.stdout.log"
+                ]
+              },
+              {
+                "aspect": "Учет транзита по дате и горизонту",
+                "implementation": "eligible_inbound_qty включает только подтверждённые поступления до исключённой правой границы горизонта; forecast отдельно показывает день первого дефицита и urgency относительно ближайшей поставки.",
+                "value": "Менеджер видит не только итоговый объём, но и риск того, что поздний приход не спасает ранний stockout. Это даёт собственное преимущество над статическим вычитанием всего транзита.",
+                "verification": "source",
+                "evidence": [
+                  "backend/src/main/java/kz/uitech/CalculationEngine.java:149-166",
+                  "fixtures/contract/12_inbound_outside_horizon.json",
+                  "docs/ACCEPTANCE_CASES.md:26"
+                ]
+              }
+            ],
+            "scoreReasoning": "В инновационности есть конкретное авторское сочетание robust outlier detection, клиентского дневного агрегирования, stockout compensation, сезонной нормализации и объяснимой арифметики. Все ключевые идеи видны в реализации и проходят контрольные сценарии, поэтому критерий получает полный балл."
+          },
+          {
+            "name": "Потенциал развития и масштабирования",
+            "score": 17,
+            "max": 20,
+            "awarded": "Хорошая архитектурная база для расширения на поставщиков, склады и устойчивые данные.",
+            "deductions": "3 балла удержаны: 1 за отсутствие backtest-контура и 2 за отсутствие проверенного интеграционного контракта с учётной системой.",
+            "evidence": [
+              "backend/src/main/java/kz/uitech/Model.java:14-103",
+              "backend/src/main/java/kz/uitech/PostgresRepository.java:1-220",
+              "docs/algorithms.md:111-112",
+              "docs/algorithms.md:212-250"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "F-BACKTEST",
+                "reason": "Без временных срезов и метрик точности нельзя безопасно сравнивать версии модели при дальнейшем масштабировании на новые склады или поставщиков."
+              },
+              {
+                "points": 2,
+                "findingId": "F-ACCOUNTING-CONTRACT",
+                "reason": "CSV является хорошим MVP-выходом, но отсутствие согласованного формата 1С/учётной системы оставляет главный operational hand-off за пределами доказанного решения."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Доменная модель разделяет сущности и происхождение",
+                "implementation": "Dataset содержит отдельные Product, Sale, Inventory, Inbound, Availability, Seasonality, Coverage, Source и Issue; ссылки на source_id/sheet/cell_range сохраняются на уровне фактов.",
+                "value": "Новые поставщики и формы входа можно добавлять адаптерами, не смешивая месячные отчёты, транзит и продажи в одну плоскую таблицу.",
+                "verification": "source",
+                "evidence": [
+                  "backend/src/main/java/kz/uitech/Model.java:14-79",
+                  "docs/api-contract.md:1-80"
+                ]
+              },
+              {
+                "aspect": "Есть адаптеры для двух поставщиков и потоковая обработка XLSX",
+                "implementation": "SystemeImporter и IekImporter ожидают шесть ролей, валидируют шаблоны и сохраняют исходные ссылки; XlsxReader используется для обработки больших книг без требования держать весь распакованный workbook в heap.",
+                "value": "Это уже не fixture-only код: фактические книги обоих поставщиков прошли multipart import и получили структурированные частичные наборы.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/src/main/java/kz/uitech/SystemeImporter.java:29-114",
+                  "backend/src/main/java/kz/uitech/IekImporter.java:64-111",
+                  "captures/20261002T064725629036-real-iek-import311.stdout.log",
+                  "captures/20261002T064821937309-real-systeme-import311.stdout.log"
+                ]
+              },
+              {
+                "aspect": "PostgreSQL и миграции подготовлены для долговременного хранения",
+                "implementation": "PostgresRepository, Flyway migrations, optimistic revision and row mutation tests обеспечивают сохранение dataset/calculation, correction history и rollback/повторяемость миграции.",
+                "value": "Переход от file-профиля к PostgreSQL не требует переписывать доменную модель, а контроль версий важен при нескольких менеджерах.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/src/main/java/kz/uitech/PostgresRepository.java:1-220",
+                  "backend/src/test/java/kz/uitech/PostgresRepositoryTest.java:1-120",
+                  "captures/20261002T065126568815-postgres-tests.stdout.log"
+                ]
+              },
+              {
+                "aspect": "Расширение политик уже предусмотрено в API",
+                "implementation": "Расчёт принимает supplier policies, category policies, assumptions, forecast configuration, warehouse и фильтры поставщика/категории; frontend имеет настройки и редактор источников.",
+                "value": "Новые правила безопасности, категории, складские профили и явные допущения можно вводить контрактно, не зашивая их в один сценарий.",
+                "verification": "source",
+                "evidence": [
+                  "backend/src/main/java/kz/uitech/Model.java:81-103",
+                  "backend/src/main/java/kz/uitech/Validation.java:89-107",
+                  "frontend/src/Settings.tsx:1-260"
+                ]
+              }
+            ],
+            "scoreReasoning": "Слой данных, адаптеры, PostgreSQL и явные политики дают реальный путь к масштабированию. Снижение касается именно эксплуатационной готовности следующего шага: без backtest сложно управлять качеством модели, а без согласованного downstream-контракта масштабирование остановится на CSV-файле."
+          },
+          {
+            "name": "Презентация, демо и ответы на вопросы",
+            "score": 19,
+            "max": 20,
+            "awarded": "README и репозиторий дают ясное воспроизводимое локальное демо; устное выступление не оценивалось.",
+            "deductions": "1 балл удержан за то, что README прямо оставляет совместимость выходного CSV с учётной системой на последующую проверку.",
+            "evidence": [
+              "README.md:35-190",
+              "docs/USER_GUIDE.md:1-220",
+              "docs/ACCEPTANCE_CASES.md:1-58",
+              "captures/20261002T064449424604-api-scenario.stdout.log"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "F-ACCOUNTING-CONTRACT",
+                "reason": "Документация подробно показывает локальное демо, но не содержит подтверждённого примера приёмки CSV конкретной учётной системой; для демонстрации end-to-end ценности это небольшой пробел."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "README объясняет запуск и границы",
+                "implementation": "README фиксирует Java/Maven/Node/Python версии, Docker Compose, file и PostgreSQL профили, API demo, synthetic fixtures, реальные архивы и ограничения проверки.",
+                "value": "Другой инженер может понять, что запускать, какие данные нужны и почему реальные наборы имеют PARTIAL, не принимая ограничения за скрытые ошибки.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:35-158"
+                ]
+              },
+              {
+                "aspect": "В репозитории есть сценарии для демонстрации требований",
+                "implementation": "frontend перечисляет семь demo-сценариев, fixtures содержат 17 контрактных случаев, а ACCEPTANCE_CASES связывает каждый случай с входным изменением и ожидаемым числом.",
+                "value": "Демо можно показывать по отдельным тезисам кейса: выброс, split customer order, stockout, сезонный пик, рост и missing stock.",
+                "verification": "source",
+                "evidence": [
+                  "frontend/src/App.tsx:18-34",
+                  "docs/ACCEPTANCE_CASES.md:7-43",
+                  "fixtures/contract/01_baseline.json"
+                ]
+              },
+              {
+                "aspect": "Демо воспроизводится через обычный API",
+                "implementation": "tools/demo_backend.py создаёт synthetic dataset, вызывает calculation, при флаге approve утверждает актуальную revision и сохраняет CSV по supplier_id.",
+                "value": "Даже без внешнего ключа и без публичного live URL результат можно получить локально, что соответствует оговорённой методике оценки.",
+                "verification": "observed",
+                "evidence": [
+                  "tools/demo_backend.py:1-47",
+                  "captures/20261002T064449424604-api-scenario.stdout.log"
+                ]
+              },
+              {
+                "aspect": "Документация честно отделяет сделанное от плана",
+                "implementation": "algorithms.md явно отмечает отсутствие backtest-а, автоматической оценки stockout по месячным данным, прямого обмена с 1С и отправки поставщику, а README не выдаёт функциональные тесты за бизнес-метрики.",
+                "value": "Такой уровень честности повышает доверие к демо: участник не маскирует неопределённость и не обещает production-эффект, которого репозиторий не измерял.",
+                "verification": "source",
+                "evidence": [
+                  "docs/algorithms.md:82-91",
+                  "docs/algorithms.md:111-120",
+                  "docs/algorithms.md:212-250"
+                ]
+              }
+            ],
+            "scoreReasoning": "Для доступного формата оценки README и локальное демо сильные: запуск, роли данных, acceptance cases и ограничения связаны между собой. Устная презентация, видео и визуальная проверка здесь не придумываются. Один балл удержан за отсутствующий downstream-пруф, а не за отсутствие публичной ссылки."
+          }
+        ],
+        "total": 93
+      },
+      "case": null,
+      "judgeScore": 93,
+      "caseRequirements": [
+        {
+          "requirement": "Расчёт базовой потребности по артикулу с учётом продаж, текущего остатка, товаров в пути, категории и прогноза прироста; изменение входного источника меняет результат.",
+          "status": "met",
+          "explanation": "Расчёт принимает все перечисленные входы в доменной модели и использует их в engine. Контрактные случаи меняют остаток, inbound, категорию/страховой запас и growth и дают разные рекомендации. Для неполных реальных книг отсутствующие факты не подменяются молча: набор маркируется PARTIAL и позиция блокируется до уточнения.",
+          "evidence": [
+            "backend/src/main/java/kz/uitech/CalculationEngine.java:34-58",
+            "backend/src/main/java/kz/uitech/CalculationEngine.java:136-171",
+            "docs/ACCEPTANCE_CASES.md:9-30",
+            "captures/20261002T064449424604-api-scenario.stdout.log"
+          ]
+        },
+        {
+          "requirement": "Учёт сезонности и устойчивого роста спроса.",
+          "status": "met",
+          "explanation": "Provided seasonality применяется к прогнозному месяцу после снятия сезонности с исторической базы; historical growth строит линейный тренд по полным месяцам. Сценарии seasonal_peak и sustained_growth дали 360 и 180 purchase units соответственно, а source-level тест проверяет недостаточную историю для estimate.",
+          "evidence": [
+            "backend/src/main/java/kz/uitech/CalculationEngine.java:94-142",
+            "captures/20261002T064502090453-api-06_seasonal_peak.stdout.log",
+            "captures/20261002T064502124415-api-10_sustained_growth.stdout.log",
+            "backend/src/test/java/kz/uitech/CalculationTest.java:73-80"
+          ]
+        },
+        {
+          "requirement": "Оценка и компенсация упущенного спроса в подтверждённые периоды отсутствия товара.",
+          "status": "met",
+          "explanation": "На stockout-днях engine сохраняет actual_sales_qty, regular_sales_qty и estimated_lost_qty, а lost demand добавляется к истории и объяснению. Контрольный сценарий дал estimated lost demand 100 и заказ 150, при этом первый дефицит остаётся видимым.",
+          "evidence": [
+            "backend/src/main/java/kz/uitech/CalculationEngine.java:113-147",
+            "fixtures/contract/07_confirmed_stockout.json",
+            "captures/20261002T064501984337-api-07_confirmed_stockout.stdout.log",
+            "backend/src/test/java/kz/uitech/CalculationTest.java:30-35"
+          ]
+        },
+        {
+          "requirement": "Выявление и исключение разовой крупной продажи, включая один клиент с несколькими накладными, без исключения устойчивого повторяющегося оптового спроса.",
+          "status": "met",
+          "explanation": "Детектор проверяет документные группы и customer-day группы, исключает только изолированные группы выше robust-порога, сохраняет anomaly-журнал и оставляет повторяющиеся крупные заказы. One-off и split-customer дали excluded_sales_qty 1000 и по одной anomaly, а repeated_large_orders покрыт CalculationTest.",
+          "evidence": [
+            "backend/src/main/java/kz/uitech/CalculationEngine.java:204-232",
+            "captures/20261002T064502012447-api-08_one_off_order.stdout.log",
+            "captures/20261002T064502006457-api-09_split_customer_order.stdout.log",
+            "backend/src/test/java/kz/uitech/CalculationTest.java:45-56"
+          ]
+        },
+        {
+          "requirement": "Итоговый список по поставщикам с объяснением каждой позиции, просмотром и экспортом.",
+          "status": "met",
+          "explanation": "Результат содержит supplier_groups, строковые factors/explanation и отдельные item details; экспорт принимает supplier_id и отдаёт только положительные финальные количества актуальной APPROVED revision. На двух поставщиках фактически получены 150 и 130 и два CSV с объяснениями.",
+          "evidence": [
+            "backend/src/main/java/kz/uitech/CalculationEngine.java:46-58",
+            "backend/src/main/java/kz/uitech/LocalStore.java:112-121",
+            "captures/20261002T064449424604-api-scenario.stdout.log",
+            "frontend/src/App.tsx:80-90"
+          ]
+        },
+        {
+          "requirement": "Заказ нельзя отправить без ручного подтверждения ответственного сотрудника.",
+          "status": "met",
+          "explanation": "В API нет отправки поставщику; approve требует approved_by, актуальную revision, подтверждение warnings/assumptions и отсутствие NEEDS_INPUT. CSV до approval возвращает конфликт, а после approval доступен.",
+          "evidence": [
+            "backend/src/main/java/kz/uitech/LocalStore.java:97-121",
+            "backend/src/main/java/kz/uitech/ApiController.java:55-66",
+            "backend/src/test/java/kz/uitech/ApiTest.java:63-80",
+            "docs/business_process.md:88-89"
+          ]
+        },
+        {
+          "requirement": "Клиентские данные должны быть обезличены, а клиентские всплески не должны требовать раскрытия личности.",
+          "status": "met",
+          "explanation": "В synthetic fixtures customer_id используются как обезличенные идентификаторы для проверки алгоритма; реальные импортёры не изобретают customer_id и добавляют CUSTOMER_ID_UNAVAILABLE, поэтому реальные данные не становятся менее приватными ради детектора. Алгоритм может работать по накладным, а customer-day анализ включается только при наличии ID.",
+          "evidence": [
+            "backend/src/main/java/kz/uitech/CalculationEngine.java:82-85",
+            "backend/src/main/java/kz/uitech/SystemeImporter.java:108-110",
+            "backend/src/main/java/kz/uitech/IekImporter.java:105-108",
+            "backend/src/test/java/kz/uitech/CalculationTest.java:89-92"
+          ]
+        },
+        {
+          "requirement": "Обработка предоставленных XLSX должна сохранять происхождение и не считать неподтверждённые поля достоверными.",
+          "status": "partial",
+          "explanation": "Оба набора из шести книг прошли реальный multipart import и получили PARTIAL. IEK: 3185 продуктов, 171470 продаж, 0 inventory, 0 inbound, 306 reported inbound, 1938 reported rules, 1364 issues. Systeme Electric: 724 продукта, 76997 продаж, 497 inventory, 7 inbound и 1768 issues. Это делает безопасный импорт доказанным, но не даёт полного реального заказа без недостающих/неподтверждённых фактов.",
+          "evidence": [
+            "captures/20261002T064725629036-real-iek-import311.stdout.log",
+            "captures/20261002T064821937309-real-systeme-import311.stdout.log",
+            "backend/src/main/java/kz/uitech/IekImporter.java:102-111",
+            "backend/src/main/java/kz/uitech/SystemeImporter.java:97-114"
+          ]
+        },
+        {
+          "requirement": "Выход должен быть пригоден для текущей учётной системы компании.",
+          "status": "partial",
+          "explanation": "Есть стабильный UTF-8 CSV с supplier_id, SKU, артикулом, складом, датой, единицами, рекомендованным и финальным количеством, reason; значения защищены от CSV formula injection. Но конкретный формат приёмки Электрокомплекта и его интеграционный round-trip в репозитории не подтверждены.",
+          "evidence": [
+            "backend/src/main/java/kz/uitech/LocalStore.java:112-126",
+            "docs/algorithms.md:210-212",
+            "docs/ANALYSIS_PLAN.md:130",
+            "captures/20261002T064449424604-api-scenario.stdout.log"
+          ]
+        }
+      ],
+      "testData": {
+        "provided": [
+          "cases/5/case-data/HackAlem AI_ Автоматизация формирования заказов поставщикам.docx.md",
+          "cases/5/case-data/IEK/MOQ  ИЭК.xlsx",
+          "cases/5/case-data/IEK/Динамика продаж_2025-2026.xlsx",
+          "cases/5/case-data/IEK/Ежемесячные остатки продукции за последние 2 года  ИЭК.xlsx",
+          "cases/5/case-data/IEK/Ежемесячные продажи в количественном выражении за последние 2 года.xlsx",
+          "cases/5/case-data/IEK/Путь ИЭК 22.09.2026.xlsx",
+          "cases/5/case-data/IEK/Сезонность ИЭК.xlsx",
+          "cases/5/case-data/Systeme electric/MOQ SystemElectric.xlsx",
+          "cases/5/case-data/Systeme electric/Динамика продаж_Syseme Electric_2025-2026.xlsx",
+          "cases/5/case-data/Systeme electric/Ежемесячные остатки SystemElectric 2024-2026.xlsx",
+          "cases/5/case-data/Systeme electric/Ежемесячные продажи в кол-м выражении SystemElectric 2024-2026.xlsx",
+          "cases/5/case-data/Systeme electric/Сезонность SystemElectric 2024-2026.xlsx",
+          "cases/5/case-data/Systeme electric/Товар в пути_SystemElectric на 22.09.2026.xlsx"
+        ],
+        "used": [
+          "fixtures/contract/01_baseline.json–17_purchase_unit_conversion.json",
+          "cases/5/case-data/IEK/*.xlsx — все шесть книг переданы через реальный multipart import",
+          "cases/5/case-data/Systeme electric/*.xlsx — все шесть книг переданы через реальный multipart import",
+          "cases/5/case-data/HackAlem AI_ Автоматизация формирования заказов поставщикам.docx.md — сверка требований к входу, выходу, приватности и ручному подтверждению"
+        ],
+        "checks": [
+          {
+            "input": "01_baseline и 15_supplier_groups: 30 дней продаж по одному товару, остаток 40, inbound 20, затем два поставщика.",
+            "method": "Maven CalculationTest/ApiTest и HTTP: POST /datasets → POST /calculations → POST /calculations/{id}/approve → GET /calculations/{id}/export.",
+            "result": "Базовая рекомендация 150; для двух поставщиков получены 150 и 130; расчёт APPROVED; два supplier-specific CSV содержат финальные количества и текст reason.",
+            "conclusion": "Основной пользовательский результат и группировка работают."
+          },
+          {
+            "input": "07_confirmed_stockout: 20 дней наличия и 10 дней подтверждённого stockout; 06_seasonal_peak: июльский индекс 2.",
+            "method": "HTTP demo_backend.py и чтение сохранённого calculation JSON; source assertions в CalculationTest.",
+            "result": "Stockout: estimated_lost_demand 100, recommended 150, first_stockout_date 2026-07-05. Seasonality: recommended 360.",
+            "conclusion": "Обе чувствительности меняют прогноз в ожидаемую сторону и остаются объяснимыми."
+          },
+          {
+            "input": "08_one_off_order и 09_split_customer_order: разовая/разделённая на 100 документов покупка 1000 единиц.",
+            "method": "HTTP расчёт каждого fixture и проверка factors/anomalies в сохранённом JSON.",
+            "result": "Оба результата сохранили recommendation 150, excluded_sales_qty 1000 и одну anomaly; regular baseline не завысился.",
+            "conclusion": "Изолированный выброс и клиентский дневной всплеск обнаруживаются."
+          },
+          {
+            "input": "10_sustained_growth и 17_purchase_unit_conversion.",
+            "method": "HTTP demo_backend.py; проверка factors.trend_slope_per_month, recommended_purchase_qty и recommended_stock_qty.",
+            "result": "Рост дал slope 1.0 и рекомендацию 180; конверсия дала 15 purchase units и 180 stock units при факторе 12.",
+            "conclusion": "Устойчивый рост и перевод единиц/MOQ/кратность не смешиваются."
+          },
+          {
+            "input": "14_missing_stock и проверки неизвестного наличия/coverage.",
+            "method": "ApiTest и CalculationTest, включая approve missing input.",
+            "result": "NEEDS_INPUT с null quantity; approve возвращает 422; неизвестное наличие не превращается в нулевой спрос; ASSUME_AVAILABLE виден как assumption.",
+            "conclusion": "Защитные гейты предотвращают ложное утверждение неполного заказа."
+          },
+          {
+            "input": "Все 12 предоставленных XLSX: шесть IEK и шесть Systeme Electric.",
+            "method": "Реальный multipart вызов /datasets/import через tools/import_supplier.py в Python 3.11 контейнере; перед импортом каждая книга была проверена как корректный XLSX ZIP.",
+            "result": "IEK PARTIAL: 3185 products, 171470 sales, 0 inventory, 0 inbound, 306 reported_inbound, 1938 reported_purchase_rules, 1364 issues. Systeme Electric PARTIAL: 724 products, 76997 sales, 497 inventory, 7 inbound, 1768 issues.",
+            "conclusion": "Оба адаптера применены к организаторским данным; неполнота сохранена как качество/ограничение, а не скрыта под выдуманными фактами."
+          }
+        ],
+        "limitations": [
+          "Предоставленные реальные книги не дают полного подтверждённого набора фактов для готового реального заказа: у IEK отсутствуют current inventory/inbound facts, а у обоих поставщиков есть неполные coverage, категории, customer IDs или неоднозначные purchase rules.",
+          "Исторический backtest, сравнение с наивной моделью и измерение WAPE/MAE или бизнес-экономии в репозитории не реализованы.",
+          "Визуальное поведение интерфейса и Playwright/E2E не проверялись по пользовательскому запрету на browser/UI automation; frontend production build и API-путь проверены отдельно."
+        ]
+      },
+      "runtime": {
+        "status": "working",
+        "build": "Backend собран и протестирован в Java 17/Maven 3.9 окружении; CalculationTest 24/24 и ApiTest 6/6 прошли, отдельные ImporterTest/IekImporterTest дали 7 выполненных тестов без ошибок и 2 ожидаемых пропуска приватных архивных тестов, PostgresRepositoryTest 6/6 прошёл. Frontend npm ci и npm run build прошли с Vite 8.3.0.",
+        "start": "JAR стартовал с file-профилем; GET /health вернул HTTP 200 и {status:ok, api_version:1.0, storage:file}.",
+        "scenario": "HTTP-сценарий на 15_supplier_groups прошёл от создания synthetic dataset до calculation, ручного approve и supplier-specific CSV; статус APPROVED, количества 150 и 130. Дополнительные HTTP проверки stockout, seasonality, outlier/customer, growth и purchase-unit conversion прошли.",
+        "environment": "Изолированные контейнеры с Java 17, Maven 3.9, Node 22, Python 3.11 для import helper и PostgreSQL 17.11; секреты внешних сервисов не использовались. UI визуально не проверялся.",
+        "summary": "Основной сценарий воспроизведён полностью на synthetic contract data и HTTP API, поэтому runtime.status=working. Реальные workbook imports воспроизведены до честного PARTIAL результата; это ограничение входных данных, а не ошибка запуска.",
+        "checks": [
+          {
+            "command": "mvn -B -ntp -f backend/pom.xml verify",
+            "result": "Сборка исходников и тестового кода прошла; результаты CalculationTest 24/24 и ApiTest 6/6 сохранены в surefire reports.",
+            "id": "CHK-BACKEND-BUILD",
+            "stage": "build",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Java 17 backend компилируется, тесты выполняются без ошибок и создаётся JAR."
+          },
+          {
+            "command": "mvn -B -ntp -f backend/pom.xml -Dtest=ImporterTest,IekImporterTest test",
+            "result": "BUILD SUCCESS; 7 tests run, 0 failures, 0 errors, 2 skipped — пропуски относятся к тестам приватных реальных архивов без archive path.",
+            "id": "CHK-IMPORTER-TESTS",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Оба адаптера и обработка синтетических/малых входов проходят domain tests."
+          },
+          {
+            "command": "mvn -B -ntp -f backend/pom.xml -Dtest=PostgresRepositoryTest test",
+            "result": "BUILD SUCCESS; 6 tests run, 0 failures, 0 errors. Flyway применил три миграции PostgreSQL 17.11; round-trip, migration audit, corrections и concurrency checks прошли.",
+            "id": "CHK-POSTGRES",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Postgres storage и миграции работают, состояние сохраняется и не повреждается при проверенных конкурентных операциях."
+          },
+          {
+            "command": "npm ci --no-audit --no-fund && npm run build",
+            "result": "npm ci завершился успешно; tsc --noEmit и Vite production build прошли, 40 modules transformed.",
+            "id": "CHK-FRONTEND-BUILD",
+            "stage": "build",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Frontend TypeScript проверяется и создаётся production bundle."
+          },
+          {
+            "command": "GET /health",
+            "result": "HTTP 200; JSON содержит status=ok, api_version=1.0, storage=file.",
+            "id": "CHK-START",
+            "stage": "start",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Backend стартует без внешнего API ключа и отвечает health check."
+          },
+          {
+            "command": "POST /datasets; POST /calculations; POST /calculations/{id}/approve; GET /calculations/{id}/export",
+            "result": "На 15_supplier_groups получены READY P1=150 и READY P2=130; approve вернул APPROVED; CSV SUP_A и SUP_B содержат только выбранного поставщика, final quantities и explanations.",
+            "id": "CHK-PRIMARY-SCENARIO",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Целостный пользовательский путь формирует объяснимые supplier orders, требует approve и экспортирует утверждённый результат."
+          },
+          {
+            "command": "POST /datasets; POST /calculations",
+            "result": "07 stockout дал lost demand 100 и recommendation 150; 06 seasonal peak дал 360; 08/09 outlier cases excluded 1000; 10 growth дал slope 1.0; 17 conversion дал 15 purchase units и 180 stock units.",
+            "id": "CHK-SENSITIVITY",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Расчёт чувствителен к goods-in-transit/stockout/seasonality/outliers/growth/unit conversion в ожидаемом направлении."
+          },
+          {
+            "command": "POST /datasets/import with six IEK XLSX parts",
+            "result": "HTTP 201, dataset status PARTIAL; 3185 products, 171470 sales, 0 inventory, 0 inbound, 306 reported inbound, 1938 reported purchase rules, 1364 issues.",
+            "id": "CHK-REAL-IEK",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "IEK adapter accepts supplied books, preserves uncertain facts and returns a valid quality-marked dataset."
+          },
+          {
+            "command": "POST /datasets/import with six Systeme Electric XLSX parts",
+            "result": "HTTP 201, dataset status PARTIAL; 724 products, 76997 sales, 497 inventory, 7 inbound, 1768 issues.",
+            "id": "CHK-REAL-SYSTEME",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Systeme Electric adapter accepts supplied books, preserves source issues and returns a valid quality-marked dataset."
+          }
+        ],
+        "limitations": [
+          "Визуальная проверка интерфейса и browser E2E не выполнялись по явному запрету пользователя; это не меняет runtime status и не является снятием баллов.",
+          "Публичная внешняя интеграция и credentials не требовались для локального сценария и не использовались."
+        ]
+      },
+      "liveDemo": {
+        "status": "none",
+        "url": null,
+        "notes": "Публичная live-ссылка в репозитории не предоставлена. Локальное HTTP/API демо успешно подтверждено отдельно; отсутствие публичного URL само по себе не уменьшало оценку."
+      },
+      "fiveHourContext": "За пять часов команда успела собрать не только формулу, но и контракт входных данных, два XLSX-адаптера, quality gates, 17 синтетических acceptance fixtures, объяснимый UI/API-путь, ручное утверждение с revision control, CSV export и PostgreSQL persistence. Для такого времени отсутствие backtest-а и согласованной интеграции с конкретной 1С разумно считать следующими этапами, но они ограничивают доказанную production-ценность.",
+      "strengths": [
+        "F-PIPELINE: объяснимый расчёт связывает прогноз, stockout, остаток, транзит, единицы, MOQ и поставщика в одной строке результата.",
+        "F-ROBUST-DETECTION: медиана/MAD, документные и customer-day группы дают защиту от разовых и разделённых клиентских всплесков.",
+        "F-REAL-IMPORT: оба предоставленных реальных набора импортируются и сохраняют неопределённость как PARTIAL/issues/reported facts.",
+        "F-APPROVAL: актуальная revision, причина ручной корректировки, подтверждение warnings и запрет экспорта до approval защищают закупочный процесс.",
+        "F-TEST-COVERAGE: синтетический контракт, API, импортеры и PostgreSQL проверены отдельными автоматическими наборами."
+      ],
+      "gaps": [
+        "F-BACKTEST: исторический backtest и сравнение качества прогноза на данных компании не реализованы, поэтому бизнес-эффект и точность не измерены.",
+        "F-ACCOUNTING-CONTRACT: CSV реализован и проверен на структуру/экранирование, но совместимость с конкретным форматом учётной системы и импортный round-trip не подтверждены."
+      ],
+      "futureAdvice": [
+        {
+          "principle": "Сначала закреплять качество прогноза временным backtest-контуром.",
+          "why": "F-BACKTEST: текущие тесты доказывают арифметику и защитные правила, но docs/algorithms.md:111 прямо фиксирует отсутствие backtest-а и метрик точности.",
+          "how": "Для следующего кейса выделить один временной holdout до реализации UI: для каждого SKU построить naive, seasonal-naive и текущую модель только по данным до cutoff, затем вывести MAE/WAPE/bias и несколько worst cases рядом с recommendation.",
+          "findingIds": [
+            "F-BACKTEST"
+          ],
+          "successCheck": "Для каждого выбранного SKU есть cutoff, baseline и текущая модель, числовые метрики и объяснение того, как ошибка меняет итоговый заказ.",
+          "timeboxMinutes": 45
+        },
+        {
+          "principle": "Фиксировать downstream-контракт до финального демо.",
+          "why": "F-ACCOUNTING-CONTRACT: проект уже формирует безопасный CSV, но сам указывает, что совместимость с учётной системой ещё нужно проверить.",
+          "how": "На другом хакатоне получить минимальный пример импорта или схему полей, зафиксировать mapping supplier/SKU/unit/quantity/reason, добавить round-trip fixture и негативный тест на неверную единицу или дубликат.",
+          "findingIds": [
+            "F-ACCOUNTING-CONTRACT"
+          ],
+          "successCheck": "Один реальный или согласованный контрактный CSV проходит импортный smoke-test, а несовместимое поле даёт понятную ошибку до отправки файла.",
+          "timeboxMinutes": 30
+        },
+        {
+          "principle": "Сохранять доказуемость источника как часть продукта.",
+          "why": "F-REAL-IMPORT: импортёры сохраняют source refs и явно маркируют неоднозначные колонки вместо молчаливой нормализации.",
+          "how": "Повторять этот приём при добавлении нового поставщика: сначала таблица ролей и provenance, затем parser, затем quality issues и только после этого включение факта в расчёт.",
+          "findingIds": [
+            "F-REAL-IMPORT"
+          ],
+          "successCheck": "Для каждой новой числовой величины доступны role, исходный лист/диапазон, правило включения и тест на отсутствие подмены null нулём.",
+          "timeboxMinutes": 25
+        }
+      ],
+      "uncertainties": [
+        "Визуальный layout, доступность и реальное поведение браузерных сценариев не подтверждены: проверены build и API, но UI-автоматизация запрещена.",
+        "Точный формат обмена с учётной системой Электрокомплекта не был предоставлен среди проверенных материалов, поэтому CSV оценён как безопасный экспорт, а не как доказанная 1С-интеграция.",
+        "Изменение бизнес-параметров safety days, lead time и применимости поставщицких сезонных профилей требует согласования владельца процесса; код явно показывает эти параметры, но не может вывести их истинные значения из неполных исходных таблиц."
+      ],
+      "reviewPolicyVersion": 2,
+      "assessmentStatus": "ready",
+      "findings": [
+        {
+          "id": "F-PIPELINE",
+          "kind": "strength",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Основной engine использует продажи, наличие, транзит, coverage, сезонность, рост, остаток, категории и единицы в едином расчётном пути.",
+          "expected": "Изменение значимого входа должно отражаться в recommendation либо блокировать расчёт при отсутствии подтверждения.",
+          "actual": "CalculationEngine индексирует эти сущности, строит demand/safety/raw/purchase и добавляет factors/history/forecast/explanation.",
+          "evidence": [
+            "backend/src/main/java/kz/uitech/CalculationEngine.java:28-58",
+            "backend/src/main/java/kz/uitech/CalculationEngine.java:94-172",
+            "docs/algorithms.md:127-169"
+          ],
+          "checkIds": [
+            "CHK-SENSITIVITY"
+          ]
+        },
+        {
+          "id": "F-ROBUST-DETECTION",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Разовые документные и customer-day всплески исключаются с сохранением журнала аномалии, а повторяющиеся крупные покупки не исключаются автоматически.",
+          "expected": "One-off и split-customer сценарии не должны завышать регулярный forecast; repeated large orders должны остаться в регулярном спросе.",
+          "actual": "08/09 дали excluded_sales_qty 1000 и anomaly; CalculationTest для repeated_large_orders подтверждает excluded_sales_qty=0.",
+          "evidence": [
+            "backend/src/main/java/kz/uitech/CalculationEngine.java:204-232",
+            "captures/20261002T064502012447-api-08_one_off_order.stdout.log",
+            "captures/20261002T064502006457-api-09_split_customer_order.stdout.log",
+            "backend/src/test/java/kz/uitech/CalculationTest.java:45-56"
+          ],
+          "checkIds": [
+            "CHK-SENSITIVITY"
+          ]
+        },
+        {
+          "id": "F-REAL-IMPORT",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Оба адаптера принимают предоставленные шесть-книжные наборы и сохраняют неполные/неоднозначные данные как PARTIAL с issues и reported facts.",
+          "expected": "Реальные XLSX должны импортироваться без выдумывания текущего остатка, полного inbound или client identity.",
+          "actual": "IEK и Systeme Electric импортированы с конкретными counts и большим issue_count; отсутствующие факты не стали calculation facts.",
+          "evidence": [
+            "captures/20261002T064725629036-real-iek-import311.stdout.log",
+            "captures/20261002T064821937309-real-systeme-import311.stdout.log",
+            "backend/src/main/java/kz/uitech/IekImporter.java:102-111",
+            "backend/src/main/java/kz/uitech/SystemeImporter.java:97-114"
+          ],
+          "checkIds": [
+            "CHK-REAL-IEK",
+            "CHK-REAL-SYSTEME"
+          ]
+        },
+        {
+          "id": "F-APPROVAL",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Расчёт нельзя экспортировать как заказ до ручного approve актуальной revision, а ручная правка требует причины и соблюдения MOQ/кратности.",
+          "expected": "Система должна предотвращать отправку неподтверждённой или устаревшей версии.",
+          "actual": "API scenario прошёл DRAFT → APPROVED → supplier CSV; ApiTest проверяет conflict до approve, revision conflict после изменения и сохранение approval.",
+          "evidence": [
+            "backend/src/main/java/kz/uitech/LocalStore.java:76-128",
+            "backend/src/test/java/kz/uitech/ApiTest.java:63-82",
+            "captures/20261002T064449424604-api-scenario.stdout.log"
+          ],
+          "checkIds": [
+            "CHK-PRIMARY-SCENARIO",
+            "CHK-BACKEND-BUILD"
+          ]
+        },
+        {
+          "id": "F-QUALITY-GATES",
+          "kind": "strength",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Недостаток покрытия, неизвестное наличие, отсутствие stock/MOQ/units и неподтверждённые assumptions блокируют позицию или approval вместо молчаливого нулевого результата.",
+          "expected": "Неполный источник должен быть виден пользователю и не должен создавать ложный готовый заказ.",
+          "actual": "CalculationEngine формирует NEEDS_INPUT, warnings и assumptions; LocalStore не утверждает такие строки.",
+          "evidence": [
+            "backend/src/main/java/kz/uitech/CalculationEngine.java:68-96",
+            "backend/src/main/java/kz/uitech/LocalStore.java:97-110",
+            "backend/src/test/java/kz/uitech/CalculationTest.java:58-87",
+            "backend/src/test/java/kz/uitech/ApiTest.java:85"
+          ],
+          "checkIds": [
+            "CHK-BACKEND-BUILD"
+          ]
+        },
+        {
+          "id": "F-TEST-COVERAGE",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Контрактные формулы, API lifecycle, importer behavior и PostgreSQL persistence покрыты отдельными автоматическими проверками.",
+          "expected": "Основные ветви MVP должны воспроизводимо проходить в средах с заявленными зависимостями.",
+          "actual": "CalculationTest 24/24, ApiTest 6/6, ImporterTest/IekImporterTest 7 run без failures, PostgresRepositoryTest 6/6 и frontend build прошли.",
+          "evidence": [
+            "captures/20261002T064930202299-backend-importer-tests.stdout.log",
+            "captures/20261002T065126568815-postgres-tests.stdout.log",
+            "backend/target/surefire-reports/kz.uitech.CalculationTest.txt",
+            "backend/target/surefire-reports/kz.uitech.ApiTest.txt"
+          ],
+          "checkIds": [
+            "CHK-BACKEND-BUILD",
+            "CHK-IMPORTER-TESTS",
+            "CHK-POSTGRES",
+            "CHK-FRONTEND-BUILD"
+          ]
+        },
+        {
+          "id": "F-BACKTEST",
+          "kind": "defect",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "В текущем срезе нет исторического backtest-а, сравнения моделей и метрик точности на данных компании.",
+          "expected": "Для production-ориентированной оценки прогноза нужен временной holdout и измеримый baseline/model comparison, чтобы связать recommendation с ошибкой прогноза и бизнес-эффектом.",
+          "actual": "Документация прямо говорит, что backtest и сравнение качества не выполнены; существующие тесты проверяют функциональные assertions на synthetic fixtures.",
+          "evidence": [
+            "docs/algorithms.md:111-120",
+            "README.md:158",
+            "docs/business_process.md:88"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "F-ACCOUNTING-CONTRACT",
+          "kind": "defect",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Репозиторий формирует CSV, но не содержит подтверждённого контракта и round-trip smoke-test с конкретной учётной системой Электрокомплекта.",
+          "expected": "Выход должен иметь согласованные mapping полей/единиц и проверяемый импорт в текущую учётную систему либо явно отделённый адаптер.",
+          "actual": "CSV и formula escaping реализованы, но docs/algorithms.md и ANALYSIS_PLAN отмечают, что совместимость с учётной системой ещё нужно проверить; прямой обмен с 1С не реализован.",
+          "evidence": [
+            "backend/src/main/java/kz/uitech/LocalStore.java:112-126",
+            "docs/algorithms.md:210-212",
+            "docs/ANALYSIS_PLAN.md:130-132"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "F-REAL-DATA-BOUNDARY",
+          "kind": "limitation",
+          "verification": "observed",
+          "responsibility": "unknown",
+          "claim": "Предоставленные реальные книги не дают полного набора подтверждённых фактов для реального заказа.",
+          "expected": "Полный расчёт должен иметь current stock, inbound coverage, availability calendar, policy/category/unit semantics и необходимую полноту продаж.",
+          "actual": "IEK импортирован с inventory=0/inbound=0; Systeme Electric и IEK имеют PARTIAL issues и неполные coverage/semantics.",
+          "evidence": [
+            "captures/20261002T064725629036-real-iek-import311.stdout.log",
+            "captures/20261002T064821937309-real-systeme-import311.stdout.log",
+            "backend/src/main/java/kz/uitech/IekImporter.java:102-111"
+          ],
+          "checkIds": [
+            "CHK-REAL-IEK",
+            "CHK-REAL-SYSTEME"
+          ]
+        },
+        {
+          "id": "F-UI-UNVERIFIED",
+          "kind": "limitation",
+          "verification": "unverified",
+          "responsibility": "review_environment",
+          "claim": "Визуальный layout, accessibility и браузерное взаимодействие не подтверждены этим review.",
+          "expected": "Визуальная проверка должна выполняться отдельным пользовательским браузерным review.",
+          "actual": "Frontend production build прошёл, но browser/UI automation намеренно не запускалась.",
+          "evidence": [
+            "captures/20261002T064203403615-frontend-build.stdout.log",
+            "frontend/src/App.tsx:284-360"
+          ],
+          "checkIds": [
+            "CHK-FRONTEND-BUILD"
+          ]
+        }
+      ],
+      "gapFindingIds": [
+        "F-BACKTEST",
+        "F-ACCOUNTING-CONTRACT"
+      ]
+    }
+  ],
+  "score": 93.0,
+  "status": "complete",
+  "expectedJudges": 1
+}

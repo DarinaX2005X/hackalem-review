@@ -1,0 +1,1004 @@
+{
+  "methodVersion": 4,
+  "repoId": "hack-e26f0e66-max",
+  "repoUrl": "https://github.com/BAITC-Hacks/hack-e26f0e66-max",
+  "caseId": 2,
+  "snapshot": "1286a0c8c4b07d852059fbf9985ec5c2a3254c8e",
+  "judges": [
+    {
+      "methodVersion": 4,
+      "repoId": "hack-e26f0e66-max",
+      "caseId": 2,
+      "model": "GPT-5.6 Luna",
+      "snapshot": "1286a0c8c4b07d852059fbf9985ec5c2a3254c8e",
+      "overallSummary": "Проект представляет собой практически завершённый, воспроизводимый offline-инструмент AML-аналитика: три parquet-файла проходят нормализацию и проверки, из них строится направленный граф, считаются структурные, временные и seed-атрибуционные признаки, затем детерминированный rule engine назначает роли, Louvain формирует кластеры, прозрачная формула ранжирует узлы, а результаты публикуются в трёх обязательных CSV и локальном viewer. На предоставленном графе основной сценарий воспроизведён: 2 248 узлов, 3 119 рёбер, 4 840 транзакций, 88 кластеров и 30 строк shortlist; полный pytest-набор дал 98 passed и 1 skipped. Сильнее всего решение в обработке ловушек кейса (обрыв на глубине 4, ненадёжный вход seed, направленность), объяснимости через RuleTrace и безопасном fallback без API-ключа. Основное подтверждённое снижение — рассинхрон нескольких чисел в README/demo script с текущими выгрузками и свежим запуском; это ухудшает доверие к демонстрации, но не ломает вычислительный сценарий.",
+      "global": {
+        "criteria": [
+          {
+            "name": "Ценность решения",
+            "score": 25,
+            "max": 25,
+            "awarded": "Решение непосредственно отвечает на практический вопрос AML-аналитика: кого из 2 248 клиентов проверять первым и почему.",
+            "deductions": "Существенных подтверждённых недостатков именно по ценности не установлено.",
+            "evidence": [
+              "README.md:107-147",
+              "output_files/top_nodes.csv:1-31",
+              "output_files/data_requests.md:1-55"
+            ],
+            "deductionItems": [],
+            "awardedDetails": [
+              {
+                "aspect": "Приоритизация вместо необъяснимого списка",
+                "implementation": "pipeline.py:172-174 передаёт признаки в priority.priority_score, а priority.py:23-66 считает взвешенную сумму перцентилей по роли, seed_kzt_attributed, seed_reach, числу плательщиков и seed-плотности кластера. Итоговый top_nodes.csv содержит 30 узлов с сортировкой по priority_score и текстовым why.",
+                "value": "Аналитик получает ограниченный порядок работы, а не только набор графовых метрик. В первой строке shortlist есть роль coordinator, score 0.975178 и объяснение про seed-originated flow, seed_reach и долю forwarded; это делает пользу для triage конкретной и проверяемой.",
+                "verification": "observed",
+                "evidence": [
+                  "src/moneygraph/priority.py:23-82",
+                  "output_files/top_nodes.csv:1-8",
+                  "captures/20261002T144706978645-build.stdout.log"
+                ]
+              },
+              {
+                "aspect": "Ориентация на реального пользователя",
+                "implementation": "README.md:133-147 описывает аудиторию как аналитика финансового мониторинга и последовательность list → priority → evidence → углублённая проверка. app/app.py:589-668 формирует карточку gid, правило, метрики, payers/recipients и ego-граф.",
+                "value": "Сценарий не заканчивается выгрузкой: любой найденный в данных gid можно сопоставить с ролью, приоритетом, глубиной, входящими/исходящими потоками и доказательством. Это уменьшает переход от машинного результата к рабочему списку проверки.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:468-516",
+                  "app/app.py:589-668",
+                  "web/app.js:498-585"
+                ]
+              },
+              {
+                "aspect": "Честное описание аналитической природы результата",
+                "implementation": "README.md:672-686 и output_files/review_notes.md:1-20 явно называют attribution эвристикой, cutoff — неизвестным продолжением потока, а shortlist — reading order, а не установленным фактом. Запрещённые обвинительные формулировки проверяются в evidence.py:261-280 и pipeline.py:390-425.",
+                "value": "Для финансового мониторинга это важнее эффектной визуализации: команда не превращает синтетические структурные признаки в утверждения о виновности и показывает, какие данные нужны дальше.",
+                "verification": "observed",
+                "evidence": [
+                  "README.md:672-686",
+                  "output_files/review_notes.md:1-20",
+                  "tests/test_outputs.py:312-360"
+                ]
+              },
+              {
+                "aspect": "Практические следующие действия",
+                "implementation": "review_agent.py:32-61 вычисляет frontier, seed accounts без traced inflow, floor, компоненты и период; review_agent.py:64-122 превращает эти факты в data_requests.md. Текущий файл предлагает hop-5 для 444 frontier accounts, входящие переводы seed, операции ниже 5 000 KZT и расширение периода.",
+                "value": "Результат помогает не только выбрать счёт, но и сформулировать следующий запрос данных. Это делает ценность итеративной: ограничение наблюдаемости не скрывается, а превращается в конкретный план закрытия пробела.",
+                "verification": "observed",
+                "evidence": [
+                  "src/moneygraph/agents/review_agent.py:32-122",
+                  "output_files/data_requests.md:1-55"
+                ]
+              }
+            ],
+            "scoreReasoning": "Полный балл заслужен: задача, аудитория и полезный результат совпадают, shortlist содержит проверяемые причины, а ограничения превращены в следующие действия. В проекте нет подтверждённого дефекта, который уменьшал бы практическую ценность основного сценария; отсутствие ground truth является свойством кейса и корректно оговорено командой."
+          },
+          {
+            "name": "Результат и качество решения",
+            "score": 20,
+            "max": 20,
+            "awarded": "Основной сценарий целостно работает на предоставленном графе и выдаёт пользовательский результат в пределах лимита.",
+            "deductions": "Существенных подтверждённых недостатков основного вычислительного результата не установлено.",
+            "evidence": [
+              "captures/20261002T144706978645-build.stdout.log",
+              "captures/20261002T145202097673-test.stdout.log",
+              "output_files/ingest_report.json:1-45"
+            ],
+            "deductionItems": [],
+            "awardedDetails": [
+              {
+                "aspect": "End-to-end выполнение",
+                "implementation": "pipeline.py:82-260 последовательно выполняет ingest, profile, graph, features, temporal, attribution, planner/calibrator, base roles, clustering, coordinator, priority, extras, evidence, reviewer и export. В свежем offline-запуске все стадии завершились с итогом 6.58 s при бюджете 300 s.",
+                "value": "Это не набор разрозненных скриптов: один запуск даёт аналитические признаки, три CSV, parquet-контекст, trace, requests, web_data и deliverables bundle. Заявленный основной сценарий реально собран в единую цепочку.",
+                "verification": "observed",
+                "evidence": [
+                  "src/moneygraph/pipeline.py:82-260",
+                  "captures/20261002T144706978645-build.stdout.log"
+                ]
+              },
+              {
+                "aspect": "Полнота и корректность экспортов",
+                "implementation": "export.py:16-81 фиксирует обязательный порядок колонок и сохраняет контекст после шести required-полей. Фактические файлы содержат 2 248 строк в nodes_roles.csv, 88 кластеров и 30 top_nodes; заполнены role, score, cluster, priority и evidence.",
+                "value": "Формат пригоден и для машинной проверки, и для самостоятельного чтения аналитиком. Дополнительные поля не ломают контракт и сохраняют observability-флаги, pass_ratio и seed attribution.",
+                "verification": "observed",
+                "evidence": [
+                  "src/moneygraph/export.py:16-61",
+                  "output_files/nodes_roles.csv:1-3",
+                  "output_files/clusters.csv:1-5",
+                  "output_files/top_nodes.csv:1-8"
+                ]
+              },
+              {
+                "aspect": "Автоматические регрессионные проверки",
+                "implementation": "tests/test_outputs.py проверяет загрузку и согласованность данных, роли и score range, cutoff/seed invariants, кластеры, top ranks, wording, agents, frontend payload, bundle, hardcoding guard и deterministic runs. Полный запуск дал 98 passed, 1 skipped.",
+                "value": "Покрытие выходит за проверку наличия файлов: оно ловит рассинхрон web_data/run_trace, запрещённые слова, случайность Louvain, stale bundle, утечки путей и нарушения объяснимости. Это сильный индикатор качества для пятичасового прототипа.",
+                "verification": "observed",
+                "evidence": [
+                  "tests/test_outputs.py:208-360",
+                  "tests/test_outputs.py:897-1453",
+                  "tests/test_outputs.py:1484-1533",
+                  "captures/20261002T145202097673-test.stdout.log"
+                ]
+              },
+              {
+                "aspect": "Рабочий offline fallback",
+                "implementation": "agents/llm.py:76-115 отключает модель без ключа, pipeline.py:122-149 применяет сохранённую калибровку, а deterministic templates продолжают формировать evidence, hypotheses и requests. В offline-запуске было 0 LLM calls и все экспорты сформированы.",
+                "value": "Платная внешняя интеграция не является скрытой точкой отказа: основной результат доступен без ключа, а агентный слой остаётся дополнительным источником планирования, калибровки и перефразирования.",
+                "verification": "observed",
+                "evidence": [
+                  "src/moneygraph/agents/llm.py:76-115",
+                  "src/moneygraph/pipeline.py:122-149",
+                  "captures/20261002T144706978645-build.stdout.log"
+                ]
+              }
+            ],
+            "scoreReasoning": "Максимальный балл оправдан наблюдаемым успешным запуском и 98 проходящими тестами. Результат покрывает не только CSV, но и trace, data requests, graph export и web payload; один пропуск теста не является дефектом проекта и относится к отсутствующему внешнему ресурсу."
+          },
+          {
+            "name": "Инновационность",
+            "score": 15,
+            "max": 15,
+            "awarded": "Нестандартность проявляется в сочетании seed-originated attribution, observability-aware ролей, формального rule engine и ограниченного агентного слоя.",
+            "deductions": "Подтверждённых недостатков по инновационности не установлено.",
+            "evidence": [
+              "src/moneygraph/attribution.py:29-109",
+              "src/moneygraph/roles.py:1-15",
+              "src/moneygraph/agents/orchestrator.py:1-20",
+              "README.md:149-211"
+            ],
+            "deductionItems": [],
+            "awardedDetails": [
+              {
+                "aspect": "Разделение AI-исследования и решения",
+                "implementation": "README.md:149-211 и pipeline.py:122-174 фиксируют принцип «agents исследуют, rule engine решает». roles.py:74-133 содержит только сравнения метрик с конфигурационными порогами, а RuleTrace сохраняет gate, metrics, thresholds и penalties.",
+                "value": "Это удачное решение конфликта между agentic AI и требованием объяснимости: модель может планировать и калибровать, но не может незаметно присвоить роль или изменить rank. Такой контроль воспроизводим и защищает аналитика от black-box результата.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:149-211",
+                  "src/moneygraph/roles.py:1-15",
+                  "src/moneygraph/roles.py:74-133",
+                  "src/moneygraph/pipeline.py:122-174"
+                ]
+              },
+              {
+                "aspect": "Оценка seed-originated exposure",
+                "implementation": "attribution.py:29-101 считает distinct seed reach BFS-ом и распространяет attributed money по направлению рёбер, пропорционально edge amount и ограниченному pass ratio. README.md:661-680 прямо называет это эвристикой, а не accounting fact.",
+                "value": "Обычные degree и turnover не различают узел, до которого дошла одна цепочка, и узел, до которого доходят независимые seed paths. Эта добавка лучше связывает структуру графа с вопросом «кого проверять выше seeds», сохраняя осторожную интерпретацию.",
+                "verification": "source",
+                "evidence": [
+                  "src/moneygraph/attribution.py:29-101",
+                  "src/moneygraph/attribution.py:104-109",
+                  "README.md:661-680"
+                ]
+              },
+              {
+                "aspect": "Cutoff как отдельный тип неопределённости",
+                "implementation": "graph.py:46-65 задаёт outflow_observed = depth < max_depth; roles.py:116-125 запрещает terminal при неотслеживаемом outflow, а roles.py:236-264 вводит cutoff. README.md:676 объясняет, почему 444 depth-4 leaves нельзя считать конечными получателями.",
+                "value": "Команда не просто добавила ещё одну метрику, а исправила наиболее опасную семантическую ловушку задания: нулевой out-degree на границе выборки не интерпретируется как остановка денег. Это существенно повышает качество гипотез.",
+                "verification": "observed",
+                "evidence": [
+                  "src/moneygraph/graph.py:46-65",
+                  "src/moneygraph/roles.py:116-125",
+                  "output_files/profile_report.md:35-43",
+                  "captures/20261002T144706978645-build.stdout.log"
+                ]
+              },
+              {
+                "aspect": "Аудируемое agentic-исследование",
+                "implementation": "orchestrator.py:44-67 и 119-196 задают план, budget guard и fallback; tools.py:20-241 ограничивает модель детерминированными graph functions; output_files/agent_log.md и run_trace.json сохраняют действия, timing и token accounting.",
+                "value": "Agentic слой добавляет исследовательскую глубину, но каждый инструментальный результат можно сопоставить с графом. Для compliance-сценария это оригинальнее и полезнее, чем свободный чат, который просто генерирует объяснения.",
+                "verification": "source",
+                "evidence": [
+                  "src/moneygraph/agents/orchestrator.py:44-67",
+                  "src/moneygraph/agents/tools.py:20-241",
+                  "output_files/agent_log.md:1-35",
+                  "output_files/run_trace.json:1-35"
+                ]
+              }
+            ],
+            "scoreReasoning": "Максимальный балл соответствует фактической архитектурной новизне: attribution, cutoff semantics и rule-traced agentic workflow образуют связную идею, а не набор несвязанных технологий. Внешние API не требуются для демонстрации инновационной части, поскольку ключевая логика детерминирована исходниками."
+          },
+          {
+            "name": "Потенциал развития и масштабирования",
+            "score": 20,
+            "max": 20,
+            "awarded": "Проект уже отделяет конфигурацию от логики, принимает канонизируемые табличные входы и содержит осмысленный план роста до больших графов.",
+            "deductions": "Подтверждённых недостатков по потенциалу развития не установлено; ограничения текущей версии честно описаны и не являются требованием пятичасового MVP.",
+            "evidence": [
+              "src/moneygraph/io.py:1-120",
+              "config.yaml:1-256",
+              "README.md:751-803",
+              "src/moneygraph/webexport.py:177-200"
+            ],
+            "deductionItems": [],
+            "awardedDetails": [
+              {
+                "aspect": "Переносимость на табличные экспорты",
+                "implementation": "io.py:72-174 обнаруживает edges/nodes/transactions, сопоставляет aliases, выводит отсутствующие nodes/depth/seed flags по явно записанным правилам и сохраняет provenance. schema.py и config.yaml содержат канонические поля и альтернативные имена колонок.",
+                "value": "Следующий кейс не требует переписывать pipeline под один фиксированный CSV: формат входа можно нормализовать, а происхождение и derived decisions попадут в профиль. Это сильная база для применения на других банковских выгрузках.",
+                "verification": "source",
+                "evidence": [
+                  "src/moneygraph/io.py:72-174",
+                  "src/moneygraph/io.py:199-350",
+                  "output_files/ingest_report.json:1-45"
+                ]
+              },
+              {
+                "aspect": "Конфигурируемые пороги и сохранённая калибровка",
+                "implementation": "config.yaml хранит thresholds, weights, role colors, budgets и paths; calibrator_agent.py:20-60 описывает legal ranges, simulation и persistence, а orchestrator.py:119-174 применяет config.calibrated.yaml перед назначением ролей.",
+                "value": "Пороговая логика может rescale-иться по распределениям другого входа, а сохранённая калибровка сохраняет воспроизводимость конкретного run. Это лучше масштабируется организационно, чем пороги, зашитые в десятках функций.",
+                "verification": "source",
+                "evidence": [
+                  "config.yaml:1-256",
+                  "src/moneygraph/agents/calibrator_agent.py:20-60",
+                  "src/moneygraph/agents/orchestrator.py:119-174",
+                  "config.calibrated.yaml:1-60"
+                ]
+              },
+              {
+                "aspect": "Явно описанный путь к миллиону узлов",
+                "implementation": "README.md:771-803 предлагает igraph/graph-tool или Spark/GraphFrames, Leiden, approximate betweenness, sparse propagation, per-component parallelism, DuckDB/Polars и backend с on-demand ego queries.",
+                "value": "Рекомендации привязаны к фактическим bottleneck-ам текущей реализации: exact betweenness, NetworkX Louvain, загрузка parquet и весь graph payload. Это показывает понимание того, что нужно менять при росте, а не просто обещание масштабирования.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:771-803",
+                  "src/moneygraph/features.py:67-85",
+                  "src/moneygraph/clustering.py:29-59",
+                  "src/moneygraph/webexport.py:49-175"
+                ]
+              },
+              {
+                "aspect": "Расширяемый слой пользовательского результата",
+                "implementation": "webexport.py:49-175 собирает единый web_data.json с nodes, edges, clusters, top, trace, docs и тремя языками; web/app.js:498-660 реализует поиск gid, payers/recipients и ego-map, а app.py:702-733 добавляет deterministic tool fallback для Q&A.",
+                "value": "Интерфейс можно развивать отдельно от расчёта: новые поля и explainability-документы проходят через payload, а интерактивные операции читают экспортированные артефакты. Это удобная граница для будущего graph backend.",
+                "verification": "source",
+                "evidence": [
+                  "src/moneygraph/webexport.py:49-175",
+                  "web/app.js:498-660",
+                  "app/app.py:702-733",
+                  "tests/test_outputs.py:1165-1249"
+                ]
+              }
+            ],
+            "scoreReasoning": "Максимум оправдан для масштаба пятичасового прототипа: расширяемость есть и на входе, и в конфигурации, и в UI, а README предлагает конкретные замены узких мест. Production-производительность на миллионе узлов не заявлена как уже достигнутая и не требовалась кейсом."
+          },
+          {
+            "name": "Презентация, демо и ответы на вопросы",
+            "score": 17,
+            "max": 20,
+            "awarded": "README, demo script, итоговый bundle и explainability-файлы позволяют провести локальное демо и объяснить произвольный gid без устной презентации.",
+            "deductions": "Минус 3 балла за подтверждённый рассинхрон чисел в публичной документации с текущим результатом; визуальное поведение отдельно не штрафуется, поскольку его проверяет пользователь.",
+            "evidence": [
+              "README.md:21-84",
+              "README.md:425-516",
+              "docs/demo_script.md:41-115",
+              "output_files/nodes_roles.csv:1-3",
+              "captures/20261002T144706978645-build.stdout.log"
+            ],
+            "deductionItems": [
+              {
+                "points": 3,
+                "findingId": "F1",
+                "reason": "README.md:592-599 сообщает peripheral=540, transit=67 и полный расчёт 1,6 с, а текущая nodes_roles.csv и свежий offline-запуск дают peripheral=560, transit=47 и 6,58 с. docs/demo_script.md:205-207 дополнительно указывает те же устаревшие роли, 1,7 с и 74 теста, тогда как pytest дал 98 passed. Это не ломает demo, но снижает доверие к тому, какие цифры участник должен озвучивать жюри."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "README как самостоятельный маршрут проверки",
+                "implementation": "README.md:21-84 даёт три режима старта, включая --offline и --use-existing; README.md:425-516 перечисляет проверку выгрузок, RuleTrace, воспроизводимость и путь к viewer; README.md:687-717 документирует схемы CSV.",
+                "value": "Проверяющий может понять, как запустить проект без ключа, какие файлы ожидать и как от ответа gid перейти к правилу. Это удовлетворяет роли README в репозитории даже без устного выступления.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:21-84",
+                  "README.md:425-516",
+                  "README.md:687-717"
+                ]
+              },
+              {
+                "aspect": "Сценарий произвольного gid",
+                "implementation": "docs/demo_script.md:64-115 проводит три типа узлов (coordinator, cutoff, transit), а web/app.js:498-585 принимает gid, показывает карточку, таблицы payers/recipients и directed ego-map. app/app.py:589-668 реализует тот же путь для Gradio.",
+                "value": "Demo отвечает на главный вопрос кейса: можно назвать конкретный gid и показать сработавшее правило, значение метрики и направление потоков. Наличие двух интерфейсных путей повышает шанс провести локальную демонстрацию.",
+                "verification": "source",
+                "evidence": [
+                  "docs/demo_script.md:64-115",
+                  "web/app.js:498-585",
+                  "app/app.py:589-668"
+                ]
+              },
+              {
+                "aspect": "Артефакты для защиты результата",
+                "implementation": "final_deliverables/README.md:1-49 собирает три CSV и diagram.md, а output_files/profile_report.md, review_notes.md, data_requests.md, run_trace.md и agent_log.md дают материал для вопросов о данных, рисках и происхождении вывода.",
+                "value": "Жюри может проверять не только красивый экран, но и первичные выгрузки, профилирование и audit trail. Это особенно уместно для кейса без ground truth.",
+                "verification": "observed",
+                "evidence": [
+                  "final_deliverables/README.md:1-49",
+                  "output_files/profile_report.md:1-90",
+                  "output_files/review_notes.md:1-20",
+                  "output_files/run_trace.md:1-40"
+                ]
+              },
+              {
+                "aspect": "Осторожная презентационная лексика",
+                "implementation": "README.md:738-750 и evidence.py:63-124 используют signs of, pattern consistent with, possible и candidate for review; forbidden words проверяются тестами по evidence, why и hypothesis.",
+                "value": "Для AML-демо это предотвращает превращение гипотезы структуры в обвинение и даёт жюри корректный язык интерпретации результатов.",
+                "verification": "observed",
+                "evidence": [
+                  "README.md:738-750",
+                  "src/moneygraph/evidence.py:63-124",
+                  "captures/20261002T145202097673-test.stdout.log"
+                ]
+              }
+            ],
+            "scoreReasoning": "README и demo script содержательны и дают рабочий путь демонстрации без устного выступления. Три балла сняты только за F1: устаревшие числовые примеры в презентационных материалах могут привести к неверной устной формулировке, хотя сами текущие артефакты и тесты корректны. Отсутствие публичной live-ссылки и визуальная непроверенность не использованы как штраф."
+          }
+        ],
+        "total": 97
+      },
+      "case": {
+        "criteria": [
+          {
+            "name": "Соответствие задаче и работоспособность",
+            "score": 25,
+            "max": 25,
+            "awarded": "На предоставленном графе воспроизведён основной сценарий от входных parquet до всех обязательных результатов и viewer payload.",
+            "deductions": "Подтверждённых дефектов соответствия требованиям не установлено.",
+            "evidence": [
+              "captures/20261002T144706978645-build.stdout.log",
+              "output_files/nodes_roles.csv:1-3",
+              "output_files/clusters.csv:1-5",
+              "output_files/top_nodes.csv:1-8"
+            ],
+            "deductionItems": [],
+            "awardedDetails": [
+              {
+                "aspect": "Входной контракт кейса",
+                "implementation": "io.py:72-174 и schema.py:219-307 обнаруживают и нормализуют edges, nodes и transactions; ingest_report.json подтверждает mapping src/dst/sum_kzt/n_tx/depth, gid/depth/is_seed и датированные транзакции. Входы дали 2 248/3 119/4 840.",
+                "value": "Решение применяет именно предоставленные материалы кейса, а не демонстрационные заглушки. Сверка хэшей показала совпадение repo data и case-data для всех трёх parquet.",
+                "verification": "observed",
+                "evidence": [
+                  "output_files/ingest_report.json:1-45",
+                  "output_files/profile_report.md:1-43",
+                  "captures/20261002T144706978645-build.stdout.log"
+                ]
+              },
+              {
+                "aspect": "Полный nodes_roles contract",
+                "implementation": "export.py:16-40 выводит обязательные поля gid, role, role_score, cluster_id, priority_score, evidence для всех строк; текущий файл имеет 2 248 уникальных gid без пустых required values. Дополнительные контекстные поля сохранены после required prefix.",
+                "value": "Выполнено самое жёсткое требование задания: каждый узел получает роль, score, cluster, priority и числовое evidence, а не только shortlist.",
+                "verification": "observed",
+                "evidence": [
+                  "src/moneygraph/export.py:16-40",
+                  "output_files/nodes_roles.csv:1-3",
+                  "captures/20261002T145202097673-test.stdout.log"
+                ]
+              },
+              {
+                "aspect": "Кластеры и shortlist",
+                "implementation": "clustering.py:22-71 назначает cluster_id каждому node; cluster_table в clustering.py:137-157 считает размер, seed count, internal turnover и top_gids. priority.py:73-91 строит стабильные rank 1..30.",
+                "value": "Обязательные clusters.csv и top_nodes.csv не являются пустыми шаблонами: получены 88 кластеров и 30 строк, а top_gids/why позволяют перейти от группы к конкретным счетам.",
+                "verification": "observed",
+                "evidence": [
+                  "src/moneygraph/clustering.py:22-71",
+                  "src/moneygraph/clustering.py:137-157",
+                  "output_files/clusters.csv:1-5",
+                  "output_files/top_nodes.csv:1-31"
+                ]
+              },
+              {
+                "aspect": "Работа с глубиной 4 и направлением",
+                "implementation": "graph.py:11-26 добавляет все узлы, включая isolated seeds, и строит DiGraph; graph.py:46-65 устанавливает observability по max_depth; roles.py:116-125 исключает terminal на frontier. Профиль подтверждает 444 узла глубины 4 и ни одного с observed outflow.",
+                "value": "Команда обработала специально заявленную ловушку задания: out_degree=0 на глубине 4 не превращается в доказательство terminal. Это прямо влияет на correctness основного сценария.",
+                "verification": "observed",
+                "evidence": [
+                  "src/moneygraph/graph.py:11-26",
+                  "src/moneygraph/graph.py:46-65",
+                  "src/moneygraph/roles.py:116-125",
+                  "output_files/profile_report.md:35-43"
+                ]
+              }
+            ],
+            "scoreReasoning": "Все обязательные выходы и ключевые семантические ограничения задания выполнены на реальных предоставленных данных. Поскольку визуальный экран по политике просматривает пользователь, его пиксельное поведение не утверждается как проверенное; при этом код, payload и unit/domain проверки дают достаточное основание для полного балла по соответствию и работоспособности MVP."
+          },
+          {
+            "name": "Техническая реализация",
+            "score": 25,
+            "max": 25,
+            "awarded": "Архитектура модульная, детерминированная и фактически соответствует заявленной логике; agentic слой не подменяет формальные решения.",
+            "deductions": "Подтверждённых технических дефектов, влияющих на кейсовый сценарий, не установлено.",
+            "evidence": [
+              "src/moneygraph/pipeline.py:82-260",
+              "src/moneygraph/features.py:17-85",
+              "src/moneygraph/roles.py:74-381",
+              "captures/20261002T145202097673-test.stdout.log"
+            ],
+            "deductionItems": [],
+            "awardedDetails": [
+              {
+                "aspect": "Направленный взвешенный граф и признаки",
+                "implementation": "graph.py:11-26 строит DiGraph с sum_kzt, n_tx и depth; features.py:17-64 считает distinct degrees, turnover, n_tx, seed_in_deg, pass_ratio, fan_in_share и retention; features.py:67-85 добавляет log-weighted PageRank и exact betweenness.",
+                "value": "Техническая реализация сохраняет смысл направления денег, различает суммы и количество транзакций и использует NaN/observability вместо тихого нуля для неподдающихся интерпретации pass ratios.",
+                "verification": "source",
+                "evidence": [
+                  "src/moneygraph/graph.py:11-26",
+                  "src/moneygraph/features.py:17-85",
+                  "output_files/profile_report.md:25-43"
+                ]
+              },
+              {
+                "aspect": "Формальный многопроходный role engine",
+                "implementation": "roles.py:203-268 назначает базовые роли по фиксированной precedence, роли cutoff и RuleTrace; roles.py:293-376 вторым проходом проверяет coordinator через key payers и payer clusters. Все thresholds приходят из config.yaml/config.calibrated.yaml.",
+                "value": "Такое разделение позволяет объяснить любое решение конкретным gate и избежать непроверяемого ML-классификатора. Тесты отдельно проверяют coordinator calibration, role invariants и каждый node rule trace.",
+                "verification": "source",
+                "evidence": [
+                  "src/moneygraph/roles.py:203-268",
+                  "src/moneygraph/roles.py:293-376",
+                  "tests/test_outputs.py:256-360",
+                  "tests/test_outputs.py:434-487"
+                ]
+              },
+              {
+                "aspect": "Кластеризация и устойчивость",
+                "implementation": "clustering.py:29-59 создаёт undirected projection только для Louvain, не смешивая её с directed metrics; clustering.py:74-121 повторяет runs по 5 seeds и считает pair stability. В запуске получено 88 clusters, mean stability 0.95 и 78 clusters >= 0.80.",
+                "value": "Компромисс направленности документирован, а стабильность не объявляется на глаз. Это технически зрелая граница между grouping и money-flow semantics.",
+                "verification": "observed",
+                "evidence": [
+                  "src/moneygraph/clustering.py:1-11",
+                  "src/moneygraph/clustering.py:29-121",
+                  "captures/20261002T144706978645-build.stdout.log"
+                ]
+              },
+              {
+                "aspect": "Реально реализованный agentic control plane",
+                "implementation": "orchestrator.py:119-196 ограничивает planner/calibrator/investigator budget, сохраняет calibration и запускает deterministic graph tools; llm.py:131-178 валидирует JSON/fallback, а tools.py:196-241 разрешает только объявленные методы.",
+                "value": "AI применён по назначению кейса — к планированию исследования, порогам, расследованию и phrasing — при сохранении deterministic core и audit trail. При нулевых calls offline-режим не деградирует в пустой результат.",
+                "verification": "source",
+                "evidence": [
+                  "src/moneygraph/agents/orchestrator.py:119-196",
+                  "src/moneygraph/agents/llm.py:131-178",
+                  "src/moneygraph/agents/tools.py:196-241",
+                  "output_files/run_trace.json:1-35"
+                ]
+              }
+            ],
+            "scoreReasoning": "Технический максимум подтверждён исходниками и тестами: направленность, observed/unobserved границы, роль coordinator, кластеризация, attribution, экспорт и fallback согласованы между модулями. Внешний provider не запускался из-за отсутствия credentials, но его вход, валидация ответа, tool dispatch и fallback прослеживаются по коду; отсутствие ключа не является дефектом проекта."
+          },
+          {
+            "name": "README и воспроизводимость",
+            "score": 22,
+            "max": 25,
+            "awarded": "Документация существенно выше минимальной: описаны запуск, архитектура, правила ролей, ограничения, схемы, агентный слой, масштабирование и проверки.",
+            "deductions": "Минус 3 балла за F1 — устаревшие измеренные числа в README/demo script относительно текущих артефактов.",
+            "evidence": [
+              "README.md:149-224",
+              "README.md:425-717",
+              "README.md:751-836",
+              "docs/demo_script.md:41-115",
+              "captures/20261002T144706978645-build.stdout.log",
+              "captures/20261002T145202097673-test.stdout.log"
+            ],
+            "deductionItems": [
+              {
+                "points": 3,
+                "findingId": "F1",
+                "reason": "Содержательные разделы воспроизводимы, но конкретные цифры в README.md:592-599 и docs/demo_script.md:205-207 не соответствуют текущим nodes_roles.csv/run: peripheral 540 вместо 560, transit 67 вместо 47, 1,6/1,7 s вместо 6,58 s, 74 tests вместо 98 passed. Это реальный documentation drift, который может запутать проверяющего при сверке результата."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Установка и режимы запуска",
+                "implementation": "README.md:235-318 описывает ручную установку, one-command agent_run.sh, --offline, --use-existing, --no-app и --data; requirements.txt фиксирует версии core, viewer, agent и tests.",
+                "value": "Путь без API-ключа виден сразу, а основной запуск не зависит от notebook или ручного копирования. Это позволило выполнить clean-container check тем же входом кейса.",
+                "verification": "observed",
+                "evidence": [
+                  "README.md:235-318",
+                  "requirements.txt:1-25",
+                  "captures/20261002T144706978645-build.stdout.log"
+                ]
+              },
+              {
+                "aspect": "Объяснение data flaws и правил",
+                "implementation": "README.md:541-601 подробно описывает gates, precedence, role_score, cutoff, seed semantics и percentile rationale; README.md:672-686 отдельно разбирает hop-4, outgoing-only, threshold, components, no attributes и no ground truth.",
+                "value": "Документация позволяет воспроизвести не только команду, но и смысл конкретного role assignment. Для задания без ground truth это центральная часть reproducibility.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:541-601",
+                  "README.md:672-686",
+                  "config.yaml:48-160",
+                  "config.calibrated.yaml:1-60"
+                ]
+              },
+              {
+                "aspect": "Проверяемый audit trail",
+                "implementation": "README.md:203-211 и pipeline.py:63-71 объясняют agent_log/run_trace, а output_files/profile_report.md и ingest_report.json фиксируют фактические input mapping, counts, mismatches и stage timing.",
+                "value": "Проверяющий может сопоставить claims с данными, кодом и run artifacts, а не принимать README как единственное доказательство. В отчёте профиля факты 2 248/3 119/4 840, turnover и depth-4 reproduced.",
+                "verification": "observed",
+                "evidence": [
+                  "src/moneygraph/pipeline.py:63-71",
+                  "output_files/profile_report.md:1-90",
+                  "output_files/ingest_report.json:1-45",
+                  "output_files/run_trace.json:1-35"
+                ]
+              },
+              {
+                "aspect": "Проверка самой документации тестами",
+                "implementation": "tests/test_outputs.py:1019-1104 проверяет required sections, cross-links, commands, quick-start key disclosure, internal anchors and documented flags; tests/test_outputs.py:1269-1381 проверяет docs snippets, placeholders, clone URL and Make targets.",
+                "value": "Команда встроила docs в regression surface. Это объясняет, почему при общем высоком качестве единственный найденный рассинхрон — measured numbers, которые тесты пока не сравнивают с output statistics.",
+                "verification": "observed",
+                "evidence": [
+                  "tests/test_outputs.py:1019-1104",
+                  "tests/test_outputs.py:1269-1381",
+                  "captures/20261002T145202097673-test.stdout.log"
+                ]
+              }
+            ],
+            "scoreReasoning": "Документация покрывает почти весь путь от установки до интерпретации. Три балла удержаны только за F1: точные цифры в демонстрационных материалах должны быть синхронизированы с текущим run, иначе проверяющий может решить, что воспроизвёл другой результат. Это не отменяет того, что команды и основной сценарий воспроизводимы."
+          },
+          {
+            "name": "Ценность и применимость решения",
+            "score": 15,
+            "max": 15,
+            "awarded": "Подход практично переводит синтетическую транзакционную сеть в объяснимый список кандидатов для AML-проверки и не выходит за доступные данные.",
+            "deductions": "Подтверждённых недостатков применимости для заявленного MVP не установлено.",
+            "evidence": [
+              "README.md:107-147",
+              "src/moneygraph/priority.py:23-82",
+              "output_files/review_notes.md:1-20",
+              "output_files/data_requests.md:1-55"
+            ],
+            "deductionItems": [],
+            "awardedDetails": [
+              {
+                "aspect": "Полезный объект решения",
+                "implementation": "Результат фокусируется на candidate accounts, а не на попытке восстановить недоступную identity. nodes_roles.csv даёт роль и priority для каждого узла, top_nodes.csv — порядок первых 30, а app/web — detail по gid.",
+                "value": "Для аналитика это соответствует рабочему triage: сначала выбираются узлы, затем читается rule evidence и проверяются связи. Избыточные personal attributes не выдумываются.",
+                "verification": "observed",
+                "evidence": [
+                  "output_files/nodes_roles.csv:1-3",
+                  "output_files/top_nodes.csv:1-8",
+                  "README.md:738-750"
+                ]
+              },
+              {
+                "aspect": "Пригодность для расследовательского процесса",
+                "implementation": "GraphTools в tools.py:32-151 поддерживает node_card, payers, recipients, common_downstream, path, cluster_summary, top_nodes и dataset_overview; review_agent.py вычисляет requests для frontier и missing seed inflow.",
+                "value": "Система поддерживает естественные follow-up вопросы и связывает ranking с конкретным графовым контекстом. Это полезнее, чем одно число anomaly score без маршрута проверки.",
+                "verification": "source",
+                "evidence": [
+                  "src/moneygraph/agents/tools.py:32-151",
+                  "src/moneygraph/agents/review_agent.py:32-122"
+                ]
+              },
+              {
+                "aspect": "Применимость при неполной наблюдаемости",
+                "implementation": "graph.py и features.py сохраняют outflow_observed/inflow_reliable, roles.py запрещает неверные terminal/transit cases, а review_notes.md прямо предупреждает, что terminal threshold широк и leaves могут быть обычными.",
+                "value": "Ограниченная банковская выгрузка не маскируется под полную картину. Такая осторожность повышает пригодность инструмента как screening aid, а не как автоматического заключения.",
+                "verification": "observed",
+                "evidence": [
+                  "src/moneygraph/graph.py:46-65",
+                  "src/moneygraph/features.py:39-54",
+                  "output_files/review_notes.md:6-20"
+                ]
+              }
+            ],
+            "scoreReasoning": "Полный балл соответствует обозначенной проблеме: результат даёт практическое ранжирование и следующий запрос данных, использует только допустимые признаки и формулирует всё как гипотезы. Отсутствие ground truth и production account attributes — ограничения кейса, а не недоработка этого MVP."
+          },
+          {
+            "name": "Потенциал развития и оригинальность подхода",
+            "score": 10,
+            "max": 10,
+            "awarded": "Оригинальный cutoff-aware и seed-attribution подход уже работает, а расширение до новых данных и больших графов описано через конкретные технические замены.",
+            "deductions": "Подтверждённых недостатков по этому критерию не установлено.",
+            "evidence": [
+              "src/moneygraph/attribution.py:50-101",
+              "src/moneygraph/clustering.py:74-121",
+              "README.md:651-680",
+              "README.md:771-803"
+            ],
+            "deductionItems": [],
+            "awardedDetails": [
+              {
+                "aspect": "Расширение аналитических признаков",
+                "implementation": "temporal.py:22-71 добавляет median lag, fast pass share, synchronized payers и active days; extras.py реализует cycles, recurring routes, resilience и anomaly flags как контекст, не меняющий role/rank.",
+                "value": "Базовый pipeline можно постепенно обогащать сигналами времени, циклов и устойчивости, не ломая обязательный CSV-контракт и не смешивая flags с ролями.",
+                "verification": "source",
+                "evidence": [
+                  "src/moneygraph/temporal.py:22-71",
+                  "src/moneygraph/extras.py:1-130",
+                  "output_files/extras_report.md:1-45"
+                ]
+              },
+              {
+                "aspect": "Оригинальный safety-by-design",
+                "implementation": "RuleTrace, number validation в evidence.py:218-280, forbidden-word validation и tool-only analyst path не дают модели свободно изобретать numeric claims или identity attributes.",
+                "value": "Для дальнейшего применения в чувствительной области это более переносимый принцип, чем конкретный текущий threshold: каждое новое агентное действие должно возвращаться к проверяемому детерминированному источнику.",
+                "verification": "source",
+                "evidence": [
+                  "src/moneygraph/roles.py:32-56",
+                  "src/moneygraph/evidence.py:218-280",
+                  "src/moneygraph/agents/analyst_agent.py:21-69"
+                ]
+              },
+              {
+                "aspect": "Масштабирование без смены пользовательского контракта",
+                "implementation": "README.md:771-803 предлагает заменить вычислительный backend, оставить percentile thresholds и sparse propagation, а webexport.py:49-175 уже отделяет payload от расчёта.",
+                "value": "Можно перейти от NetworkX к компонентному или распределённому backend, сохранив для аналитика те же role/priority/evidence и on-demand gid view.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:771-803",
+                  "src/moneygraph/webexport.py:49-175"
+                ]
+              }
+            ],
+            "scoreReasoning": "Критерий закрыт полностью для масштаба задания: нестандартные признаки и safety-контроль уже реализованы, а план дальнейшего роста связан с реальными узкими местами. Не требовалось уже в пятичасовом MVP достигать production-масштаба."
+          }
+        ],
+        "total": 97
+      },
+      "judgeScore": 97,
+      "caseRequirements": [
+        {
+          "requirement": "Локальный воспроизводимый pipeline от nodes/edges/transactions parquet до трёх обязательных CSV за менее чем 5 минут",
+          "status": "met",
+          "explanation": "В изолированном offline-запуске загружены 2 248 узлов, 3 119 рёбер и 4 840 транзакций; pipeline завершился за 6,58 секунды по собственному run trace/console timing при лимите 300 секунд и записал все deliverables.",
+          "evidence": [
+            "src/moneygraph/pipeline.py:82-260",
+            "captures/20261002T144706978645-build.stdout.log",
+            "output_files/run_trace.json:1-35"
+          ]
+        },
+        {
+          "requirement": "nodes_roles.csv содержит строку для всех 2 248 узлов с role, score, cluster, priority и числовым evidence",
+          "status": "met",
+          "explanation": "Файл имеет 2 248 строк и уникальные gid; required prefix совпадает со схемой, required values не пусты, роли включают формальные consolidator/transit/distributor/terminal/coordinator/peripheral и документированное расширение cutoff.",
+          "evidence": [
+            "src/moneygraph/export.py:16-40",
+            "output_files/nodes_roles.csv:1-3",
+            "captures/20261002T145202097673-test.stdout.log"
+          ]
+        },
+        {
+          "requirement": "clusters.csv с гипотезой на кластер и top_nodes.csv не менее чем с 20 узлами",
+          "status": "met",
+          "explanation": "Фактические выгрузки содержат 88 кластеров и 30 строк top_nodes, с n_nodes/n_seed/internal turnover/top_gids/hypothesis и rank/gid/role/priority/why соответственно.",
+          "evidence": [
+            "src/moneygraph/clustering.py:137-157",
+            "output_files/clusters.csv:1-5",
+            "output_files/top_nodes.csv:1-31"
+          ]
+        },
+        {
+          "requirement": "Шесть базовых ролей, объяснимые правила/пороги, role_score и приоритет",
+          "status": "met",
+          "explanation": "roles.py содержит фиксированные gates и precedence, thresholds вынесены в config.yaml/config.calibrated.yaml, RuleTrace сериализуется для каждого узла, а priority.py использует прозрачную сумму перцентильных компонентов. cutoff документирован как switchable extension для frontier.",
+          "evidence": [
+            "src/moneygraph/roles.py:26-29",
+            "src/moneygraph/roles.py:74-133",
+            "src/moneygraph/roles.py:203-268",
+            "config.yaml:48-160",
+            "README.md:541-601"
+          ]
+        },
+        {
+          "requirement": "Направленная визуализация с поиском gid, ролями, потоками и объяснением",
+          "status": "partial",
+          "explanation": "Исходники web/app.js и app/app.py реализуют поиск gid, карточку, payers/recipients и directed ego graph; web_data.json содержит 2 248 nodes, edges и локализованные evidence. Статические viewer-тесты прошли, но визуальное поведение не проверялось по пользовательской политике, а отдельный live HTTP старт сервера в этой проверке не выполнялся.",
+          "evidence": [
+            "web/app.js:498-585",
+            "app/app.py:589-668",
+            "src/moneygraph/webexport.py:49-175",
+            "tests/test_outputs.py:1165-1249"
+          ]
+        },
+        {
+          "requirement": "Корректная обработка глубины 4 и запрета ложного terminal",
+          "status": "met",
+          "explanation": "outflow_observed=false для depth == max_depth, terminal gate требует observed outflow, а cutoff получает отдельную роль/пояснение. Профиль воспроизводит 444 frontier nodes и не показывает depth-4 terminal.",
+          "evidence": [
+            "src/moneygraph/graph.py:52-65",
+            "src/moneygraph/roles.py:116-125",
+            "output_files/profile_report.md:35-43",
+            "tests/test_outputs.py:241-254"
+          ]
+        },
+        {
+          "requirement": "Использование предоставленных тестовых parquet и проверка согласованности edges/transactions/nodes",
+          "status": "met",
+          "explanation": "Файлы из case-data были сопоставлены с repo data; совпали размеры и содержимое. Профиль подтверждает per-pair sums/counts, отсутствие self-loops и duplicate pairs, диапазон дат, floor 5 000 KZT и соответствие объявленным totals.",
+          "evidence": [
+            "output_files/ingest_report.json:1-45",
+            "output_files/profile_report.md:1-43",
+            "captures/20261002T144706978645-build.stdout.log",
+            "captures/20261002T145202097673-test.stdout.log"
+          ]
+        },
+        {
+          "requirement": "Гипотезы, а не обвинения; отсутствие внешних/вымышленных атрибутов",
+          "status": "met",
+          "explanation": "Evidence, why и hypothesis используют осторожные шаблоны, forbidden-word guard и numeric validation; README прямо сообщает отсутствие ground truth и личных атрибутов. Тесты wording прошли.",
+          "evidence": [
+            "src/moneygraph/evidence.py:63-124",
+            "src/moneygraph/evidence.py:261-280",
+            "README.md:738-750",
+            "tests/test_outputs.py:312-360"
+          ]
+        }
+      ],
+      "testData": {
+        "provided": [
+          "cases/2/case-data/README.md",
+          "cases/2/case-data/data/edges.parquet",
+          "cases/2/case-data/data/nodes.parquet",
+          "cases/2/case-data/data/transactions.parquet",
+          "cases/2/case-data/starter/README.md",
+          "cases/2/case-data/starter/requirements.txt",
+          "cases/2/case-data/starter/starter.py"
+        ],
+        "used": [
+          "data/edges.parquet",
+          "data/nodes.parquet",
+          "data/transactions.parquet",
+          "data/README.md",
+          "starter/README.md",
+          "starter/requirements.txt",
+          "starter/starter.py"
+        ],
+        "checks": [
+          {
+            "input": "Три parquet из data/; их SHA-256 совпали с соответствующими cases/2/case-data/data/*.parquet.",
+            "method": "Сверка файлов и запуск полного loader/profile в контейнере; profile.py затем сравнил объявленные counts и сумму оборота с фактическими таблицами.",
+            "result": "2 248 nodes, 3 119 edges, 4 840 transactions, 81 seeds, depth distribution 81/472/462/789/444, turnover 365 890 012 KZT; edges и transactions согласованы.",
+            "conclusion": "Вход кейса применён фактически, а не заменён mock или частичным sample."
+          },
+          {
+            "input": "edges.parquet, transactions.parquet, nodes.parquet; в том числе узлы глубины 4.",
+            "method": "Проверены mapping/schema, pair sums and n_tx, self-loops, duplicate pairs, gid coverage, date range and min amount; тесты также проверили role/cutoff invariants.",
+            "result": "Per-pair sums/counts reproduces edges; self-loops=0, duplicate pairs=0, missing endpoint gids=0, dates 2026-07-01..2026-07-31, min amount=5 000 KZT, depth-4 frontier=444.",
+            "conclusion": "Данные подходят для заявленного графового сценария и известные ловушки кейса действительно дошли до role engine."
+          },
+          {
+            "input": "Результаты pipeline: nodes_roles.csv, clusters.csv, top_nodes.csv и web_data.json.",
+            "method": "Проверены строки, required columns, nulls, unique gid, cluster totals, top rank, score range, evidence bounds и web payload; затем прогнан полный pytest.",
+            "result": "nodes_roles=2 248 строк, clusters=88, top_nodes=30; полный pytest: 98 passed, 1 skipped in 39.07 s.",
+            "conclusion": "Обязательные выгрузки и regression contract выполнены."
+          },
+          {
+            "input": "Опциональный агентный и viewer-пути без credentials.",
+            "method": "Offline run с MONEYGRAPH_NO_LLM=1 и статические/domain тесты analyst fallback, RuleTrace, web payload, path confinement и local assets.",
+            "result": "Pipeline завершён с 0 LLM calls; deterministic templates сформировали evidence/data_requests, а тесты agent fallback и frontend contract прошли.",
+            "conclusion": "Основной сценарий не зависит от внешнего ключа; полноценный внешний provider response не заявляется проверенным."
+          }
+        ],
+        "limitations": [
+          "Не проверялся production или иной внешний источник данных; кейс требует синтетический предоставленный граф.",
+          "API credentials намеренно не предоставлены, поэтому реальный OpenAI-compatible call не выполнялся; путь обработки и fallback оценены по исходникам и unit tests.",
+          "Визуальный рендеринг и интерактивность браузера не инспектировались в соответствии с пользовательской политикой; это не считается дефектом проекта."
+        ]
+      },
+      "runtime": {
+        "status": "working",
+        "build": "Зависимости из requirements.txt установлены в изолированном Python 3.12 окружении; build/run команда завершилась с exitCode=0.",
+        "start": "run.py успешно стартует без API-ключа в режиме MONEYGRAPH_NO_LLM=1 и проходит ingest/profile до export.",
+        "scenario": "Основной offline-сценарий воспроизведён на data/{edges,nodes,transactions}.parquet: роли, кластеры, приоритеты, CSV, parquet-контекст, requests и web_data сформированы.",
+        "environment": "Изолированный контейнер с Python 3.12, лимитами 2 CPU и 3 GB памяти; credentials не передавались.",
+        "summary": "Проект working: pipeline и пользовательский результат воспроизведены. Полный pytest также прошёл; визуальное поведение отдельно не утверждается проверенным.",
+        "checks": [
+          {
+            "command": "MONEYGRAPH_NO_LLM=1 python -X utf8 run.py --data data --out output_files --config config.yaml",
+            "result": "exitCode=0; этапы ingest/profile/graph/features/temporal/attribution/roles/clustering/priority/extras/evidence/export завершены; 6.58 s по логу, 0 LLM calls, 2 248 nodes, 3 119 edges, 4 840 transactions, 88 clusters.",
+            "id": "offline-pipeline",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Полный расчёт на трёх parquet создаёт все обязательные выгрузки и укладывается в 300 s."
+          },
+          {
+            "command": "python -X utf8 -m pytest -q",
+            "result": "exitCode=0; 98 passed, 1 skipped in 39.07 s. Проверены output contracts, data invariants, roles, agents, frontend payload, docs, bundle, hardcoding и determinism.",
+            "id": "full-pytest",
+            "stage": "build",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Все доступные unit/domain/regression проверки проекта проходят без ключей."
+          }
+        ],
+        "limitations": [
+          "Полный wall-clock с нуля включает установку pinned dependencies и существенно длиннее собственно pipeline; заявленный pipeline timing 6.58 s остаётся внутри лимита.",
+          "HTTP/live server check отдельно не выполнялся; статические frontend/domain tests и web_data contract прошли.",
+          "Внешний LLM provider не запускался без credentials."
+        ]
+      },
+      "liveDemo": {
+        "status": "none",
+        "url": null,
+        "notes": "В README и final_deliverables указан demo video, но публичная live URL для HTTP-проверки не заявлена и не проверялась. Локальное demo описано через agent_run.sh --use-existing/--offline; отсутствие live URL не использовано как штраф."
+      },
+      "fiveHourContext": "Для пятичасового хакатона результат unusually complete: в манифесте зафиксированы 8 коммитов одного автора в окне, а snapshot содержит pipeline, viewer, tests, optional analyses, calibration и deliverables bundle. Оценка учитывает именно MVP-масштаб: не требуются production graph database, ground-truth validation, личные атрибуты или работа внешнего LLM без ключа.",
+      "strengths": [
+        "Полностью воспроизводимый offline core без обязательного API-ключа.",
+        "Корректное различение observed outflow и неизвестного outflow на depth 4; cutoff не маскируется под terminal.",
+        "Формальный RuleTrace на каждый узел, числовое evidence и safety-валидация формулировок.",
+        "Сильный пакет проверок: 98 passed, включая determinism, output contract, agents, frontend и документацию.",
+        "Seed attribution, seed reach, temporal features, clusters, data requests и resilience добавляют полезный контекст сверх минимального CSV.",
+        "Подробный README и bundle позволяют локально объяснить произвольный gid по rule/metrics/flows."
+      ],
+      "gaps": [
+        "F1: README.md и docs/demo_script.md содержат устаревшие числовые примеры ролей, runtime и количества тестов относительно текущего результата."
+      ],
+      "futureAdvice": [
+        {
+          "principle": "Измеренные числа в документации должны генерироваться из того же артефакта, что и deliverables.",
+          "why": "F1 возник потому, что core outputs обновились, а демонстрационные числа peripheral/transit, runtime и test count остались от предыдущего запуска; это создаёт недоверие именно в момент защиты результата.",
+          "how": "В другом хакатоне после freeze добавьте короткую проверку, которая читает nodes_roles.csv и run_trace.json, вычисляет role_counts/runtime/top counts и обновляет или валит CI при расхождении с README/demo script. Числа для слайдов/скрипта держите в одном generated summary, а текст ссылайте на него.",
+          "findingIds": [
+            "F1"
+          ],
+          "successCheck": "После чистого offline run role counts, runtime и число тестов в README/demo script совпадают с nodes_roles.csv, run_trace.json и последним pytest capture; отдельный regression check проходит.",
+          "timeboxMinutes": 25
+        }
+      ],
+      "uncertainties": [
+        "Нет ground truth для оценки фактической точности ролей; критерий оценивает объяснимость и обработку ограничений, как указано в кейсе.",
+        "Реальный внешний LLM response не проверялся из-за намеренно отсутствующих credentials; это ограничение проверки, не подтверждённый дефект.",
+        "UI визуально не проверялся; проверены только исходники, payload и автоматические frontend/domain тесты.",
+        "Ссылка на demo video не открывалась и не трактуется как подтверждённое live demo.",
+        "Пиксельное качество графа, читаемость layout и фактическое поведение браузера оставлены пользовательской визуальной проверке."
+      ],
+      "reviewPolicyVersion": 2,
+      "assessmentStatus": "ready",
+      "findings": [
+        {
+          "id": "S1",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Основной offline pipeline воспроизводит полный кейсовый сценарий на предоставленном графе.",
+          "expected": "Из трёх parquet должны появиться корректные роли, кластеры, shortlist и viewer artifacts в пределах 5 минут.",
+          "actual": "Свежий запуск завершился с exitCode=0 за 6.58 s по приложению, сформировал 2 248 node rows, 88 clusters, 30 top rows и 0 LLM calls.",
+          "evidence": [
+            "captures/20261002T144706978645-build.stdout.log",
+            "output_files/ingest_report.json:1-45",
+            "output_files/nodes_roles.csv:1-3"
+          ],
+          "checkIds": [
+            "offline-pipeline"
+          ]
+        },
+        {
+          "id": "S2",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Известные ограничения графа обработаны семантически, а не только описаны в README.",
+          "expected": "Depth-4 nodes с нулевым observed outflow не должны автоматически получать terminal; seed inflow должен быть marked unreliable.",
+          "actual": "graph.py выставляет outflow_observed/inflow_reliable, roles.py блокирует terminal для unobserved outflow, profile воспроизводит 444 depth-4 frontier nodes, а tests проверяют cutoff/seed invariants.",
+          "evidence": [
+            "src/moneygraph/graph.py:46-65",
+            "src/moneygraph/roles.py:116-125",
+            "output_files/profile_report.md:35-43",
+            "tests/test_outputs.py:241-254"
+          ],
+          "checkIds": [
+            "offline-pipeline",
+            "full-pytest"
+          ]
+        },
+        {
+          "id": "S3",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Экспорты имеют полный required contract и explainability context.",
+          "expected": "Все 2 248 узлов должны иметь role/score/cluster/priority/evidence, clusters/top должны быть непустыми и согласованными.",
+          "actual": "nodes_roles.csv содержит 2 248 уникальных строк, clusters.csv — 88 строк, top_nodes.csv — 30 строк; required columns и null checks прошли.",
+          "evidence": [
+            "src/moneygraph/export.py:16-61",
+            "output_files/nodes_roles.csv:1-3",
+            "output_files/clusters.csv:1-5",
+            "output_files/top_nodes.csv:1-31"
+          ],
+          "checkIds": [
+            "offline-pipeline",
+            "full-pytest"
+          ]
+        },
+        {
+          "id": "S4",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Regression suite проверяет не только CSV, но и determinism, safety wording, agents, web payload и документацию.",
+          "expected": "Доступные тесты должны завершаться без проектных ошибок.",
+          "actual": "98 passed, 1 skipped; пропуск не был дефектом проекта и не использовался для снижения оценки.",
+          "evidence": [
+            "captures/20261002T145202097673-test.stdout.log",
+            "tests/test_outputs.py:208-360",
+            "tests/test_outputs.py:1165-1453"
+          ],
+          "checkIds": [
+            "full-pytest"
+          ]
+        },
+        {
+          "id": "S5",
+          "kind": "strength",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "AI/agentic слой ограничен deterministic tools, budget и validators и имеет fallback без модели.",
+          "expected": "Отсутствие ключа не должно делать основной pipeline пустым или неработоспособным; модель не должна самостоятельно назначать роли.",
+          "actual": "LLMClient отключается без ключа, roles.py остаётся единственным rule engine, а offline run формирует полный результат с 0 calls.",
+          "evidence": [
+            "src/moneygraph/agents/llm.py:76-115",
+            "src/moneygraph/roles.py:1-15",
+            "src/moneygraph/agents/tools.py:20-241",
+            "captures/20261002T144706978645-build.stdout.log"
+          ],
+          "checkIds": [
+            "offline-pipeline",
+            "full-pytest"
+          ]
+        },
+        {
+          "id": "F1",
+          "kind": "defect",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Публичные README/demo numbers не синхронизированы с текущими committed outputs и свежим run.",
+          "expected": "Точные role counts, runtime и test count в README.md и docs/demo_script.md должны совпадать с последними артефактами или быть явно помечены как исторические.",
+          "actual": "README.md и demo script сообщают peripheral=540, transit=67, runtime 1.6/1.7 s и 74 tests; current nodes_roles/run/test capture показывают peripheral=560, transit=47, 6.58 s и 98 passed.",
+          "evidence": [
+            "README.md:587-599",
+            "docs/demo_script.md:199-207",
+            "output_files/nodes_roles.csv:1-3",
+            "captures/20261002T144706978645-build.stdout.log",
+            "captures/20261002T145202097673-test.stdout.log"
+          ],
+          "checkIds": [
+            "offline-pipeline",
+            "full-pytest"
+          ]
+        },
+        {
+          "id": "L1",
+          "kind": "limitation",
+          "verification": "unverified",
+          "responsibility": "review_environment",
+          "claim": "Визуальное поведение viewer и браузерная читаемость графа не подтверждены этим ревью.",
+          "expected": "Пользовательская визуальная проверка должна подтвердить, что поиск gid, layout, цвета и карта читаемы в браузере.",
+          "actual": "Проверены source, generated web_data.json и автоматические frontend/domain tests, но CUA/browser/screenshot inspection запрещены пользовательской политикой.",
+          "evidence": [
+            "web/app.js:224-298",
+            "web/app.js:498-585",
+            "tests/test_outputs.py:1165-1249"
+          ],
+          "checkIds": [
+            "full-pytest"
+          ]
+        },
+        {
+          "id": "L2",
+          "kind": "limitation",
+          "verification": "unverified",
+          "responsibility": "external_service",
+          "claim": "Реальный внешний LLM provider не был вызван.",
+          "expected": "При наличии credentials provider должен пройти заявленный client/tool/validation path.",
+          "actual": "API credentials намеренно отсутствуют; offline deterministic path успешно отработал, а provider path оценён по исходникам и тестам.",
+          "evidence": [
+            "src/moneygraph/agents/llm.py:76-115",
+            "src/moneygraph/agents/llm.py:131-178",
+            "captures/20261002T144706978645-build.stdout.log"
+          ],
+          "checkIds": [
+            "offline-pipeline",
+            "full-pytest"
+          ]
+        }
+      ],
+      "gapFindingIds": [
+        "F1"
+      ]
+    }
+  ],
+  "score": 97.0,
+  "status": "complete",
+  "expectedJudges": 1
+}

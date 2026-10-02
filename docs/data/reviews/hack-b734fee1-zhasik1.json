@@ -1,0 +1,763 @@
+{
+  "methodVersion": 4,
+  "repoId": "hack-b734fee1-zhasik1",
+  "repoUrl": "https://github.com/BAITC-Hacks/hack-b734fee1-zhasik1",
+  "caseId": 5,
+  "snapshot": "96496ce0316ad45ad40c756e90aaae1c9d158c12",
+  "judges": [
+    {
+      "methodVersion": 4,
+      "repoId": "hack-b734fee1-zhasik1",
+      "caseId": 5,
+      "model": "GPT-5.6 Luna",
+      "snapshot": "96496ce0316ad45ad40c756e90aaae1c9d158c12",
+      "overallSummary": "QOR — сильный детерминированный MVP для объяснимых черновиков закупок. Рабочий frontend/backend-сценарий воспроизведён на synthetic walkthrough и покрыт 58 тестами: импорт, causal outlier review, сезонный прогноз, stockout-компенсация, dated inventory planning, MOQ/pack, версии, approval и проверяемый CSV/XLSX export. Все 12 предоставленных XLSX реально прочитаны backend-ingestion; оба поставщика распознаны, но из-за отсутствия подтверждённого текущего остатка и конфликтующих lookup-строк ни один SKU не дал подтверждённый реальный заказ на snapshot. Это корректно отражено блокирующими статусами. Оценка готова; непроверенные внешний AI и визуальные свойства вынесены в ограничения и не штрафуются.",
+      "global": {
+        "criteria": [
+          {
+            "name": "Ценность решения",
+            "score": 25,
+            "max": 25,
+            "awarded": "Полный балл: решение адресует конкретную дорогую проблему закупщика и превращает ручную сверку в управляемый объяснимый draft.",
+            "deductions": "Снятий нет.",
+            "evidence": [
+              "README.md: Calculation methodology, Manager workflow",
+              "frontend/app_pages/landing.py:31-39,60-79",
+              "backend/qor/service.py:23-98"
+            ],
+            "deductionItems": [],
+            "awardedDetails": [
+              {
+                "aspect": "Операционная боль",
+                "implementation": "Landing и README связывают продажи, stock, inbound и supplier rules в один расчёт менеджера закупок; UI показывает дату дефицита, количество и источник каждой строки.",
+                "value": "Польза выражена в сокращении ручного Excel-анализа, раннем обнаружении дефицита и подготовке проверяемого заказа, а не в абстрактном обещании AI.",
+                "verification": "source",
+                "evidence": [
+                  "frontend/app_pages/landing.py:31-39",
+                  "README.md: Manager workflow"
+                ]
+              },
+              {
+                "aspect": "Реальные закупочные ограничения",
+                "implementation": "calculate_plan передаёт dated stock, inbound ETA, lead/review/buffer, MOQ, pack multiple и category buffer; missing stock не превращается в ноль, а получает needs_stock_input/needs_dated_stock.",
+                "value": "Это делает решение пригодным для фактической закупки: оно снижает риск ложного заказа из-за неизвестного остатка и учитывает условия поставщика.",
+                "verification": "source",
+                "evidence": [
+                  "backend/qor/service.py:38-83",
+                  "backend/qor/planning/engine.py:31-72",
+                  "tests/test_planning_rules.py:16-18,53-68"
+                ]
+              },
+              {
+                "aspect": "Проверяемое объяснение",
+                "implementation": "Recommendation содержит raw_need, recommended_qty, binding_date, projected stock, buffer, shortage_date, urgency, assumptions и provenance; UI раскрывает timeline.",
+                "value": "Менеджер может проверить, почему предложено именно такое количество, и скорректировать его с причиной.",
+                "verification": "source",
+                "evidence": [
+                  "backend/qor/planning/engine.py:51-72",
+                  "frontend/components/views.py:271-279"
+                ]
+              },
+              {
+                "aspect": "Безопасность бизнес-решения",
+                "implementation": "Repository проводит draft → review → approved → exported, требует actor и причину, а AI router не имеет approval/export/dispatch tools.",
+                "value": "Автоматизация помогает подготовить решение, но не отправляет поставщику заказ без ручного подтверждения.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/qor/storage/repository.py:57-77,114-171",
+                  "backend/qor/ai/provider.py:14-31",
+                  "tests/test_workflow.py:24-62"
+                ]
+              }
+            ],
+            "scoreReasoning": "Полный балл заслужен: польза подтверждается кодом, README и synthetic lifecycle. Неполучение real order из supplied XLSX связано с отсутствующим датированным current stock и конфликтами исходных lookup-строк; проект блокирует небезопасный расчёт, поэтому это не превращено в штраф за ценность MVP."
+          },
+          {
+            "name": "Результат и качество решения",
+            "score": 18,
+            "max": 20,
+            "awarded": "Высокий балл: целостный локальный сценарий работает на synthetic walkthrough, но два воспроизводимых ограничения уменьшают полноту результата.",
+            "deductions": "2 балла: draft создаётся только для одного поставщика, а auto forecast в чистом checkout не получает сохранённый evaluation report.",
+            "evidence": [
+              "runtime.checks:test-suite,http-health,http-page,case-data-ingestion",
+              "tests/test_ui.py:24-58",
+              "backend/qor/storage/repository.py:64-69",
+              "backend/qor/demand/selection.py:10-18",
+              ".gitignore:20-21"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "F-ONE-SUPPLIER-DRAFT",
+                "reason": "Repository отклоняет mixed-supplier draft, а UI рассчитывает выбранного поставщика; consolidated grouped result требует нескольких отдельных расчётов."
+              },
+              {
+                "points": 1,
+                "findingId": "F-AUTO-EVALUATION-ARTIFACT",
+                "reason": "auto selection ищет runtime/forecast_evaluation.json, но runtime/ исключён из Git; clean checkout использует безопасный seasonal fallback без source-matched selection."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Связанный calculation path",
+                "implementation": "Service проверяет blocked keys, unit и dated stock, строит causal forecast и передаёт дневной ряд в planning, сохраняя assumptions/provenance.",
+                "value": "Это целостный результат от входной таблицы до строки заказа, а неоднозначный вход останавливается до approval.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/qor/service.py:23-98",
+                  "runtime.checks:test-suite"
+                ]
+              },
+              {
+                "aspect": "Dated inventory",
+                "implementation": "Planning применяет только будущие ETA, принимает receipt до consumption в день ETA, сохраняет ранний shortage и выбирает binding need по lead/review window.",
+                "value": "Поздняя поставка не скрывает уже возникший дефицит, а финальный баланс не обнуляет обязательную потребность.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/qor/planning/engine.py:15-28,51-65",
+                  "tests/test_planning_rules.py:21-35"
+                ]
+              },
+              {
+                "aspect": "Approval и export",
+                "implementation": "Workflow tests проходят edit-with-reason, сброс approval, stale-version rejection, persisted approval и reopen CSV/XLSX с formula escaping.",
+                "value": "Файл поставщику можно получить только из утверждённой persisted версии, с сохранением audit trail.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/qor/storage/repository.py:93-172",
+                  "tests/test_workflow.py:33-62"
+                ]
+              },
+              {
+                "aspect": "Проверка supplied files",
+                "implementation": "Все 12 XLSX дали 248915 sales, 104620 monthly, 497 stock, 306 inbound и 2517 policies; audit вывел 494 blocked keys и 510 warnings.",
+                "value": "Проект не выдал ложный real order при плохой полноте входа; это правильный safety result, хотя демонстрация реального output ограничена.",
+                "verification": "observed",
+                "evidence": [
+                  "runtime.checks:case-data-ingestion",
+                  "backend/qor/data/ingestion.py:123-203,205-250"
+                ]
+              }
+            ],
+            "scoreReasoning": "18/20 отражает реально работающий MVP: 58 тестов подтверждают synthetic lifecycle и HTTP запуск подтверждает entry point. Сняты только два балла за mixed-supplier draft и неупакованный evaluation artifact. Отсутствие current stock в supplied data не засчитано как дефект команды: проект корректно блокирует небезопасный заказ."
+          },
+          {
+            "name": "Инновационность",
+            "score": 15,
+            "max": 15,
+            "awarded": "Полный балл: нестандартность — в сочетании causal data review, explainable planning и bounded human-in-the-loop, а не в необоснованном обещании LLM.",
+            "deductions": "Снятий нет.",
+            "evidence": [
+              "backend/qor/demand/forecast.py:9-201",
+              "backend/qor/demand/selection.py:13-45",
+              "backend/qor/ai/provider.py:14-31",
+              "tests/test_forecast_rules.py:14-109"
+            ],
+            "deductionItems": [],
+            "awardedDetails": [
+              {
+                "aspect": "Causal outlier review",
+                "implementation": "clean_demand строит document+day candidate по предшествующим 60 документам, сохраняет исходную строку, ограничивает только forecast_quantity и применяет keep/exclude после dated decision.",
+                "value": "Регулярный прогноз защищён от крупной сделки, но менеджер не теряет исходный факт и может оставить или исключить его с причиной.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/qor/demand/forecast.py:28-89",
+                  "tests/test_forecast_rules.py:14-27"
+                ]
+              },
+              {
+                "aspect": "Single-client concentration",
+                "implementation": "При наличии только явного client_id_anonymized код проверяет концентрацию клиента отдельно; имена клиентов не синтезируются.",
+                "value": "Это точнее глобального удаления всех больших продаж и соответствует privacy boundary кейса.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/qor/demand/forecast.py:43-60",
+                  "tests/test_forecast_rules.py:30-45"
+                ]
+              },
+              {
+                "aspect": "Source-bound selection",
+                "implementation": "auto учитывает manifest fingerprint, snapshot, horizon и supplier/unit/segment, выбирая только проверенный seasonal или mean3; ML challenger не выпускается без gate.",
+                "value": "Проект не подменяет доказанную baseline случайным ML-ярлыком и связывает метод с источником.",
+                "verification": "source",
+                "evidence": [
+                  "backend/qor/demand/selection.py:13-45",
+                  "tests/test_challenger.py:11-52"
+                ]
+              },
+              {
+                "aspect": "Bounded AI boundary",
+                "implementation": "ToolRouter допускает только четыре read/calculation operations, ограничивает calls и не даёт approval/export/arbitrary Python/SQL/path/dispatch; PendingProvider блокирует неизвестный provider.",
+                "value": "AI не может автономно отправить заказ, а Python остаётся авторитетом для количества.",
+                "verification": "source",
+                "evidence": [
+                  "backend/qor/ai/provider.py:6-31",
+                  "tests/test_workflow.py:82-88"
+                ]
+              }
+            ],
+            "scoreReasoning": "Максимум заслужен в рамках пятичасового MVP благодаря содержательно необычным механизмам causal review, client branch, source-matched selection и bounded approval. Challenger не развёрнут честно и не является обязательным требованием кейса; отсутствие ключа не превращено в искусственный штраф."
+          },
+          {
+            "name": "Потенциал развития и масштабирования",
+            "score": 19,
+            "max": 20,
+            "awarded": "Высокий потенциал: код разделён на ingestion/demand/planning/storage/frontend и имеет явные extension points, но эксплуатационная модель остаётся local single-user.",
+            "deductions": "1 балл за отсутствие аутентифицированных ролей и encrypted multi-user storage.",
+            "evidence": [
+              "README.md: Manager workflow, AI gate, Local single-user MVP",
+              "backend/qor/contracts.py:12-75",
+              "backend/qor/storage/repository.py:26-55"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "F-LOCAL-SINGLE-USER",
+                "reason": "actor является audit label, а не verified identity; SQLite локален, роли и encrypted storage отсутствуют. Это не мешает MVP, но ограничивает multi-user масштабирование."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Модульная архитектура",
+                "implementation": "backend разделён на contracts, data adapters, demand, planning, storage, bounded AI и service orchestration; frontend имеет pages/components.",
+                "value": "Новые форматы, модели и внешние interfaces можно развивать независимо от UI и расчётного ядра.",
+                "verification": "source",
+                "evidence": [
+                  "README.md: project layout",
+                  "frontend/app.py:8-24",
+                  "backend/qor/service.py:1-9"
+                ]
+              },
+              {
+                "aspect": "Расширяемые policy contracts",
+                "implementation": "Policy задаёт lead/review/buffer, category buffers, forecast method, growth, ETA shift, unknown ETA и hypothetical stockout; contracts валидируют dates, units, MOQ и actors.",
+                "value": "Один движок может обслуживать новые категории, supplier rules и what-if сценарии.",
+                "verification": "source",
+                "evidence": [
+                  "backend/qor/contracts.py:12-75",
+                  "frontend/components/views.py:218-240,305-319"
+                ]
+              },
+              {
+                "aspect": "Подключение источников",
+                "implementation": "Ingestion читает ZIP/XLSX/CSV in-memory, сохраняет source/sheet/row, проверяет duplicates/conflicts и требует явного supplier selector.",
+                "value": "Это практичная основа для новых выгрузок 1С при сохранении auditability и privacy.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/qor/data/ingestion.py:83-108,123-203",
+                  "tests/test_ingestion_audit.py:23-103"
+                ]
+              },
+              {
+                "aspect": "Безопасная будущая автоматизация",
+                "implementation": "Revisions/audit, export verification и bounded AI отделяют будущий connector от authoritative Python planning; dispatch отсутствует.",
+                "value": "Можно добавить ERP/API после authorization, не меняя контроль менеджера.",
+                "verification": "source",
+                "evidence": [
+                  "backend/qor/storage/repository.py:31-37,114-171",
+                  "backend/qor/ai/provider.py:14-31"
+                ]
+              }
+            ],
+            "scoreReasoning": "19/20: структура, contracts, provenance, scenarios и persistence дают ясную траекторию развития. Единственное подтверждённое масштабное ограничение — single-user SQLite без identity/authorization/encryption; оно снижает production scale, но не качество хакатонного MVP."
+          },
+          {
+            "name": "Презентация, демо и ответы на вопросы",
+            "score": 20,
+            "max": 20,
+            "awarded": "Полный доступный балл за README и воспроизводимое локальное демо; устная презентация и ответы не выдумываются и не оцениваются.",
+            "deductions": "Снятий нет.",
+            "evidence": [
+              "README.md: Install and run, Calculation methodology, Manager workflow, Verification and demo",
+              "docs/DEMO_SCRIPT.md",
+              "tests/test_ui.py:12-58",
+              "runtime.checks:http-health,http-page"
+            ],
+            "deductionItems": [],
+            "awardedDetails": [
+              {
+                "aspect": "Воспроизводимый путь",
+                "implementation": "README указывает frontend/app.py, pinned dependencies, install/run/test commands, input formats, snapshot semantics, methodology и demo order.",
+                "value": "Другой проверяющий понимает, как восстановить сценарий Data → Demand → Orders → Scenarios без устного контекста.",
+                "verification": "source",
+                "evidence": [
+                  "README.md: Install and run",
+                  "README.md: Verification and demo"
+                ]
+              },
+              {
+                "aspect": "Честная маркировка synthetic",
+                "implementation": "Landing и workspace подписывают synthetic walkthrough; README отделяет его от IEK trace и не выдаёт hypothetical stock за measured inventory.",
+                "value": "Демо не создаёт ложного впечатления о реальном заказе и ясно показывает границу данных.",
+                "verification": "source",
+                "evidence": [
+                  "frontend/app_pages/landing.py:41-58,88-100",
+                  "frontend/components/views.py:120-122"
+                ]
+              },
+              {
+                "aspect": "Lifecycle демонстрации",
+                "implementation": "Документы и UI ведут от источников к demand review, calculation, edit-with-reason, review, approval, export/reopen и scenario comparison.",
+                "value": "Показывается целое решение принятия закупочного решения, а не отдельный красивый экран.",
+                "verification": "observed",
+                "evidence": [
+                  "docs/DEMO_SCRIPT.md",
+                  "tests/test_ui.py:24-58"
+                ]
+              },
+              {
+                "aspect": "HTTP deployability",
+                "implementation": "frontend/app.py стартовал в ограниченном контейнере; GET /_stcore/health вернул 200 ok, GET / вернул 200.",
+                "value": "Entry point реально поднимается; visual/pixel review намеренно оставлен пользователю.",
+                "verification": "observed",
+                "evidence": [
+                  "runtime.checks:http-health",
+                  "runtime.checks:http-page"
+                ]
+              }
+            ],
+            "scoreReasoning": "Полный балл относится к разрешённой части критерия: ясности README, объяснениям и воспроизводимому локальному демо. Устного выступления не было. Визуальная инспекция не проводилась по пользовательскому запрету и не используется как причина снижения."
+          }
+        ],
+        "total": 97
+      },
+      "case": null,
+      "judgeScore": 97,
+      "caseRequirements": [
+        {
+          "requirement": "Расчёт базовой потребности по артикулу с историей продаж, stock, inbound, категорией и прогнозом прироста; изменение входов меняет результат.",
+          "status": "partial",
+          "explanation": "Кодовый путь реализован через service/forecast/planning. Все 12 XLSX загружены, но ни один SKU не был одновременно незаблокированным и имел stock на snapshot 2026-09-22; real order не утверждался. Synthetic path даёт quantity.",
+          "evidence": [
+            "backend/qor/service.py:23-98",
+            "backend/qor/planning/engine.py:15-72",
+            "tests/test_planning_rules.py:59-68",
+            "runtime.checks:case-data-scenario"
+          ]
+        },
+        {
+          "requirement": "Учитывать сезонность и устойчивый рост.",
+          "status": "met",
+          "explanation": "Forecast использует completed years, recent deseasonalized level, исключает incomplete month и применяет file growth ровно один раз; доступны seasonal и mean3.",
+          "evidence": [
+            "backend/qor/demand/forecast.py:118-201",
+            "tests/test_forecast_rules.py:78-90,47-54"
+          ]
+        },
+        {
+          "requirement": "Компенсировать упущенный спрос при подтверждённом stockout и не считать overlap дважды.",
+          "status": "met",
+          "explanation": "compensate_stockouts использует prior available days, confirmation date и max addition per day; synthetic test проверяет confirmed-only и duplicate interval.",
+          "evidence": [
+            "backend/qor/demand/forecast.py:92-115",
+            "tests/test_forecast_rules.py:62-69",
+            "backend/qor/contracts.py:43-54"
+          ]
+        },
+        {
+          "requirement": "Выявлять разовые крупные заказы, включая одного обезличенного клиента, и не раздувать regular forecast.",
+          "status": "partial",
+          "explanation": "Document-level и client-concentration branches, cap и keep/exclude реализованы и протестированы на synthetic IDs. В supplied XLSX нет real anonymized client IDs, поэтому real-data branch не доказан.",
+          "evidence": [
+            "backend/qor/demand/forecast.py:28-89",
+            "tests/test_forecast_rules.py:14-45",
+            "backend/qor/data/ingestion.py:27,168-178"
+          ]
+        },
+        {
+          "requirement": "Выводить количество, urgency, explanation и группировать по supplier.",
+          "status": "met",
+          "explanation": "Recommendation содержит supplier/SKU/quantity/urgency/binding explanation; UI выбирает supplier и считает все его товары. Один consolidated mixed-supplier draft не сделан, но supplier-grouped workflow работает.",
+          "evidence": [
+            "backend/qor/planning/engine.py:31-75",
+            "frontend/components/views.py:243-303",
+            "backend/qor/storage/repository.py:64-69"
+          ]
+        },
+        {
+          "requirement": "Не отправлять заказ без ручного подтверждения ответственного сотрудника.",
+          "status": "met",
+          "explanation": "Actor обязателен, approval проходит review → approved, incomplete/data_conflict/needs_* блокируют approval, export требует persisted approval, dispatch отсутствует.",
+          "evidence": [
+            "backend/qor/storage/repository.py:57-77,114-171",
+            "frontend/components/views.py:280-301",
+            "tests/test_workflow.py:24-62"
+          ]
+        },
+        {
+          "requirement": "Не использовать неанонимизированные клиентские данные.",
+          "status": "met",
+          "explanation": "Импорт принимает только explicit client_id_anonymized; customer identity не используется в tool output, privacy boundary описан в README.",
+          "evidence": [
+            "backend/qor/data/ingestion.py:15-27,168-178",
+            "backend/qor/ai/provider.py:14-31",
+            "README.md: Input format and privacy"
+          ]
+        },
+        {
+          "requirement": "Проверить чувствительность к inbound, сезонности, stockout и выбросу.",
+          "status": "met",
+          "explanation": "Tests покрывают late/same-day/unknown ETA, lead 7/14/30, seasonality, stockout uplift, future leakage и outlier magnitude; UI имеет ETA shift и 7/14 scenarios.",
+          "evidence": [
+            "tests/test_planning_rules.py:21-35,53-68",
+            "tests/test_forecast_rules.py:30-109",
+            "frontend/components/views.py:305-319"
+          ]
+        },
+        {
+          "requirement": "Совместимый табличный вход и экспорт с provenance и сохранением SKU.",
+          "status": "partial",
+          "explanation": "ZIP/XLSX/CSV import и formula-safe CSV/XLSX export реализованы. На supplied files часть reference sheets unrecognized, а conflicting lookups блокируются для review вместо угадывания.",
+          "evidence": [
+            "backend/qor/data/ingestion.py:83-108,123-203",
+            "backend/qor/storage/repository.py:129-172",
+            "tests/test_ingestion_audit.py:39-67"
+          ]
+        }
+      ],
+      "testData": {
+        "provided": [
+          "cases/5/case-data/HackAlem AI_ Автоматизация формирования заказов поставщикам.docx.md",
+          "cases/5/case-data/IEK/*.xlsx (6 файлов)",
+          "cases/5/case-data/Systeme electric/*.xlsx (6 файлов)"
+        ],
+        "used": [
+          "Все 6 XLSX из cases/5/case-data/IEK",
+          "Все 6 XLSX из cases/5/case-data/Systeme electric",
+          "case brief markdown"
+        ],
+        "checks": [
+          {
+            "input": "Все 12 XLSX IEK и Systeme electric.",
+            "method": "qor.data.load_sources по каждому workbook/sheet, затем audit.",
+            "result": "12 files/14 manifest entries; sales 248915, monthly 104620, stock 497, historical_stock 117282, inbound 306, policies 2517; 494 blocked keys, 510 warnings.",
+            "conclusion": "Вход реально применён; conflicts, numeric SKU, undated stock и reference sheets не скрыты."
+          },
+          {
+            "input": "Overlapping monthly/transaction data из тех же файлов.",
+            "method": "qor.data.reconcile(bundle).",
+            "result": "97010 reconciliation rows; overlapping totals не суммируются.",
+            "conclusion": "Источники сверяются без double-counting."
+          },
+          {
+            "input": "Catalog supplied bundle, затем eligible keys с unit, без block и stock.as_of == snapshot.",
+            "method": "item_catalog + calculate_plan(Policy()) без synthetic stock.",
+            "result": "eligible IEK=0, Systeme Electric=0; real order quantity не изготовлена.",
+            "conclusion": "Safety gate сработал; положительный calculation/approval path отдельно подтверждён synthetic тестами."
+          }
+        ],
+        "limitations": [
+          "На supplied snapshot нет conflict-free dated stock candidate для approved real order.",
+          "Реальных anonymized client IDs и confirmed stockout intervals в supplied files нет; эти ветки проверены synthetic fixtures.",
+          "Seasonality sheets распознаны как reference/unrecognized; forecast использует проверяемую sales history и не применяет непроверенный multiplier blindly."
+        ]
+      },
+      "runtime": {
+        "status": "working",
+        "build": "PASS: python -m compileall -q backend frontend; editable installation completed in test/start containers.",
+        "start": "PASS: frontend/app.py started as Streamlit; health and root HTTP returned 200.",
+        "scenario": "PASS for labeled synthetic vertical slice covered by tests/test_ui.py and test_workflow.py; partial for supplied real XLSX because no eligible dated unblocked SKU exists, so no confirmed real order was emitted.",
+        "environment": "Dockerized Python 3.13 with project pins; no credentials, browser, CUA or visual automation used.",
+        "summary": "Core deterministic workflow is working. Live AI was not invoked because participant credentials/provider details were not supplied; this is a verification limitation, not a project defect.",
+        "checks": [
+          {
+            "command": "python -m compileall -q backend frontend",
+            "result": "Exit 0; compileall PASS.",
+            "id": "compileall",
+            "stage": "build",
+            "status": "pass",
+            "cause": "none",
+            "expected": "All shipped Python modules compile."
+          },
+          {
+            "command": "python -m pytest -q",
+            "result": "Exit 0; 58 passed in 47.23s.",
+            "id": "test-suite",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Unit, domain, ingestion, planning, workflow, UI and AI-boundary tests pass."
+          },
+          {
+            "command": "python -m streamlit run frontend/app.py --server.address 0.0.0.0 --server.port 8501 --server.headless true",
+            "result": "Server started; Uvicorn reported 0.0.0.0:8501.",
+            "id": "streamlit-start",
+            "stage": "start",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Documented frontend entry point starts without API key."
+          },
+          {
+            "command": "GET /_stcore/health",
+            "result": "HTTP 200, body ok.",
+            "id": "http-health",
+            "stage": "start",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Streamlit responds healthy over HTTP."
+          },
+          {
+            "command": "GET /",
+            "result": "HTTP 200, response size 7260 bytes.",
+            "id": "http-page",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Landing route is served."
+          },
+          {
+            "command": "python -c load_sources(case-data/*.xlsx); reconcile(bundle)",
+            "result": "Exit 0; 12 files/14 entries, 248915 sales, 104620 monthly, 497 stock, 117282 historical stock, 306 inbound, 2517 policies, 494 blocked keys, 510 warnings, 97010 reconciliation rows.",
+            "id": "case-data-ingestion",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "All supplied XLSX are read by the project adapter."
+          },
+          {
+            "command": "python -c item_catalog(bundle); calculate_plan(bundle, Policy(), keys=eligible)",
+            "result": "Exit 0; eligible IEK 0 and Systeme Electric 0; no order manufactured.",
+            "id": "case-data-scenario",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Unsafe real order is blocked when dated stock/conflict-free lookup is unavailable."
+          }
+        ],
+        "limitations": [
+          "QOR_MODEL_API_KEY and exact provider protocol were not provided; live round-trip is unverified and not mocked.",
+          "HTTP proves server/route response only; visual layout and browser navigation were not inspected by policy.",
+          "Supplied case data did not provide a conflict-free dated stock candidate for approved real order."
+        ]
+      },
+      "liveDemo": {
+        "status": "none",
+        "url": null,
+        "notes": "Публичной Live URL нет. Локальный Streamlit health/root подтверждены; визуальный просмотр оставлен пользователю."
+      },
+      "fiveHourContext": "Для пятичасового хакатона это сильный объём: импорт, provenance, causal outlier review, forecasting, stockout sensitivity, dated planning, scenarios, versioned approval и safe export. Не требовались production-auth, live provider без credentials или реальная поставка. Снижающие оценку детали — только отсутствие consolidated mixed-supplier draft и неупакованный evaluation artifact.",
+      "strengths": [
+        "Рабочий deterministic путь от таблиц до объяснимого draft и verified export.",
+        "Корректное различение missing/zero/return/stockout/forecast shortage/future inbound.",
+        "Causal outlier и client review сохраняют оригинальные продажи и требуют dated decision.",
+        "Approval/audit boundary не допускает автоматическую отправку.",
+        "Все 12 supplied XLSX обработаны, conflicts и warnings видимы.",
+        "README и тесты дают воспроизводимый synthetic demo path."
+      ],
+      "gaps": [
+        "Итоговый draft ограничен одним поставщиком: mixed-supplier list rejected в Repository.create.",
+        "Auto selection зависит от runtime/forecast_evaluation.json, но runtime/ исключён из Git.",
+        "Local SQLite single-user model не имеет проверенных identity/roles и encrypted multi-user storage."
+      ],
+      "futureAdvice": [
+        {
+          "principle": "Сначала делайте один проверяемый объект результата на весь scope.",
+          "why": "F-ONE-SUPPLIER-DRAFT оставляет пользователю ручное объединение нескольких supplier drafts.",
+          "how": "Добавьте aggregate view/draft, который принимает rows нескольких suppliers, сортирует по supplier и хранит единый calculation context, оставляя validation внутри групп.",
+          "findingIds": [
+            "F-ONE-SUPPLIER-DRAFT"
+          ],
+          "successCheck": "Один calculation содержит строки двух suppliers, UI показывает groups, approval/export проходят reopen equality.",
+          "timeboxMinutes": 60
+        },
+        {
+          "principle": "Артефакт, влияющий на production default, должен быть versioned или reproducibly generated.",
+          "why": "F-AUTO-EVALUATION-ARTIFACT: clean clone теряет source-matched method selection.",
+          "how": "Храните compact fingerprint/metrics manifest или добавьте preflight, который строит report перед auto и пишет fingerprint в audit.",
+          "findingIds": [
+            "F-AUTO-EVALUATION-ARTIFACT"
+          ],
+          "successCheck": "После fresh checkout одной documented command auto выбирает тот же method для того же manifest, mismatch даёт labeled fallback.",
+          "timeboxMinutes": 45
+        },
+        {
+          "principle": "Перед масштабированием local workflow отделяйте audit label от identity и authorization.",
+          "why": "F-LOCAL-SINGLE-USER: actor — свободная строка, SQLite локален.",
+          "how": "Добавьте роли planner/reviewer/approver и server-side authorization, затем вынесите repository в encrypted transactional DB; dispatch не добавляйте до approval policy.",
+          "findingIds": [
+            "F-LOCAL-SINGLE-USER"
+          ],
+          "successCheck": "Неаутентифицированный actor не может approve/export, audit различает reviewer/approver, stale edits deterministic.",
+          "timeboxMinutes": 120
+        }
+      ],
+      "uncertainties": [
+        "Live organizer model/provider/function-calling round trip не проверен: credentials и protocol отсутствуют.",
+        "Визуальное качество, responsive layout и browser navigation не проверялись по user-owned policy.",
+        "Supplied files не содержат real anonymized client branch и confirmed stockout intervals.",
+        "Семантика unrecognized seasonality sheets не считается доказанной; проект сознательно не применяет их blindly."
+      ],
+      "reviewPolicyVersion": 2,
+      "assessmentStatus": "ready",
+      "findings": [
+        {
+          "id": "S-RUNTIME-TESTS",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Основные backend/frontend тесты прошли.",
+          "expected": "Unit, domain, workflow, UI и AI-boundary tests complete without failures.",
+          "actual": "pytest exit 0: 58 passed.",
+          "evidence": [
+            "runtime.checks:test-suite",
+            "tests/test_workflow.py:24-88",
+            "tests/test_ui.py:12-72"
+          ],
+          "checkIds": [
+            "test-suite"
+          ]
+        },
+        {
+          "id": "S-CASE-INGESTION",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Все supplied XLSX прочитаны двумя supplier labels с audit facts.",
+          "expected": "Provided files handled without inventing absent columns or silently merging conflicts.",
+          "actual": "12 files/14 entries; 248915 sales, 104620 monthly, 306 inbound, 2517 policies; 494 blocked keys and 510 warnings.",
+          "evidence": [
+            "runtime.checks:case-data-ingestion",
+            "backend/qor/data/ingestion.py:123-203,205-250"
+          ],
+          "checkIds": [
+            "case-data-ingestion"
+          ]
+        },
+        {
+          "id": "S-FORECAST-ROBUSTNESS",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Demand logic имеет causal outlier, stockout, seasonality, growth-once и future-leakage guards.",
+          "expected": "Domain checks demonstrate required behaviors with expected values.",
+          "actual": "Forecast/planning tests passed for candidate cap, client spike, stockout, incomplete month, future data and file growth once.",
+          "evidence": [
+            "tests/test_forecast_rules.py:14-109",
+            "backend/qor/demand/forecast.py:9-201"
+          ],
+          "checkIds": [
+            "test-suite"
+          ]
+        },
+        {
+          "id": "S-APPROVAL-EXPORT",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Approval, audit и export reopen enforced persisted storage.",
+          "expected": "Approval required, edits reset approval, stale versions fail, reopened files match approved values.",
+          "actual": "Workflow tests passed draft/review/approved/exported, formula escaping and approver retention.",
+          "evidence": [
+            "backend/qor/storage/repository.py:93-172",
+            "tests/test_workflow.py:24-62"
+          ],
+          "checkIds": [
+            "test-suite"
+          ]
+        },
+        {
+          "id": "F-ONE-SUPPLIER-DRAFT",
+          "kind": "defect",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Persisted draft не может содержать rows нескольких suppliers.",
+          "expected": "Итоговый supplier-grouped result должен быть доступен как единый закупочный объект.",
+          "actual": "Repository.create бросает ValueError при mixed suppliers; UI считает выбранного supplier.",
+          "evidence": [
+            "backend/qor/storage/repository.py:64-69",
+            "frontend/components/views.py:243-255"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "F-AUTO-EVALUATION-ARTIFACT",
+          "kind": "defect",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "auto method selection зависит от локального evaluation JSON, отсутствующего в snapshot checkout.",
+          "expected": "Clean checkout содержит report или reproducible preflight.",
+          "actual": "selection.py fallback при отсутствии REPORT; runtime/ исключён .gitignore.",
+          "evidence": [
+            "backend/qor/demand/selection.py:10-18,24-29",
+            ".gitignore:20-21",
+            "docs/FORECAST_EVALUATION.md:1-7"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "F-LOCAL-SINGLE-USER",
+          "kind": "defect",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Нет проверяемой identity/role authorization для нескольких закупщиков.",
+          "expected": "Approval должен быть привязан к authenticated role и защищённому storage.",
+          "actual": "actor — свободная audit-строка, Repository — local SQLite, README называет MVP local single-user.",
+          "evidence": [
+            "frontend/components/views.py:50-54",
+            "backend/qor/storage/repository.py:26-55",
+            "README.md: Manager workflow"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "L-LIVE-AI-CREDENTIAL",
+          "kind": "limitation",
+          "verification": "unverified",
+          "responsibility": "external_service",
+          "claim": "Live organizer model integration не подтверждена.",
+          "expected": "Точный endpoint/provider, model ID, credential и успешный round trip.",
+          "actual": "QOR_MODEL_API_KEY не предоставлен; PendingProvider raises blocked result.",
+          "evidence": [
+            ".env.example:5",
+            "backend/qor/ai/provider.py:9-12",
+            "runtime.limitations"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "L-VISUAL-REVIEW",
+          "kind": "limitation",
+          "verification": "unverified",
+          "responsibility": "review_environment",
+          "claim": "Visual behavior не инспектировался.",
+          "expected": "Пользователь выполняет browser/pixel review отдельно.",
+          "actual": "Проверены compile, tests, server start и HTTP only.",
+          "evidence": [
+            "runtime.checks:http-health",
+            "runtime.checks:http-page"
+          ],
+          "checkIds": [
+            "http-health",
+            "http-page"
+          ]
+        },
+        {
+          "id": "L-REAL-DATA-GATE",
+          "kind": "limitation",
+          "verification": "observed",
+          "responsibility": "unknown",
+          "claim": "На supplied data нет подтверждённого real order candidate.",
+          "expected": "Нужен conflict-free SKU с current stock на snapshot.",
+          "actual": "eligible IEK=0 и Systeme Electric=0; conditions остаются blocking.",
+          "evidence": [
+            "runtime.checks:case-data-ingestion",
+            "runtime.checks:case-data-scenario",
+            "backend/qor/service.py:34-50"
+          ],
+          "checkIds": [
+            "case-data-ingestion",
+            "case-data-scenario"
+          ]
+        }
+      ],
+      "gapFindingIds": [
+        "F-ONE-SUPPLIER-DRAFT",
+        "F-AUTO-EVALUATION-ARTIFACT",
+        "F-LOCAL-SINGLE-USER"
+      ]
+    }
+  ],
+  "score": 97.0,
+  "status": "complete",
+  "expectedJudges": 1
+}

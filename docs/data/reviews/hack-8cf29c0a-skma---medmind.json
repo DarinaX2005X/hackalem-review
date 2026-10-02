@@ -1,0 +1,814 @@
+{
+  "methodVersion": 4,
+  "repoId": "hack-8cf29c0a-skma---medmind",
+  "repoUrl": "https://github.com/BAITC-Hacks/hack-8cf29c0a-skma---medmind",
+  "caseId": 5,
+  "snapshot": "118464503079a4afc04ec91b6240fbd9a1c52088",
+  "judges": [
+    {
+      "methodVersion": 4,
+      "repoId": "hack-8cf29c0a-skma---medmind",
+      "caseId": 5,
+      "model": "GPT-5.6 Luna",
+      "snapshot": "118464503079a4afc04ec91b6240fbd9a1c52088",
+      "overallSummary": "Проект представляет собой воспроизводимый сервис для расчёта заказов поставщикам: два адаптера читают реальные выгрузки IEK и Systeme Electric, приводят их к единой схеме, расчётный движок учитывает спрос, выбросы, stockout, сезонность, рост, остатки, товары в пути, сроки поставки и MOQ, а веб-интерфейс даёт менеджеру объяснение, ручное согласование и CSV-экспорт. Сборка backend и frontend прошла, 91 backend-тест прошёл (2 пропущены тестовым набором), 28 frontend-тестов прошли, 12 предоставленных XLSX успешно импортированы без предупреждений, а расчёт на них завершился с 882 рекомендациями, сгруппированными по двум поставщикам. Главный подтверждённый пробел — в модели продаж нет обезличенного идентификатора клиента, поэтому алгоритм различает выбросы по объёму строки, но не может отдельно подтвердить разовую крупную покупку одного клиента. Для пятичасового MVP это сильное и практически цельное решение.",
+      "global": {
+        "criteria": [
+          {
+            "name": "Ценность решения",
+            "score": 23,
+            "max": 25,
+            "awarded": "Высокая ценность для менеджера закупок: ручная консолидация Excel заменена расчётом с объяснением и контролируемым утверждением.",
+            "deductions": "Снято 2 балла за неполное покрытие сценария крупной продажи одному клиенту: этот сигнал не представлен в нормализованной модели.",
+            "evidence": [
+              "README.md:3-17",
+              "cases/5/task.txt:2-3",
+              "CHK-CASE-CALC",
+              "CHK-API-SCENARIO"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "DEF-01",
+                "reason": "В задаче отдельно назван риск крупной продажи одному клиенту. Без customer_id решение не может отличить такой случай от нескольких независимых отгрузок и потому не закрывает весь источник искажённого спроса."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Понятная боль отдела закупок",
+                "implementation": "README описывает конкретный рабочий контекст: менеджер сопоставляет продажи, остатки и ожидаемые поставки, после чего получает позиции, количество, срочность и причины. Это соответствует проблеме из задания о редком ручном расчёте в Excel.",
+                "value": "Пользовательский эффект понятен без сложной интерпретации модели: меньше ручного сопоставления, меньше риска дефицита и лишнего запаса, а решение остаётся у ответственного менеджера.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:3-17",
+                  "cases/5/task.txt:2-3"
+                ]
+              },
+              {
+                "aspect": "Охват факторов, влияющих на закупку",
+                "implementation": "В core.py потребность собирается из базового спроса, прогноза на срок поставки и горизонт, страхового запаса, свободного остатка и товара в пути; далее применяются минимальная партия и кратность. В объяснение попадают также сезонность, тренд и компенсация stockout.",
+                "value": "Это превращает разрозненные таблицы в операционную подсказку, пригодную для приоритизации закупок, а не только в ещё один отчёт о продажах.",
+                "verification": "source",
+                "evidence": [
+                  "backend/src/app/engine/core.py:251-325",
+                  "backend/src/app/engine/core.py:373-412",
+                  "backend/src/app/engine/explain.py:31-92"
+                ]
+              },
+              {
+                "aspect": "Контроль человеком и отсутствие автоматической отправки",
+                "implementation": "Рекомендация хранится как pending, затем отдельный endpoint approve фиксирует approved_qty; экспорт вызывается явно. UI прямо сообщает, что утверждение не отправляет заказ поставщику автоматически.",
+                "value": "Для закупочного процесса это снижает риск дорогостоящей автоматической ошибки и оставляет менеджеру возможность изменить количество перед выгрузкой.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/src/app/api/recommendations.py:198-234",
+                  "frontend/src/pages/OrdersPage/index.tsx:583-587",
+                  "CHK-APPROVAL-EXPORT"
+                ]
+              },
+              {
+                "aspect": "Ограничение ценности именно по клиентскому измерению",
+                "implementation": "ETL читает дату, документ, SKU и количество, а detect_bulk_outliers группирует строки только по sku_code и qty. Ни SalesLine, ни EngineInputs не имеют поля клиента.",
+                "value": "Основной сценарий ценен и работает на доступных данных, но в исходной постановке крупная продажа одному клиенту названа отдельным риском. Текущий прокси по объёму снижает риск, но не даёт той же точности.",
+                "verification": "source",
+                "evidence": [
+                  "backend/src/app/etl/common.py:96-110",
+                  "backend/src/app/models.py:54-66",
+                  "backend/src/app/engine/core.py:95-126",
+                  "DEF-01"
+                ]
+              }
+            ],
+            "scoreReasoning": "23/25 заслужены за непосредственное попадание в реальную операционную задачу и за то, что результат можно использовать для принятия решения, а не только просматривать. Снятие ограничено одним подтверждённым содержательным пробелом: клиентский уровень отсутствует в схеме и потому не может участвовать в защите от покупок одного клиента. Остальные ключевые источники ценности — склад, поставки, сезонность, рост, выбросы и ручное согласование — реализованы и проверены."
+          },
+          {
+            "name": "Результат и качество решения",
+            "score": 17,
+            "max": 20,
+            "awarded": "Целостный рабочий прототип подтверждён сборкой, тестами, импортом реальных файлов, HTTP-сценарием расчёта, согласования и экспорта.",
+            "deductions": "Снято 3 балла за то, что один из обязательных вариантов выброса — крупная покупка одного клиента — технически неразличим в текущем входном контракте.",
+            "evidence": [
+              "CHK-BUILD-BACKEND",
+              "CHK-BUILD-FRONTEND",
+              "CHK-BACKEND-TESTS",
+              "CHK-FRONTEND-TESTS",
+              "CHK-CASE-CALC",
+              "CHK-API-SCENARIO"
+            ],
+            "deductionItems": [
+              {
+                "points": 3,
+                "findingId": "DEF-01",
+                "reason": "Для сценария с одинаковым суммарным объёмом, но разным числом клиентов, фактический результат будет одинаковым: схема и функция выбросов не принимают customer_id. Это ограничивает полноту именно закупочного результата."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Сборка и запуск",
+                "implementation": "Backend собирается на Python 3.12 с uv-зависимостями, frontend — на Node/Vite с TypeScript и nginx. Образы собраны без ошибок; backend ответил 200 на /api/health, frontend отдал index.html по корневому HTTP-маршруту.",
+                "value": "Для прототипа это подтверждает deployability основного контура, а не только наличие исходников.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/Dockerfile:1-23",
+                  "frontend/Dockerfile:1-12",
+                  "CHK-BUILD-BACKEND",
+                  "CHK-BUILD-FRONTEND",
+                  "CHK-START-BACKEND",
+                  "CHK-START-FRONTEND"
+                ]
+              },
+              {
+                "aspect": "Реальный расчёт end-to-end",
+                "implementation": "Команда ingest загрузила 3 181 SKU и 171 603 строки продаж IEK, 724 SKU и 77 312 строк продаж Systeme Electric, остатки, правила, сезонность и товары в пути. После этого hackalem calc завершился со статусом done и 882 рекомендациями.",
+                "value": "Получен предметный пользовательский результат на организаторских данных, включая оба поставщика, а не только синтетический пример из unit-теста.",
+                "verification": "observed",
+                "evidence": [
+                  "CHK-CASE-INGEST",
+                  "CHK-CASE-CALC",
+                  "captures/20261002T074834258759-scenario-case-ingest.stdout.log",
+                  "captures/20261002T074922415803-scenario-case-calc.stdout.log"
+                ]
+              },
+              {
+                "aspect": "Качество прикладного цикла",
+                "implementation": "HTTP-сценарий создал новый расчёт со статусом running, дождался done, получил 882 позиции, объяснение по SKU с 40+ факторными полями, затем утвердил одну позицию и выгрузил CSV через /api/exports.",
+                "value": "Проверен не только математический результат, но и переход от рекомендации к решению менеджера и совместимому артефакту выгрузки.",
+                "verification": "observed",
+                "evidence": [
+                  "CHK-API-SCENARIO",
+                  "CHK-APPROVAL-EXPORT",
+                  "backend/src/app/api/calc_runs.py:34-47",
+                  "backend/src/app/api/recommendations.py:161-234"
+                ]
+              },
+              {
+                "aspect": "Автоматические проверки доменной логики",
+                "implementation": "Backend-тесты покрывают выбросы, чувствительность порога, stockout-компенсацию, сезонность, MOQ, срочность с учётом транзита и целостный pipeline; frontend-тесты покрывают таблицу заказов, API-контракт, продажи и настройки.",
+                "value": "91 backend-тест и 28 frontend-тестов уменьшают риск регрессии в критическом сценарии и подтверждают, что результат не держится на одной ручной демонстрации.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/tests/test_engine.py:70-181",
+                  "frontend/tests/orders-api.test.mjs",
+                  "frontend/tests/orders.test.mjs",
+                  "CHK-BACKEND-TESTS",
+                  "CHK-FRONTEND-TESTS"
+                ]
+              }
+            ],
+            "scoreReasoning": "17/20 — это высокий результат для пятичасового MVP: код собран, приложение стартует, реальные таблицы импортируются, расчёт даёт сотни рекомендаций, а ключевые действия API работают. До максимума не хватает только полного покрытия обязательного customer-level outlier-сценария; это не сбой запуска, а ограничение качества результата для одного из явно названных входных вариантов."
+          },
+          {
+            "name": "Инновационность",
+            "score": 14,
+            "max": 15,
+            "awarded": "Сильная сторона — не просто среднее продаж, а объяснимый устойчивый pipeline с robust-выбросами, компенсацией stockout, сезонностью без смешения с трендом и чувствительностью по сроку поставки.",
+            "deductions": "Снято 1 балл за отсутствие клиентского измерения в нестандартной защите от разовых покупок: наиболее тонкий вариант аномалии реализован только через прокси по объёму.",
+            "evidence": [
+              "backend/src/app/engine/core.py:95-222",
+              "backend/tests/test_engine.py:72-118",
+              "CHK-BACKEND-TESTS"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "DEF-01",
+                "reason": "Robust-логика отличает необычную строку, но не использует нестандартный и более точный сигнал — концентрацию объёма у одного обезличенного клиента."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Robust detection вместо простого среднего",
+                "implementation": "detect_bulk_outliers использует median, MAD, p95 и два одновременных порога; для редких SKU есть отдельное правило. Второй порог не даёт исключать регулярный опт ходовой позиции только потому, что отдельная строка велика.",
+                "value": "Это осмысленный доменный компромисс между подавлением разовой сделки и сохранением настоящего регулярного wholesale-спроса.",
+                "verification": "source",
+                "evidence": [
+                  "backend/src/app/engine/core.py:85-126",
+                  "backend/tests/test_engine.py:72-95"
+                ]
+              },
+              {
+                "aspect": "Stockout как оценка упущенного спроса",
+                "implementation": "availability_matrix оценивает месяц по остаткам на границах и факту продаж, а compensate_stockouts поднимает недостающий спрос к reference demand только на недоступную долю месяца.",
+                "value": "Модель не путает наблюдаемое отсутствие продаж с отсутствием спроса — важное отличие от наивного среднего по факту отгрузок.",
+                "verification": "source",
+                "evidence": [
+                  "backend/src/app/engine/core.py:131-165",
+                  "backend/tests/test_engine.py:97-105",
+                  "backend/tests/test_engine.py:172-181"
+                ]
+              },
+              {
+                "aspect": "Сезонность, очищенная от тренда",
+                "implementation": "Индекс поставщика строится через отношение выручки к скользящему среднему, а SKU-индекс очищается от линейного тренда и стягивается к поставщику в зависимости от объёма и активности.",
+                "value": "Такой подход устойчивее простого календарного коэффициента: рост компании не должен автоматически считаться сезонным пиком.",
+                "verification": "source",
+                "evidence": [
+                  "backend/src/app/engine/core.py:168-222",
+                  "backend/tests/test_engine.py:108-118"
+                ]
+              },
+              {
+                "aspect": "Объяснимость как часть алгоритма",
+                "implementation": "Каждый результат хранит base_demand, seasonality_factor, growth_factor, stockout_compensation, остатки, transit, outliers, forecast_demand, net_requirement, MOQ и narrative; short_reason и narrative собираются отдельными функциями.",
+                "value": "Инновационность выражена не только формулой, но и тем, что нестандартные решения можно проверить менеджеру по факторам, а не принимать как чёрный ящик.",
+                "verification": "source",
+                "evidence": [
+                  "backend/src/app/engine/core.py:451-505",
+                  "backend/src/app/engine/explain.py:18-92",
+                  "CHK-API-SCENARIO"
+                ]
+              }
+            ],
+            "scoreReasoning": "14/15: для короткого хакатона собственный расчётный pipeline заметно глубже очевидного среднего продаж минус остаток. Выбор robust-статистики, компенсация дефицита и отделение тренда от сезонности подтверждены кодом и тестами. Один балл удержан за то, что наиболее специфичный к постановке вариант «один клиент» не может быть реализован при текущей схеме данных."
+          },
+          {
+            "name": "Потенциал развития и масштабирования",
+            "score": 19,
+            "max": 20,
+            "awarded": "Архитектура уже разделяет ETL, чистый движок, сервис прогонов, API и frontend; добавление поставщика предусмотрено отдельным адаптером, а вводные данные и настройки имеют API.",
+            "deductions": "Снято 1 балл за то, что расширение до customer-aware аналитики потребует изменения нормализованной схемы и ETL-контрактов, а не только добавления настройки.",
+            "evidence": [
+              "backend/README.md:75-105",
+              "backend/src/app/etl/loader.py:1-80",
+              "backend/src/app/models.py:54-123",
+              "CHK-CASE-INGEST",
+              "CHK-BACKEND-TESTS"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "DEF-01",
+                "reason": "Customer-level аналитика не является подключаемым расширением в текущем контракте: потребуется добавить поле в ETL, модель SalesLine и расчёт выбросов."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Поставщик как адаптер, а не отдельный pipeline",
+                "implementation": "IEK и Systeme Electric реализованы как SupplierBundle через отдельные iek.py и systeme.py, а loader собирает их в единую схему. README прямо описывает новый поставщик как новый модуль ETL плюс строку в ADAPTERS.",
+                "value": "Подход переносим на следующий формат выгрузки без переписывания движка и UI.",
+                "verification": "source",
+                "evidence": [
+                  "backend/src/app/etl/common.py:135-163",
+                  "backend/src/app/etl/iek.py:31-91",
+                  "backend/src/app/etl/systeme.py:41-133",
+                  "backend/README.md:75-105"
+                ]
+              },
+              {
+                "aspect": "API и ручное управление входами",
+                "implementation": "Есть CRUD input-data, preview и импорт табличных/ZIP-комплектов, настройки расчёта, правила поставщика, calc-runs, рекомендации и audit_log. Валидация входов вынесена в Pydantic-схемы.",
+                "value": "Решение может эволюционировать от демонстрационного seed к регулярной загрузке новых отчётов и управляемому пересчёту.",
+                "verification": "source",
+                "evidence": [
+                  "backend/src/app/api/input_data.py:1-120",
+                  "backend/src/app/api/imports.py:1-100",
+                  "backend/src/app/input_schemas.py:13-115",
+                  "backend/src/app/models.py:192-212"
+                ]
+              },
+              {
+                "aspect": "Наращиваемая аналитика",
+                "implementation": "Отдельные endpoints analytics отдают demand-trend и seasonality, а SkuForecast сохраняет полную историю факторов и прогноз для последующего explain и графиков.",
+                "value": "Можно добавлять категории, поставщиков и пользовательские сценарии аналитики, не превращая UI в место, где заново вычисляется бизнес-логика.",
+                "verification": "source",
+                "evidence": [
+                  "backend/src/app/api/analytics.py:1-150",
+                  "backend/src/app/models.py:160-170",
+                  "frontend/src/pages/DashboardPage/index.tsx:1-180"
+                ]
+              },
+              {
+                "aspect": "Практичный operational guardrail",
+                "implementation": "Прогоны асинхронны и имеют running/done/failed, изменения блокируются на незавершённом прогоне, а действия заказа записываются в аудит. Экспорт отделён от расчёта.",
+                "value": "Это создаёт основу для повторяемой эксплуатации: пересчёт можно запускать регулярно, а решения менеджеров не теряются и не смешиваются с исходным прогнозом.",
+                "verification": "source",
+                "evidence": [
+                  "backend/src/app/api/calc_runs.py:34-47",
+                  "backend/src/app/api/recommendations.py:71-83",
+                  "backend/src/app/api/recommendations.py:128-158",
+                  "backend/src/app/models.py:147-200"
+                ]
+              }
+            ],
+            "scoreReasoning": "19/20: модульные ETL-адаптеры, чистый движок, API и сохранённые результаты расчёта дают сильную основу для расширения за пределы двух файловых форматов. Один балл снят только за подтверждённую архитектурную цену customer-aware развития: клиентский сигнал сейчас не является частью единой схемы."
+          },
+          {
+            "name": "Презентация, демо и ответы на вопросы",
+            "score": 19,
+            "max": 20,
+            "awarded": "Вместо устной презентации оценены ясный README и реально воспроизводимое локальное демо: команды запуска, методология, ограничения seed и сценарий расчёта описаны достаточно конкретно.",
+            "deductions": "Снято 1 балл за неполное раскрытие в фактическом результате customer-level варианта выброса: этот аспект нельзя показать как выполненный сценарий.",
+            "evidence": [
+              "README.md:1-91",
+              "backend/README.md:1-105",
+              "CHK-CASE-CALC",
+              "CHK-API-SCENARIO",
+              "CHK-APPROVAL-EXPORT"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "DEF-01",
+                "reason": "Репозиторий хорошо демонстрирует volume-based выбросы, но не может предоставить воспроизводимый пример, где одинаковая крупная строка различается по обезличенному клиенту."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "README ведёт к рабочему сценарию",
+                "implementation": "README содержит Docker-запуск, seed, отдельный calc, адрес приложения, остановку и объяснение того, что новый расчёт не загружается в seed автоматически.",
+                "value": "Участнику или проверяющему понятен путь от чистого checkout к результату; это сильнее декларативного описания без команды воспроизведения.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:19-60"
+                ]
+              },
+              {
+                "aspect": "Документирована методология",
+                "implementation": "Backend README перечисляет этапы: выбросы, stockout, база, сезонность, рост, горизонт покрытия, запас, остатки, transit и MOQ, а также приводит поля объяснения и правила ручного заказа.",
+                "value": "Материалы позволяют понять, что именно будет показано на демо и почему итоговое количество не равно простому среднему.",
+                "verification": "source",
+                "evidence": [
+                  "backend/README.md:42-74",
+                  "backend/src/app/engine/explain.py:31-92"
+                ]
+              },
+              {
+                "aspect": "Демо проверено по HTTP и CLI",
+                "implementation": "Фактически проверены health, запуск расчёта с polling статуса, список рекомендаций, explain, approve и экспорт; UI-образ доступен через собранный nginx-контейнер.",
+                "value": "Результат можно показать из репозитория без платного ключа для основного кейса и без подмены расчёта mock-данными.",
+                "verification": "observed",
+                "evidence": [
+                  "CHK-START-BACKEND",
+                  "CHK-START-FRONTEND",
+                  "CHK-API-SCENARIO",
+                  "CHK-APPROVAL-EXPORT"
+                ]
+              },
+              {
+                "aspect": "Граница проверки зафиксирована честно",
+                "implementation": "Ассистент без ключа возвращает отключённый статус и не маскирует внешнюю зависимость; визуальное поведение не оценивалось согласно правилам ревью.",
+                "value": "Это не уменьшает балл само по себе: основной закупочный сценарий не требует OpenAI, а ограничения демонстрации отделены от качества кода.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/src/app/api/assistant.py:38-45",
+                  "CHK-ASSISTANT-NOKEY",
+                  "runtime.limitations"
+                ]
+              }
+            ],
+            "scoreReasoning": "19/20: README и backend-документация содержательны, основной сценарий воспроизводится на реальных входах, а проверка HTTP подтверждает результат и выгрузку. Устной презентации не было, поэтому она не выдумывается; единственное содержательное ограничение демо — невозможность показать клиентский вариант выброса из-за DEF-01."
+          }
+        ],
+        "total": 92
+      },
+      "case": null,
+      "judgeScore": 92,
+      "caseRequirements": [
+        {
+          "requirement": "Рассчитывать пополнение по истории продаж, текущим остаткам, товарам в пути, категориям и прогнозу прироста.",
+          "status": "met",
+          "explanation": "Движок собирает базовый спрос, рост, сезонность, горизонт покрытия, safety buffer, свободный остаток, transit, категорийный multiplier и правила поставщика. Реальный импорт двух поставщиков и расчёт на нём завершились успешно.",
+          "evidence": [
+            "backend/src/app/engine/core.py:251-412",
+            "backend/src/app/engine/core.py:451-490",
+            "CHK-CASE-INGEST",
+            "CHK-CASE-CALC"
+          ]
+        },
+        {
+          "requirement": "Учитывать сезонность и устойчивый рост спроса.",
+          "status": "met",
+          "explanation": "Сезонность строится по supplier revenue и SKU history с удалением линейного тренда; рост считается год-к-году за последние 6 месяцев и стягивается к 1. Формулы покрыты отдельным тестом сезонности и тестом forecast_monthly.",
+          "evidence": [
+            "backend/src/app/engine/core.py:168-222",
+            "backend/src/app/engine/core.py:373-386",
+            "backend/tests/test_engine.py:108-118",
+            "backend/tests/test_engine.py:329-340"
+          ]
+        },
+        {
+          "requirement": "Компенсировать упущенный спрос в периоды stockout.",
+          "status": "met",
+          "explanation": "Доступность месяца оценивается по остаткам на соседних началах месяца, а спрос недоступной части поднимается к среднему уровню полных месяцев. В тестах проверены частичные и полные stockout и рост базы после компенсации.",
+          "evidence": [
+            "backend/src/app/engine/core.py:131-165",
+            "backend/tests/test_engine.py:97-105",
+            "backend/tests/test_engine.py:172-181"
+          ]
+        },
+        {
+          "requirement": "Убирать разовые крупные покупки, включая покупку одного клиента.",
+          "status": "partial",
+          "explanation": "Volume-based выбросы реализованы и проверены: median/MAD/p95, месячный порог и отдельное правило редких SKU. Но клиентского измерения нет ни во входной схеме, ни в модели продаж, поэтому один крупный клиент не отличим от нескольких клиентов с тем же объёмом.",
+          "evidence": [
+            "backend/src/app/engine/core.py:95-126",
+            "backend/src/app/etl/common.py:96-110",
+            "backend/src/app/models.py:54-66",
+            "backend/tests/test_engine.py:72-95",
+            "DEF-01"
+          ]
+        },
+        {
+          "requirement": "Формировать список с количеством, объяснением и группировкой по поставщикам.",
+          "status": "met",
+          "explanation": "Каждая фактически полученная рекомендация имела short_reason; API вернул 882 позиции, из них 745 IEK и 137 Systeme Electric. Backend сортирует по поставщику и срочности, frontend формирует supplier-группы.",
+          "evidence": [
+            "backend/src/app/api/recommendations.py:161-186",
+            "frontend/src/pages/OrdersPage/index.tsx:215-230",
+            "CHK-API-SCENARIO"
+          ]
+        },
+        {
+          "requirement": "Не отправлять заказ без ручного подтверждения и дать менеджеру изменить результат.",
+          "status": "met",
+          "explanation": "Approve — отдельный endpoint, экспорт вызывается явно и не является автоматической отправкой. В HTTP-проверке pending-позиция стала approved только после POST approve, после чего CSV скачался с кодом 200.",
+          "evidence": [
+            "backend/src/app/api/recommendations.py:198-234",
+            "frontend/src/pages/OrdersPage/index.tsx:264-303",
+            "CHK-APPROVAL-EXPORT"
+          ]
+        },
+        {
+          "requirement": "Сохранять приватность данных клиентов и не использовать неанонимизированные идентификаторы.",
+          "status": "met",
+          "explanation": "В предоставленных таблицах и нормализованной схеме нет клиентского имени или открытого идентификатора; assistant file path передаёт модели сводку и агрегаты, а не исходные байты. Отсутствие customer_id одновременно является ограничением DEF-01 для клиентской аналитики.",
+          "evidence": [
+            "backend/src/app/models.py:54-66",
+            "backend/src/app/api/assistant.py:87-104",
+            "backend/src/app/services/assistant_files.py:1-180"
+          ]
+        },
+        {
+          "requirement": "Проверить чувствительность к товарам в пути, сезонности, stockout и выбросам.",
+          "status": "met",
+          "explanation": "Тесты отдельно проверяют transit в stockout_day, сезонный индекс, компенсацию stockout, выбросы и sensitivity порога. Реальный расчёт также использовал 306 transit-строк IEK и 7 transit-строк Systeme Electric.",
+          "evidence": [
+            "backend/tests/test_engine.py:72-138",
+            "backend/tests/test_engine.py:143-180",
+            "CHK-CASE-CALC",
+            "CHK-BACKEND-TESTS"
+          ]
+        }
+      ],
+      "testData": {
+        "provided": [
+          "cases/5/case-data/HackAlem AI_ Автоматизация формирования заказов поставщикам.docx.md",
+          "cases/5/case-data/IEK/MOQ  ИЭК.xlsx",
+          "cases/5/case-data/IEK/Динамика продаж_2025-2026.xlsx",
+          "cases/5/case-data/IEK/Ежемесячные остатки продукции за последние 2 года  ИЭК.xlsx",
+          "cases/5/case-data/IEK/Ежемесячные продажи в количественном выражении за последние 2 года.xlsx",
+          "cases/5/case-data/IEK/Путь ИЭК 22.09.2026.xlsx",
+          "cases/5/case-data/IEK/Сезонность ИЭК.xlsx",
+          "cases/5/case-data/Systeme electric/MOQ SystemElectric.xlsx",
+          "cases/5/case-data/Systeme electric/Динамика продаж_Syseme Electric_2025-2026.xlsx",
+          "cases/5/case-data/Systeme electric/Ежемесячные остатки SystemElectric 2024-2026.xlsx",
+          "cases/5/case-data/Systeme electric/Ежемесячные продажи в кол-м выражении SystemElectric 2024-2026.xlsx",
+          "cases/5/case-data/Systeme electric/Сезонность SystemElectric 2024-2026.xlsx",
+          "cases/5/case-data/Systeme electric/Товар в пути_SystemElectric на 22.09.2026.xlsx"
+        ],
+        "used": [
+          "cases/5/case-data/IEK/MOQ  ИЭК.xlsx",
+          "cases/5/case-data/IEK/Динамика продаж_2025-2026.xlsx",
+          "cases/5/case-data/IEK/Ежемесячные остатки продукции за последние 2 года  ИЭК.xlsx",
+          "cases/5/case-data/IEK/Ежемесячные продажи в количественном выражении за последние 2 года.xlsx",
+          "cases/5/case-data/IEK/Путь ИЭК 22.09.2026.xlsx",
+          "cases/5/case-data/IEK/Сезонность ИЭК.xlsx",
+          "cases/5/case-data/Systeme electric/MOQ SystemElectric.xlsx",
+          "cases/5/case-data/Systeme electric/Динамика продаж_Syseme Electric_2025-2026.xlsx",
+          "cases/5/case-data/Systeme electric/Ежемесячные остатки SystemElectric 2024-2026.xlsx",
+          "cases/5/case-data/Systeme electric/Ежемесячные продажи в кол-м выражении SystemElectric 2024-2026.xlsx",
+          "cases/5/case-data/Systeme electric/Сезонность SystemElectric 2024-2026.xlsx",
+          "cases/5/case-data/Systeme electric/Товар в пути_SystemElectric на 22.09.2026.xlsx"
+        ],
+        "checks": [
+          {
+            "input": "12 XLSX из каталогов IEK и Systeme electric, без изменения структуры файлов",
+            "method": "В изолированном backend-окружении выполнен hackalem ingest с DATA_DIR на каталог case-data.",
+            "result": "Команда завершилась с кодом 0, warnings=[]; IEK: 3181 SKU, 171603 sales_lines, 94149 stock_monthly, 306 transit, 1937 rules; SE: 724 SKU, 77312 sales_lines, 23133 stock_monthly, 497 stock_current, 7 transit, 554 rules, 497 reference.",
+            "conclusion": "Форматы всех 12 таблиц распознаны адаптерами и загружены без предупреждений."
+          },
+          {
+            "input": "Та же загруженная база с двумя поставщиками",
+            "method": "Выполнены hackalem ingest и hackalem calc в одном изолированном сценарии.",
+            "result": "Код 0; run завершён со status=done, рекомендаций: 882, время расчёта в логе 11.9 с после загрузки.",
+            "conclusion": "Основной результат кейса воспроизводится на предоставленных реальных данных."
+          },
+          {
+            "input": "Синтетические случаи из backend/tests/test_engine.py для выброса, stockout, seasonality, transit и MOQ",
+            "method": "Запущены тесты доменного движка вместе с backend test suite.",
+            "result": "Проверены single bulk line, регулярный wholesale, sensitivity 0/1, sparse SKU, stockout compensation, supplier index, transit-aware stockout_day, MOQ и end-to-end run_engine; весь backend suite: 91 passed, 2 skipped.",
+            "conclusion": "Заявленные чувствительности и формулы имеют автоматические проверки; это отдельное подтверждение поверх real-file ingest."
+          },
+          {
+            "input": "Полученный run и первая рекомендация через HTTP API",
+            "method": "GET health/suppliers/calc-runs, POST calc-runs, polling GET calc-runs/{id}, GET recommendations и explain; затем POST approve и POST export.",
+            "result": "health=ok, suppliers=2, новый run running→done, 882 рекомендаций, 882 short_reason, 745 IEK/137 SE, 568 high urgency; approve вернул approved и export CSV вернул HTTP 200.",
+            "conclusion": "Проверен пользовательский путь от расчёта до ручного решения и совместимой выгрузки без автоматической отправки."
+          }
+        ],
+        "limitations": [
+          "Предоставленная схема продаж не содержит customer_id, поэтому customer-level вариант выброса оценён по исходникам как частично покрытый, а не как полностью проверенный.",
+          "Визуальное поведение интерфейса не проверялось: по правилам его проверяет пользователь; проверены только frontend build, unit/API tests и HTTP-доступность собранного nginx.",
+          "OpenAI API credentials не предоставлялись. Assistant status корректно показал disabled, а основной расчёт, API и экспорт не зависят от ключа."
+        ]
+      },
+      "runtime": {
+        "status": "working",
+        "build": "Backend и frontend production-образы собраны успешно; frontend Vite завершил сборку 681 модулями, backend uv синхронизировал locked-зависимости.",
+        "start": "Backend стартовал с автоматическим seed и ответил HTTP 200 на GET /api/health; собранный frontend nginx стартовал и ответил HTTP 200 на GET / с index.html.",
+        "scenario": "Реальные 12 XLSX импортированы, calc завершён со статусом done и 882 рекомендациями; через API проверены объяснение, группировка, ручное approve и CSV export.",
+        "environment": "Изолированные контейнеры с ограниченными ресурсами; backend Python 3.12, frontend Node 22/Vite и nginx.",
+        "summary": "Основной сценарий воспроизведён полностью для расчёта заказов и ручного согласования. Визуальная часть не инспектировалась, а AI-ассистент проверен только до корректного disabled-поведения без внешнего ключа.",
+        "checks": [
+          {
+            "command": "Docker build backend",
+            "result": "Код 0; production image собран из backend/Dockerfile, uv sync --locked завершился успешно.",
+            "id": "CHK-BUILD-BACKEND",
+            "stage": "build",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Backend image собирается с зафиксированными зависимостями и entrypoint."
+          },
+          {
+            "command": "npm run build",
+            "result": "Код 0; tsc -b и Vite прошли, 681 модуль преобразован, dist создан; Vite сообщил только предупреждение о крупном JS-chunk.",
+            "id": "CHK-BUILD-FRONTEND",
+            "stage": "build",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Frontend TypeScript и production bundle собираются."
+          },
+          {
+            "command": "python -m pytest -q",
+            "result": "Код 0; 91 passed, 2 skipped за 105.65 s.",
+            "id": "CHK-BACKEND-TESTS",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Backend unit/domain/API tests проходят в окружении с проектными зависимостями."
+          },
+          {
+            "command": "npm test",
+            "result": "Код 0; 28 passed, 0 failed.",
+            "id": "CHK-FRONTEND-TESTS",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Frontend model, API-contract и feature tests проходят."
+          },
+          {
+            "command": "GET /api/health",
+            "result": "HTTP 200, body {\"status\":\"ok\"}; container seed сообщил Demo data initialized: seeded.",
+            "id": "CHK-START-BACKEND",
+            "stage": "start",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Backend стартует и отвечает health endpoint."
+          },
+          {
+            "command": "GET /",
+            "result": "HTTP 200, index.html, 514 bytes; nginx container оставался running.",
+            "id": "CHK-START-FRONTEND",
+            "stage": "start",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Production frontend отдаёт собранное приложение."
+          },
+          {
+            "command": "hackalem ingest",
+            "result": "Код 0; оба supplier adapter завершились, warnings=[] и импортированы все заявленные сущности из 12 XLSX.",
+            "id": "CHK-CASE-INGEST",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Реальные входные таблицы кейса принимаются без ручного преобразования."
+          },
+          {
+            "command": "hackalem ingest && hackalem calc",
+            "result": "Код 0; run status=done, recommendations=882.",
+            "id": "CHK-CASE-CALC",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "На данных кейса создаётся завершённый расчёт с рекомендациями."
+          },
+          {
+            "command": "GET /api/calc-runs; POST /api/calc-runs; GET /api/recommendations; GET /api/recommendations/{sku_code}/explain",
+            "result": "HTTP path прошёл: новый run running→done, 882 rows; первая рекомендация имела qty=169 и urgency=high; explain вернул факторы, историю и narrative.",
+            "id": "CHK-API-SCENARIO",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "API отдаёт расчёт, список рекомендаций и объяснение для пользовательского результата."
+          },
+          {
+            "command": "POST /api/recommendations/{id}/approve; POST /api/recommendations/export; GET /api/exports/{file}",
+            "result": "pending→approved с approved_qty=169; CSV export создан и скачан HTTP 200, 340 bytes.",
+            "id": "CHK-APPROVAL-EXPORT",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Ручное подтверждение и явная выгрузка работают без автоматической отправки поставщику."
+          },
+          {
+            "command": "GET /api/assistant/status; POST /api/assistant/conversations/{id}/messages",
+            "result": "enabled=false, reason=не добавлен API-ключ; попытка сообщения вернула ожидаемый HTTP 503. Это ограничение внешней интеграции, а не сбой основного сценария.",
+            "id": "CHK-ASSISTANT-NOKEY",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "external_service",
+            "expected": "Без credentials ассистент явно отключён и не выдаёт ложный успешный ответ."
+          }
+        ],
+        "limitations": [
+          "OpenAI API не запускался за пределами корректного disabled/error path, поскольку ключ и квота намеренно не предоставлялись.",
+          "Визуальная проверка браузером не выполнялась по правилам ревью; HTTP-доступность и статическая сборка проверены.",
+          "Два backend-теста помечены skipped самим тестовым набором; это не повлияло на успешный расчёт на реальных данных."
+        ]
+      },
+      "liveDemo": {
+        "status": "none",
+        "url": null,
+        "notes": "Публичная live-ссылка в проверяемом репозитории не заявлена. Локально воспроизводимое Docker/HTTP демо подтверждено; отсутствие публичного URL не использовано как снятие баллов."
+      },
+      "fiveHourContext": "Для пятичасового MVP объём реализации высокий и уместный: команда довела путь от двух нестабильных Excel-форматов до единого расчёта, объяснений, управления статусом заказа и экспорта, добавив тесты доменной логики и frontend/API. Production-аутентификация, полноценная интеграция с 1С и внешний OpenAI-сервис не требуются для максимальной оценки этого прототипного сценария. Удержан только конкретный пробел customer-level выбросов, а не отсутствие инфраструктуры ревью.",
+      "strengths": [
+        "Реальный end-to-end импорт всех 12 предоставленных XLSX без предупреждений и расчёт 882 рекомендаций.",
+        "Глубокий объяснимый движок: robust outliers, stockout compensation, сезонность без трендового искажения, рост, транзит, срочность и MOQ.",
+        "Чёткая граница ручного решения: approve и export отделены, автоматической отправки поставщику нет.",
+        "Сильная проверяемость: 91 backend-тест, 28 frontend-тестов, production build и HTTP/API сценарий успешно пройдены.",
+        "Модульные адаптеры поставщиков и отдельные слои ETL/engine/API создают хороший путь расширения."
+      ],
+      "gaps": [
+        "Customer-level выбросы не реализованы: крупная строка определяется по объёму внутри SKU, но customer_id отсутствует в ETL и модели продаж. Это оставляет обязательный сценарий «крупная продажа одному клиенту» частично покрытым. [DEF-01]"
+      ],
+      "futureAdvice": [
+        {
+          "principle": "Сохраняйте минимально необходимое обезличенное измерение, если оно является частью бизнес-правила.",
+          "why": "В текущем решении robust volume-outlier работает, но DEF-01 показывает, что одинаковые объёмы от одного и нескольких клиентов неразличимы: SalesLine и read_sales не несут customer_id.",
+          "how": "В следующем хакатоне добавьте опциональный анонимизированный customer_id в нормализованный SalesLine и ETL, сгруппируйте проверку концентрации по (sku, customer), а при отсутствии поля явно оставьте volume fallback. Добавьте один синтетический тест с одинаковым SKU и двумя вариантами распределения объёма.",
+          "findingIds": [
+            "DEF-01"
+          ],
+          "successCheck": "Для одного SKU одинаковый общий объём даёт различимый результат: одна крупная покупка одного клиента исключается, а регулярный объём нескольких клиентов не исключается; при отсутствии customer_id сохраняется документированный fallback.",
+          "timeboxMinutes": 45
+        },
+        {
+          "principle": "Закрепляйте реальный формат партнёра маленьким golden-сценарием рядом с синтетическими тестами.",
+          "why": "CHK-CASE-INGEST и CHK-CASE-CALC подтвердили, что текущие XLSX читаются, но существующий test_engine.py в основном использует синтетические DataFrame; изменение заголовка партнёрской выгрузки может обнаружиться только во время ручного ingest.",
+          "how": "Для другого кейса сохраните небольшой обезличенный срез по одному-двум SKU каждого поставщика и проверяйте не весь датасет, а headers, counts, отсутствие warnings и несколько инвариантов результата: supplier grouping, transit subtraction и non-empty explanation.",
+          "findingIds": [
+            "S-02"
+          ],
+          "successCheck": "Одна автоматическая команда на fixture завершается без warnings и фиксирует ожидаемые counts/ключевые поля, а full-file ingest остаётся отдельной smoke-проверкой.",
+          "timeboxMinutes": 30
+        }
+      ],
+      "uncertainties": [
+        "Визуальная доступность, адаптивность и фактическое восприятие интерфейса не подтверждались: проверены сборка, тесты и HTTP, визуальную проверку выполняет пользователь.",
+        "Реальный OpenAI Responses API не проверялся без предоставленного credentials; код пути, обработка ошибок и disabled-поведение покрыты исходниками и тестами.",
+        "Входные файлы кейса не содержат customer_id в использованном контракте, поэтому нельзя эмпирически подтвердить клиентскую часть требования на этих таблицах."
+      ],
+      "reviewPolicyVersion": 2,
+      "assessmentStatus": "ready",
+      "findings": [
+        {
+          "id": "S-01",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Основной расчётный сценарий воспроизводится на реальных данных двух поставщиков и выдаёт завершённый набор рекомендаций.",
+          "expected": "Импорт case-data и расчёт должны завершиться без структурных ошибок и сформировать результат.",
+          "actual": "hackalem ingest завершился с warnings=[], а hackalem calc — status=done и 882 рекомендациями.",
+          "evidence": [
+            "CHK-CASE-INGEST",
+            "CHK-CASE-CALC",
+            "captures/20261002T074834258759-scenario-case-ingest.stdout.log",
+            "captures/20261002T074922415803-scenario-case-calc.stdout.log"
+          ],
+          "checkIds": [
+            "CHK-CASE-INGEST",
+            "CHK-CASE-CALC"
+          ]
+        },
+        {
+          "id": "S-02",
+          "kind": "strength",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "ETL-слой изолирует различия IEK и Systeme Electric и приводит их к единой схеме движка.",
+          "expected": "Форматы двух поставщиков должны обрабатываться отдельными адаптерами без дублирования расчётной логики.",
+          "actual": "SupplierBundle и модули iek.py/systeme.py покрывают продажи, остатки, транзит, правила, сезонность и reference; реальный ingest прошёл по обоим каталогам.",
+          "evidence": [
+            "backend/src/app/etl/common.py:135-163",
+            "backend/src/app/etl/iek.py:31-91",
+            "backend/src/app/etl/systeme.py:41-133",
+            "CHK-CASE-INGEST"
+          ],
+          "checkIds": [
+            "CHK-CASE-INGEST"
+          ]
+        },
+        {
+          "id": "S-03",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Результат содержит объяснение факторов и проходит ручной safety workflow до экспорта.",
+          "expected": "Менеджер должен видеть причины, отдельно подтвердить количество и получить выгрузку без автоматической отправки.",
+          "actual": "Explain вернул факторные поля и narrative; approve изменил pending на approved; CSV export вернул HTTP 200.",
+          "evidence": [
+            "backend/src/app/engine/explain.py:31-92",
+            "backend/src/app/api/recommendations.py:198-234",
+            "CHK-API-SCENARIO",
+            "CHK-APPROVAL-EXPORT"
+          ],
+          "checkIds": [
+            "CHK-API-SCENARIO",
+            "CHK-APPROVAL-EXPORT"
+          ]
+        },
+        {
+          "id": "S-04",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Проект имеет сильную автоматическую проверку доменной и frontend/API логики.",
+          "expected": "Критические формулы и пользовательские контракты должны иметь повторяемые проверки.",
+          "actual": "91 backend-тест прошёл, 2 теста skipped; frontend suite прошёл 28/28.",
+          "evidence": [
+            "backend/tests/test_engine.py:70-181",
+            "frontend/tests/orders.test.mjs",
+            "frontend/tests/orders-api.test.mjs",
+            "CHK-BACKEND-TESTS",
+            "CHK-FRONTEND-TESTS"
+          ],
+          "checkIds": [
+            "CHK-BACKEND-TESTS",
+            "CHK-FRONTEND-TESTS"
+          ]
+        },
+        {
+          "id": "DEF-01",
+          "kind": "defect",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Customer-level outlier detection отсутствует: разовую крупную покупку одного клиента нельзя отличить от независимых продаж того же общего объёма.",
+          "expected": "Для обязательного сценария крупной продажи одному клиенту должен использоваться обезличенный клиентский ключ, когда он является частью входных данных, либо должен быть явно зафиксирован отдельный fallback.",
+          "actual": "read_sales формирует поля sku_code, ts, document, doc_type, qty, name и unit; SalesLine хранит только эти признаки; detect_bulk_outliers группирует qty по sku_code и не принимает клиента.",
+          "evidence": [
+            "backend/src/app/etl/common.py:96-110",
+            "backend/src/app/models.py:54-66",
+            "backend/src/app/engine/core.py:95-126",
+            "backend/tests/test_engine.py:72-95"
+          ],
+          "checkIds": [
+            "CHK-BACKEND-TESTS",
+            "CHK-CASE-CALC"
+          ]
+        },
+        {
+          "id": "L-01",
+          "kind": "limitation",
+          "verification": "observed",
+          "responsibility": "review_environment",
+          "claim": "Внешний AI-ассистент не прошёл реальный provider round-trip без ключа.",
+          "expected": "При наличии credentials assistant должен пройти внешний вызов и отобразить ответ.",
+          "actual": "Без ключа API корректно сообщил enabled=false, а отправка сообщения вернула HTTP 503; основной расчёт не зависит от этого сервиса.",
+          "evidence": [
+            "backend/src/app/api/assistant.py:38-45",
+            "CHK-ASSISTANT-NOKEY"
+          ],
+          "checkIds": [
+            "CHK-ASSISTANT-NOKEY"
+          ]
+        },
+        {
+          "id": "L-02",
+          "kind": "limitation",
+          "verification": "unverified",
+          "responsibility": "review_environment",
+          "claim": "Визуальная и браузерная часть не проверена в рамках данного ревью.",
+          "expected": "Пользователь должен отдельно подтвердить layout, адаптивность, доступность и фактическое поведение экранов.",
+          "actual": "Подтверждены только production build, frontend tests и HTTP 200 собранного frontend; UI не инспектировался.",
+          "evidence": [
+            "CHK-BUILD-FRONTEND",
+            "CHK-FRONTEND-TESTS",
+            "CHK-START-FRONTEND"
+          ],
+          "checkIds": [
+            "CHK-BUILD-FRONTEND",
+            "CHK-FRONTEND-TESTS",
+            "CHK-START-FRONTEND"
+          ]
+        }
+      ],
+      "gapFindingIds": [
+        "DEF-01"
+      ]
+    }
+  ],
+  "score": 92.0,
+  "status": "complete",
+  "expectedJudges": 1
+}

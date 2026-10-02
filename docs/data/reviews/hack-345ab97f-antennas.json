@@ -1,0 +1,1245 @@
+{
+  "methodVersion": 4,
+  "repoId": "hack-345ab97f-antennas",
+  "repoUrl": "https://github.com/BAITC-Hacks/hack-345ab97f-antennas",
+  "caseId": 9,
+  "snapshot": "8c8b5637943cd725719a2e75fedd6a8aaf3f406e",
+  "judges": [
+    {
+      "methodVersion": 4,
+      "repoId": "hack-345ab97f-antennas",
+      "caseId": 9,
+      "model": "GPT-5.6 Luna",
+      "snapshot": "8c8b5637943cd725719a2e75fedd6a8aaf3f406e",
+      "overallSummary": "Проект представляет собой аккуратно собранный локальный прототип Voice Router с двумя слоями: Node.js Gateway для HTTP/WebSocket, трассировки, каталога, handoff и STT/TTS-адаптеров и отдельный Python LLM-роутер со строгой схемой, контекстом, политикой уточнения и расчётом уверенности. Основное demo действительно запускается, сохраняет трассы и обрабатывает текстовую реплику. Однако проверка исходного кейсового набора выявила существенное расхождение: вместо предоставленных 40 сценариев main использует seed из 8 сценариев, а versioned data содержит отдельный учебный каталог из 10 сценариев; default demo сопоставляет только точные нормализованные примеры. Поэтому сильная инфраструктурная часть не превращается в подтверждённую маршрутизацию на данных кейса. Реальный OpenAI/STT/TTS путь статически прослежен, но не запущен без предоставленных credentials; это ограничение проверки и не штраф. Итог: рабочий и хорошо документированный MVP инфраструктуры, но только частично соответствующий содержательному маршрутизатору кейса.",
+      "global": {
+        "criteria": [
+          {
+            "name": "Ценность решения",
+            "score": 19,
+            "max": 25,
+            "awarded": "Проект адресует понятную проблему контакт-центра: ошибочный выбор сценария при неоднозначной, смешанной и многошаговой речи. Польза для клиента и супервизора выражена через локальную трассировку, уточнение и handoff-карточку.",
+            "deductions": "6 баллов снято за то, что фактический основной каталог и рабочий demo-путь не покрывают предоставленную предметную область кейса и не демонстрируют маршрутизацию произвольных входов без exact-match режима.",
+            "evidence": [
+              "README.md:1-14",
+              "README.md:39-57",
+              "voice-router-backend/src/store.mjs:69-94",
+              "captures/20260930T051106493889-start.stdout.log",
+              "captures/20260930T051302246604-eval-case.stdout.log"
+            ],
+            "deductionItems": [
+              {
+                "points": 3,
+                "findingId": "F1",
+                "reason": "Ценность для заявленной страховой предметной области ограничена каталогом из 8 runtime-сценариев вместо исходных 40; это подтверждено запуском case-набора."
+              },
+              {
+                "points": 2,
+                "findingId": "F2",
+                "reason": "Default demo не решает общий запрос по смыслу: exact-match провайдер возвращает clarify для произвольной реплики, поэтому основная пользовательская польза не подтверждена этим путём."
+              },
+              {
+                "points": 1,
+                "findingId": "F3",
+                "reason": "Сценарии не подключены к knowledge base/mock backend/actions: пользователь получает трассировку и учебный response, но не содержательный ответ по данным кейса."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Реальная проблема контакт-центра",
+                "implementation": "README формулирует проблему неверной маршрутизации при смене темы и языка, а архитектура отделяет принятие решения от транспорта. Node Gateway хранит session history, activeScenario, pendingIntents и clarifyCount; Python prompt отдельно требует учитывать контекст и границы сценариев.",
+                "value": "Это делает ценность понятной для операторского контакт-центра: ошибочный выбор можно заменить контекстным решением, а supervisor получает не только финальный ID, но и причину, альтернативы и измерения.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:1-14",
+                  "backend/app/router/prompt.py:12-30",
+                  "voice-router-backend/src/gateway.mjs:15-65"
+                ]
+              },
+              {
+                "aspect": "Польза для супервизора",
+                "implementation": "Store сохраняет до 500 traces и до 200 handoff-карточек, считает routing p50/p95, clarify/handoff rate и распределение языков. Gateway публикует route_decision, response_text, trace и supervisor_stats с одним turn_id.",
+                "value": "Такой контур позволяет разбирать сомнения и ошибки после разговора, а не оставляет систему чёрным ящиком. Это заметная практическая польза даже в локальном MVP.",
+                "verification": "observed",
+                "evidence": [
+                  "voice-router-backend/src/store.mjs:69-94",
+                  "voice-router-backend/src/gateway.mjs:64-72",
+                  "captures/20260930T050953905614-node-test-fixed.stdout.log:126-140"
+                ]
+              },
+              {
+                "aspect": "Безопасный handoff вместо опасного угадывания",
+                "implementation": "После двух последовательных уточнений Engine переводит результат в handoff и создаёт локальную карточку; README явно говорит, что реальный оператор не подключается. Handoff содержит текст, историю, язык, причину и alternatives.",
+                "value": "Для страховых обращений это полезнее безусловного выбора: неопределённость видна, а клиентский контекст не теряется при передаче.",
+                "verification": "observed",
+                "evidence": [
+                  "voice-router-backend/src/gateway.mjs:43-48",
+                  "voice-router-backend/src/store.mjs:71-74",
+                  "voice-router-backend/test/backend.test.mjs:116-125"
+                ]
+              },
+              {
+                "aspect": "Граница применимости",
+                "implementation": "README не выдаёт demo за качество LLM, явно отмечает синтетические данные, отсутствие реальных операций и ограничение локального режима. При этом runtime catalog содержит только 8 seed-записей, а case dataset не подключён.",
+                "value": "Честное описание ограничений повышает доверие, но ограничивает доказанную ценность рамками инфраструктурного demo.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:26-37",
+                  "voice-router-backend/README.md:31-37",
+                  "voice-router-backend/catalog.seed.json:1-65",
+                  "F1",
+                  "F2"
+                ]
+              }
+            ],
+            "scoreReasoning": "19/25 заслужены ясной проблемой, трассировкой и безопасным handoff-контуром, которые реально прошли локальный HTTP/WS путь. До максимума не хватает связи с исходными 40 сценариями, ответами по knowledge base и устойчивой обработкой произвольной речи: применённый case evaluator обработал 104 входа, но получил 0.000 primary/full и 0.000 multi-intent recall. Для пятичасового MVP это существенное содержательное ограничение, хотя инфраструктурный результат выполнен добротно."
+          },
+          {
+            "name": "Результат и качество решения",
+            "score": 14,
+            "max": 20,
+            "awarded": "Сквозной локальный текстовый и WebSocket-сценарий целостен: запрос валидируется, решение проверяется схемой, trace сохраняется, supervisor получает метрики, а каталог и handoff имеют CRUD-путь. Голосовой и реальный LLM-результат кодом предусмотрены, но не подтверждены запуском.",
+            "deductions": "6 баллов снято за расхождение с кейсовыми данными, exact-match default demo и отсутствие data-backed исполнителя; отсутствие ключа не используется как причина штрафа.",
+            "evidence": [
+              "captures/20260930T050953905614-node-test-fixed.stdout.log",
+              "captures/20260930T051106493889-start.stdout.log",
+              "captures/20260930T051139778450-python-test.stdout.log",
+              "captures/20260930T051302246604-eval-case.stdout.log"
+            ],
+            "deductionItems": [
+              {
+                "points": 3,
+                "findingId": "F1",
+                "reason": "Проверенный пользовательский результат относится к 8 seed-сценариям, а не к заявленной проверке по 40 исходным сценариям."
+              },
+              {
+                "points": 2,
+                "findingId": "F2",
+                "reason": "На произвольной фразе фактический ответ — demo clarify; это не равно маршрутизации на LLM-слое и снижает качество основного сценария без ключа."
+              },
+              {
+                "points": 1,
+                "findingId": "F3",
+                "reason": "Executor возвращает response_example/нейтральную фразу и не выполняет доступные по кейсу действия или ответы из mock backend, поэтому пользовательский результат ограничен учебным подтверждением."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Рабочий HTTP-путь",
+                "implementation": "GET /api/health вернул 200 с mode=demo, POST /api/route на синтетической смешанной реплике вернул 200, decision=route, payment_not_confirmed и additional_intents=change_delivery_address; для неизвестной фразы вернулся 200 с decision=clarify.",
+                "value": "Основной локальный транспорт и формат ответа работают, а пользователь получает текст, решение и trace вместо только статической страницы.",
+                "verification": "observed",
+                "evidence": [
+                  "captures/20260930T051106493889-start.stdout.log"
+                ]
+              },
+              {
+                "aspect": "WebSocket и состояние поворота",
+                "implementation": "Gateway реализует ordered events turn_started → transcript → route_decision → response_text → trace, ограничивает параллелизм, сохраняет историю и откатывает состояние при ошибке. В тестах проверены отдельные сессии, clarify escalation, malformed packets и trace после provider failure.",
+                "value": "Это целостная серверная обработка одного поворота, пригодная для демонстрации и дальнейшего подключения браузерного клиента.",
+                "verification": "observed",
+                "evidence": [
+                  "voice-router-backend/src/gateway.mjs:15-83",
+                  "voice-router-backend/src/gateway.mjs:87-152",
+                  "captures/20260930T050953905614-node-test-fixed.stdout.log:40-82"
+                ]
+              },
+              {
+                "aspect": "Валидация и ошибочные ответы",
+                "implementation": "Проверяются длина/тип текста, Content-Type, лимит body, ID сценариев, решение и альтернативы; OpenAI ошибки, timeout, пустой ответ и голосовые ошибки переводятся в безопасные публичные коды.",
+                "value": "Для голосового сервиса это снижает риск сломать сессию или показать секрет upstream вместо понятного состояния.",
+                "verification": "observed",
+                "evidence": [
+                  "voice-router-backend/src/validation.mjs:3-43",
+                  "voice-router-backend/src/provider.mjs:80-99",
+                  "voice-router-backend/test/backend.test.mjs:79-84",
+                  "captures/20260930T050953905614-node-test-fixed.stdout.log:64-118"
+                ]
+              },
+              {
+                "aspect": "Что именно не доказано",
+                "implementation": "OpenAIProvider содержит structured JSON schema, STT multipart WAV и TTS MP3 adapter, но `VOICE_ENABLED` и OpenAI mode требуют внешнего ключа; demo provider сам предупреждает, что не является LLM.",
+                "value": "Кодовый путь существует, однако пользовательский голосовой результат и задержка от конца речи до первого звука остаются границей проверки, а не подтверждённым качеством.",
+                "verification": "source",
+                "evidence": [
+                  "voice-router-backend/src/provider.mjs:100-153",
+                  "README.md:30-37",
+                  "FINDING-L1"
+                ]
+              }
+            ],
+            "scoreReasoning": "14/20 отражают реально работающий текстовый/WS MVP и сильную обработку ошибок. Снижение связано с тем, что проверенный ответ на полном предоставленном наборе не маршрутизируется, default demo является точным примером, а executor не использует case actions/knowledge base. Внешний ключ не превращён в дефект: реальная OpenAI/STT/TTS проверка отмечена отдельно как ограничение среды."
+          },
+          {
+            "name": "Инновационность",
+            "score": 11,
+            "max": 15,
+            "awarded": "Сильная сторона — попытка построить LLM-only routing layer с динамической строгой схемой, контекстом, отдельным определением языка, ранним commit и logprob-based confidence вместо готового intent classifier.",
+            "deductions": "4 балла снято за то, что инновационный путь не является default-путём и работает на существенно меньшем учебном каталоге, тогда как default demo содержит exact-match mapping.",
+            "evidence": [
+              "backend/app/router/prompt.py:12-37",
+              "backend/app/router/schema.py:54-88",
+              "backend/app/router/llm_router.py:50-100",
+              "voice-router-backend/src/provider.mjs:12-35"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "F1",
+                "reason": "Динамическая схема доказывает архитектурную идею, но не инновационное решение исходной задачи на полном 40-сценарном каталоге."
+              },
+              {
+                "points": 2,
+                "findingId": "F2",
+                "reason": "В доступном без ключа основном режиме выбор реализован точным сопоставлением строк; это прямо противоречит сути кейса, если воспринимать default demo как пользовательский сценарий."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "LLM в точке содержательного решения",
+                "implementation": "Python LLMRouter строит prompt из каталога и состояния, требует структурированный RouterDecision, делает один repair при невалидном JSON и применяет policy после выбора. Node OpenAIProvider также передаёт каталог, history и строгую json_schema.",
+                "value": "Это соответствует требованию заменить энкодерный классификатор семантическим выбором с контекстом, а не использовать LLM только для косметического текста.",
+                "verification": "source",
+                "evidence": [
+                  "backend/app/router/llm_router.py:50-100",
+                  "backend/app/router/prompt.py:12-33",
+                  "voice-router-backend/src/provider.mjs:100-127"
+                ]
+              },
+              {
+                "aspect": "Динамическая контрактная схема",
+                "implementation": "`build_router_decision_model` создаёт enum из текущих catalog IDs и запрещает дополнительные поля; validation ограничивает decision, alternatives, additional_intents, language и reason.",
+                "value": "Добавление сценария не требует переобучения или переписывания enum, а невалидный/несуществующий ID не проходит к executor.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/app/router/schema.py:54-88",
+                  "backend/tests/test_router.py:45-55",
+                  "captures/20260930T051139778450-python-test.stdout.log"
+                ]
+              },
+              {
+                "aspect": "Контекст и уверенность",
+                "implementation": "Prompt различает continuation, topic switch, topic stack и clarify; router параллельно запрашивает язык, извлекает confidence/margin из scenario tokens при наличии logprobs и переводит низкую уверенность в clarify/handoff.",
+                "value": "Это нестандартнее простого top-1 классификатора и соответствует проблеме неоднозначных страховых сценариев.",
+                "verification": "source",
+                "evidence": [
+                  "backend/app/router/prompt.py:16-30",
+                  "backend/app/router/confidence.py:13-29",
+                  "backend/app/router/llm_router.py:127-166",
+                  "backend/tests/test_router.py:74-119"
+                ]
+              },
+              {
+                "aspect": "Ограниченный fast/demo path",
+                "implementation": "В Node есть явно отделённый DemoProvider для быстрых локальных smoke-проверок; README маркирует его как транспортно-каталожное demo, а не как LLM accuracy.",
+                "value": "Такой режим полезен для пятичасового прототипа и повторяемой проверки UI/transport, если он не подменяет оценочный путь.",
+                "verification": "source",
+                "evidence": [
+                  "voice-router-backend/src/provider.mjs:12-38",
+                  "voice-router-backend/README.md:29-37"
+                ]
+              }
+            ],
+            "scoreReasoning": "11/15 заслужены архитектурой LLMRouter, динамической схемой, контекстной policy и измеряемой уверенностью. Не максимум из-за разрыва между этой архитектурой и фактическим default demo, а также из-за отсутствия полного кейсового каталога. Это уменьшает доказанное новаторство именно в заявленной задаче, хотя инженерная идея хорошо сформулирована."
+          },
+          {
+            "name": "Потенциал развития и масштабирования",
+            "score": 15,
+            "max": 20,
+            "awarded": "Модульность провайдеров, динамический каталог, ограниченные ресурсы, атомарное JSON-хранилище, отдельный Python bridge и явные контракты дают хорошую основу для расширения сценариев и замены локального storage.",
+            "deductions": "5 баллов снято за то, что расширяемость не доведена до исходного каталога и data-backed executor: добавление сценария через CRUD меняет описание, но не подключает actions/knowledge/mock backend.",
+            "evidence": [
+              "voice-router-backend/src/config.mjs:18-47",
+              "voice-router-backend/src/store.mjs:30-67",
+              "backend/app/api/gateway.py:52-119",
+              "README.md:53-61"
+            ],
+            "deductionItems": [
+              {
+                "points": 3,
+                "findingId": "F1",
+                "reason": "Каталожное расширение стартует с 8/10 учебных записей и не показывает масштабирование на исходные 40 сценариев."
+              },
+              {
+                "points": 2,
+                "findingId": "F3",
+                "reason": "Без action/knowledge/mock слоя новые сценарии расширяются только маршрутом и response_example, а не полноценным обслуживанием клиента."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Провайдерная архитектура",
+                "implementation": "Node выбирает DemoProvider, OpenAIProvider или PythonProvider через конфигурацию; Python bridge принимает snapshot каталога и session, валидирует результат и возвращает совместимый формат Node.",
+                "value": "Провайдер можно менять без переписывания Gateway, а отдельный Python research path может развиваться независимо от транспорта.",
+                "verification": "source",
+                "evidence": [
+                  "voice-router-backend/src/config.mjs:18-47",
+                  "voice-router-backend/src/provider.mjs:42-75",
+                  "voice-router-backend/test/python-provider.test.mjs:1-120"
+                ]
+              },
+              {
+                "aspect": "Редактируемый каталог",
+                "implementation": "Store поддерживает upsert/delete с валидацией ID, версией каталога, сериализацией последовательных транзакций и подтверждающими событиями; следующий запрос читает свежий snapshot.",
+                "value": "Сценарии можно добавлять без изменения кода роутера, что является практичной основой для расширения доменов.",
+                "verification": "observed",
+                "evidence": [
+                  "voice-router-backend/src/store.mjs:35-67",
+                  "voice-router-backend/src/gateway.mjs:130-145",
+                  "voice-router-backend/test/backend.test.mjs:86-99",
+                  "captures/20260930T050953905614-node-test-fixed.stdout.log:28-38"
+                ]
+              },
+              {
+                "aspect": "Ограниченное локальное хранение",
+                "implementation": "State сохраняется атомарной заменой, устанавливает lock на один процесс и ограничивает traces/handoffs; сервер слушает loopback и не публикует data/.env по allowlist.",
+                "value": "Для локального MVP это снижает риск повреждения state и случайной публикации синтетических данных.",
+                "verification": "observed",
+                "evidence": [
+                  "voice-router-backend/src/store.mjs:9-33",
+                  "voice-router-backend/src/server.mjs:29-55",
+                  "voice-router-backend/test/backend.test.mjs:100-114",
+                  "captures/20260930T050953905614-node-test-fixed.stdout.log:28-38"
+                ]
+              },
+              {
+                "aspect": "Следующий масштаб",
+                "implementation": "README отдельно описывает замену JSON на production storage, внешнюю защиту и реальный операторский контакт, а код уже разделяет каталог, trace и provider interfaces.",
+                "value": "Переход от хакатонного прототипа к нескольким доменам технически понятен; при этом ограничения не маскируются под production readiness.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:53-57",
+                  "voice-router-backend/README.md:130-136"
+                ]
+              }
+            ],
+            "scoreReasoning": "15/20 — хороший потенциал инфраструктурного развития благодаря конфигурации, каталогам и storage. Снижение относится к наблюдаемой границе расширения: без F1/F3 новые записи не дают полного кейсового обслуживания, а остаются маршрутом и учебным ответом. Отсутствие production auth/real contact-center не штрафуется как требование вне пятичасового MVP; оно отмечено в документации как ограничение."
+          },
+          {
+            "name": "Презентация, демо и ответы на вопросы",
+            "score": 16,
+            "max": 20,
+            "awarded": "Устной презентации и вопросов не было, поэтому оценены README, локальные команды и объяснение результата. README подробно разделяет main demo, Python router, React path, режимы без ключа и ограничения; локальное demo воспроизводится и тестируется.",
+            "deductions": "4 балла снято за разрозненность нескольких контрактов и за то, что основной безключевой demo не является полноценной демонстрацией кейсовой маршрутизации.",
+            "evidence": [
+              "README.md:5-14",
+              "README.md:16-37",
+              "README.md:75-93",
+              "voice-router-backend/README.md:37-76",
+              "captures/20260930T051116358456-frontend-build.stdout.log"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "F1",
+                "reason": "Пользователь, следуя основному запуску, видит 8 seed-сценариев и не получает воспроизводимый путь к исходному 40-сценарному набору кейса."
+              },
+              {
+                "points": 2,
+                "findingId": "F2",
+                "reason": "README честно предупреждает о demo exact-match, но это одновременно означает, что показанный безключевой путь не доказывает главный продуктовый результат на живом вводе."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Структура документации",
+                "implementation": "Корневой README перечисляет компоненты, отдельные способы запуска, режим demo/openai, Python router и ограничения; backend README описывает API, WebSocket события, storage и metrics.",
+                "value": "Участнику ревью понятно, какой путь является основным, где лежит research router и какие claims нельзя считать accuracy или production результатом.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:5-14",
+                  "README.md:16-37",
+                  "voice-router-backend/README.md:1-12",
+                  "voice-router-backend/README.md:118-146"
+                ]
+              },
+              {
+                "aspect": "Воспроизводимое локальное demo",
+                "implementation": "Команды Node backend/frontend не требуют платного ключа в demo; backend tests и frontend tests заменяют внешние API, а smoke HTTP показал health, route, clarify и catalog.",
+                "value": "Это позволяет показать работающий транспорт и supervisor-контур без скрытой инфраструктуры.",
+                "verification": "observed",
+                "evidence": [
+                  "README.md:16-28",
+                  "captures/20260930T050953905614-node-test-fixed.stdout.log",
+                  "captures/20260930T051106493889-start.stdout.log",
+                  "captures/20260930T051116358456-frontend-build.stdout.log"
+                ]
+              },
+              {
+                "aspect": "Документирование измерений",
+                "implementation": "README объясняет, что accuracy=null без размеченного eval, route/exec/first_audio — серверные измерения, а full MP3 не равен first browser audio. UI помечает synthetic KPI как не-eval.",
+                "value": "Такой отказ от выдачи демонстрационных чисел за качество — сильная часть презентационной достоверности.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:88-93",
+                  "voice-router-backend/README.md:118-126",
+                  "voice-router-frontend/index.html:87-97"
+                ]
+              },
+              {
+                "aspect": "Непросмотренная визуальная часть",
+                "implementation": "Статические HTML/CSS/JS и build проверены, но визуальная/browser-проверка сознательно не выполнялась; наличие UI и его фактический вид не выдаются за наблюдённый результат.",
+                "value": "Это не штраф за отсутствие пользовательской визуальной проверки, а честная граница доказательств.",
+                "verification": "source",
+                "evidence": [
+                  "voice-router-frontend/index.html:66-108",
+                  "captures/20260930T051116358456-frontend-build.stdout.log",
+                  "FINDING-L2"
+                ]
+              }
+            ],
+            "scoreReasoning": "16/20 заслужены README, локальным запуском, тестами и прозрачными оговорками. Устное выступление не предполагалось и не штрафуется. Снижение остаётся за несколькими неполностью интегрированными путями и тем, что основной keyless demo демонстрирует транспорт/каталог, но не 40-сценарную LLM-маршрутизацию."
+          }
+        ],
+        "total": 75
+      },
+      "case": {
+        "criteria": [
+          {
+            "name": "Соответствие задаче и работоспособность",
+            "score": 13,
+            "max": 25,
+            "awarded": "Интерфейс, Node Gateway, текстовый fallback, WebSocket, трасса и локальный handoff соответствуют форме задачи. Реальный LLM слой и STT/TTS адаптеры присутствуют, но основной кейсовый результат на полном каталоге не воспроизведён.",
+            "deductions": "12 баллов снято за отсутствие 40 сценариев в runtime, exact-match demo и отсутствие подключения кейсовых действий/фактов.",
+            "evidence": [
+              "cases/9/case-data/HackAlem AI_ Voice Router - гибридный голосовой AI-робот с LLM-слоем выбора сценария.md:59-64",
+              "voice-router-backend/catalog.seed.json:1-65",
+              "captures/20260930T051106493889-start.stdout.log",
+              "captures/20260930T051302246604-eval-case.stdout.log"
+            ],
+            "deductionItems": [
+              {
+                "points": 5,
+                "findingId": "F1",
+                "reason": "Вместо исходных 40 сценариев основной Gateway стартует с 8 seed-сценариями, а отдельный data каталог содержит 10 учебных ID; case evaluator на 104 фразах дал 0.000."
+              },
+              {
+                "points": 4,
+                "findingId": "F2",
+                "reason": "Default demo маршрутизирует только exact normalized demo phrases и иначе выдаёт clarify, что не соответствует требованию обработки живого пользовательского ввода без хардкода."
+              },
+              {
+                "points": 3,
+                "findingId": "F3",
+                "reason": "Knowledge base, mock backend, slots и actions из стартового кита не входят в main data path; executor возвращает учебный response_example и не строит полноценный ответ по данным."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Веб-робот и текстовый резервный канал",
+                "implementation": "Gateway отдаёт совместимый frontend, принимает text_input и HTTP POST /api/route, а при включённом voice принимает PCM16 audio_chunk/speech_end. Frontend содержит call/trace/supervisor/catalog экраны и fallback text input.",
+                "value": "Форма продукта соответствует задаче: есть веб-симуляция и текстовая страховка, а voice транспорт не сводится к статическому аудиофайлу.",
+                "verification": "source",
+                "evidence": [
+                  "voice-router-backend/src/server.mjs:46-74",
+                  "voice-router-backend/src/gateway.mjs:100-128",
+                  "voice-router-frontend/app.js:154-205",
+                  "voice-router-frontend/index.html:38-65"
+                ]
+              },
+              {
+                "aspect": "Контекст одного диалога",
+                "implementation": "Node session хранит history до 12 сообщений, activeScenario, pendingIntents и clarifyCount; Python path хранит последние 4 turns, topic_stack и continuation policy.",
+                "value": "Это покрывает существенную часть требования смены темы и сохранения контекста на уровне архитектуры.",
+                "verification": "source",
+                "evidence": [
+                  "voice-router-backend/src/gateway.mjs:7-8",
+                  "voice-router-backend/src/gateway.mjs:23-54",
+                  "backend/app/router/schema.py:22-34",
+                  "backend/app/router/policy.py:8-27"
+                ]
+              },
+              {
+                "aspect": "Трасса после поворота",
+                "implementation": "Trace содержит text, decision, alternatives, history, catalog_version, timings_ms и measurement; frontend принимает transcript/route_decision/response_text/trace/tts_audio и рендерит supervisor stats.",
+                "value": "Основной наблюдаемый результат кейса — объяснимый маршрут с этапами — реализован гораздо полнее, чем только endpoint классификации.",
+                "verification": "observed",
+                "evidence": [
+                  "voice-router-backend/src/gateway.mjs:64-72",
+                  "voice-router-frontend/app.js:292-330",
+                  "voice-router-frontend/gateway-contract.json:161-305",
+                  "captures/20260930T051106493889-start.stdout.log"
+                ]
+              },
+              {
+                "aspect": "Граница основного сценария",
+                "implementation": "На ровно 104 предоставленных utterances приложение было вызвано через HTTP и сформировало 104 predictions; reference evaluate.py получил primary_acc=0.000, full_match=0.000 и intent_recall=0.000.",
+                "value": "Проверка отделяет реально работающий транспорт от отсутствующей кейсовой функциональности и не подменяет её README-утверждением.",
+                "verification": "observed",
+                "evidence": [
+                  "captures/20260930T051251045018-case-dataset.stdout.log",
+                  "captures/20260930T051302246604-eval-case.stdout.log:1-17",
+                  "F1",
+                  "F2"
+                ]
+              }
+            ],
+            "scoreReasoning": "13/25: форма и инфраструктура кейса реализованы, но центральное содержательное требование — маршрутизация по исходному набору — не выполнено в default path. Наличие LLM-кода учитывается, но не компенсирует фактический 8-сценарный seed и 0.000 на применённом evaluator."
+          },
+          {
+            "name": "Техническая реализация",
+            "score": 18,
+            "max": 25,
+            "awarded": "Архитектура технически сильная: разделены Gateway, provider adapters, storage, validation и Python router; применены strict JSON schema, session policy, bounded audio, error sanitization и тестовые doubles.",
+            "deductions": "7 баллов снято за неполную интеграцию содержательных данных и за default hardcoded path; отсутствующий внешний ключ сам по себе не учитывался как дефект.",
+            "evidence": [
+              "voice-router-backend/src/provider.mjs:42-153",
+              "voice-router-backend/src/validation.mjs:19-55",
+              "backend/app/router/llm_router.py:38-100",
+              "captures/20260930T050953905614-node-test-fixed.stdout.log",
+              "captures/20260930T051139778450-python-test.stdout.log"
+            ],
+            "deductionItems": [
+              {
+                "points": 3,
+                "findingId": "F1",
+                "reason": "Техническая реализация проверена на неполном каталоге и потому не доказывает заявленную 40-сценарную конфигурацию."
+              },
+              {
+                "points": 2,
+                "findingId": "F2",
+                "reason": "В main provider есть явное exact-match сопоставление заранее перечисленных фраз; это запрещённый для оценочного сценария способ выбора."
+              },
+              {
+                "points": 2,
+                "findingId": "F3",
+                "reason": "Data/action слой кейса не проходит через executor: код ограничивается response_example/neutral reply и локальным состоянием."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Разделение компонентов",
+                "implementation": "Node server занимается host/origin checks, HTTP, static allowlist и WebSocket upgrade; Engine занимается session pipeline; Store — persistence/metrics; Provider — demo/OpenAI/Python; frontend — transport/rendering.",
+                "value": "Такое разделение уменьшает связность и делает путь от входа до trace аудируемым.",
+                "verification": "source",
+                "evidence": [
+                  "voice-router-backend/src/server.mjs:29-47",
+                  "voice-router-backend/src/gateway.mjs:12-15",
+                  "voice-router-backend/src/provider.mjs:42-79",
+                  "voice-router-backend/src/store.mjs:7-8"
+                ]
+              },
+              {
+                "aspect": "Строгие контракты и безопасность",
+                "implementation": "Node validateDecision не принимает неизвестный ID, несовместимое decision или невалидные confidence; Python использует Pydantic strict models и динамический enum; static allowlist и loopback origin checks закрывают доступ к .env/.git.",
+                "value": "Для голосового маршрутизатора это снижает риск выполнить произвольный модельный вывод или утечь через browser proxy.",
+                "verification": "observed",
+                "evidence": [
+                  "voice-router-backend/src/validation.mjs:19-43",
+                  "backend/app/router/schema.py:13-16",
+                  "voice-router-backend/src/server.mjs:37-43",
+                  "captures/20260930T050953905614-node-test-fixed.stdout.log:16-38"
+                ]
+              },
+              {
+                "aspect": "LLM provider path",
+                "implementation": "OpenAI provider отправляет catalog/history/state в structured response format, ограничивает поля, делает отдельный language call и обрабатывает streaming/logprobs; Python router имеет один repair attempt и confidence policy.",
+                "value": "Это фактическое использование AI в выборе сценария, а не генерация косметической реплики после хардкодного выбора, когда включён соответствующий режим.",
+                "verification": "source",
+                "evidence": [
+                  "voice-router-backend/src/provider.mjs:100-127",
+                  "backend/app/router/providers/openai_provider.py:45-86",
+                  "backend/app/router/llm_router.py:65-100"
+                ]
+              },
+              {
+                "aspect": "Тестируемость",
+                "implementation": "21 backend tests, 12 standalone frontend tests, React build/lint/demo-smoke и 35 Python tests прошли в ограниченных контейнерах; тесты покрывают HTTP/WS, audio validation, OpenAI doubles, storage lock и policy.",
+                "value": "Для пятичасового прототипа это сильная инженерная дисциплина и воспроизводимая проверка локальных компонентов.",
+                "verification": "observed",
+                "evidence": [
+                  "captures/20260930T050953905614-node-test-fixed.stdout.log:6-140",
+                  "captures/20260930T050953905614-node-test-fixed.stdout.log:150-230",
+                  "captures/20260930T051116358456-frontend-build.stdout.log",
+                  "captures/20260930T051139778450-python-test.stdout.log"
+                ]
+              }
+            ],
+            "scoreReasoning": "18/25 — техническая база выше среднего для MVP и подтверждена тестами. Снижение не за отсутствие production-функций или ключа, а за реальные проектные границы: неполный каталог, запрещённый exact-match fallback как default demo и отсутствие data-backed executor для предоставленных case assets."
+          },
+          {
+            "name": "README и воспроизводимость",
+            "score": 20,
+            "max": 25,
+            "awarded": "Документация подробно описывает режимы, команды, контракты, storage, события, измерения и ограничения. Основной Node demo воспроизводим без ключа; сборка и автономные тесты проходят.",
+            "deductions": "5 баллов снято за то, что README ведёт к нескольким несовпадающим путям и не даёт воспроизводимого main-командного прогона по предоставленному 40-сценарному кейсу.",
+            "evidence": [
+              "README.md:5-37",
+              "README.md:59-86",
+              "voice-router-backend/README.md:13-35",
+              "voice-router-frontend/README.md:32-50"
+            ],
+            "deductionItems": [
+              {
+                "points": 3,
+                "findingId": "F1",
+                "reason": "Описанный основной запуск использует seed/data каталоги проекта, а не исходные 40 сценариев; это обнаруживается только при сопоставлении и evaluator-прогоне."
+              },
+              {
+                "points": 2,
+                "findingId": "F2",
+                "reason": "Главный безключевой сценарий документирован как exact-match demo, поэтому воспроизводимость есть для транспорта, но не для основного требования маршрутизации живого ввода."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Пошаговый запуск",
+                "implementation": "README указывает Node 20.19+, установку backend dependency, node src/server.mjs, health endpoint и отдельные шаги для OpenAI/voice; есть команды для Python tests и frontend.",
+                "value": "Новый проверяющий может поднять локальное demo без угадывания структуры репозитория.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:16-37",
+                  "backend/README.md:13-35",
+                  "voice-router-frontend/README.md:11-20"
+                ]
+              },
+              {
+                "aspect": "Контракт и ограничения",
+                "implementation": "Backend README перечисляет REST/WS endpoints, event order, limits, retention, отсутствие auth, режимы metrics и отличие полного MP3 от first audio. Frontend README перечисляет demo/OpenAI/Gateway режимы.",
+                "value": "Документация не скрывает важные эксплуатационные допущения и облегчает статическую проверку интеграции.",
+                "verification": "source",
+                "evidence": [
+                  "voice-router-backend/README.md:37-76",
+                  "voice-router-backend/README.md:101-146",
+                  "voice-router-frontend/README.md:22-30"
+                ]
+              },
+              {
+                "aspect": "Локальная проверяемость",
+                "implementation": "Пакеты содержат npm scripts и автономные тесты с mocked external APIs; React build, ESLint и demo smoke отдельно проходят.",
+                "value": "Репозиторий даёт проверяемое основание для заявленного транспорта даже без платного API.",
+                "verification": "observed",
+                "evidence": [
+                  "voice-router-backend/package.json:9-13",
+                  "voice-router-frontend/package.json:7-10",
+                  "frontend/package.json:6-11",
+                  "captures/20260930T051116358456-frontend-build.stdout.log",
+                  "captures/20260930T050953905614-node-test-fixed.stdout.log"
+                ]
+              },
+              {
+                "aspect": "Разрыв между документированными путями",
+                "implementation": "Корневой README прямо говорит, что Python router, React frontend и Node Gateway используют разные контракты и Python не подключён к Node автоматически; case assets не входят в main data tree.",
+                "value": "Прозрачность хорошая, но участнику пришлось бы самостоятельно выбрать ветку и каталог, чтобы приблизиться к кейсовому сценарию; это снижает воспроизводимость результата, а не сам факт наличия нескольких компонентов.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:9-14",
+                  "README.md:59-77",
+                  "backend/README.md:3-10",
+                  "F1"
+                ]
+              }
+            ],
+            "scoreReasoning": "20/25: README и автономные проверки заметно сильнее минимального хакатонного описания. Максимум не поставлен из-за того, что воспроизводимый основной запуск доказывает локальный demo, но не полный предоставленный кейс и не единый LLM/voice путь; при этом отсутствие ключа отдельно не штрафовано."
+          },
+          {
+            "name": "Ценность и применимость решения",
+            "score": 11,
+            "max": 15,
+            "awarded": "Для внутреннего контакт-центра полезны context-aware routing, supervisor trace, local handoff и безопасное отсутствие реальных страховых действий. UI и API подходят для синтетической демонстрации.",
+            "deductions": "4 балла снято за ограниченную предметную область и отсутствие подключения фактов/действий, необходимых для ответа по реальным сценариям кейса.",
+            "evidence": [
+              "README.md:52-55",
+              "voice-router-backend/src/store.mjs:71-94",
+              "backend/app/dialog/manager.py:87-104",
+              "cases/9/case-data/case_2/voice_router_dataset/README.md:117-131"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "F1",
+                "reason": "Runtime catalog покрывает только узкое учебное подмножество, поэтому применимость к 40 страховым сценариям не подтверждена."
+              },
+              {
+                "points": 2,
+                "findingId": "F3",
+                "reason": "Решение не обращается к предоставленным фактам, клиентам, полисам и действиям; оно объясняет маршрут, но не закрывает запрос данными компании."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Супервизорский контроль",
+                "implementation": "Supervisor видит историю решений, язык, reason, alternatives, timings и локальную handoff queue; метрики отделяют sample_size от accuracy=null.",
+                "value": "Это применимо для контроля качества операторского AI и поиска спорных маршрутов без выдуманных показателей.",
+                "verification": "source",
+                "evidence": [
+                  "voice-router-backend/src/store.mjs:88-94",
+                  "voice-router-frontend/app.js:337-353",
+                  "README.md:88-93"
+                ]
+              },
+              {
+                "aspect": "Синтетическая приватность",
+                "implementation": "README ограничивает demo синтетическими данными, local storage и loopback-only server; provider instructions запрещают заявлять, что деньги/полисы проверены или изменены.",
+                "value": "Для прототипа контакт-центра это разумная граница применения и снижает риск ложного обещания финансовой операции.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:53-55",
+                  "voice-router-backend/src/provider.mjs:101-110",
+                  "voice-router-backend/README.md:130-136"
+                ]
+              },
+              {
+                "aspect": "Практическая граница",
+                "implementation": "Executor возвращает response_example и сохраняет state, но не вызывает business actions; в корневом README прямо указано, что платежи, возвраты и изменения полиса не выполняются.",
+                "value": "Это безопасно, но оставляет решение в роли маршрутизатора/симулятора, а не законченного ассистента контакт-центра.",
+                "verification": "source",
+                "evidence": [
+                  "backend/app/dialog/manager.py:87-104",
+                  "README.md:52-55",
+                  "F3"
+                ]
+              }
+            ],
+            "scoreReasoning": "11/15 отражают реальную пользу наблюдаемого маршрутизатора и supervisor tooling. Для большего балла требовалась бы не production-интеграция, а именно обработка полного синтетического домена кейса: 40 сценариев, фактов и безопасных preview/confirmation действий. Это отсутствует по F1/F3."
+          },
+          {
+            "name": "Потенциал развития и оригинальность подхода",
+            "score": 8,
+            "max": 10,
+            "awarded": "Потенциал высокий: dynamic catalog, separate LLM router, topic stack, confidence policy, trace contract и provider adapters позволяют развивать решение без смены Gateway.",
+            "deductions": "2 балла снято за то, что оригинальный подход пока не закреплён полным case catalog и default-путь остаётся exact-match demo.",
+            "evidence": [
+              "backend/app/router/llm_router.py:38-100",
+              "backend/app/router/policy.py:8-27",
+              "voice-router-frontend/gateway-contract.json:443-507",
+              "F1",
+              "F2"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "F1",
+                "reason": "Масштабируемость на все 40 исходных сценариев не проверена и не включена в main runtime."
+              },
+              {
+                "points": 1,
+                "findingId": "F2",
+                "reason": "Default demo сохраняет демонстрационный hardcoded слой, поэтому путь от прототипа к реальной generalization ещё не замкнут."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Переносимый LLM-router",
+                "implementation": "Python router строит schema из текущего каталога, принимает DialogState и Utterance, вычисляет confidence и отдаёт RouteResult; Node bridge преобразует его в Gateway contract.",
+                "value": "Это переносимая основа для других контакт-центров и наборов сценариев без обучения отдельного encoder classifier.",
+                "verification": "source",
+                "evidence": [
+                  "backend/app/router/llm_router.py:38-100",
+                  "backend/app/router/schema.py:54-88",
+                  "backend/app/api/gateway.py:52-119"
+                ]
+              },
+              {
+                "aspect": "Интеграционный контракт",
+                "implementation": "gateway-contract.json формализует client/server events, route decision, trace, audio и catalog updates; фронтенд не выбирает сценарий сам.",
+                "value": "Чёткая граница облегчает замену UI, провайдера и storage, а также дальнейшее подключение real-time speech.",
+                "verification": "source",
+                "evidence": [
+                  "voice-router-frontend/gateway.js:1-43",
+                  "voice-router-frontend/gateway-contract.json:443-507"
+                ]
+              },
+              {
+                "aspect": "Безопасное развитие",
+                "implementation": "Промпт запрещает принимать catalog text за инструкции, просить OTP/password и заявлять исполненные действия; Engine ограничивает retries/clarify/handoff и не имеет irreversible executor.",
+                "value": "Для дальнейшего промышленного развития это лучше отправной точки, чем свободная генерация ответа без policy и audit trail.",
+                "verification": "source",
+                "evidence": [
+                  "voice-router-backend/src/provider.mjs:101-110",
+                  "voice-router-backend/src/gateway.mjs:16-20",
+                  "cases/9/case-data/HackAlem AI_ Voice Router - гибридный голосовой AI-робот с LLM-слоем выбора сценария.md:101-109"
+                ]
+              }
+            ],
+            "scoreReasoning": "8/10: оригинальность и расширяемость хорошо видны в коде, особенно в dynamic schema и соединении Python router с Node Gateway. Два балла удержаны за незавершённый переход от учебного/default слоя к полному кейсовому каталогу и generalization на реальные входы."
+          }
+        ],
+        "total": 70
+      },
+      "judgeScore": 72.5,
+      "caseRequirements": [
+        {
+          "requirement": "Веб-голосовой робот: микрофон/STT, маршрутизация и голосовой ответ",
+          "status": "partial",
+          "explanation": "Frontend отправляет PCM16 через WebSocket, Node вызывает OpenAI STT/TTS adapters и умеет вернуть MP3; без внешнего ключа это не запущено, а visual/browser behavior не проверялся. Text demo работает.",
+          "evidence": [
+            "voice-router-frontend/app.js:154-205",
+            "voice-router-backend/src/gateway.mjs:27-30",
+            "voice-router-backend/src/provider.mjs:128-153",
+            "FINDING-L1"
+          ]
+        },
+        {
+          "requirement": "LLM-слой выбирает сценарий по контексту, без encoder intent classifier",
+          "status": "partial",
+          "explanation": "Python LLMRouter и Node OpenAIProvider реализуют semantic prompt, catalog/history и strict schema. Но default demo использует exact-match mapping, а main catalog не равен 40 сценариям.",
+          "evidence": [
+            "backend/app/router/prompt.py:12-33",
+            "backend/app/router/llm_router.py:50-100",
+            "voice-router-backend/src/provider.mjs:12-35",
+            "F1",
+            "F2"
+          ]
+        },
+        {
+          "requirement": "Покрытие исходных 40 сценариев",
+          "status": "missing",
+          "explanation": "В case-data scenarios.json 40 сценариев и 3 system intents; в main runtime catalog.seed.json 8 записей, в data/scenarios.json 10 учебных записей. Применённый evaluator обработал 104 строки без совпадений.",
+          "evidence": [
+            "cases/9/case-data/case_2/voice_router_dataset/README.md:32-43",
+            "voice-router-backend/catalog.seed.json:1-65",
+            "data/scenarios.json:1-4",
+            "captures/20260930T051302246604-eval-case.stdout.log:1-17",
+            "F1"
+          ]
+        },
+        {
+          "requirement": "Контекст диалога, смена темы и возврат к отложенной теме",
+          "status": "partial",
+          "explanation": "Node session и Python policy имеют history, active scenario, pending intents и topic stack; архитектура и unit-тесты это подтверждают. Полный case dialogs_sample flow на 40 сценариях не воспроизведён.",
+          "evidence": [
+            "voice-router-backend/src/gateway.mjs:23-54",
+            "backend/app/router/policy.py:8-27",
+            "backend/tests/test_router.py:74-92",
+            "cases/9/case-data/case_2/voice_router_dataset/README.md:133-137"
+          ]
+        },
+        {
+          "requirement": "Русская, казахская и смешанная речь",
+          "status": "partial",
+          "explanation": "Prompt, language detector, demo examples и frontend поддерживают ru/kk/mixed. Полный case набор дал 0.000, а реальный STT/LLM языковой прогон не выполнялся без ключа.",
+          "evidence": [
+            "backend/app/router/prompt.py:15-30",
+            "backend/app/router/providers/openai_provider.py:12-24",
+            "voice-router-frontend/index.html:59-62",
+            "captures/20260930T051302246604-eval-case.stdout.log:1-10",
+            "F1",
+            "FINDING-L1"
+          ]
+        },
+        {
+          "requirement": "Текст как запасной канал",
+          "status": "met",
+          "explanation": "HTTP POST /api/route и WebSocket text_input работают в demo; запрос возвращает decision, response и trace.",
+          "evidence": [
+            "voice-router-backend/src/server.mjs:68-73",
+            "voice-router-backend/src/gateway.mjs:121-128",
+            "captures/20260930T051106493889-start.stdout.log"
+          ]
+        },
+        {
+          "requirement": "Трассировка: транскрипт, выбор, обоснование, альтернативы и задержка",
+          "status": "met",
+          "explanation": "Gateway и frontend имеют согласованный event contract; trace хранит text, decision, alternatives, history и timings_ms, supervisor считает агрегаты.",
+          "evidence": [
+            "voice-router-backend/src/gateway.mjs:64-72",
+            "voice-router-frontend/gateway-contract.json:161-305",
+            "voice-router-frontend/app.js:292-353",
+            "captures/20260930T050953905614-node-test-fixed.stdout.log"
+          ]
+        },
+        {
+          "requirement": "Измерение ориентиров 500 мс/1.5 с",
+          "status": "partial",
+          "explanation": "route, exec, total и first_audio измеряются в server processing; demo HTTP показал route 0.1–0.4 ms и total 0.2–0.5 ms. Код прямо исключает client VAD, transport, persistence/playback, поэтому end-to-end voice latency не доказана.",
+          "evidence": [
+            "voice-router-backend/src/gateway.mjs:22-64",
+            "voice-router-backend/src/store.mjs:88-94",
+            "captures/20260930T051106493889-start.stdout.log",
+            "voice-router-backend/README.md:118-126"
+          ]
+        },
+        {
+          "requirement": "Не выполнять необратимые действия без подтверждения",
+          "status": "met",
+          "explanation": "Основной executor вообще не выполняет платежи, возвраты или изменения полиса; provider instructions запрещают заявлять об исполнении. Это безопасное ограничение, хотя полноценный action confirmation flow не реализован.",
+          "evidence": [
+            "README.md:52-55",
+            "backend/app/dialog/manager.py:87-104",
+            "voice-router-backend/src/provider.mjs:107-110",
+            "cases/9/case-data/HackAlem AI_ Voice Router - гибридный голосовой AI-робот с LLM-слоем выбора сценария.md:101-103"
+          ]
+        },
+        {
+          "requirement": "Работа на данных, а не на записанном демо; case assets должны быть применимы",
+          "status": "partial",
+          "explanation": "Runtime работает на серверном каталоге и пользовательском тексте, но default demo exact-matches заранее перечисленные примеры, а knowledge_base/mock_backend/actions/slots не подключены к main executor.",
+          "evidence": [
+            "voice-router-backend/src/provider.mjs:5-35",
+            "backend/app/dialog/manager.py:87-104",
+            "cases/9/case-data/case_2/voice_router_dataset/README.md:117-131",
+            "F2",
+            "F3"
+          ]
+        }
+      ],
+      "testData": {
+        "provided": [
+          "scenarios.json",
+          "dialogs_sample.json",
+          "dev_utterances.json",
+          "knowledge_base.json",
+          "mock_backend.json",
+          "actions.json",
+          "slots.json",
+          "evaluate.py",
+          "README.md",
+          "README.ru.md",
+          "README.kz.md"
+        ],
+        "used": [
+          "scenarios.json — сопоставлено 40 сценариев/3 system intents с main catalog.seed из 8 записей и data/scenarios из 10 записей",
+          "dev_utterances.json — все 104 высказывания отправлены в Node demo; predictions переданы в evaluate.py",
+          "dialogs_sample.json — прочитаны 10 размеченных диалогов и проверено наличие требований topic switch, language switch, clarification, handoff и confirmation",
+          "knowledge_base.json, mock_backend.json, actions.json, slots.json — проверены поля компании, клиентов, действия, слоты и ошибки; в main runtime эквивалентных файлов и вызовов нет",
+          "evaluate.py — reference scorer запущен на полученных predictions"
+        ],
+        "checks": [
+          {
+            "input": "case_2/voice_router_dataset/scenarios.json: 40 scenarios + 3 system intents; voice-router-backend/catalog.seed.json: 8 scenarios; data/scenarios.json: 10 scenarios",
+            "method": "Статическое сравнение структуры и ID каталогов",
+            "result": "Подтверждено расхождение: main Gateway загружает catalog.seed.json, Python/data path использует отдельный 10-сценарный учебный каталог.",
+            "conclusion": "Исходный каталог кейса не является рабочим runtime catalog; это F1."
+          },
+          {
+            "input": "104 записи из dev_utterances.json, включая 84 single, 13 multi_intent, 4 out_of_scope и 3 unclear",
+            "method": "Каждая text реплика отправлена на POST /api/route в запущенном demo; scenario_id и additional_intents собраны в predictions.json; затем запущен case evaluate.py",
+            "result": "Обработано 104/104 без transport error; primary accuracy 0.000, full_match 0.000, multi-intent intent_recall 0.000; 104 ошибки.",
+            "conclusion": "Транспорт устойчив, но demo не является кейсовым маршрутизатором; F1/F2."
+          },
+          {
+            "input": "10 dialogs из dialogs_sample.json с тегами scenario_switch, topic_switch, mixed speech, clarification, handoff и confirmation",
+            "method": "Структура и ожидаемые поля сопоставлены с Gateway session/history, Python DialogState/policy и executor",
+            "result": "Контекстные поля history/topic_stack/pending_intents есть; case actions/slots и state machine executor отсутствуют.",
+            "conclusion": "Контекстный каркас частично применим, полноценные sample dialogs не воспроизводимы; F3."
+          },
+          {
+            "input": "knowledge_base.json, mock_backend.json, actions.json и slots.json из стартового кита",
+            "method": "Проверка схемы файлов и поиск проектных потребителей в main/LLM/executor paths",
+            "result": "В case files есть company facts, clients/policies, actions/errors и slot prompts; в versioned main нет соответствующих файлов, а executor выдаёт response_example.",
+            "conclusion": "Ответы по предметным данным и action preview не реализованы; F3."
+          }
+        ],
+        "limitations": [
+          "Закрытый набор жюри из 10 реплик недоступен по условиям кейса.",
+          "LLM/STT/TTS credentials намеренно не предоставлялись; реальный внешний вызов не подменялся mock в оценке пользовательского сценария.",
+          "Визуальная проверка браузера запрещена пользовательскими инструкциями; статический build и HTTP/WS проверки выполнены."
+        ]
+      },
+      "runtime": {
+        "status": "partial",
+        "build": "Node backend: 21/21 tests and syntax check pass; standalone frontend: 12/12 tests and syntax check pass; React/Vite build, ESLint and demo smoke pass; Python backend/eval tests: 35 passed.",
+        "start": "Node Gateway started successfully in default demo mode. GET /api/health returned 200 and the server served the allowlisted frontend assets in the test suite.",
+        "scenario": "Text demo path is working for its four prepared examples and arbitrary text returns a safe clarify response. The case scenario is partial: the full 104-row supplied dataset ran through HTTP but scored 0.000; real LLM and voice paths were not run without credentials.",
+        "environment": "Node.js 22.13 and Python 3.11 were used in isolated resource-limited containers; no project or reviewer secrets were supplied.",
+        "summary": "Deployment of the local transport and demo is working. The main case behavior is only partial because the default route is finite exact-match demo and the external LLM/STT/TTS path is unavailable in this review environment.",
+        "checks": [
+          {
+            "command": "npm test; npm run check",
+            "result": "Backend 21/21 tests passed; node syntax checks passed. Tests covered health/static allowlist, HTTP validation, catalog persistence, WebSocket contract, clarify/handoff, audio, provider errors, metrics and Python bridge.",
+            "id": "chk-node-tests",
+            "stage": "build",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Backend tests and syntax checks pass without external credentials."
+          },
+          {
+            "command": "npm test; npm run check",
+            "result": "Standalone frontend 12/12 tests passed and app.js/gateway.js/server.mjs syntax checks passed.",
+            "id": "chk-frontend-tests",
+            "stage": "build",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Frontend transport/proxy tests pass without a browser or external API."
+          },
+          {
+            "command": "npm run build; npm run lint; npm test",
+            "result": "React/Vite production build passed, ESLint passed and demo-smoke reported 'Demo flow, trace, and catalog persistence: OK'.",
+            "id": "chk-react-build",
+            "stage": "build",
+            "status": "pass",
+            "cause": "none",
+            "expected": "The separate React/Vite package builds cleanly and its local smoke flow passes."
+          },
+          {
+            "command": "python -m pytest backend/tests eval/tests -q",
+            "result": "35 passed in 0.69s.",
+            "id": "chk-python-tests",
+            "stage": "build",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Python router, policy, API and evaluation unit/domain tests pass without calling an LLM."
+          },
+          {
+            "command": "GET /api/health; POST /api/route; GET /api/catalog",
+            "result": "GET health 200: mode=demo, voiceEnabled=false, openaiConfigured=false. POST prepared mixed-intent text 200: route=payment_not_confirmed with additional_intents=change_delivery_address and timings route=0.4ms/total=0.5ms. POST arbitrary text 200: clarify. GET catalog 200: version=1, scenario_count=8.",
+            "id": "chk-node-http",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "The local Node application starts and returns a valid health response, route/clarify decisions, traces and catalog."
+          },
+          {
+            "command": "POST /api/route for all rows; python evaluate.py predictions.json dev_utterances.json",
+            "result": "104/104 supplied utterances reached the application; reference evaluator exited 0 but reported primary_acc=0.000, full_match=0.000, intent_recall=0.000 and 104 errors.",
+            "id": "chk-case-eval",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "The supplied evaluator can be run against application predictions and reports the actual case behavior without a crash."
+          },
+          {
+            "command": "ROUTER_MODE=openai; POST /api/route",
+            "result": "Blocked before external scenario execution: no OPENAI_API_KEY was provided by the review environment; project config explicitly requires it for openai mode.",
+            "id": "chk-openai",
+            "stage": "scenario",
+            "status": "blocked",
+            "cause": "external_service",
+            "expected": "A real LLM response is obtained and validated for arbitrary text."
+          },
+          {
+            "command": "VOICE_ENABLED=true; audio_chunk/speech_end",
+            "result": "Blocked before external STT/TTS execution because the configured voice path requires OPENAI_API_KEY; no provider response was fabricated.",
+            "id": "chk-voice",
+            "stage": "scenario",
+            "status": "blocked",
+            "cause": "external_service",
+            "expected": "PCM16 input is transcribed and the routed answer is returned as TTS audio."
+          }
+        ],
+        "limitations": [
+          "Real OpenAI routing, STT and TTS were not executed because credentials were intentionally unavailable; this does not make the local demo startup fail.",
+          "Browser visual behavior, microphone permission UX and audio playback were not inspected under the user-owned visual verification policy.",
+          "The 0.000 case evaluator result is a project behavior finding, not a consequence of the blocked external API checks."
+        ]
+      },
+      "liveDemo": {
+        "status": "none",
+        "url": null,
+        "notes": "Публичная live-ссылка в проверяемых материалах не подтверждена. Локальный HTTP/WS demo доступен по README и был проверен без браузера; отсутствие публичного URL не использовано как причина снижения баллов."
+      },
+      "fiveHourContext": "Для пятичасового MVP разумно учитывать сильную локальную инфраструктуру, автономные тесты и честно ограниченный demo-режим. Не требовались production auth, реальный контакт-центр или полноценные необратимые страховые операции. Но исходный кейс специально оценивал routing на 40 синтетических сценариях; отсутствие их в main runtime и exact-match default demo являются содержательными, а не production, ограничениями. Поэтому баллы сохранены за архитектуру и воспроизводимость транспорта, но не за непоказанную case accuracy.",
+      "strengths": [
+        "Целостный Node HTTP/WebSocket Gateway с trace, metrics, каталогом и локальной handoff queue; это подтверждено 21 backend-тестом и HTTP smoke.",
+        "Строгая валидация модельного вывода, динамический catalog enum, отдельная language detection и confidence/policy слой в Python router.",
+        "Хорошая инженерная проверяемость: 21 backend tests, 12 frontend tests, 35 Python tests, React build/lint/smoke проходят без ключей.",
+        "README подробно описывает режимы и честно отделяет demo-данные, server timings и ограничения от accuracy/production claims.",
+        "Безопасная граница: реальные платежи/возвраты не выполняются, ошибки upstream санитизируются, state ограничен и хранится локально."
+      ],
+      "gaps": [
+        "F1: Основной runtime-каталог не содержит исходные 40 сценариев кейса: seed содержит 8 записей, отдельный data каталог — 10 учебных; на 104 предоставленных репликах evaluator дал 0.000.",
+        "F2: Default DemoProvider выбирает сценарий exact-match сопоставлением заранее перечисленных фраз, а произвольный ввод переводит в clarify; это не обобщённая LLM-маршрутизация и нарушает запрет на hardcoded проверочные сопоставления для оценочного пути.",
+        "F3: Предоставленные knowledge_base/mock_backend/actions/slots не подключены к main executor: response строится из response_example/нейтральной фразы, поэтому маршрутизатор не даёт data-backed ответы и action preview по кейсу."
+      ],
+      "futureAdvice": [
+        {
+          "principle": "Сначала выровнять runtime-контракт с исходными тестовыми данными",
+          "why": "F1 показывает, что архитектура проверялась на 8/10 учебных сценариях, а не на исходных 40; тот же HTTP путь на 104 строках дал 0.000.",
+          "how": "В другом хакатоне сначала заменить catalog seed на starter-kit scenarios.json, сохранить исходные IDs и добавить smoke, который считает 40 сценариев и прогоняет representative single/multi/unclear rows. Только после этого подключать UI и метрики.",
+          "findingIds": [
+            "F1"
+          ],
+          "successCheck": "Runtime catalog reports 40 scenarios, every supplied case ID is accepted by the dynamic schema, and a recorded evaluator run contains predictions for all 104 rows without exact-phrase lookup.",
+          "timeboxMinutes": 75
+        },
+        {
+          "principle": "Чётко отделять transport demo от оценочного AI-пути",
+          "why": "F2: default demo exact-matches finite phrases; arbitrary input safely clarifies, но это нельзя считать качеством маршрутизации.",
+          "how": "Оставить demo mode как smoke, но сделать отдельный deterministic FakeProvider только для unit tests и направить пользовательский case run в LLM provider или заранее подготовленный семантический test double, который не знает проверочные тексты. В отчёте разделять transport pass и routing score.",
+          "findingIds": [
+            "F2"
+          ],
+          "successCheck": "Изменённая фраза с тем же смыслом получает тот же сценарий без добавления новой строки в lookup, а case evaluator показывает ненулевую primary/full метрику на проверенном прогоне.",
+          "timeboxMinutes": 60
+        },
+        {
+          "principle": "Связывать маршрут с безопасным data-backed preview",
+          "why": "F3: executor сейчас выдаёт response_example и не использует actions, slots, knowledge base или mock backend, поэтому пользовательский результат заканчивается объяснением маршрута.",
+          "how": "Для следующего кейса ввести минимальный executor: извлечь только нужные слоты, вызвать mock action, показать preview, запросить явное подтверждение для irreversible action и записать action/error в trace; начать с одного сценария и одного not_found пути.",
+          "findingIds": [
+            "F3"
+          ],
+          "successCheck": "Два sample dialogs проходят от route до preview/answer из mock data, irreversible action не вызывается без отдельного yes, а trace содержит action name, slots, result/error и handoff context.",
+          "timeboxMinutes": 120
+        }
+      ],
+      "uncertainties": [
+        "Реальные качества OpenAI LLM, STT/TTS, казахского распознавания и end-to-end voice latency не измерены из-за отсутствия credentials; кодовый путь проверен статически и через provider doubles.",
+        "Визуальный вид, browser microphone permissions, playback UX и responsive layout не наблюдались по прямому запрету пользовательской визуальной проверки; build и статические обработчики проверены.",
+        "Закрытый jury set из 10 utterances недоступен, поэтому 0.000 относится только к открытому 104-row dataset, а не к скрытой выборке.",
+        "Отдельная ветка backend/voice-api документирует другой FastAPI/React path, но она также использует учебный 10-сценарный каталог и не заменяет main Node Gateway автоматически.",
+        "Публичное live demo не подтверждено; это отражено только в liveDemo и не влияет на deductions."
+      ],
+      "reviewPolicyVersion": 2,
+      "assessmentStatus": "ready",
+      "findings": [
+        {
+          "id": "S1",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Основной Node Gateway запускается в demo mode и возвращает валидные health, route, clarify, catalog и trace ответы.",
+          "expected": "Локальный MVP должен стартовать и вернуть результат текстового fallback без ключа.",
+          "actual": "HTTP smoke получил 200 для health/route/clarify/catalog; prepared input был маршрутизирован, arbitrary input безопасно уточнён.",
+          "evidence": [
+            "captures/20260930T051106493889-start.stdout.log",
+            "voice-router-backend/src/server.mjs:54-73",
+            "voice-router-backend/src/gateway.mjs:64-72"
+          ],
+          "checkIds": [
+            "chk-node-http"
+          ]
+        },
+        {
+          "id": "S2",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Локальные Node, frontend, React/Vite и Python checks проходят без внешнего API.",
+          "expected": "Доступные build/unit/domain проверки должны завершаться успешно.",
+          "actual": "Backend 21/21, standalone frontend 12/12, Python 35 passed; React build/lint/demo smoke pass.",
+          "evidence": [
+            "captures/20260930T050953905614-node-test-fixed.stdout.log",
+            "captures/20260930T051116358456-frontend-build.stdout.log",
+            "captures/20260930T051139778450-python-test.stdout.log"
+          ],
+          "checkIds": [
+            "chk-node-tests",
+            "chk-frontend-tests",
+            "chk-react-build",
+            "chk-python-tests"
+          ]
+        },
+        {
+          "id": "S3",
+          "kind": "strength",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Python router и Node OpenAI provider содержат содержательный LLM routing path с strict schema, context и policy.",
+          "expected": "Решение должно использовать LLM в точке выбора, валидировать вывод и учитывать состояние диалога.",
+          "actual": "Prompt принимает catalog/history/state, dynamic Pydantic enum валидирует IDs, confidence policy выдаёт route/clarify/handoff, Node bridge возвращает совместимый decision.",
+          "evidence": [
+            "backend/app/router/prompt.py:12-33",
+            "backend/app/router/schema.py:54-88",
+            "backend/app/router/llm_router.py:50-100",
+            "backend/app/api/gateway.py:83-119"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "S4",
+          "kind": "strength",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Trace/storage/security boundaries достаточно зрелые для локального MVP.",
+          "expected": "Трасса должна содержать решение и измерения, storage не должен безусловно перезаписывать corrupt state, а public assets не должны открывать секреты.",
+          "actual": "Store использует lock/atomic rename/limits, server allowlist ограничивает assets, trace сохраняет decision/timings/history, upstream errors санитизируются.",
+          "evidence": [
+            "voice-router-backend/src/store.mjs:9-33",
+            "voice-router-backend/src/store.mjs:69-94",
+            "voice-router-backend/src/server.mjs:29-43",
+            "voice-router-backend/src/provider.mjs:80-99"
+          ],
+          "checkIds": [
+            "chk-node-tests"
+          ]
+        },
+        {
+          "id": "F1",
+          "kind": "defect",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Main runtime не использует исходный 40-сценарный case catalog.",
+          "expected": "Voice Router должен работать на scenarios.json из starter kit с 40 сценариями и system intents.",
+          "actual": "catalog.seed.json содержит 8 записей, data/scenarios.json — 10 учебных; при отправке всех 104 case utterances evaluator получил primary/full 0.000 и intent recall 0.000.",
+          "evidence": [
+            "voice-router-backend/catalog.seed.json:1-65",
+            "data/scenarios.json:1-4",
+            "README.md:9-14",
+            "captures/20260930T051302246604-eval-case.stdout.log:1-17"
+          ],
+          "checkIds": [
+            "chk-case-eval",
+            "chk-node-http"
+          ]
+        },
+        {
+          "id": "F2",
+          "kind": "defect",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Default DemoProvider выбирает только exact normalized demo/catalog examples и не обобщает произвольный пользовательский ввод.",
+          "expected": "Для оценочного пути сценарий должен выбираться семантически через LLM, а hardcoded сопоставление проверочных реплик запрещено.",
+          "actual": "provider.mjs сравнивает нормализованную строку с тремя специальными фразами и точными catalog ru/kk examples; arbitrary text возвращает demo clarify. Это совпало с 0.000 на case dataset.",
+          "evidence": [
+            "voice-router-backend/src/provider.mjs:5-35",
+            "voice-router-backend/README.md:29-37",
+            "captures/20260930T051106493889-start.stdout.log",
+            "captures/20260930T051302246604-eval-case.stdout.log:1-17"
+          ],
+          "checkIds": [
+            "chk-node-http",
+            "chk-case-eval"
+          ]
+        },
+        {
+          "id": "F3",
+          "kind": "defect",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Main executor не использует case knowledge base, mock backend, actions и slots для data-backed ответа.",
+          "expected": "После маршрутизации система должна хотя бы безопасно вести сценарий по synthetic facts/actions, показывать preview и сохранять содержательный результат.",
+          "actual": "executor_reply выбирает response_example или neutral route reply; README и код указывают, что платежи/возвраты/изменения не выполняются, а соответствующих case files в main data path нет.",
+          "evidence": [
+            "backend/app/dialog/manager.py:87-104",
+            "README.md:52-55",
+            "voice-router-backend/README.md:52-61",
+            "cases/9/case-data/case_2/voice_router_dataset/README.md:117-131"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "FINDING-L1",
+          "kind": "limitation",
+          "verification": "unverified",
+          "responsibility": "external_service",
+          "claim": "Реальный OpenAI/STT/TTS пользовательский путь не был исполнен в этой проверке.",
+          "expected": "Для полного voice/LLM сценария нужен доступный внешний provider и его credentials.",
+          "actual": "Credentials намеренно отсутствуют; config требует OPENAI_API_KEY для openai mode/voice, поэтому checks заблокированы до внешнего вызова.",
+          "evidence": [
+            "voice-router-backend/src/config.mjs:24-29",
+            "voice-router-backend/src/provider.mjs:77-153",
+            "README.md:30-37"
+          ],
+          "checkIds": [
+            "chk-openai",
+            "chk-voice"
+          ]
+        },
+        {
+          "id": "FINDING-L2",
+          "kind": "limitation",
+          "verification": "unverified",
+          "responsibility": "review_environment",
+          "claim": "Визуальное browser поведение не наблюдалось.",
+          "expected": "Визуальный UX и playback требуют проверки пользователем в браузере.",
+          "actual": "Выполнены только статический build, syntax, HTTP/WS и unit/domain проверки; browser automation/screenshots не использовались.",
+          "evidence": [
+            "captures/20260930T051116358456-frontend-build.stdout.log",
+            "voice-router-frontend/index.html:66-108"
+          ],
+          "checkIds": []
+        }
+      ],
+      "gapFindingIds": [
+        "F1",
+        "F2",
+        "F3"
+      ]
+    }
+  ],
+  "score": 72.5,
+  "status": "complete",
+  "expectedJudges": 1
+}

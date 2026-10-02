@@ -1,0 +1,1328 @@
+{
+  "methodVersion": 4,
+  "repoId": "hack-c52f5e57-butterfly",
+  "repoUrl": "https://github.com/BAITC-Hacks/hack-c52f5e57-butterfly",
+  "caseId": 8,
+  "snapshot": "9666480137209222fd5e1326e10bb09dbcfa9a0e",
+  "judges": [
+    {
+      "methodVersion": 4,
+      "repoId": "hack-c52f5e57-butterfly",
+      "caseId": 8,
+      "model": "GPT-5.6 Luna",
+      "snapshot": "9666480137209222fd5e1326e10bb09dbcfa9a0e",
+      "overallSummary": "Butterfly — содержательный локальный прототип протоколирования: Go принимает запись или текст, хранит встречи в изолированных сессиях, передаёт аудио локальному ASR, извлекает резюме и поручения через локальный Nemotron-совместимый API, проверяет цитаты и требует ручного подтверждения перед экспортом. Синтетический сценарий HTTP воспроизведён: демо загружено, неподтверждённое подтверждение заблокировано, поручения подтверждены, встреча завершена. Оба предоставленных MP3 также были отправлены в API и сохранены, но без внешнего/self-hosted ASR закономерно получили awaiting_provider. Максимум удерживают подтверждённые ограничения проекта: Riva-адаптер явно отключает диаризацию и не поддерживает mixed, а политика endpoint блокирует только несколько известных hosted-хостов и не гарантирует закрытый контур для любого заданного URL.",
+      "global": {
+        "criteria": [
+          {
+            "name": "Ценность решения",
+            "score": 21,
+            "max": 25,
+            "awarded": "Практичная ценность для организаций, где поручения и сроки теряются в длинных совещаниях.",
+            "deductions": "Снято 4 балла за то, что на реально загруженных записях итоговый пользовательский результат зависит от доступного ASR, а обязательные смешанная речь и диаризация не закрыты выбранным Riva-путём.",
+            "evidence": [
+              "README.md:3",
+              "internal/app/api.go:121",
+              "internal/app/providers.go:315",
+              "audio-case-http",
+              "F-001",
+              "F-002"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "F-001",
+                "reason": "Без диаризации результат не даёт надёжной привязки поручения к говорящему, то есть теряется часть основной пользовательской пользы."
+              },
+              {
+                "points": 2,
+                "findingId": "F-002",
+                "reason": "Основной документированный Riva-адаптер отклоняет mixed, поэтому ценность для смешанной русско-казахской встречи не подтверждена реализацией."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Конкретная боль деловых встреч",
+                "implementation": "README описывает загрузку записи или текста, поручения с цитатами, ручную проверку и экспорт. API создаёт встречу, сохраняет аудио в приватный uploads-каталог и проводит её через статусы processing/needs_review/completed.",
+                "value": "Это прямо адресует потерю договорённостей, сроков и ответственных после совещания; ценность понятна целевой административной и управленческой аудитории.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:3",
+                  "internal/app/api.go:121",
+                  "internal/app/providers.go:301"
+                ]
+              },
+              {
+                "aspect": "Контролируемый результат вместо слепой автоматизации",
+                "implementation": "Черновик нельзя подтвердить, пока каждое поручение не имеет status=confirmed; перед сохранением ручных изменений проверяются структура, дата, segment_id и соответствие evidence тексту сегмента.",
+                "value": "Пользователь получает проверяемый протокол и видит основание поручения, что снижает риск незаметной ошибки модели в рабочем процессе.",
+                "verification": "observed",
+                "evidence": [
+                  "internal/app/api.go:334",
+                  "internal/app/actions.go:12",
+                  "demo-review-http"
+                ]
+              },
+              {
+                "aspect": "Приватность как часть ценности",
+                "implementation": "Документация и код ориентированы на self-hosted Nemotron/Riva; MCP получает только обезличенные метаданные, а Telegram отправляет статус без текста встречи и участников.",
+                "value": "Для закрытого корпоративного контура это существенная практическая ценность, особенно для записей внутренних совещаний.",
+                "verification": "source",
+                "evidence": [
+                  "docs/architecture.md:8",
+                  "docs/architecture.md:17",
+                  "internal/integrations/runtime.go:208",
+                  "internal/integrations/runtime.go:280"
+                ]
+              },
+              {
+                "aspect": "Граница пользы на реальном аудио",
+                "implementation": "Два организаторских MP3 были отправлены через multipart API. Каждый запрос вернул HTTP 201, mode=live, но status=awaiting_provider, transcript=0 и actions=0 с сообщением о неподключённом ASR.",
+                "value": "Прототип корректно не выдумывает протокол, но без провайдера не превращает предоставленную запись в готовый пользовательский результат.",
+                "verification": "observed",
+                "evidence": [
+                  "audio-case-http",
+                  "cases/8/case-data/Совещание №1.mp3",
+                  "cases/8/case-data/Совещание №2.mp3"
+                ]
+              }
+            ],
+            "scoreReasoning": "21/25 отражает сильную связь с реальной проблемой и полезный human-in-the-loop результат. Снижение не связано с отсутствием выданного ключа: оно основано на исходнике. В коде Riva нет диаризации и mixed не проходит, поэтому именно две обязательные характеристики, влияющие на пользу для многоязычных совещаний, остаются незакрытыми. Для пятичасового MVP это заметный, но не уничтожающий ценность пробел, поскольку локальный текстовый/manual и синтетический review-сценарии полноценны."
+          },
+          {
+            "name": "Результат и качество решения",
+            "score": 15,
+            "max": 20,
+            "awarded": "Целостный review/export-сценарий и аккуратная обработка ошибок провайдеров реализованы, но end-to-end результат для аудио зависит от внешнего сервиса и ограничен дефектами ASR-адаптера.",
+            "deductions": "Снято 5 баллов за отсутствие диаризации, неподдержанный mixed-путь и неполную гарантию закрытого контура.",
+            "evidence": [
+              "scripts/smoke.mjs:10",
+              "internal/app/api.go:428",
+              "internal/integrations/export.go:13",
+              "go-build-test",
+              "demo-review-http",
+              "F-001",
+              "F-002",
+              "F-003"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "F-001",
+                "reason": "Основной ASR-путь возвращает только неизвестного спикера и не выполняет диаризацию, что снижает качество готового протокола."
+              },
+              {
+                "points": 2,
+                "findingId": "F-002",
+                "reason": "Для mixed Riva прекращает обработку до получения транскрипта, поэтому целостный сценарий заявленного типа аудио не работает."
+              },
+              {
+                "points": 1,
+                "findingId": "F-003",
+                "reason": "Разрешение произвольного HTTP(S)-endpoint после исключения нескольких доменов не даёт технической гарантии запрета отправки данных во внешний облачный API."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Сквозной review gate",
+                "implementation": "Сервер создаёт демо со статусом needs_review, PATCH принимает исправленные summary/actions, а confirm требует подтверждения каждого поручения и переводит встречу в completed.",
+                "value": "Сценарий не заканчивается генерацией черновика: пользовательский результат явно проходит контроль и становится экспортируемым только после подтверждения.",
+                "verification": "observed",
+                "evidence": [
+                  "internal/app/api.go:253",
+                  "internal/app/api.go:334",
+                  "demo-review-http"
+                ]
+              },
+              {
+                "aspect": "Экспортный слой",
+                "implementation": "Для completed доступны PDF, DOCX и JSON; Go передаёт JSON локальному scripts/export_protocol.py, а Python сохраняет кириллицу, цитаты, статусы и многостраничный текст.",
+                "value": "Результат можно вынести из приложения в рабочий документ, а JSON остаётся доступным даже без export helper.",
+                "verification": "source",
+                "evidence": [
+                  "internal/app/api.go:413",
+                  "internal/integrations/export.go:13",
+                  "butterfly/exports.py:36",
+                  "tests/test_exports.py:56"
+                ]
+              },
+              {
+                "aspect": "Защита от галлюцинаций",
+                "implementation": "validateExtraction требует ровно summary/actions, непрерывную цитату и существующий segment_id; owner сохраняется только если присутствует в evidence, а дата принимается только в формате YYYY-MM-DD и из цитаты.",
+                "value": "Это важная техническая мера качества для поручений: ошибочный ответ провайдера не становится молча подтверждаемой задачей.",
+                "verification": "source",
+                "evidence": [
+                  "internal/app/providers.go:199",
+                  "internal/app/providers.go:230",
+                  "internal/app/providers_test.go:47"
+                ]
+              },
+              {
+                "aspect": "Наблюдаемый запуск",
+                "implementation": "В изолированном Go-контейнере сервер стартовал, /health вернул 200 и runtime=go; demo-review прошёл до completed; оба реальных MP3 корректно приняты и переведены в awaiting_provider при отсутствии ASR.",
+                "value": "Базовая серверная вертикаль и честный provider-unavailable результат реально воспроизводимы, хотя полный аудио- и экспортный runtime в этой проверке не завершён.",
+                "verification": "observed",
+                "evidence": [
+                  "go-build-test",
+                  "http-health",
+                  "demo-review-http",
+                  "audio-case-http"
+                ]
+              }
+            ],
+            "scoreReasoning": "15/20 присуждены за работающий серверный workflow, ручную верификацию, строгий разбор ответов моделей и реализованный export-контур. До максимума не хватает подтверждённого готового результата на записи: при отсутствии ASR система корректно ждёт провайдера, но Riva-код дополнительно не делает диаризацию и отклоняет mixed. Отдельно остаётся неполной гарантия запрета внешних endpoint-ов."
+          },
+          {
+            "name": "Инновационность",
+            "score": 10,
+            "max": 15,
+            "awarded": "Сильная сторона — сочетание локального AI-контура, доказательных цитат и обязательной ручной проверки в компактном MVP.",
+            "deductions": "Снято 5 баллов: нестандартность хорошо выражена в workflow и приватности, но реализация не доводит до конца ключевые мультиязычные и speaker-aware свойства.",
+            "evidence": [
+              "docs/architecture.md:8",
+              "internal/app/providers.go:262",
+              "internal/app/api.go:349",
+              "F-001",
+              "F-002",
+              "F-003"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "F-001",
+                "reason": "Без speaker-aware diarization инновационная привязка поручений к участникам остаётся заявленной границей, а не фактически реализованным отличием."
+              },
+              {
+                "points": 2,
+                "findingId": "F-002",
+                "reason": "Смешанная речь явно исключена из Riva-пути, поэтому многоязычное преимущество не доведено до рабочего нестандартного сценария."
+              },
+              {
+                "points": 1,
+                "findingId": "F-003",
+                "reason": "Закрытый контур заявлен архитектурно, но allow-by-exclusion политика endpoint-ов ослабляет его как проверяемое техническое отличие."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Local-first AI pipeline",
+                "implementation": "Go вызывает self-hosted ASR через multipart HTTP или локальный Riva SDK subprocess, затем отправляет транскрипт локальному Nemotron-совместимому chat endpoint; hosted AI fallback отсутствует.",
+                "value": "Для кейса с запретом внешней передачи это более осмысленный подход, чем обычная интеграция с публичным SaaS API.",
+                "verification": "source",
+                "evidence": [
+                  "internal/app/providers.go:97",
+                  "internal/app/providers.go:262",
+                  "docs/architecture.md:8"
+                ]
+              },
+              {
+                "aspect": "Доказательное извлечение поручений",
+                "implementation": "LLM получает схему с evidence и segment_id, после чего сервер повторно проверяет цитату по исходному сегменту и оставляет неизвестные owner/deadline пустыми.",
+                "value": "Такой слой валидации превращает генеративный ответ в аудируемый черновик, а не в непроверяемую стену текста.",
+                "verification": "source",
+                "evidence": [
+                  "internal/app/providers.go:271",
+                  "internal/app/providers.go:233",
+                  "internal/app/providers_test.go:22"
+                ]
+              },
+              {
+                "aspect": "Честная деградация",
+                "implementation": "При недоступном ASR аудио сохраняется с awaiting_provider, при недоступном Nemotron уже имеющийся транскрипт переводится в needs_review с предложением ручного заполнения; синтетическая демо-фикстура помечена как не результат моделей.",
+                "value": "Это полезная инновация процесса: система не маскирует отсутствие AI случайным или выдуманным текстом.",
+                "verification": "source",
+                "evidence": [
+                  "internal/app/providers.go:342",
+                  "internal/app/api.go:267",
+                  "internal/app/demo.go:3"
+                ]
+              },
+              {
+                "aspect": "Предел оригинальности",
+                "implementation": "Основной продуктовый паттерн остаётся знакомым transcription→summary→tasks→review→export; MCP/Fly и Telegram подключены как интеграционные события, не как новый метод распознавания.",
+                "value": "Поэтому балл выше среднего за обоснованный privacy/evidence workflow, но не максимальный: уникальное преимущество не подтверждено сравнением качества или полноценной speaker-aware реализацией.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:19",
+                  "docs/architecture.md:24",
+                  "docs/evaluation.md:15"
+                ]
+              }
+            ],
+            "scoreReasoning": "10/15 — заметная инженерная оригинальность есть в локальном контуре, проверяемых цитатах и human gate. Снижение отражает не отсутствие платного сервиса, а кодовые границы: Riva возвращает diarization=false, mixed отвергается, а ограничение hosted endpoints неполное."
+          },
+          {
+            "name": "Потенциал развития и масштабирования",
+            "score": 15,
+            "max": 20,
+            "awarded": "Архитектура расширяема через провайдерные адаптеры, статический frontend, контейнер и отдельные интеграции; эксплуатационные границы честно описаны.",
+            "deductions": "Снято 5 баллов за отсутствие фактической мультиязычной/диаризационной опоры и ограничения монолитного JSON-хранилища и endpoint-политики.",
+            "evidence": [
+              "docs/architecture.md:3",
+              "docs/architecture.md:30",
+              "Dockerfile:1",
+              "compose.yaml:31",
+              "F-001",
+              "F-002",
+              "F-003"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "F-001",
+                "reason": "Масштабирование на многоучастниковые встречи потребует отдельной speaker-aware ASR/diarization реализации, которой текущий Riva путь не даёт."
+              },
+              {
+                "points": 1,
+                "findingId": "F-002",
+                "reason": "Mixed-language сценарии нельзя просто масштабировать конфигурацией: текущий Riva адаптер завершает их с ошибкой до распознавания."
+              },
+              {
+                "points": 2,
+                "findingId": "F-003",
+                "reason": "Гибкая настройка URL без allowlist/локальной сетевой политики затрудняет гарантируемое соблюдение закрытого контура при переносе между организациями."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Разделение компонентов",
+                "implementation": "Go владеет HTTP/API, сессиями и хранением, Python ограничен локальным экспортом и Riva SDK, frontend статичен, а MCP/Fly интеграции вынесены в отдельный пакет.",
+                "value": "Такое разделение позволяет заменить провайдера или frontend без переписывания всего сценария и подходит для следующего этапа после MVP.",
+                "verification": "source",
+                "evidence": [
+                  "docs/architecture.md:3",
+                  "docs/architecture.md:13",
+                  "internal/integrations/export.go:21"
+                ]
+              },
+              {
+                "aspect": "Контейнеризация и deployment-профили",
+                "implementation": "Dockerfile собирает Go-бинарник отдельным stage, запускает runtime непривилегированным пользователем; compose имеет обычный, Brev и plugin профили, persistent data volume и read-only настройки.",
+                "value": "Есть практический путь к self-hosted deployment и к подключению уже установленной модели без передачи пользовательских данных наружу.",
+                "verification": "source",
+                "evidence": [
+                  "Dockerfile:1",
+                  "Dockerfile:27",
+                  "compose.yaml:3",
+                  "compose.yaml:35"
+                ]
+              },
+              {
+                "aspect": "Интеграционные точки",
+                "implementation": "MCP bridge ограничивает инструменты, выделяет приватный data root и передаёт в Fly только тип встречи, режим и счётчик действий; Telegram имеет durable reservation для защиты от дублей.",
+                "value": "Это создаёт основу для корпоративного аудита и уведомлений, сохраняя текст встречи внутри приложения.",
+                "verification": "source",
+                "evidence": [
+                  "internal/integrations/runtime.go:67",
+                  "internal/integrations/runtime.go:203",
+                  "internal/integrations/runtime.go:261"
+                ]
+              },
+              {
+                "aspect": "Честно обозначенная эксплуатационная граница",
+                "implementation": "Документация прямо называет JSON store одно-процессным и не production queue, а качество WER/action precision/recall, public E2E и diarization не выдаёт за подтверждённые.",
+                "value": "Такая фиксация границ облегчает планирование следующей версии и не создаёт ложного ожидания масштабирования уже сейчас.",
+                "verification": "source",
+                "evidence": [
+                  "docs/architecture.md:30",
+                  "docs/evaluation.md:15",
+                  "README.md:34"
+                ]
+              }
+            ],
+            "scoreReasoning": "15/20 — для пяти часов есть хороший скелет расширения: модульные провайдеры, контейнер, приватное хранение, plugin/Brev профили и безопасные интеграционные события. До максимума не хватает готового speaker-aware multilingual слоя и более строгого enforcement закрытого контура; монолитный JSON store также ограничивает горизонтальное масштабирование, хотя сам проект честно это признаёт."
+          },
+          {
+            "name": "Презентация, демо и ответы на вопросы",
+            "score": 16,
+            "max": 20,
+            "awarded": "README и репозиторный API-сценарий достаточно ясно объясняют запуск, ограничения, демо и проверки; устная презентация и ответы не выдумывались.",
+            "deductions": "Снято 4 балла за неполную воспроизводимость полного provider/export runtime в текущей проверке и за то, что документация сама отмечает непроверенные real-audio/public части.",
+            "evidence": [
+              "README.md:7",
+              "README.md:45",
+              "README.md:61",
+              "docs/evaluation.md:1",
+              "go-build-test",
+              "frontend-node-check",
+              "F-001",
+              "F-002"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "F-001",
+                "reason": "README не может показать работающую speaker-aware часть, потому что исходный Riva путь её не реализует; это снижает убедительность демо обязательного сценария."
+              },
+              {
+                "points": 1,
+                "findingId": "F-002",
+                "reason": "Смешанная речь заявлена в задаче, но документированный Riva путь явно помечает её непроверенной/неподдержанной."
+              },
+              {
+                "points": 1,
+                "findingId": "F-003",
+                "reason": "Описанный закрытый контур не подкреплён полной allowlist-проверкой URL, поэтому объяснение безопасности требует оговорки."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Инструкция запуска",
+                "implementation": "README даёт зависимости, venv, .env, scripts/run.sh, локальный URL, кнопку Демо, HACKALEM_HOME и отдельные команды Go/Python/Node/eval.",
+                "value": "Участник или проверяющий быстро понимает минимальный путь к воспроизводимому синтетическому результату.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:7",
+                  "README.md:18",
+                  "README.md:45"
+                ]
+              },
+              {
+                "aspect": "Прозрачное демо",
+                "implementation": "Демо-фикстура содержит русскую и казахскую реплики, даты, три поручения и явно добавляет события о синтетическом происхождении и необходимости review.",
+                "value": "Репозиторный демонстрационный сценарий показывает именно проверку, неизвестные поля и экспортные статусы, а не выдаёт fixture за качество моделей.",
+                "verification": "observed",
+                "evidence": [
+                  "demo/meeting.json:1",
+                  "internal/app/demo.go:8",
+                  "demo-review-http"
+                ]
+              },
+              {
+                "aspect": "Проверки описаны как проверки",
+                "implementation": "scripts/eval.mjs перечисляет сессии, ownership isolation, review gate, сохранение unknown owner/deadline, export и честное поведение без ASR; docs/evaluation.md отдельно отделяет regression от model quality.",
+                "value": "Это делает README полезнее рекламного описания: проверяющий понимает, что именно измеряется и чего suite не доказывает.",
+                "verification": "source",
+                "evidence": [
+                  "scripts/eval.mjs:34",
+                  "scripts/eval.mjs:75",
+                  "docs/evaluation.md:11"
+                ]
+              },
+              {
+                "aspect": "Репозиторная проверка без UI-автоматизации",
+                "implementation": "HTTP health и API review были проверены CLI-запросами, Go tests/vet прошли, node --check прошёл; визуальное поведение сознательно не объявлялось проверенным.",
+                "value": "Оценка демо опирается на воспроизводимые серверные факты и не приписывает проекту несуществующую устную презентацию.",
+                "verification": "observed",
+                "evidence": [
+                  "go-build-test",
+                  "frontend-node-check",
+                  "http-health",
+                  "demo-review-http",
+                  "runtime.limitations"
+                ]
+              }
+            ],
+            "scoreReasoning": "16/20 — README структурирован и содержит команды, архитектуру, eval и явные ограничения, а синтетический API-сценарий реально прошёл до completed. Снижение относится к воспроизводимости полного аудио-пути и provider-backed PDF/DOCX runtime в этой проверке, а также к кодовым границам mixed/diarization; отсутствие публичной ссылки или устного выступления само по себе не штрафовалось."
+          }
+        ],
+        "total": 77
+      },
+      "case": {
+        "criteria": [
+          {
+            "name": "Соответствие задаче и работоспособность",
+            "score": 15,
+            "max": 25,
+            "awarded": "Основной workflow загружает аудио, создаёт транскрипт/черновик при наличии провайдеров, извлекает действия и требует подтверждения; mixed и speaker-aware требования закрыты только частично.",
+            "deductions": "Снято 10 баллов за отсутствие диаризации в Riva, явный отказ от mixed и неполную гарантию запрета внешних API.",
+            "evidence": [
+              "task.txt:2",
+              "internal/app/api.go:119",
+              "internal/app/riva.go:53",
+              "scripts/riva_transcribe.py:16",
+              "F-001",
+              "F-002",
+              "F-003"
+            ],
+            "deductionItems": [
+              {
+                "points": 4,
+                "findingId": "F-001",
+                "reason": "Обязательная диаризация и привязка к говорящему не выполняются в реализованном Riva-пути: speaker всегда неизвестен, diarization=false."
+              },
+              {
+                "points": 4,
+                "findingId": "F-002",
+                "reason": "Riva отклоняет language=mixed до распознавания; обязательная смешанная речь фактически не поддержана этим путём."
+              },
+              {
+                "points": 2,
+                "findingId": "F-003",
+                "reason": "Код принимает произвольный разрешённый HTTP(S) endpoint, кроме короткого списка доменов, поэтому требование не передавать данные во внешние облачные API не обеспечено полностью."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Приём аудио",
+                "implementation": "POST /api/meetings принимает multipart, ограничивает размер 50 MB, разрешает MP3 и сохраняет файл с приватным именем; оба выданных MP3 были поданы этим путём и приняты с HTTP 201.",
+                "value": "Входной контракт кейса реализован и не подменяет аудио текстовым ориентиром.",
+                "verification": "observed",
+                "evidence": [
+                  "internal/app/api.go:119",
+                  "internal/app/api.go:174",
+                  "audio-case-http"
+                ]
+              },
+              {
+                "aspect": "STT и локальный контур",
+                "implementation": "Есть self-hosted multipart ASR с language ru/kk, Riva gRPC adapter с ffmpeg-декодированием, лимитами и временными метками; Nemotron получает transcript и дату через локальный endpoint.",
+                "value": "Архитектурно закрыты ключевые этапы автоматического протоколирования и предусмотрена работа без внешней передачи данных при корректной self-hosted конфигурации.",
+                "verification": "source",
+                "evidence": [
+                  "internal/app/providers.go:97",
+                  "internal/app/riva.go:19",
+                  "scripts/riva_transcribe.py:44",
+                  "internal/app/providers.go:262"
+                ]
+              },
+              {
+                "aspect": "Поручения и саммари",
+                "implementation": "Модель должна вернуть summary/actions, а сервер требует text/owner/deadline/evidence/segment_id, отбрасывает неподтверждённые owner/deadline и переводит результат в ручной review.",
+                "value": "Поставленная задача извлечения ответственного, срока и содержания представлена не только интерфейсом, но и проверяемым контрактом данных.",
+                "verification": "source",
+                "evidence": [
+                  "internal/app/providers.go:197",
+                  "internal/app/providers.go:217",
+                  "internal/app/providers.go:331"
+                ]
+              },
+              {
+                "aspect": "Экспорт",
+                "implementation": "Completed-встреча экспортируется в PDF/DOCX/JSON; до подтверждения PDF/DOCX блокируются HTTP 409. Локальный Python helper формирует кириллический документ с цитатами и статусами.",
+                "value": "Финальный артефакт кейса предусмотрен, а незавершённый черновик не выдаётся за утверждённый протокол.",
+                "verification": "source",
+                "evidence": [
+                  "internal/app/api.go:428",
+                  "internal/app/api.go:446",
+                  "butterfly/exports.py:108"
+                ]
+              }
+            ],
+            "scoreReasoning": "15/25: большая часть workflow есть, включая входной MP3-контракт, STT/LLM адаптеры, извлечение с evidence, review gate и экспорт. Но два обязательных свойства кейса не являются только непроверенными: исходник Riva явно отключает диаризацию и mixed. Дополнительное снижение — за неполную техническую защиту closed contour."
+          },
+          {
+            "name": "Техническая реализация",
+            "score": 18,
+            "max": 25,
+            "awarded": "Архитектура и защитные проверки качественные для MVP, однако конкретный ASR-адаптер не соответствует всем заявленным входным характеристикам.",
+            "deductions": "Снято 7 баллов за speaker/mixed ограничения и allow-by-exclusion endpoint policy.",
+            "evidence": [
+              "docs/architecture.md:3",
+              "internal/app/providers.go:199",
+              "internal/app/riva.go:62",
+              "scripts/riva_transcribe.py:22",
+              "F-001",
+              "F-002",
+              "F-003"
+            ],
+            "deductionItems": [
+              {
+                "points": 3,
+                "findingId": "F-001",
+                "reason": "Riva JSON-контракт проверяет, что diarization не включена, и создаёт все сегменты с неизвестным speaker; это техническое несоответствие обязательному speaker-aware сценарию."
+              },
+              {
+                "points": 2,
+                "findingId": "F-002",
+                "reason": "requested_language('mixed') выбрасывает ValueError, поэтому заявленный mixed режим не доходит до Riva модели."
+              },
+              {
+                "points": 2,
+                "findingId": "F-003",
+                "reason": "providerEndpoint проверяет схему и блокирует три известных hosted домена, но принимает любой другой HTTP(S) host; closed-contour enforcement недостаточно строг."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Слоистая серверная архитектура",
+                "implementation": "Go net/http объединяет session, ownership-scoped meeting API, provider layer, export integration и plugin integration; Python не используется как HTTP-сервер.",
+                "value": "Компоненты имеют ясные границы, а узкий provider/export интерфейс облегчает замену инфраструктуры.",
+                "verification": "source",
+                "evidence": [
+                  "cmd/butterfly/main.go:27",
+                  "internal/app/api.go:18",
+                  "internal/integrations/export.go:13"
+                ]
+              },
+              {
+                "aspect": "Валидация model output",
+                "implementation": "Ответы ограничены размером и структурой; цитата должна быть непрерывной частью нужного сегмента, даты проверяются, finish_reason должен быть stop, неизвестные поля отклоняются.",
+                "value": "Для LLM-driven прототипа это зрелая техническая страховка от галлюцинаций и повреждённого JSON.",
+                "verification": "source",
+                "evidence": [
+                  "internal/app/providers.go:74",
+                  "internal/app/providers.go:230",
+                  "internal/app/providers.go:290",
+                  "internal/app/providers_test.go:47"
+                ]
+              },
+              {
+                "aspect": "Безопасность данных",
+                "implementation": "HTTP-only cookie, ownership checks, приватные uploads, max body/upload limits, no-new-privileges/cap_drop/read_only в compose и очистка ключей для plugin child реализованы в коде и deployment-файлах.",
+                "value": "Это делает MVP пригоднее для закрытого корпоративного прототипа и снижает риск случайной утечки текста или секретов.",
+                "verification": "source",
+                "evidence": [
+                  "cmd/butterfly/main.go:92",
+                  "internal/app/store.go:45",
+                  "compose.yaml:11",
+                  "internal/integrations/runtime.go:93"
+                ]
+              },
+              {
+                "aspect": "Тестируемость доменной логики",
+                "implementation": "Go tests покрывают Nemotron contract, ASR unknown speaker, timestamp validation, cloud host rejection, owner isolation and review; Python tests проверяют Unicode exports и pagination.",
+                "value": "Команда тестировала не только happy path, но и опасные границы входа/выхода; Go test и vet реально прошли в изолированном контейнере.",
+                "verification": "observed",
+                "evidence": [
+                  "internal/app/providers_test.go:22",
+                  "internal/app/app_test.go:67",
+                  "tests/test_exports.py:56",
+                  "go-build-test"
+                ]
+              }
+            ],
+            "scoreReasoning": "18/25 — сильная инженерная база: ownership, bounded inputs, локальные провайдеры, проверка evidence, безопасное хранение и тесты. Снижение существенно, потому что именно реализация ASR должна обеспечивать диаризацию и mixed для этого кейса, а текущий Riva adapter сознательно делает обратное."
+          },
+          {
+            "name": "README и воспроизводимость",
+            "score": 20,
+            "max": 25,
+            "awarded": "Документация объясняет запуск, компоненты, demo/eval и ограничения; синтетический API-сценарий воспроизводим, но полный provider-backed сценарий требует внешнего self-hosted runtime.",
+            "deductions": "Снято 5 баллов за documented mixed/diarization gaps и то, что закрытый контур не закреплён строгой политикой адресов.",
+            "evidence": [
+              "README.md:7",
+              "README.md:26",
+              "README.md:45",
+              "docs/evaluation.md:9",
+              "F-001",
+              "F-002",
+              "F-003"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "F-001",
+                "reason": "Документация честно говорит, что speaker labels остаются unknown, поэтому читатель не может воспроизвести обязательную диаризацию из данного checkout."
+              },
+              {
+                "points": 1,
+                "findingId": "F-002",
+                "reason": "Mixed quality обозначена как непроверенная, а код явно отклоняет mixed в Riva; воспроизводимость требования ограничена не только окружением."
+              },
+              {
+                "points": 2,
+                "findingId": "F-003",
+                "reason": "Инструкция self-hosted не сопровождается строгим allowlist/локальной сетевой проверкой, поэтому гарантия закрытого контура зависит от ручной конфигурации."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Минимальный локальный путь",
+                "implementation": "README перечисляет Go/Python версии, venv, requirements, .env и run.sh, после чего даёт `/api`-free UI demo step; отдельные команды тестов также указаны.",
+                "value": "Для нового проверяющего это достаточная карта проекта и первая точка воспроизведения без устной презентации.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:7",
+                  "README.md:18",
+                  "README.md:45"
+                ]
+              },
+              {
+                "aspect": "Архитектурная документация",
+                "implementation": "docs/architecture.md описывает Go API, cookie ownership, provider layer, export helper, MCP/Fly proxy, Telegram privacy и одно-процессную границу.",
+                "value": "Документы объясняют не только как запустить, но и какие данные проходят по каждому крупному пути.",
+                "verification": "source",
+                "evidence": [
+                  "docs/architecture.md:3",
+                  "docs/architecture.md:8",
+                  "docs/architecture.md:24"
+                ]
+              },
+              {
+                "aspect": "Воспроизводимый synthetic eval",
+                "implementation": "scripts/eval.mjs создаёт disposable sessions, проверяет review gate, evidence, isolation, exports и unavailable-ASR без синтетического fallback; fixture явно manual-unknown.",
+                "value": "Это сильная регрессионная база для пятичасового MVP и позволяет показывать результат из репозитория даже без AI-ключа.",
+                "verification": "source",
+                "evidence": [
+                  "scripts/eval.mjs:34",
+                  "scripts/eval.mjs:61",
+                  "scripts/eval.mjs:88",
+                  "demo/eval/manual-unknown.json:1"
+                ]
+              },
+              {
+                "aspect": "Фактическая граница проверки",
+                "implementation": "В этой проверке Go build/test/vet, node --check, health, demo review и оба MP3 upload выполнены; провайдеры не были предоставлены, а финальный Docker build и pip install зависимостей не завершились в среде.",
+                "value": "README остаётся достаточно воспроизводимым для локального синтетического сценария, но полная модельная и export-проверка требует подготовленного self-hosted runtime.",
+                "verification": "observed",
+                "evidence": [
+                  "go-build-test",
+                  "frontend-node-check",
+                  "http-health",
+                  "demo-review-http",
+                  "audio-case-http",
+                  "runtime.limitations"
+                ]
+              }
+            ],
+            "scoreReasoning": "20/25 — README, architecture и eval заметно выше минимального уровня, а основной синтетический сценарий реально запущен. Снижение не за отсутствие публичного URL и не за непредоставленный ключ: оно за подтверждённые исходником границы mixed/diarization/closed-contour, из-за которых документация не может обещать полное соответствие кейсу."
+          },
+          {
+            "name": "Ценность и применимость решения",
+            "score": 12,
+            "max": 15,
+            "awarded": "Практическая применимость высока для локального черновика протокола с обязательной проверкой человеком и экспортом.",
+            "deductions": "Снято 3 балла за потерю speaker-aware и mixed применимости и за неполную enforcement-гарантию закрытого контура.",
+            "evidence": [
+              "README.md:1",
+              "internal/app/api.go:334",
+              "butterfly/exports.py:50",
+              "F-001",
+              "F-002",
+              "F-003"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "F-001",
+                "reason": "Для многоучастникового совещания неизвестные speaker ухудшают практическое назначение поручений и последующий контроль ответственности."
+              },
+              {
+                "points": 1,
+                "findingId": "F-002",
+                "reason": "Организации с естественным смешением русского и казахского не получают рабочий Riva-путь для своего типового входа."
+              },
+              {
+                "points": 1,
+                "findingId": "F-003",
+                "reason": "Для чувствительных корпоративных записей конфигурационная возможность отправить данные на внешний endpoint снижает применимость без дополнительного сетевого контроля."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Аудитория и рабочий артефакт",
+                "implementation": "Протокол содержит summary, список поручений, owner/deadline, evidence и transcript, затем может быть подтверждён и выгружен в PDF/DOCX/JSON.",
+                "value": "Это непосредственно полезно секретарям, руководителям и исполнителям, которым нужен не просто текст стенограммы, а проверяемый список действий.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:1",
+                  "butterfly/exports.py:50",
+                  "internal/app/api.go:413"
+                ]
+              },
+              {
+                "aspect": "Человеческий контроль",
+                "implementation": "Неизвестные ответственные/сроки допускаются как null, UI и API требуют проверить каждое поручение, а draft явно маркируется до confirm.",
+                "value": "Подход применим там, где ошибочное назначение ответственного дороже, чем дополнительный шаг проверки.",
+                "verification": "source",
+                "evidence": [
+                  "internal/app/providers.go:237",
+                  "internal/app/api.go:349",
+                  "butterfly/exports.py:46"
+                ]
+              },
+              {
+                "aspect": "Закрытый контур как бизнес-требование",
+                "implementation": "Ключи хранятся на сервере, внешние hosted AI домены из явного списка блокируются, Telegram получает только статус и ссылку на приложение.",
+                "value": "Направление хорошо соответствует чувствительным внутренним совещаниям и требованиям организации-заказчика.",
+                "verification": "source",
+                "evidence": [
+                  "internal/app/providers.go:30",
+                  "frontend/app.js:235",
+                  "internal/integrations/runtime.go:280"
+                ]
+              },
+              {
+                "aspect": "Ограничение применимости",
+                "implementation": "Riva не формирует speakers, mixed отклонён, а реальное качество ASR/action extraction в eval сознательно не измеряется.",
+                "value": "Решение уже применимо как контролируемый прототип, но для массового использования на казахско-русских многоучастниковых совещаниях потребуется закрыть эти границы.",
+                "verification": "source",
+                "evidence": [
+                  "internal/app/riva.go:62",
+                  "scripts/riva_transcribe.py:22",
+                  "docs/evaluation.md:15"
+                ]
+              }
+            ],
+            "scoreReasoning": "12/15 — проблема и полезный output сформулированы точно, а human verification делает прототип применимым даже при неполных данных. Три балла сняты за реальные ограничения применимости, а не за отсутствие live URL или ключей: speaker-aware и mixed-сценарии не завершены, а closed contour зависит от конфигурации."
+          },
+          {
+            "name": "Потенциал развития и оригинальность подхода",
+            "score": 7,
+            "max": 10,
+            "awarded": "Есть хороший задел на подключение self-hosted моделей, корпоративные уведомления, MCP/Fly и расширение экспортов; оригинальность — в evidence-grounded review и privacy-first orchestration.",
+            "deductions": "Снято 3 балла за то, что самые важные направления расширения — диаризация, mixed и строгий contour enforcement — пока остаются внешними/неполными.",
+            "evidence": [
+              "docs/architecture.md:17",
+              "docs/architecture.md:30",
+              "compose.yaml:35",
+              "F-001",
+              "F-002",
+              "F-003"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "F-001",
+                "reason": "Без базовой speaker-aware модели расширение на крупные совещания и надёжный контроль исполнителей потребует существенной доработки, а не только масштабирования инфраструктуры."
+              },
+              {
+                "points": 1,
+                "findingId": "F-002",
+                "reason": "Mixed нельзя включить одной настройкой в текущем Riva adapter, что ограничивает самый естественный путь расширения языкового покрытия."
+              },
+              {
+                "points": 1,
+                "findingId": "F-003",
+                "reason": "Для распространения в разных закрытых контурах нужна строгая политика допустимых адресов, иначе privacy-предпосылка остаётся операционной договорённостью."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Провайдерная заменяемость",
+                "implementation": "Есть отдельные ASR HTTP и Riva пути, Nemotron-совместимый chat contract, bounded output и retryable provider states; это позволяет подключать другой внутренний inference stack.",
+                "value": "Технический задел переносит решение между self-hosted средами без изменения пользовательского review workflow.",
+                "verification": "source",
+                "evidence": [
+                  "internal/app/providers.go:97",
+                  "internal/app/riva.go:19",
+                  "internal/app/providers.go:262"
+                ]
+              },
+              {
+                "aspect": "Корпоративные расширения",
+                "implementation": "MCP/Fly события, анонимный audit report и Telegram status notification уже выделены отдельным слоем и не получают transcript/action text.",
+                "value": "Следующим шагом можно добавлять СЭД, task tracker или аудит, сохраняя приватный основной контур.",
+                "verification": "source",
+                "evidence": [
+                  "internal/integrations/runtime.go:203",
+                  "internal/integrations/runtime.go:208",
+                  "docs/architecture.md:24"
+                ]
+              },
+              {
+                "aspect": "Оригинальный workflow",
+                "implementation": "Комбинация source quote, segment_id, null для неизвестных фактов и обязательного подтверждения перед экспортом связывает генеративный AI с ответственным человеческим решением.",
+                "value": "Это более зрелая для корпоративного MVP модель, чем автоматическая публикация необработанного LLM-ответа.",
+                "verification": "source",
+                "evidence": [
+                  "internal/app/providers.go:230",
+                  "internal/app/api.go:349",
+                  "butterfly/exports.py:59"
+                ]
+              },
+              {
+                "aspect": "Следующая граница",
+                "implementation": "Архитектура прямо отделяет непроверенные public E2E, diarization и KK/mixed quality от уже проверенного synthetic eval и допускает Brev/plugin profiles.",
+                "value": "Команда оставила понятную карту развития и не маскирует незавершённые свойства под готовые преимущества.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:34",
+                  "docs/evaluation.md:17",
+                  "compose.yaml:35"
+                ]
+              }
+            ],
+            "scoreReasoning": "7/10 — потенциал выше среднего благодаря заменяемым локальным провайдерам, MCP/Fly/Telegram слоям и evidence-based workflow. До максимума удерживают три конкретные границы: speaker-aware, mixed и строгая политика закрытого контура."
+          }
+        ],
+        "total": 72
+      },
+      "judgeScore": 74.5,
+      "caseRequirements": [
+        {
+          "requirement": "Приём аудио/видеозаписи или потока и сохранение исходника",
+          "status": "met",
+          "explanation": "Multipart API принимает MP3 и другие перечисленные расширения, ограничивает размер и сохраняет аудио в приватном каталоге. Оба предоставленных MP3 реально приняли HTTP 201.",
+          "evidence": [
+            "internal/app/api.go:119",
+            "internal/app/api.go:174",
+            "audio-case-http"
+          ]
+        },
+        {
+          "requirement": "STT на русском языке",
+          "status": "partial",
+          "explanation": "Есть self-hosted ASR language=ru и Riva ru-RU path, но качество на предоставленной записи не измерялось без провайдера; фактический upload в этой среде остановился на awaiting_provider.",
+          "evidence": [
+            "internal/app/providers.go:121",
+            "scripts/riva_transcribe.py:16",
+            "audio-case-http"
+          ]
+        },
+        {
+          "requirement": "STT на казахском языке",
+          "status": "partial",
+          "explanation": "Код передаёт kk в HTTP ASR и kk-KZ в Riva, с проверкой каталога модели. Реальный результат на казахском аудио не получен без self-hosted ASR.",
+          "evidence": [
+            "internal/app/providers.go:121",
+            "scripts/riva_transcribe.py:19",
+            "docs/evaluation.md:17"
+          ]
+        },
+        {
+          "requirement": "STT смешанной русско-казахской речи",
+          "status": "missing",
+          "explanation": "В Riva-адаптере language=mixed явно вызывает ValueError; auto по умолчанию использует ASR_LANGUAGE=ru-RU. Общий HTTP ASR не передаёт mixed как language field, поэтому обязательный mixed-контракт не обеспечен единообразно.",
+          "evidence": [
+            "scripts/riva_transcribe.py:16",
+            "scripts/riva_transcribe.py:22",
+            "internal/app/providers.go:121",
+            "F-002"
+          ]
+        },
+        {
+          "requirement": "Диаризация и привязка поручений к говорящему",
+          "status": "missing",
+          "explanation": "Riva output требует diarization=false и создаёт каждый сегмент со speaker=Спикер не определён. HTTP ASR может сохранить speaker, если его вернёт провайдер, но приложение не запрашивает и не выполняет диаризацию самостоятельно.",
+          "evidence": [
+            "internal/app/riva.go:53",
+            "internal/app/riva.go:62",
+            "internal/app/riva.go:86",
+            "docs/architecture.md:10",
+            "F-001"
+          ]
+        },
+        {
+          "requirement": "Извлечение содержания поручения, ответственного и срока",
+          "status": "partial",
+          "explanation": "Nemotron contract требует все поля, evidence и segment_id; owner принимается только из цитаты, дата — только как YYYY-MM-DD из цитаты. Относительные сроки вроде «пятница» сохраняются как null, а не нормализуются.",
+          "evidence": [
+            "internal/app/providers.go:197",
+            "internal/app/providers.go:239",
+            "internal/app/providers.go:254",
+            "internal/app/providers_test.go:22"
+          ]
+        },
+        {
+          "requirement": "Краткое саммари",
+          "status": "met",
+          "explanation": "Схема ответа требует непустой summary, а после успешного extraction он сохраняется в meeting и показывается в export blocks.",
+          "evidence": [
+            "internal/app/providers.go:199",
+            "internal/app/providers.go:331",
+            "butterfly/exports.py:50"
+          ]
+        },
+        {
+          "requirement": "Ручная проверка и исправление результата",
+          "status": "met",
+          "explanation": "PATCH позволяет редактировать summary/actions, evidence проверяется по transcript, confirm блокируется до подтверждения всех задач.",
+          "evidence": [
+            "internal/app/api.go:285",
+            "internal/app/actions.go:81",
+            "internal/app/api.go:345",
+            "demo-review-http"
+          ]
+        },
+        {
+          "requirement": "Экспорт протокола в PDF и DOCX",
+          "status": "partial",
+          "explanation": "Маршруты и локальный helper реализованы, а completed gate есть; Python export tests заявлены и исходник покрыт тестами, но финальный dependency-complete Docker runtime не завершил запуск в этой проверке.",
+          "evidence": [
+            "internal/app/api.go:413",
+            "internal/integrations/export.go:13",
+            "butterfly/exports.py:72",
+            "tests/test_exports.py:56",
+            "runtime-export-blocked"
+          ]
+        },
+        {
+          "requirement": "Закрытый контур; не передавать аудио/текст во внешние облачные API",
+          "status": "partial",
+          "explanation": "Архитектура рассчитана на self-hosted endpoints и блокирует несколько известных hosted AI доменов, но providerEndpoint принимает любой другой HTTP(S) host. Полная техническая гарантия запрета внешнего URL отсутствует.",
+          "evidence": [
+            "internal/app/providers.go:30",
+            "docs/architecture.md:8",
+            "F-003"
+          ]
+        }
+      ],
+      "testData": {
+        "provided": [
+          "cases/8/case-data/Совещание №1.mp3",
+          "cases/8/case-data/Совещание №2.mp3",
+          "cases/8/case-data/Протокол_совещания№1.docx.md",
+          "cases/8/case-data/Протокол_совещания№2.docx.md",
+          "cases/8/case-data/HackAlem AI_ Система автопротоколирования совещаний с фиксацией поручений.md"
+        ],
+        "used": [
+          "cases/8/case-data/Совещание №1.mp3",
+          "cases/8/case-data/Совещание №2.mp3",
+          "cases/8/case-data/Протокол_совещания№1.docx.md",
+          "cases/8/case-data/Протокол_совещания№2.docx.md",
+          "cases/8/case-data/HackAlem AI_ Система автопротоколирования совещаний с фиксацией поручений.md"
+        ],
+        "checks": [
+          {
+            "input": "Совещание №1.mp3, 4 426 407 bytes, 274.296 s",
+            "method": "ffprobe metadata, then multipart POST /api/meetings with the original MP3 bytes",
+            "result": "HTTP 201; mode=live; status=awaiting_provider; transcript=0; actions=0; error=ASR не подключён",
+            "conclusion": "The real organizer audio was accepted and persisted without fabricating transcription; completion was blocked by the unavailable ASR provider."
+          },
+          {
+            "input": "Совещание №2.mp3, 3 334 695 bytes, 206.064 s",
+            "method": "ffprobe metadata, then multipart POST /api/meetings with the original MP3 bytes",
+            "result": "HTTP 201; mode=live; status=awaiting_provider; transcript=0; actions=0; error=ASR не подключён",
+            "conclusion": "The second real audio input followed the same honest provider-unavailable path; no text protocol was substituted."
+          },
+          {
+            "input": "Протокол_совещания№1.docx.md and Протокол_совещания№2.docx.md",
+            "method": "Read headings and task/summary tables as reference targets; compare required speakers, tasks, owners and relative dates with the implemented output contract",
+            "result": "Protocol 1 contains 10 listed tasks across two sections; protocol 2 contains 6 tasks and four reporting directions. The application could not produce actual ASR/actions for comparison without a provider.",
+            "conclusion": "Reference files were used as comparison material, not uploaded as a replacement for audio; model accuracy remains unverified."
+          },
+          {
+            "input": "HackAlem AI_ Система автопротоколирования совещаний с фиксацией поручений.md and task.txt",
+            "method": "Read the case brief and required scenario, then map each requirement to source paths and runtime checks",
+            "result": "The code has upload, ASR, Nemotron extraction, review, summary and export paths; source audit found mixed/diarization/endpoint-policy gaps.",
+            "conclusion": "The score covers the complete case requirement set rather than only the demo fixture."
+          }
+        ],
+        "limitations": [
+          "No ASR/Nemotron credentials or local model endpoints were provided, so the two real audio files could not be transcribed.",
+          "Reference markdown protocols are expected comparison material; they were not treated as application input.",
+          "Visual browser/UI behavior was not inspected under the user-owned visual verification policy."
+        ]
+      },
+      "runtime": {
+        "status": "partial",
+        "build": "Go source compiled and all Go packages passed tests and vet in an isolated container. The final multi-stage Docker image build was started but not completed while Debian/ffmpeg packages were downloading; Python dependency installation likewise did not finish in the review environment.",
+        "start": "A containerized Go runtime started with no provider secrets; GET /health returned HTTP 200, runtime=go, provider flags false and live_verified=false.",
+        "scenario": "The synthetic API review path reached completed. Both organizer MP3 uploads reached the honest awaiting_provider state because ASR was not configured; PDF/DOCX HTTP export was not run in the Go-only runtime because its Python helper was absent.",
+        "environment": "Checks used isolated Docker containers with bounded CPU/memory and no secrets; no browser or UI automation was used. External provider credentials were intentionally absent.",
+        "summary": "The application server and core API are operational, but the full audio-to-protocol scenario is partial: it is blocked at the external/local ASR boundary, while the synthetic review path is working.",
+        "checks": [
+          {
+            "command": "go test ./... && go vet ./...",
+            "result": "All packages passed: cmd/butterfly, internal/app, internal/integrations and internal/mcpbridge; exit code 0.",
+            "id": "go-build-test",
+            "stage": "build",
+            "status": "pass",
+            "cause": "none",
+            "expected": "The Go application and domain/provider/integration tests compile and pass, and vet reports no issue."
+          },
+          {
+            "command": "node --check frontend/app.js",
+            "result": "Exit code 0 with no syntax error.",
+            "id": "frontend-node-check",
+            "stage": "build",
+            "status": "pass",
+            "cause": "none",
+            "expected": "The shipped frontend JavaScript parses successfully."
+          },
+          {
+            "command": "GET /health",
+            "result": "HTTP 200; JSON reported status=ok, runtime=go, version=0.2.0, llm_configured=false, asr_configured=false, live_verified=false.",
+            "id": "http-health",
+            "stage": "start",
+            "status": "pass",
+            "cause": "none",
+            "expected": "The server starts and reports a healthy provider-free runtime."
+          },
+          {
+            "command": "POST /api/session; POST /api/demo; POST /api/meetings/{id}/confirm; PATCH /api/meetings/{id}; POST /api/meetings/{id}/confirm",
+            "result": "Session HTTP 200; demo HTTP 201 with mode=demo, needs_review and 3 actions; pre-review confirm HTTP 409; PATCH HTTP 200; final confirm HTTP 200 and status=completed. All demo action evidence strings were found in their referenced transcript segments.",
+            "id": "demo-review-http",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "The reproducible synthetic review gate blocks premature completion and then produces a completed meeting after per-action confirmation."
+          },
+          {
+            "command": "POST /api/meetings with multipart file=Совещание №1.mp3 and file=Совещание №2.mp3",
+            "result": "Both original MP3 inputs returned HTTP 201 and mode=live; each was status=awaiting_provider with 0 transcript segments and 0 actions, with explicit ASR-unavailable error.",
+            "id": "audio-case-http",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Real case audio is accepted and, without a configured provider, is retained without invented output."
+          },
+          {
+            "command": "POST /api/meetings with multipart audio and configured ASR",
+            "result": "Not run with a real ASR because no endpoint/credential was supplied; the actual no-provider behavior was observed in audio-case-http.",
+            "id": "audio-transcription-provider",
+            "stage": "scenario",
+            "status": "blocked",
+            "cause": "external_service",
+            "expected": "A real ASR should return transcript segments for the supplied MP3 and permit Nemotron extraction."
+          },
+          {
+            "command": "docker build -t luna56-c52f5e57-butterfly:review .",
+            "result": "Build reached Debian ffmpeg package download but did not complete before the review environment was stopped; no project build error was observed.",
+            "id": "docker-build",
+            "stage": "build",
+            "status": "blocked",
+            "cause": "review_environment",
+            "expected": "The documented multi-stage image should build to a runnable Go/Python runtime."
+          },
+          {
+            "command": "python -m pytest -q",
+            "result": "The isolated Python container pulled successfully but dependency installation did not finish within the available environment run; no pytest result was produced.",
+            "id": "python-export-tests",
+            "stage": "build",
+            "status": "blocked",
+            "cause": "review_environment",
+            "expected": "Local PDF/DOCX export tests should pass after requirements-dev installation."
+          },
+          {
+            "command": "GET /api/meetings/{id}/export?format=pdf|docx",
+            "result": "Not run in the Go-only runtime because the Python export helper/dependencies were intentionally not mounted there; source route and export tests were inspected.",
+            "id": "runtime-export-blocked",
+            "stage": "scenario",
+            "status": "blocked",
+            "cause": "review_environment",
+            "expected": "A completed meeting returns valid PDF and DOCX bytes with the documented media types."
+          }
+        ],
+        "limitations": [
+          "No API keys or self-hosted ASR/Nemotron endpoints were available; this is an external provider limitation, not a project defect or score deduction.",
+          "The final Docker image and Python test environment were not completed because package installation/building was still in progress in the review environment.",
+          "Visual inspection was intentionally omitted; UI claims are based on source and JavaScript syntax only."
+        ]
+      },
+      "liveDemo": {
+        "status": "none",
+        "url": null,
+        "notes": "Публичная live demo-ссылка в материалах не предоставлена. Это не использовалось как причина снятия баллов; локальный HTTP-сценарий проверен CLI."
+      },
+      "fiveHourContext": "Для пятичасового MVP объём сделанного значителен: есть серверная вертикаль, приватные сессии/хранилище, два provider-контракта, review gate, цитаты, exports, контейнерные профили и regression tests. Оценка не требует production-масштабирования, публичного deployment или полноценной СЭД-интеграции. При этом отсутствие диаризации и mixed в конкретном Riva adapter — функциональные ограничения обязательного кейса, а не недоделки вне масштаба; они учтены умеренными предметными снятиями.",
+      "strengths": [
+        "Целостный review-first workflow с обязательным подтверждением каждой задачи и evidence, реально доведённый synthetic API-сценарием до completed.",
+        "Локальный/self-hosted путь ASR→Nemotron и отсутствие synthetic fallback при недоступном провайдере.",
+        "Строгая валидация цитат, segment_id, owner/deadline и bounded provider responses.",
+        "Хорошая изоляция данных: HTTP-only sessions, ownership checks, private uploads, ограниченные deployment-права и отсутствие текста встречи в Telegram/MCP audit metadata.",
+        "README, architecture и eval явно разделяют synthetic regression, provider quality и непроверенные public/diarization части."
+      ],
+      "gaps": [
+        "Riva-путь не выполняет диаризацию: сегменты получают неизвестного спикера, поэтому обязательная привязка поручений к говорящему не достигается.",
+        "Riva-путь явно отклоняет mixed language, а общий HTTP путь не имеет единообразного mixed language contract.",
+        "Политика endpoint-ов блокирует только несколько известных hosted-доменов и не гарантирует запрет любого внешнего облачного API в закрытом контуре."
+      ],
+      "futureAdvice": [
+        {
+          "principle": "Сначала зафиксировать контракт speaker-aware multilingual ASR на реальном кейсовом входе",
+          "why": "F-001 и F-002 показывают, что текущий Riva adapter возвращает diarization=false/unknown speaker и отклоняет mixed; это ломает две обязательные характеристики до этапа LLM.",
+          "how": "В другом хакатоне сначала определить единый сегментный контракт с speaker_id и mixed language policy, прогнать на одном коротком русском, казахском и смешанном фрагменте, и только затем подключать extraction/review UI.",
+          "findingIds": [
+            "F-001",
+            "F-002"
+          ],
+          "successCheck": "Один локальный fixture каждого из трёх языковых режимов возвращает непустые сегменты с временными метками и не-unknown speaker там, где speaker различим; regression test проверяет этот контракт.",
+          "timeboxMinutes": 60
+        },
+        {
+          "principle": "Enforce privacy by allowlist, not by a short denylist",
+          "why": "F-003: providerEndpoint принимает любой HTTP(S) host после исключения нескольких доменов, поэтому closed contour зависит от ручной дисциплины конфигурации.",
+          "how": "Для другого кейса разрешать только loopback, явно заданные внутренние DNS suffixes или Unix/local service endpoints; проверять конфигурацию на старте и покрыть тестом внешний произвольный host.",
+          "findingIds": [
+            "F-003"
+          ],
+          "successCheck": "Невнутренний endpoint отвергается до отправки аудио/текста, а self-hosted endpoint из явного allowlist проходит; тест подтверждает отсутствие сетевого запроса при reject.",
+          "timeboxMinutes": 35
+        },
+        {
+          "principle": "Сначала получить один реальный end-to-end артефакт, затем расширять интеграции",
+          "why": "F-001 и F-002 ограничивают результат на реальном аудио, хотя synthetic review/export уже развит; без одного provider-backed fixture качество протокола остаётся неустановленным.",
+          "how": "В следующем хакатоне выбрать короткую запись из целевого набора, сохранить только обезличенный transcript/action fixture и пройти путь upload→ASR→extract→review→PDF, фиксируя вход и ожидаемый результат до добавления вторичных MCP/Telegram возможностей.",
+          "findingIds": [
+            "F-001",
+            "F-002"
+          ],
+          "successCheck": "Из одной реальной записи получен PDF/DOCX с transcript, speaker labels, минимум одним evidence-linked action и ручным подтверждением; команда может повторить этот сценарий одной командой.",
+          "timeboxMinutes": 75
+        }
+      ],
+      "uncertainties": [
+        "Точность ASR, diarization quality, mixed-language quality и action precision/recall на двух MP3 не измерялись, потому что provider credentials/endpoints не были доступны.",
+        "PDF/DOCX фактические байты и визуальная вёрстка в этой проверке не наблюдались; их реализация и тесты изучены статически, а Python dependency setup был ограничен средой.",
+        "MCP/Fly и Telegram live delivery не проверялись с реальными внешними сервисами; source path и security behavior проверены статически.",
+        "Визуальное поведение frontend не проверялось браузером согласно пользовательской политике визуальной верификации."
+      ],
+      "reviewPolicyVersion": 2,
+      "assessmentStatus": "ready",
+      "findings": [
+        {
+          "id": "F-001",
+          "kind": "defect",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Реализованный Riva ASR-путь не выполняет диаризацию и не сохраняет speaker labels.",
+          "expected": "Сегменты должны содержать диаризированных говорящих, чтобы поручения можно было привязать к говорящему.",
+          "actual": "parseRivaOutput отклоняет payload с diarization=true, а каждый принятый сегмент получает speaker=Спикер не определён; архитектурная документация также признаёт unknown labels.",
+          "evidence": [
+            "internal/app/riva.go:53",
+            "internal/app/riva.go:62",
+            "internal/app/riva.go:86",
+            "docs/architecture.md:10"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "F-002",
+          "kind": "defect",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Riva-адаптер не поддерживает смешанную русско-казахскую речь.",
+          "expected": "language=mixed должен запускать заявленный STT-путь для смешанной речи.",
+          "actual": "requested_language выбрасывает ValueError с сообщением Mixed-language recognition has not been verified; auto по умолчанию выбирает ru-RU.",
+          "evidence": [
+            "scripts/riva_transcribe.py:16",
+            "scripts/riva_transcribe.py:22",
+            "scripts/riva_transcribe.py:23"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "F-003",
+          "kind": "defect",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Защита от отправки данных во внешние облачные AI API реализована неполным denylist-подходом.",
+          "expected": "Закрытый контур должен технически отклонять недоверенные внешние provider endpoints, а не только несколько известных доменов.",
+          "actual": "providerEndpoint разрешает любой http/https host без userinfo/query после блокировки api.openai.com, integrate.api.nvidia.com и ai.api.nvidia.com.",
+          "evidence": [
+            "internal/app/providers.go:30",
+            "internal/app/providers.go:36",
+            "internal/app/providers.go:41"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "S-001",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Синтетический review workflow действительно работает через HTTP.",
+          "expected": "Демо должно загрузиться, заблокировать premature confirm и завершиться после подтверждения задач.",
+          "actual": "Демо HTTP 201/needs_review/3 actions; pre-confirm 409; PATCH 200; final confirm 200/completed.",
+          "evidence": [
+            "demo-review-http",
+            "internal/app/api.go:334"
+          ],
+          "checkIds": [
+            "demo-review-http"
+          ]
+        },
+        {
+          "id": "S-002",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Приложение честно сохраняет реальные аудиовходы без выдуманной транскрипции при отсутствии ASR.",
+          "expected": "При provider unavailable должны сохраниться вход и понятный статус без fabricated transcript/actions.",
+          "actual": "Оба MP3 дали HTTP 201, status=awaiting_provider, transcript=0, actions=0 и явное ASR error.",
+          "evidence": [
+            "audio-case-http",
+            "internal/app/providers.go:342"
+          ],
+          "checkIds": [
+            "audio-case-http"
+          ]
+        },
+        {
+          "id": "S-003",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Go доменные тесты и vet проходят.",
+          "expected": "Основные пакеты и provider/integration boundaries должны компилироваться и проходить regression tests.",
+          "actual": "go test ./... и go vet ./... завершились с exit code 0; пакеты cmd/butterfly, internal/app, internal/integrations, internal/mcpbridge прошли.",
+          "evidence": [
+            "go-build-test",
+            "internal/app/providers_test.go:22",
+            "internal/app/app_test.go:67"
+          ],
+          "checkIds": [
+            "go-build-test"
+          ]
+        },
+        {
+          "id": "S-004",
+          "kind": "strength",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Экспорт отделён в локальный Python helper и сохраняет evidence/статусы/кириллицу.",
+          "expected": "Completed protocol должен иметь PDF/DOCX/JSON output без отправки текста в облачный exporter.",
+          "actual": "Go вызывает scripts/export_protocol.py локально; exports.py строит PDF/DOCX blocks с цитатами, status labels и bundled DejaVu fonts.",
+          "evidence": [
+            "internal/integrations/export.go:21",
+            "scripts/export_protocol.py:1",
+            "butterfly/exports.py:36",
+            "tests/test_exports.py:56"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "S-005",
+          "kind": "strength",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Private session ownership и deployment hardening встроены в основной путь.",
+          "expected": "Пользовательские встречи и uploads должны быть ownership-scoped и запускаться с ограниченными правами.",
+          "actual": "API применяет Owner checks, uploads создаются с mode 0600, compose включает read_only/no-new-privileges/cap_drop, plugin child очищает hosted keys.",
+          "evidence": [
+            "internal/app/store.go:45",
+            "internal/app/api.go:48",
+            "compose.yaml:11",
+            "internal/integrations/runtime.go:93"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "L-001",
+          "kind": "limitation",
+          "verification": "observed",
+          "responsibility": "review_environment",
+          "claim": "Модельный end-to-end на реальном аудио не был доступен в текущем review environment.",
+          "expected": "ASR/Nemotron должны быть доступны для получения фактического transcript/actions.",
+          "actual": "Ключи/endpoints не предоставлены; реальные MP3 корректно остановились на awaiting_provider.",
+          "evidence": [
+            "audio-case-http",
+            "runtime-limitations"
+          ],
+          "checkIds": [
+            "audio-transcription-provider"
+          ]
+        },
+        {
+          "id": "L-002",
+          "kind": "limitation",
+          "verification": "unverified",
+          "responsibility": "review_environment",
+          "claim": "Визуальное поведение интерфейса не наблюдалось.",
+          "expected": "Браузерная UI-проверка могла бы подтвердить визуальную вёрстку и интеракции.",
+          "actual": "Проверены только исходник и node --check; браузерная автоматизация запрещена пользовательской инструкцией.",
+          "evidence": [
+            "frontend/app.js:385",
+            "frontend-node-check"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "L-003",
+          "kind": "limitation",
+          "verification": "source",
+          "responsibility": "external_service",
+          "claim": "Качество моделей и diarization не заявлено regression suite.",
+          "expected": "WER, action precision/recall и качество speaker labels должны измеряться на размеченном реальном корпусе.",
+          "actual": "docs/evaluation.md прямо помечает model quality unverified; eval использует synthetic fixture.",
+          "evidence": [
+            "docs/evaluation.md:15",
+            "scripts/eval.mjs:98"
+          ],
+          "checkIds": []
+        }
+      ],
+      "gapFindingIds": [
+        "F-001",
+        "F-002",
+        "F-003"
+      ]
+    }
+  ],
+  "score": 74.5,
+  "status": "complete",
+  "expectedJudges": 1
+}

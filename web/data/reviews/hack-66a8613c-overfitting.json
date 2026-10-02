@@ -1,0 +1,1226 @@
+{
+  "methodVersion": 4,
+  "repoId": "hack-66a8613c-overfitting",
+  "repoUrl": "https://github.com/BAITC-Hacks/hack-66a8613c-overfitting",
+  "caseId": 8,
+  "snapshot": "446addb03863cc7b95c407b8852446e40c44b04e",
+  "judges": [
+    {
+      "methodVersion": 4,
+      "repoId": "hack-66a8613c-overfitting",
+      "caseId": 8,
+      "model": "GPT-5.6 Luna",
+      "snapshot": "446addb03863cc7b95c407b8852446e40c44b04e",
+      "overallSummary": "Репозиторий содержит существенно более полный прототип, чем обычный каркас: загрузка и нормализация аудио, локальные CUDA-адаптеры faster-whisper и pyannote, временное сопоставление реплик с говорящими, локальный Ollama с JSON-схемой и проверкой источников, ручная верификация, сохранение правок и экспорт утверждённого протокола в DOCX/PDF. Сборка smoke-образа, синтаксическая проверка, 105 backend-тестов, 24 frontend-теста и production-сборка интерфейса прошли. Обе предоставленные MP3-записи были реально отправлены через HTTP: загрузка и подготовка дошли до этапа transcription, после чего приложение корректно сообщило whisper_model_missing, поскольку локальные веса и CUDA ML-окружение не входят в репозиторий. Это ограничивает наблюдаемую проверку качества распознавания, но не является штрафом за отсутствующий ключ или инфраструктуру ревью. Найдены два подтверждённых дефекта проекта: неполная нормализация абсолютных календарных сроков и жёсткий лимит 60 000 байт входа Ollama без разбиения. Итоговая оценка судьи — 91.5/100.",
+      "global": {
+        "criteria": [
+          {
+            "name": "Ценность решения",
+            "score": 23,
+            "max": 25,
+            "awarded": "Высокая практическая ценность для секретаря и руководителя, с небольшим снижением за ограничение длины обрабатываемого протокола.",
+            "deductions": "Снято 2 балла: длинная допустимая запись может дойти до анализа и быть отклонена из-за лимита 60 000 байт без разбиения.",
+            "evidence": [
+              "README.md:5",
+              "README.md:30",
+              "README.md:264",
+              "backend/app/processing/ollama.py:29",
+              "backend/app/processing/ollama.py:49"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "F-DEF-LENGTH",
+                "reason": "Для пользователя ценность снижается на длинных совещаниях: при размере сериализованных реплик свыше 60 000 байт анализ завершается analysis_input_too_large, а автоматического разбиения с сохранением связей источников нет. Это подтверждено исходником и прямо оговорено README."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Решает конкретную административную проблему",
+                "implementation": "Система принимает запись совещания, сохраняет исходник, формирует WAV, затем строит транскрипт, саммари, ключевые пункты и поручения. В UI предусмотрены отдельные представления саммари, тем, поручений и временной ленты реплик.",
+                "value": "Это напрямую сокращает ручную работу секретаря и делает ответственного, срок и содержание поручения видимыми в одном артефакте. Ценность не абстрактная: структура результата соответствует проблеме потери поручений и сроков.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:5",
+                  "frontend/src/App.tsx:134",
+                  "frontend/src/App.tsx:153",
+                  "backend/app/schemas.py:136"
+                ]
+              },
+              {
+                "aspect": "Контроль человеком снижает риск ошибочного поручения",
+                "implementation": "Сгенерированные факты, темы и action items получают requires_review, источники привязываются к репликам, а export разрешается только после явного approve. Правка реплики или поручения отзывает утверждение и удаляет старый экспорт.",
+                "value": "Для управленческого протокола важнее не только скорость, но и возможность проверить спорное распознавание до рассылки. Такой контур делает автоматизацию применимой к чувствительным совещаниям.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/app/repository.py:99",
+                  "backend/app/repository.py:122",
+                  "backend/app/repository.py:125",
+                  "backend/tests/test_review.py:131",
+                  "CHK-BACKEND-UNIT"
+                ]
+              },
+              {
+                "aspect": "Закрытый контур является частью пользовательской ценности",
+                "implementation": "Аудио и текст проходят через локальные адаптеры; Ollama доступен только по разрешённому локальному адресу, а ASR/диаризация выполняются под offline-политикой. В README описаны локальные веса и отсутствие рабочих внешних запросов.",
+                "value": "Для корпоративных встреч это снимает принципиальный риск передачи записи во внешнее облако и соответствует ограничению кейса, а не является лишь декларацией о приватности.",
+                "verification": "source",
+                "evidence": [
+                  "backend/app/processing/offline.py:40",
+                  "backend/app/processing/offline.py:66",
+                  "backend/app/processing/ollama.py:39",
+                  "README.md:218"
+                ]
+              },
+              {
+                "aspect": "Результат пригоден для последующего контроля",
+                "implementation": "Каждое поручение хранит ответственного, исходную формулировку срока, нормализованную дату при успешном разборе, timestamp и source_utterance_ids. Экспорт добавляет источники и приложение-транскрипт.",
+                "value": "Такой результат можно сверить с записью и использовать как управленческий документ, а не только как чатовый пересказ. Наличие timestamp и исходных ID особенно полезно для спорных поручений.",
+                "verification": "source",
+                "evidence": [
+                  "backend/app/schemas.py:111",
+                  "backend/app/repository.py:187",
+                  "backend/app/exporting/documents.py:88",
+                  "backend/app/exporting/documents.py:110"
+                ]
+              }
+            ],
+            "scoreReasoning": "23 балла заслужены за хорошо выбранный прикладной сценарий: команда связала распознавание, контроль поручений и проверяемый документ с потребностью секретаря и руководителя. Снижение не связано с отсутствием публичной демо-ссылки и не связано с отсутствующими у ревьюера моделями. Оно связано с наблюдаемым ограничением продукта: допустимая запись может пройти аудиоэтап, но не попасть в Ollama-анализ из-за 60 000-байтового лимита без chunking. Для пятичасового MVP это существенный, но локализованный риск, поэтому потеря ограничена двумя баллами."
+          },
+          {
+            "name": "Результат и качество решения",
+            "score": 17,
+            "max": 20,
+            "awarded": "Целостный пользовательский путь и аккуратные транзакционные гарантии реализованы, но качество результата удерживают два подтверждённых ограничения обработки.",
+            "deductions": "Снято 3 балла: 2 за отсутствие разбиения длинного входа и 1 за неполную обработку абсолютных сроков, из-за которой утверждение/экспорт может быть заблокирован даже при распознанном поручении.",
+            "evidence": [
+              "backend/app/service.py:51",
+              "backend/app/service.py:70",
+              "backend/app/service.py:80",
+              "backend/app/processing/deadlines.py:15",
+              "CHK-BACKEND-UNIT",
+              "CHK-AUDIO-1",
+              "CHK-AUDIO-2"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "F-DEF-LENGTH",
+                "reason": "Целостный сценарий не гарантирован для всей заявленной длительности до 15 минут: размер текста перед локальным анализом ограничен 60 000 байт, а при превышении задача падает вместо анализа по частям."
+              },
+              {
+                "points": 1,
+                "findingId": "F-DEF-DEADLINE",
+                "reason": "В предоставленных протоколах встречаются даты вида «до 15 октября» и «до 30 сентября», но нормализатор не обрабатывает абсолютные даты. Такая action item остаётся requires_review и не позволяет пройти approval, хотя поручение и срок могли быть корректно извлечены из речи."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Последовательный конвейер от файла до результата",
+                "implementation": "MeetingService переводит задачу через queued, preparing_audio, transcribing, diarizing, saving_transcript, analyzing и ready. WAV сохраняется перед ML, транскрипт коммитится отдельно, а анализ публикуется второй транзакцией.",
+                "value": "Сценарий не маскирует промежуточное состояние под готовый протокол: пользователь получает понятный статус и может сохранить транскрипт даже при последующей ошибке анализа.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/app/service.py:54",
+                  "backend/app/service.py:67",
+                  "backend/app/service.py:77",
+                  "backend/app/service.py:81",
+                  "backend/tests/test_ml_pipeline.py:48",
+                  "CHK-BACKEND-UNIT"
+                ]
+              },
+              {
+                "aspect": "Надёжное сопоставление реплики и говорящего",
+                "implementation": "alignment.py считает суммарное временное пересечение реплики с объединёнными интервалами каждого diarization label, не удваивает перекрывающиеся интервалы одного говорящего и выставляет requires_review при пропусках или неоднозначном перекрытии.",
+                "value": "Это лучше простого выбора ближайшей метки: неоднозначность не скрывается, а привязка поручения к speaker_id имеет понятную временную основу.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/app/processing/alignment.py:8",
+                  "backend/app/processing/alignment.py:13",
+                  "backend/app/processing/alignment.py:23",
+                  "backend/tests/test_alignment.py:14",
+                  "CHK-BACKEND-UNIT"
+                ]
+              },
+              {
+                "aspect": "Защита от неподтверждённого анализа",
+                "implementation": "AnalysisDraft запрещает лишние поля, source IDs проверяются на принадлежность текущим репликам, источники action item должны быть подмножеством источников темы, а ответственный и срок не принимаются как имя нейтрального спикера без текстового подтверждения.",
+                "value": "Это превращает свободный ответ LLM в проверяемый черновик и уменьшает риск публикации выдуманного поручения. Даже при валидном JSON результат остаётся на ручной проверке.",
+                "verification": "source",
+                "evidence": [
+                  "backend/app/processing/analysis.py:52",
+                  "backend/app/processing/analysis.py:65",
+                  "backend/app/processing/analysis.py:84",
+                  "backend/app/processing/ollama.py:19"
+                ]
+              },
+              {
+                "aspect": "Проверяемый экспорт",
+                "implementation": "ProtocolExporter строит DOCX из plain text, добавляет таблицы показателей и поручений, timestamp-источники и полный транскрипт; PDF конвертируется только локальным LibreOffice, затем проверяется сигнатура %PDF- и размер файла.",
+                "value": "Пользователь получает не только экранный результат, но и документ, пригодный для передачи после утверждения. Тесты также проверяют запрет экспорта до approve и отсутствие частичного артефакта при ошибке.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/app/exporting/documents.py:58",
+                  "backend/app/exporting/documents.py:133",
+                  "backend/app/exporting/documents.py:165",
+                  "backend/tests/test_documents.py:52",
+                  "backend/tests/test_review.py:146",
+                  "CHK-BACKEND-UNIT"
+                ]
+              }
+            ],
+            "scoreReasoning": "17 баллов отражают сильную инженерную связность: сохранение, обработка ошибок, временная привязка говорящих, доказательные ссылки и экспорт покрыты кодом и тестами. Основной путь на реальных MP3 был доведён до transcribing, но ML-вывод не наблюдался из-за отсутствующих локальных весов; это отдельная неопределённость проверки, а не штраф. Реальные проектные ограничения остаются: длинный вход не разбивается, а абсолютная календарная дата не нормализуется и может блокировать финальный утверждённый документ. Они влияют непосредственно на качество пользовательского результата, поэтому снято три балла."
+          },
+          {
+            "name": "Инновационность",
+            "score": 15,
+            "max": 15,
+            "awarded": "Полный балл за обоснованный локальный ML-контур с доказательной проверкой генеративного анализа.",
+            "deductions": "Снятий нет.",
+            "evidence": [
+              "README.md:39",
+              "README.md:40",
+              "README.md:41",
+              "backend/app/processing/offline.py:40",
+              "backend/app/processing/analysis.py:52",
+              "backend/app/processing/ollama.py:51"
+            ],
+            "deductionItems": [],
+            "awardedDetails": [
+              {
+                "aspect": "Сочетание ASR, диаризации и extractive analysis",
+                "implementation": "Команда не ограничилась вызовом STT: сначала получает сегменты Whisper, затем накладывает turns pyannote, сохраняет speaker-linked utterances и только после этого передаёт в Ollama ID, интервалы, нейтрального говорящего и текст.",
+                "value": "Нестандартность для короткого прототипа в том, что LLM не должна сама угадывать временную структуру и личности: ей даётся уже проверяемая схема источников, пригодная для аудита.",
+                "verification": "source",
+                "evidence": [
+                  "backend/app/service.py:70",
+                  "backend/app/service.py:73",
+                  "backend/app/service.py:76",
+                  "backend/app/processing/ollama.py:44"
+                ]
+              },
+              {
+                "aspect": "Офлайн-политика встроена в исполняемый путь",
+                "implementation": "Audit hook блокирует внешние socket/DNS-вызовы, local_inference дополнительно закрывает сеть внутри ML, а Ollama допускается только по точному локальному или Compose-адресу и без redirect/proxy/pull.",
+                "value": "Это не просто выбор локальной модели в README: политика действует на уровне runtime-пути и проверяется тестами на внешний endpoint и внутренний endpoint.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/app/processing/offline.py:43",
+                  "backend/app/processing/offline.py:46",
+                  "backend/app/processing/ollama.py:39",
+                  "backend/tests/test_ollama.py:81",
+                  "backend/tests/test_ollama.py:128",
+                  "CHK-BACKEND-UNIT"
+                ]
+              },
+              {
+                "aspect": "Необычно строгая валидация источников LLM",
+                "implementation": "Pydantic-контракт запрещает неизвестные поля, source_utterance_ids проверяются на уникальность и существование, а факты и поручения должны быть непрерывными фрагментами исходных реплик.",
+                "value": "Такой дизайн даёт прототипу преимущество перед обычным summary-chat: ошибочный или выдуманный объект отклоняется до записи в SQLite, а не тихо попадает в протокол.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/app/processing/analysis.py:13",
+                  "backend/app/processing/analysis.py:65",
+                  "backend/app/processing/analysis.py:70",
+                  "backend/tests/test_ollama.py:89",
+                  "CHK-BACKEND-UNIT"
+                ]
+              },
+              {
+                "aspect": "Безопасный human-in-the-loop экспорт",
+                "implementation": "Экспорт не является автоматическим побочным эффектом LLM: сервис проверяет analysis_completed, ready и approved_at, а правки отзывает approval и старые файлы.",
+                "value": "Это связывает инновацию с ответственным применением: модель ускоряет подготовку, но юридически/управленчески значимый документ выпускается только после проверки человека.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/app/service.py:101",
+                  "backend/app/repository.py:122",
+                  "backend/app/repository.py:125",
+                  "backend/tests/test_review.py:146",
+                  "CHK-BACKEND-UNIT"
+                ]
+              }
+            ],
+            "scoreReasoning": "Полный балл оправдан тем, что оригинальность находится не в маркетинговом названии модели, а в композиции локального ASR/диаризации, источниковых ссылок, запрета внешней сети и обязательной человеческой проверки. Выявленные ограничения сроков и размера входа снижают надёжность отдельных сценариев, но не отменяют сам нестандартный технический подход и не требуют отдельного штрафа в этом критерии."
+          },
+          {
+            "name": "Потенциал развития и масштабирования",
+            "score": 19,
+            "max": 20,
+            "awarded": "Архитектура хорошо подготовлена к развитию в закрытом контуре; один балл снят за ограничение размера анализа.",
+            "deductions": "Снят 1 балл: 60 000-байтовый предел и отсутствие chunking ограничивают длинные совещания и масштабирование на более крупные расшифровки.",
+            "evidence": [
+              "README.md:45",
+              "README.md:157",
+              "README.md:218",
+              "README.md:264",
+              "backend/app/service.py:26",
+              "backend/app/processing/ollama.py:29"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "F-DEF-LENGTH",
+                "reason": "Переход к более длинным совещаниям или пакетной обработке требует сначала убрать жёсткий отказ на 60 000 байт; текущая реализация не масштабирует анализ по частям."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Разделение компонентов",
+                "implementation": "Источники, audio preparation, adapters, alignment, analysis, Ollama-клиент, repository и exporting разнесены по модулям с контрактами Transcriber, Diarizer и Analyzer.",
+                "value": "Это позволяет менять локальную модель или способ анализа без переписывания API и хранилища, что является практичной основой для развития после хакатона.",
+                "verification": "source",
+                "evidence": [
+                  "backend/app/service.py:9",
+                  "backend/app/service.py:12",
+                  "backend/app/service.py:15",
+                  "backend/app/processing/contracts.py:35"
+                ]
+              },
+              {
+                "aspect": "Подготовка к on-premise",
+                "implementation": "Docker Compose использует внутреннюю сеть, отдельный Ollama, read-only модели, локальный loopback-порт для приложения и явные offline-флаги; README описывает перенос заранее подготовленных весов без pull во время работы.",
+                "value": "Архитектура соответствует расширению внутри организации с чувствительными данными и не зависит от публичного SaaS endpoint.",
+                "verification": "source",
+                "evidence": [
+                  "compose.yaml:9",
+                  "compose.yaml:18",
+                  "compose.yaml:29",
+                  "README.md:47",
+                  "README.md:75"
+                ]
+              },
+              {
+                "aspect": "Расширяемая модель данных",
+                "implementation": "SQLite-схема выделяет meetings, speakers, utterances, topics, metrics, problems, action_items, source-связи, processing_jobs, analyses и exports; внешние ключи и каскадное удаление покрывают жизненный цикл встречи.",
+                "value": "Это оставляет место для дашборда статусов, СЭД-адаптера или рассылки без превращения результата в неструктурированный текстовый файл.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/app/schema.sql:1",
+                  "backend/app/repository.py:165",
+                  "backend/app/repository.py:194",
+                  "backend/tests/test_analysis_pipeline.py:54",
+                  "CHK-BACKEND-UNIT"
+                ]
+              },
+              {
+                "aspect": "Безопасная база для дальнейших моделей",
+                "implementation": "Адаптеры ленивые, локальные веса проверяются до импорта/запуска, CUDA проверяется явно, CPU fallback не маскирует несовместимое окружение, а ошибки сохраняются безопасными кодами.",
+                "value": "При добавлении совместимых моделей команда сможет сохранять предсказуемый offline-контур и диагностировать отсутствие конкретного ресурса, вместо скрытого перехода на другой провайдер.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/app/processing/adapters.py:11",
+                  "backend/app/processing/adapters.py:24",
+                  "backend/app/processing/adapters.py:50",
+                  "backend/tests/test_ml_adapters.py:54",
+                  "CHK-BACKEND-UNIT"
+                ]
+              }
+            ],
+            "scoreReasoning": "19 баллов заслужены модульностью, структурированной схемой данных и продуманным on-premise/Docker-контуром. Это заметно больше одноразовой демонстрации и даёт понятные точки расширения. Единственное удержание — не архитектурная незрелость, а конкретный предел Ollama-входа: без chunking длинные записи не масштабируются, что подтверждено кодом и README."
+          },
+          {
+            "name": "Презентация, демо и ответы на вопросы",
+            "score": 20,
+            "max": 20,
+            "awarded": "Полный балл за ясный README/RUNBOOK, воспроизводимую сборку, тесты и честное описание незапущенных частей; устная презентация и вопросы не выдумывались.",
+            "deductions": "Снятий нет. Отсутствие публичной ссылки, видео или устного выступления не учитывалось как штраф.",
+            "evidence": [
+              "README.md:7",
+              "README.md:30",
+              "README.md:109",
+              "README.md:302",
+              "RUNBOOK.md:1",
+              "CHK-BUILD",
+              "CHK-BACKEND-UNIT",
+              "CHK-FRONTEND"
+            ],
+            "deductionItems": [],
+            "awardedDetails": [
+              {
+                "aspect": "Документация ведёт по основному сценарию",
+                "implementation": "README описывает upload → WAV → Whisper → pyannote → Ollama → review → approve → DOCX/PDF, переменные, статусы, конфигурацию моделей и безопасные ошибки.",
+                "value": "Участник или жюри понимает, что именно должно быть готово на каждом этапе, а не получает только рекламное описание интерфейса.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:5",
+                  "README.md:30",
+                  "README.md:34",
+                  "README.md:38"
+                ]
+              },
+              {
+                "aspect": "RUNBOOK отделяет инструкцию от доказательства",
+                "implementation": "RUNBOOK прямо помечает GPU, реальные записи, PDF и isolation checks как непроверенные до фактического выполнения и задаёт чеклист трёх языковых сценариев.",
+                "value": "Такая честность делает демо воспроизводимым и не выдаёт наличие команды/конфигурации за успешный ML-прогон.",
+                "verification": "source",
+                "evidence": [
+                  "RUNBOOK.md:1",
+                  "RUNBOOK.md:31",
+                  "RUNBOOK.md:77",
+                  "README.md:109"
+                ]
+              },
+              {
+                "aspect": "Репозиторий реально собирается и тестируется",
+                "implementation": "Smoke Docker target собран; backend прошёл 105 unittest-тестов; frontend прошёл 24 Vitest-теста и pnpm build.",
+                "value": "Это даёт воспроизводимое инженерное демо даже при отсутствии тяжёлых моделей: каркас и контракты проверяются командой, а оставшееся ограничение явно локализовано в ML-ресурсах.",
+                "verification": "observed",
+                "evidence": [
+                  "CHK-BUILD",
+                  "CHK-BACKEND-UNIT",
+                  "CHK-FRONTEND",
+                  "captures/20260930T164022914469-build.stderr.log",
+                  "captures/20260930T164815369706-test3.stderr.log",
+                  "captures/20260930T165002240833-frontend.stdout.log"
+                ]
+              },
+              {
+                "aspect": "Интерфейс объясняет состояния результата",
+                "implementation": "React отображает статусы, безопасный error_code, транскрипт с говорящими и timestamp, ссылки на исходные реплики, review-поля и блокирует экспорт до утверждения.",
+                "value": "Даже без устного ведущего пользователь получает последовательную подсказку о том, что проверять и почему документ пока недоступен.",
+                "verification": "source",
+                "evidence": [
+                  "frontend/src/App.tsx:123",
+                  "frontend/src/App.tsx:166",
+                  "frontend/src/ReviewControls.tsx:59",
+                  "frontend/src/ReviewControls.tsx:92"
+                ]
+              }
+            ],
+            "scoreReasoning": "README и RUNBOOK дают достаточно материала для демонстрации и отдельно называют неподтверждённые GPU/ML/PDF-пункты. Сборка и автоматические тесты воспроизведены. Полный балл относится к этому критерию в заданной методике: он оценивает ясность документации и воспроизводимость демо из репозитория, а не наличие публичной ссылки или несуществующее устное выступление."
+          }
+        ],
+        "total": 94
+      },
+      "case": {
+        "criteria": [
+          {
+            "name": "Соответствие задаче и работоспособность",
+            "score": 20,
+            "max": 25,
+            "awarded": "Основной сценарий реализован архитектурно и частично воспроизведён до transcription; два продуктовых ограничения снижают гарантию полного кейсового пути.",
+            "deductions": "Снято 5 баллов: 2 за отсутствие разбиения длинного анализа и 3 за абсолютные календарные сроки, которые остаются неразрешёнными и могут заблокировать approval/export.",
+            "evidence": [
+              "README.md:5",
+              "backend/app/service.py:67",
+              "backend/app/service.py:76",
+              "backend/app/exporting/documents.py:165",
+              "CHK-AUDIO-1",
+              "CHK-AUDIO-2",
+              "CHK-DOMAIN-DEADLINE"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "F-DEF-LENGTH",
+                "reason": "Требование «протоколировать совещание» не покрыто для любой записи в допустимом 15-минутном диапазоне: при большом тексте анализ падает до результата вместо разбиения и последующего объединения."
+              },
+              {
+                "points": 3,
+                "findingId": "F-DEF-DEADLINE",
+                "reason": "Извлечение ответственного и срока заявлено как обязательный минимум, но явные даты из типовых протоколов кейса не превращаются в deadline_date. Поскольку approval проверяет requires_review, финальный экспорт может оставаться недоступным по корректно распознанному поручению."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Приём требуемого входа",
+                "implementation": "Multipart API принимает MP3, MP4, M4A, WAV и WebM, сохраняет оригинал и в фоне проверяет дорожку/длительность через FFprobe, затем делает mono 16 kHz PCM WAV через FFmpeg.",
+                "value": "Это покрывает обязательный аудиозаписанный сценарий без требования интеграции с Teams/Zoom и с ограничениями размера/длительности, указанными в README.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/app/api.py:18",
+                  "backend/app/processing/audio.py:1",
+                  "backend/app/processing/audio.py:80",
+                  "CHK-AUDIO-1",
+                  "CHK-AUDIO-2"
+                ]
+              },
+              {
+                "aspect": "Многоязычный STT предусмотрен локально",
+                "implementation": "FasterWhisperAdapter требует локальный CTranslate2-комплект, запускается на CUDA/float16 и вызывает transcribe с language=None и multilingual=True, сохраняя первоначальную оценку языка.",
+                "value": "Такой режим технически допускает русский, казахский и смешанную речь, вместо жёсткого одноязычного параметра. Входные MP3 реально дошли до этого этапа, но модель отсутствовала в среде ревью.",
+                "verification": "source",
+                "evidence": [
+                  "backend/app/processing/adapters.py:46",
+                  "backend/app/processing/adapters.py:55",
+                  "backend/app/processing/adapters.py:63",
+                  "backend/app/processing/adapters.py:64",
+                  "CHK-AUDIO-1",
+                  "CHK-AUDIO-2"
+                ]
+              },
+              {
+                "aspect": "Диаризация и привязка к говорящему",
+                "implementation": "PyannoteAdapter загружает локальный community-1 pipeline на CUDA, а merge_transcript связывает ASR-сегмент со speaker interval по суммарному пересечению и помечает неоднозначные случаи.",
+                "value": "Это соответствует требованию различать говорящих и даёт action analysis конкретные speaker-linked реплики, а не только сплошной текст.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/app/processing/adapters.py:124",
+                  "backend/app/processing/adapters.py:137",
+                  "backend/app/processing/alignment.py:24",
+                  "backend/tests/test_alignment.py:23",
+                  "CHK-BACKEND-UNIT"
+                ]
+              },
+              {
+                "aspect": "Поручения, саммари и документный выход связаны в один путь",
+                "implementation": "Ollama получает структурированный transcript с ID, создаёт темы, key points и action items, repository сохраняет источники и сроки, а ProtocolExporter строит DOCX/PDF после человеческого approval.",
+                "value": "В коде присутствуют все существенные элементы кейса: транскрипт, говорящие, ответственный/срок/суть, summary и экспорт. Тесты проверяют атомарность и запрет публикации незавершённого результата.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/app/processing/ollama.py:44",
+                  "backend/app/repository.py:184",
+                  "backend/app/repository.py:190",
+                  "backend/app/exporting/documents.py:82",
+                  "backend/tests/test_analysis_pipeline.py:54",
+                  "CHK-BACKEND-UNIT"
+                ]
+              }
+            ],
+            "scoreReasoning": "20 баллов — это оценка реализованного объёма, а не только заявлений README. Все обязательные подсистемы присутствуют, интерфейс и API соединены, а аудиофайлы организаторов были отправлены реально. При этом кейсовый результат не был получен из-за отсутствующих локальных весов, поэтому качество конкретных русско-казахских транскрипций остаётся неопределённым и вынесено в uncertainties, без штрафа. Штраф здесь только за два доказанных поведения проекта: длинный анализ не делится, а типичные абсолютные сроки не нормализуются и могут блокировать итоговый документ."
+          },
+          {
+            "name": "Техническая реализация",
+            "score": 22,
+            "max": 25,
+            "awarded": "Сильная модульная реализация с хорошими границами безопасности и транзакционностью; небольшое снижение за календарные сроки и предел анализа.",
+            "deductions": "Снято 3 балла: 2 за 60 000-байтовый отказ без chunking и 1 за неполный deadline normalizer.",
+            "evidence": [
+              "backend/app/service.py:19",
+              "backend/app/repository.py:165",
+              "backend/app/processing/offline.py:53",
+              "backend/app/processing/ollama.py:38",
+              "CHK-BACKEND-UNIT",
+              "CHK-DOMAIN-DEADLINE"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "F-DEF-LENGTH",
+                "reason": "Технический контракт анализа обрывает задачу при превышении лимита и не предлагает внутреннее разбиение, что ограничивает устойчивость основного pipeline."
+              },
+              {
+                "points": 1,
+                "findingId": "F-DEF-DEADLINE",
+                "reason": "deadline normalizer реализует относительные фразы и будни, но не календарные «до 15 октября», хотя schema и approval предполагают нормализованную дату для финального протокола."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Чёткие контракты и lazy ML",
+                "implementation": "Contracts и Pydantic-схемы разделяют интервалы, ASR, turns, transcript и analysis draft. Тяжёлые импорты выполняются лениво после проверки локальных файлов и CUDA.",
+                "value": "Такой подход позволяет запускать лёгкий backend без ML-пакетов и не превращает отсутствие модели в неуправляемый crash при старте.",
+                "verification": "source",
+                "evidence": [
+                  "backend/app/processing/contracts.py:10",
+                  "backend/app/processing/contracts.py:35",
+                  "backend/app/processing/adapters.py:11",
+                  "backend/tests/test_ml_adapters.py:54"
+                ]
+              },
+              {
+                "aspect": "Атомарное хранение и восстановление",
+                "implementation": "Транскрипт сохраняется одной транзакцией до analyzing, анализ — второй транзакцией; при ошибке анализа реплики остаются, частичный анализ не публикуется. Активные стадии блокируют удаление и параллельную обработку.",
+                "value": "Это защищает данные встречи от частично записанного результата и делает поведение при сбое понятным для повторной попытки.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/app/repository.py:147",
+                  "backend/app/repository.py:165",
+                  "backend/app/repository.py:170",
+                  "backend/tests/test_analysis_pipeline.py:80",
+                  "backend/tests/test_analysis_pipeline.py:124",
+                  "CHK-BACKEND-UNIT"
+                ]
+              },
+              {
+                "aspect": "Безопасность локального контура",
+                "implementation": "Пути confinement проверяются, пользовательские пути не попадают в delete, Multipart ограничивается по размеру, приложение скрывает stderr FFmpeg/ML и отдаёт безопасные error codes. Ollama-клиент не следует redirect и допускает только фиксированный endpoint.",
+                "value": "Для аудиозаписей с чувствительной информацией это важнее декоративной полноты: ошибки не раскрывают запись, пути или секреты, а сетевой режим явно ограничен.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/app/sources/storage.py:18",
+                  "backend/app/sources/multipart.py:1",
+                  "backend/app/processing/ollama.py:58",
+                  "backend/tests/test_storage.py:62",
+                  "backend/tests/test_ollama.py:70",
+                  "CHK-BACKEND-UNIT"
+                ]
+              },
+              {
+                "aspect": "Клиентский API и review workflow",
+                "implementation": "FastAPI предоставляет health, upload, status, result, media range, PATCH edits и DOCX/PDF exports; React отдельно управляет polling, source links, transcript edits, approval и безопасным именем скачивания.",
+                "value": "Компоненты действительно соединены, а не лежат набором несвязанных модулей. Frontend-тесты подтверждают обмен с API и состояние review.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/app/api.py:13",
+                  "backend/app/api.py:24",
+                  "backend/app/api.py:46",
+                  "frontend/src/api.ts:60",
+                  "frontend/src/ReviewControls.tsx:27",
+                  "CHK-FRONTEND"
+                ]
+              }
+            ],
+            "scoreReasoning": "22 балла соответствуют техническому уровню реализации: модульные адаптеры, безопасный offline-контур, собственная схема хранения, транзакции и review API подтверждены исходниками и 105 тестами. Основной ML runtime не исполнялся из-за отсутствующих внешних весов, поэтому я не приписываю ему наблюдаемое качество. Два технических дефекта остаются видимыми независимо от моделей: ограничение размера запроса и неполная календарная нормализация."
+          },
+          {
+            "name": "README и воспроизводимость",
+            "score": 24,
+            "max": 25,
+            "awarded": "Документация подробно описывает запуск, статусы, данные, offline-модели, проверки и ожидаемые ограничения; один балл удержан за неполный сценарий больших входов.",
+            "deductions": "Снят 1 балл: документация честно предупреждает о 60 000 байтах и отсутствии chunking, но сам сценарий обработки максимально разрешённой длинной записи остаётся невоспроизводимо незавершённым.",
+            "evidence": [
+              "README.md:7",
+              "README.md:47",
+              "README.md:111",
+              "README.md:157",
+              "README.md:264",
+              "RUNBOOK.md:31",
+              "CHK-BUILD",
+              "CHK-BACKEND-UNIT",
+              "CHK-FRONTEND"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "F-DEF-LENGTH",
+                "reason": "README корректно описывает ограничение, но воспроизводимый сценарий для длинного разрешённого входа всё равно заканчивается explicit failure вместо результата."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Понятный быстрый старт",
+                "implementation": "README содержит Docker и non-Docker пути, переменные, папки моделей, команды pnpm build, запуск backend, URL API и последовательность пользовательских шагов.",
+                "value": "Новый проверяющий может понять, какие зависимости нужны и почему обычный smoke backend не означает готовый ML-тракт.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:7",
+                  "README.md:13",
+                  "README.md:30",
+                  "README.md:111"
+                ]
+              },
+              {
+                "aspect": "Документированы реальные предпосылки тяжёлого тракта",
+                "implementation": "Отдельные разделы фиксируют Python/Node/pnpm, CUDA/torch/pyannote/faster-whisper, CTranslate2-структуру, локальные manifests Ollama, offline-флаги и отсутствие автоматической загрузки весов.",
+                "value": "Это делает зависимость от GPU и заранее подготовленных моделей проверяемой предпосылкой, а не скрытым сюрпризом при запуске.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:159",
+                  "README.md:171",
+                  "README.md:194",
+                  "README.md:234",
+                  "README.md:246"
+                ]
+              },
+              {
+                "aspect": "Подробный чеклист демо",
+                "implementation": "RUNBOOK перечисляет upload, ожидание ready, сверку чисел/поручений/сроков, правки, approval, DOCX/PDF, повторное снятие approval и три языковых сценария.",
+                "value": "Инструкция превращает прототип в воспроизводимую процедуру проверки и явно предупреждает, какие действия требуют визуального контроля пользователя.",
+                "verification": "source",
+                "evidence": [
+                  "RUNBOOK.md:31",
+                  "RUNBOOK.md:40",
+                  "RUNBOOK.md:50",
+                  "RUNBOOK.md:77"
+                ]
+              },
+              {
+                "aspect": "Автоматические проверки не являются декларацией",
+                "implementation": "В репозитории есть тесты для API, storage, audio, alignment, deadlines, ML adapters, pipeline, Ollama, review, documents, media и container; реально выполнены 105 backend-тестов и 24 frontend-теста.",
+                "value": "Воспроизводимость подтверждена на доступном уровне: сборка и контракты работают, а ограничение отсутствующих моделей отделено от тестируемого кода.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/tests/test_api.py:14",
+                  "backend/tests/test_ml_pipeline.py:26",
+                  "backend/tests/test_review.py:42",
+                  "CHK-BACKEND-UNIT",
+                  "CHK-FRONTEND",
+                  "CHK-SYNTAX"
+                ]
+              }
+            ],
+            "scoreReasoning": "24 балла — почти полный результат за документацию: она объясняет и счастливый путь, и ошибки, и закрытый контур, и честно говорит, что модели не входят в Git. Снижение не за отсутствие ключей или живой ссылки, а за фактическое ограничение воспроизводимого длинного сценария, которое документировано, но не решено кодом."
+          },
+          {
+            "name": "Ценность и применимость решения",
+            "score": 14,
+            "max": 15,
+            "awarded": "Решение хорошо соответствует корпоративному процессу согласования поручений; один балл снят за риск незавершённого результата при абсолютных сроках.",
+            "deductions": "Снят 1 балл: часть типичных сроков из протокола остаётся только исходной строкой без нормализованной даты и блокирует финальное утверждение.",
+            "evidence": [
+              "cases/8/case-data/Протокол_совещания№1.docx.md",
+              "cases/8/case-data/Протокол_совещания№2.docx.md",
+              "backend/app/processing/deadlines.py:15",
+              "backend/app/repository.py:126",
+              "CHK-DOMAIN-DEADLINE"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "F-DEF-DEADLINE",
+                "reason": "Для управленческого контроля недостаточно показать строку срока: абсолютная дата должна быть пригодна для фильтрации/экспорта. Сейчас неизвестная нормализация оставляет поручение на ручной проверке и может запретить выпуск документа."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Целевая аудитория определена кодом сценария",
+                "implementation": "UI и README рассчитаны на секретаря, который загружает запись, и руководителя, который проверяет summary/action items; роли не требуют отдельной внешней СЭД для MVP.",
+                "value": "Это разумно адресует описанную проблему ручного протоколирования и исполнительской дисциплины, сохраняя прототип запускаемым локально.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:30",
+                  "frontend/src/App.tsx:99",
+                  "frontend/src/ReviewControls.tsx:59"
+                ]
+              },
+              {
+                "aspect": "Поручение связано с исходной речью",
+                "implementation": "Action item хранит source_utterance_ids и timestamp, UI показывает ссылки на реплики и может установить плеер на начало источника; экспорт повторяет источники.",
+                "value": "Пользователь может быстро проверить, действительно ли руководитель поручил действие этому ответственному, что повышает доверие к применению в реальном процессе.",
+                "verification": "source",
+                "evidence": [
+                  "backend/app/schemas.py:122",
+                  "frontend/src/App.tsx:185",
+                  "backend/app/exporting/documents.py:91"
+                ]
+              },
+              {
+                "aspect": "Приватность учитывается практически",
+                "implementation": "Рабочий путь не скачивает модели и не отправляет аудио наружу; контейнеры используют внутреннюю сеть и loopback-публикацию приложения, а ошибки не раскрывают содержимое записи.",
+                "value": "Для совещаний организации это делает решение применимым там, где облачная транскрибация запрещена, при условии подготовки локальных ресурсов.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:218",
+                  "compose.yaml:27",
+                  "backend/app/main.py:39",
+                  "backend/tests/test_ollama.py:128"
+                ]
+              },
+              {
+                "aspect": "Ограничения пользователя обозначаются явно",
+                "implementation": "Машинные поля помечаются «Требует проверки», approval требует разрешить action items, а изменения после утверждения вновь блокируют экспорт.",
+                "value": "Это полезнее для корпоративного внедрения, чем безусловная автоматическая рассылка потенциально ошибочного протокола.",
+                "verification": "observed",
+                "evidence": [
+                  "frontend/src/App.tsx:136",
+                  "frontend/src/ReviewControls.tsx:23",
+                  "backend/app/repository.py:126",
+                  "CHK-BACKEND-UNIT",
+                  "CHK-FRONTEND"
+                ]
+              }
+            ],
+            "scoreReasoning": "14 баллов соответствуют хорошей прикладной пригодности: система делает именно тот артефакт, который нужен для контроля поручений, и оставляет принятие решения человеку. Один балл снят за абсолютные даты, потому что управленческая применимость требует не только текста «до 15 октября», но и устойчивого структурированного срока для утверждённого документа."
+          },
+          {
+            "name": "Потенциал развития и оригинальность подхода",
+            "score": 9,
+            "max": 10,
+            "awarded": "Высокий потенциал за локальную модульную архитектуру и доказательный LLM-контур; один балл снят за ограничение масштабирования длинных стенограмм.",
+            "deductions": "Снят 1 балл: отсутствие chunking ограничивает переход от короткого MVP к длинным корпоративным встречам.",
+            "evidence": [
+              "README.md:45",
+              "README.md:218",
+              "README.md:264",
+              "backend/app/processing/contracts.py:35",
+              "backend/app/processing/ollama.py:49"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "F-DEF-LENGTH",
+                "reason": "Для масштабирования на более длинные совещания понадобится новый механизм разбиения и объединения анализа; сейчас лимит приводит к отказу вместо деградации или пакетной обработки."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Понятные следующие этапы",
+                "implementation": "README уже выделяет подготовку локальных Whisper/pyannote assets, проверку русской/казахской/смешанной речи, сохранение правок, связи с Ollama, DOCX/PDF и расширение миграций.",
+                "value": "Развитие не требует смены продукта: следующая работа естественно продолжает существующие контракты и persisted entities.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:157",
+                  "README.md:266",
+                  "README.md:276"
+                ]
+              },
+              {
+                "aspect": "Основы для корпоративного on-premise расширения",
+                "implementation": "Compose разделяет backend и Ollama, модели монтируются read-only, данные живут отдельно, а сетевой адрес Ollama задан явно и ограничен внутренним контуром.",
+                "value": "Такой deployment-паттерн можно расширять дашбордом, СЭД или уведомлениями, сохраняя запрет облачной передачи.",
+                "verification": "source",
+                "evidence": [
+                  "compose.yaml:2",
+                  "compose.yaml:18",
+                  "compose.yaml:39",
+                  "README.md:47"
+                ]
+              },
+              {
+                "aspect": "Оригинальная проверяемость генерации",
+                "implementation": "Вместо принятия произвольного ответа LLM код требует точные source IDs, непрерывные текстовые фрагменты, валидную JSON-схему и флаги ручной проверки.",
+                "value": "Это даёт сильную основу для будущих confidence/feedback-механизмов и обучения на исправлениях без потери аудируемости.",
+                "verification": "source",
+                "evidence": [
+                  "backend/app/processing/analysis.py:52",
+                  "backend/app/processing/analysis.py:70",
+                  "backend/app/processing/ollama.py:51"
+                ]
+              },
+              {
+                "aspect": "Переиспользуемость без привязки к UI",
+                "implementation": "Core processing и repository тестируются отдельно от React; API поддерживает media ranges, review PATCH и экспорт, а frontend лишь отображает эти контракты.",
+                "value": "Это оставляет возможность подключить бота, другой web-клиент или СЭД без переписывания ML-ядра.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/app/api.py:46",
+                  "backend/app/api.py:51",
+                  "backend/app/api.py:57",
+                  "backend/tests/test_media.py:11",
+                  "CHK-BACKEND-UNIT"
+                ]
+              }
+            ],
+            "scoreReasoning": "9 баллов отражают реальный потенциал, а не обещания интеграций: модульные контракты, локальный deployment и доказательный анализ дают сильную базу для следующего этапа. Один балл удержан за масштабирование длинных стенограмм: без chunking рост длительности приводит к explicit failure, поэтому развитие основного сценария потребует заметной доработки."
+          }
+        ],
+        "total": 89
+      },
+      "judgeScore": 91.5,
+      "caseRequirements": [
+        {
+          "requirement": "STT русской, казахской и смешанной речи",
+          "status": "partial",
+          "explanation": "Код запускает локальный faster-whisper в multilingual режиме с language=None, что технически допускает все три варианта. Обе реальные MP3-записи были отправлены, но выполнение остановилось на whisper_model_missing до получения текста, поэтому качество языкового распознавания не наблюдалось.",
+          "evidence": [
+            "backend/app/processing/adapters.py:63",
+            "backend/app/processing/adapters.py:64",
+            "README.md:39",
+            "CHK-AUDIO-1",
+            "CHK-AUDIO-2"
+          ]
+        },
+        {
+          "requirement": "Диаризация и привязка поручения к конкретному говорящему",
+          "status": "partial",
+          "explanation": "Есть локальный pyannote-адаптер, temporal alignment, speaker_id у реплики и source-linked action items. Реальный результат диаризации по предоставленным MP3 не получен из-за отсутствующего Whisper-моделя, поэтому фактическая точность говорящих не подтверждена.",
+          "evidence": [
+            "backend/app/processing/adapters.py:124",
+            "backend/app/processing/alignment.py:23",
+            "backend/app/schemas.py:73",
+            "backend/app/schemas.py:111",
+            "backend/tests/test_alignment.py:14",
+            "CHK-BACKEND-UNIT"
+          ]
+        },
+        {
+          "requirement": "Извлечение поручения с ответственным, сроком и содержанием",
+          "status": "partial",
+          "explanation": "AnalysisDraft и Ollama prompt требуют текст, responsible, deadline_original и source IDs, но нормализатор не поддерживает абсолютные календарные фразы из тестовых протоколов. Для «до 15 октября» domain-проверка возвращает None, а repository сохраняет requires_review и блокирует approval при нерешённом поручении.",
+          "evidence": [
+            "backend/app/processing/ollama.py:19",
+            "backend/app/processing/analysis.py:17",
+            "backend/app/processing/deadlines.py:15",
+            "backend/app/repository.py:112",
+            "backend/app/repository.py:126",
+            "CHK-DOMAIN-DEADLINE"
+          ]
+        },
+        {
+          "requirement": "Краткое саммари совещания",
+          "status": "partial",
+          "explanation": "Схема анализа содержит summary, key_points и topics, а UI отображает их после готовности анализа. В аудиопрогоне summary не появился, потому что внешний к репозиторию локальный ML-ресурс отсутствовал; при пустом transcript код честно не выдумывает содержимое.",
+          "evidence": [
+            "backend/app/processing/analysis.py:42",
+            "backend/app/schemas.py:143",
+            "frontend/src/App.tsx:137",
+            "backend/tests/test_ollama.py:108",
+            "CHK-AUDIO-1"
+          ]
+        },
+        {
+          "requirement": "Вход из аудио/видеозаписи или потока",
+          "status": "met",
+          "explanation": "Обязательный записанный аудиосценарий покрыт multipart upload для MP3/MP4/M4A/WAV/WebM, проверкой FFprobe и локальной подготовкой WAV. Полная интеграция с Teams/Zoom/СЭД не требовалась.",
+          "evidence": [
+            "backend/app/api.py:18",
+            "backend/app/sources/multipart.py:1",
+            "backend/app/processing/audio.py:80",
+            "CHK-AUDIO-1",
+            "CHK-AUDIO-2"
+          ]
+        },
+        {
+          "requirement": "Экспорт итогового протокола в PDF и DOCX",
+          "status": "partial",
+          "explanation": "DOCX строится локально через python-docx, PDF — локальным LibreOffice; экспорт намеренно разрешён только после готового анализа и human approval. Unit/domain тесты проверяют структуру, headers, запрет до approval и безопасные ошибки, но end-to-end экспорт на реальном ML-результате и визуальная проверка не выполнялись.",
+          "evidence": [
+            "backend/app/exporting/documents.py:58",
+            "backend/app/exporting/documents.py:133",
+            "backend/app/service.py:101",
+            "backend/tests/test_documents.py:52",
+            "backend/tests/test_review.py:178",
+            "CHK-BACKEND-UNIT"
+          ]
+        },
+        {
+          "requirement": "Закрытый контур без передачи аудио/текста во внешние облачные API",
+          "status": "met",
+          "explanation": "ASR и диаризация требуют локальные веса, Ollama допускается только по точному локальному/внутреннему адресу, внешние socket/DNS-вызовы блокируются offline policy, а Docker Compose использует internal network и не публикует Ollama наружу.",
+          "evidence": [
+            "backend/app/processing/offline.py:43",
+            "backend/app/processing/ollama.py:39",
+            "compose.yaml:29",
+            "README.md:218",
+            "backend/tests/test_ollama.py:128",
+            "CHK-BACKEND-UNIT"
+          ]
+        },
+        {
+          "requirement": "Ручная проверка и исправление результата перед публикацией",
+          "status": "met",
+          "explanation": "PATCH поддерживает правки говорящих, реплик и action items; изменения снимают approval, а экспорт проверяет approved_at, ready и analysis_completed. Frontend отдельно блокирует approve/export при dirty или requires_review.",
+          "evidence": [
+            "backend/app/api.py:46",
+            "backend/app/repository.py:99",
+            "backend/app/repository.py:122",
+            "frontend/src/ReviewControls.tsx:23",
+            "frontend/src/ReviewControls.tsx:92",
+            "backend/tests/test_review.py:131",
+            "CHK-FRONTEND"
+          ]
+        }
+      ],
+      "testData": {
+        "provided": [
+          "cases/8/case-data/Совещание №1.mp3",
+          "cases/8/case-data/Совещание №2.mp3",
+          "cases/8/case-data/Протокол_совещания№1.docx.md",
+          "cases/8/case-data/Протокол_совещания№2.docx.md",
+          "cases/8/case-data/HackAlem AI_ Система автопротоколирования совещаний с фиксацией поручений.md"
+        ],
+        "used": [
+          "cases/8/case-data/Совещание №1.mp3",
+          "cases/8/case-data/Совещание №2.mp3",
+          "cases/8/case-data/Протокол_совещания№1.docx.md",
+          "cases/8/case-data/Протокол_совещания№2.docx.md",
+          "cases/8/case-data/HackAlem AI_ Система автопротоколирования совещаний с фиксацией поручений.md"
+        ],
+        "checks": [
+          {
+            "input": "Совещание №1.mp3 (4 426 407 байт; ffprobe: MP3, mono, 48 kHz, 274.296 s)",
+            "method": "Отправлен multipart POST /api/meetings с title, датой 2026-09-23, часовым поясом Asia/Qyzylorda; затем опрошен /status и запрошен /result.",
+            "result": "Upload вернул queued; статус прошёл preparing_audio/stage=audio и завершился failed/stage=transcription с error_code=whisper_model_missing; result содержит 0 speakers, 0 utterances, 0 action_items, analysis_completed=false.",
+            "conclusion": "Файл реально принят и аудиоподготовка дошла до транскрипционного этапа. Качество STT/диаризации/анализа на этой записи не проверено из-за отсутствия локальной модели, что является ограничением среды проверки."
+          },
+          {
+            "input": "Совещание №2.mp3 (3 334 695 байт; ffprobe: MP3, mono, 48 kHz, 206.064 s)",
+            "method": "Повторён тот же multipart HTTP-сценарий с отдельным title и теми же датой/часовым поясом; затем опрошены status и result.",
+            "result": "Upload вернул queued; статус прошёл preparing_audio и завершился failed/stage=transcription с error_code=whisper_model_missing; содержательный result не опубликован.",
+            "conclusion": "Второй предоставленный аудиофайл также был применён к проекту, но внешний локальный ML-ресурс отсутствовал до получения транскрипта."
+          },
+          {
+            "input": "Протокол_совещания№1.docx.md и Протокол_совещания№2.docx.md",
+            "method": "Файлы открыты как ориентир сопоставления; извлечены требования к говорящим, саммари, поручениям, ответственным и срокам, без подстановки их текста вместо аудиовхода.",
+            "result": "В обоих протоколах есть явные action items с календарными датами (например, формулировки вида «до 15 октября»/«до 30 сентября»), а также относительные сроки.",
+            "conclusion": "Материалы использованы как reference для проверки полного требования и выявления ограничения нормализатора, а не как входной транскрипт."
+          },
+          {
+            "input": "normalize_deadline('до 15 октября', '2026-09-23', 'Asia/Qyzylorda') и normalize_deadline('через 2 недели', ...)",
+            "method": "Изолированный запуск доменной функции из собранного smoke-образа.",
+            "result": "absolute_date=None; relative_date=2026-10-07; max_input_bytes=60000.",
+            "conclusion": "Подтверждён проектный дефект абсолютных дат и зафиксирован лимит анализа, независимо от отсутствия реальных ML-весов."
+          }
+        ],
+        "limitations": [
+          "В репозитории и smoke-образе нет локальных Whisper/pyannote весов, CUDA runtime и Ollama-модели qwen3:8b; эти ресурсы заявлены как заранее подготавливаемые и не предоставлялись для ревью.",
+          "Полный runtime-target с CUDA не запускался; собран и проверен smoke-target, а ML-путь проверен до безопасной ошибки отсутствующего веса.",
+          "Визуальную проверку UI, аудиоплеера и конечных DOCX/PDF выполняет пользователь; здесь проверены исходники, unit/domain/API и сборка без браузерной автоматизации."
+        ]
+      },
+      "runtime": {
+        "status": "partial",
+        "build": "Smoke Docker target собран успешно; frontend production build и Python-приложение в образе прошли проверки. Полный GPU runtime не запускался из-за отсутствия моделей/CUDA-ресурсов.",
+        "start": "Приложение стартовало в изолированном контейнере с documented Docker environment и ответило 200 на health endpoint.",
+        "scenario": "Обе предоставленные MP3 были загружены через API. Аудиоподготовка прошла до stage=transcription, затем обе задачи безопасно завершились whisper_model_missing; готовый транскрипт и пользовательский ML-результат не получены.",
+        "environment": "Docker smoke-образ на Python 3.12 с FFmpeg, FFprobe, python-docx и LibreOffice; frontend собирался Node 24/pnpm 11. ML-веса, GPU/CUDA и локальная Ollama-модель не были частью доступной среды.",
+        "summary": "Статическая, unit и HTTP-проверка подтверждают deployable lightweight backend и frontend. Основной сценарий воспроизведён частично: upload, persistence, audio preparation и безопасная ошибка работают, а ML и экспорт реального результата остаются непроверенными из-за внешних локальных ресурсов.",
+        "checks": [
+          {
+            "command": "python -c 'ast.parse для всех backend/app/*.py'",
+            "result": "Распарсено 25 Python-файлов, ошибок синтаксиса нет.",
+            "id": "CHK-SYNTAX",
+            "stage": "build",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Все исходники backend должны быть синтаксически корректны."
+          },
+          {
+            "command": "docker build --target smoke --tag luna56-66a8613c-smoke .",
+            "result": "Образ собран; frontend dist, backend, python-docx, LibreOffice и DejaVu Sans присутствуют. Код выхода 0.",
+            "id": "CHK-BUILD",
+            "stage": "build",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Smoke-образ должен собраться из зафиксированного checkout и пройти импорт ProtocolExporter."
+          },
+          {
+            "command": "python -m unittest discover -s backend/tests -v",
+            "result": "105 tests, OK; покрыты API, storage/audio, alignment/deadlines, ML adapters/pipeline, Ollama policy, review, documents, media, container и worker.",
+            "id": "CHK-BACKEND-UNIT",
+            "stage": "build",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Все backend unit/domain тесты проекта должны пройти."
+          },
+          {
+            "command": "pnpm test; pnpm build",
+            "result": "3 test files, 24 tests passed; Vite production build completed with 32 transformed modules.",
+            "id": "CHK-FRONTEND",
+            "stage": "build",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Frontend tests и production build должны завершиться успешно."
+          },
+          {
+            "command": "GET /api/health",
+            "result": "HTTP 200; body status=ok, processing=local_transcription, models=checked_per_job.",
+            "id": "CHK-START-HEALTH",
+            "stage": "start",
+            "status": "pass",
+            "cause": "none",
+            "expected": "После старта API должен ответить health=ok без внешнего ключа."
+          },
+          {
+            "command": "POST /api/meetings (Совещание №1.mp3), затем GET /api/meetings/{id}/status и /result",
+            "result": "queued → preparing_audio(stage=audio) → failed(stage=transcription, error_code=whisper_model_missing); result без реплик и analysis_completed=false.",
+            "id": "CHK-AUDIO-1",
+            "stage": "scenario",
+            "status": "blocked",
+            "cause": "review_environment",
+            "expected": "Предоставленная запись должна пройти локальные модели до ready с транскриптом, говорящими и анализом при наличии заявленных локальных весов."
+          },
+          {
+            "command": "POST /api/meetings (Совещание №2.mp3), затем GET /api/meetings/{id}/status и /result",
+            "result": "queued → preparing_audio → failed(stage=transcription, error_code=whisper_model_missing); содержательный результат отсутствует.",
+            "id": "CHK-AUDIO-2",
+            "stage": "scenario",
+            "status": "blocked",
+            "cause": "review_environment",
+            "expected": "Вторая предоставленная запись должна пройти тот же локальный pipeline при наличии заранее подготовленных моделей."
+          },
+          {
+            "command": "normalize_deadline('до 15 октября', '2026-09-23', 'Asia/Qyzylorda')",
+            "result": "Функция вернула None, тогда как относительная фраза 'через 2 недели' вернула 2026-10-07.",
+            "id": "CHK-DOMAIN-DEADLINE",
+            "stage": "scenario",
+            "status": "fail",
+            "cause": "project",
+            "expected": "Явная календарная дата из поручения должна нормализоваться или иметь отдельный безопасный путь ручного подтверждения, не оставляя action item неизрешённым навсегда."
+          }
+        ],
+        "limitations": [
+          "Статус partial обусловлен тем, что приложение реально стартовало, но ML-часть основного сценария заблокирована отсутствующими локальными моделями; это не классифицировано как project failure.",
+          "Визуальное поведение браузера и фактический внешний вид документов не проверялись по обязательной политике пользовательской визуальной проверки."
+        ]
+      },
+      "liveDemo": {
+        "status": "none",
+        "url": null,
+        "notes": "Публичная live-ссылка в репозитории не подтверждена. Локальный HTTP smoke-демо из Docker было запущено и проверено; отсутствие публичного URL не использовалось как снятие баллов."
+      },
+      "fiveHourContext": "Для пятичасового MVP объём реализации unusually высок: команда довела до конца не только upload/audio skeleton, но и локальные ML-адаптеры, evidence validation, review, transactional persistence и document export. Оценивается именно этот прототип, а не production-готовность: отсутствие вложенных весов, GPU и внешней СЭД не штрафуется само по себе, поскольку README описывает их как заранее подготовленные ресурсы/будущие интеграции. При этом реальные ограничения кода — абсолютные сроки и лимит размера анализа — учитываются, потому что они влияют на основной сценарий уже при наличии нужных моделей.",
+      "strengths": [
+        "Полный локальный конвейер с явными статусами и безопасными ошибками, а не декларативный экран вокруг одного API-вызова.",
+        "Сильная связка диаризации, temporal alignment, source_utterance_ids и human review перед экспортом.",
+        "Закрытый контур поддержан runtime-политикой, фиксированным Ollama endpoint, offline-флагами и тестами сетевых ограничений.",
+        "README/RUNBOOK подробно описывают запуск, модели, проверки, ограничения и честно отделяют инструкцию от подтверждённого прогона.",
+        "Сборка, 105 backend-тестов, 24 frontend-теста и production build воспроизведены успешно."
+      ],
+      "gaps": [
+        "Абсолютные календарные сроки из типовых поручений, например «до 15 октября», не нормализуются; action item остаётся requires_review, а approval/export может быть заблокирован. См. F-DEF-DEADLINE.",
+        "Ollama-анализ без chunking жёстко ограничен 60 000 байтами UTF-8; более длинная допустимая стенограмма завершается analysis_input_too_large вместо результата. См. F-DEF-LENGTH."
+      ],
+      "futureAdvice": [
+        {
+          "principle": "Срок из речи должен иметь отдельный проверяемый путь для абсолютных и относительных формулировок.",
+          "why": "F-DEF-DEADLINE: normalize_deadline поддерживает ограниченный набор относительных фраз, но возвращает None для «до 15 октября», после чего repository сохраняет review_required и не разрешает approval.",
+          "how": "В следующем хакатоне сначала выписать из двух-трёх реальных протоколов матрицу форматов сроков, добавить парсер абсолютных дат с языковыми месяцами и явное поле ручного подтверждения; затем прогнать каждый формат через upload → edit → approve → export.",
+          "findingIds": [
+            "F-DEF-DEADLINE"
+          ],
+          "successCheck": "Для каждой фразы из тестовых протоколов API возвращает ожидаемую deadline_date либо отдельный пользовательский статус «неоднозначно», который можно явно подтвердить и после этого успешно экспортировать документ.",
+          "timeboxMinutes": 35
+        },
+        {
+          "principle": "Ограничение контекста LLM должно деградировать через контролируемое разбиение, а не через отказ всего результата.",
+          "why": "F-DEF-LENGTH: при JSON-тексте реплик больше 60 000 байт OllamaAdapter немедленно выдаёт analysis_input_too_large, а README предупреждает, что даже 15-минутная запись может потребовать более короткого фрагмента.",
+          "how": "В другом MVP заранее измерять размер сериализованных реплик, разбивать вход по временным/тематическим границам с overlap, сохранять source IDs и выполнять финальное слияние только по подтверждённым ссылкам; добавить fixture, превышающий лимит.",
+          "findingIds": [
+            "F-DEF-LENGTH"
+          ],
+          "successCheck": "Длинная тестовая стенограмма проходит несколько analysis calls, итоговые темы и поручения сохраняют корректные source_utterance_ids без дубликатов, а размер каждого payload остаётся ниже лимита.",
+          "timeboxMinutes": 45
+        }
+      ],
+      "uncertainties": [
+        "Не подтверждена фактическая точность русского, казахского и смешанного STT/диаризации на MP3: обе записи остановились на whisper_model_missing до ML-вывода.",
+        "Не выполнен end-to-end Ollama analysis и реальный DOCX/PDF export на результате из предоставленного аудио, так как для этого нужны отсутствующие локальные модели и CUDA runtime.",
+        "Визуальное поведение UI, аудиоплеера и документов не проверялось; пользователь выполняет эту проверку отдельно."
+      ],
+      "reviewPolicyVersion": 2,
+      "assessmentStatus": "ready",
+      "findings": [
+        {
+          "id": "F-STRONG-PIPELINE",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Код и тесты образуют связный локальный pipeline от upload и audio preparation до transcript, analysis, review и export.",
+          "expected": "Основные этапы должны быть представлены отдельными компонентами, сохранять корректные статусы и не публиковать частичный результат.",
+          "actual": "105 backend-тестов прошли; service.py переводит job через audio, transcription, diarization, alignment и analysis, а repository сохраняет этапы транзакционно.",
+          "evidence": [
+            "backend/app/service.py:51",
+            "backend/app/service.py:70",
+            "backend/app/service.py:81",
+            "backend/app/repository.py:165",
+            "backend/tests/test_ml_pipeline.py:48",
+            "CHK-BACKEND-UNIT"
+          ],
+          "checkIds": [
+            "CHK-BACKEND-UNIT",
+            "CHK-BUILD"
+          ]
+        },
+        {
+          "id": "F-STRONG-OFFLINE",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Офлайн-ограничения и доступ к Ollama реализованы как runtime-политика, а не только как документация.",
+          "expected": "ML не должен отправлять аудио/текст во внешние облачные API; локальный анализ должен принимать только разрешённый endpoint.",
+          "actual": "Audit hook блокирует внешние socket/DNS-вызовы, inference-контекст запрещает сеть, OllamaAdapter проверяет точный host/model, а сетевые тесты проходят.",
+          "evidence": [
+            "backend/app/processing/offline.py:40",
+            "backend/app/processing/offline.py:66",
+            "backend/app/processing/ollama.py:39",
+            "backend/tests/test_ollama.py:81",
+            "backend/tests/test_ollama.py:128",
+            "CHK-BACKEND-UNIT"
+          ],
+          "checkIds": [
+            "CHK-BACKEND-UNIT"
+          ]
+        },
+        {
+          "id": "F-STRONG-REVIEW-EXPORT",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Правки пользователя, approval и экспорт связаны в безопасный workflow.",
+          "expected": "Нельзя экспортировать неутверждённый или частично проанализированный протокол; правки должны отзывать старое утверждение.",
+          "actual": "API PATCH и frontend controls реализуют редактирование и approve; service export проверяет ready/analysis_completed/approved_at; тесты review/documents проходят.",
+          "evidence": [
+            "backend/app/service.py:101",
+            "backend/app/repository.py:122",
+            "backend/app/repository.py:125",
+            "frontend/src/ReviewControls.tsx:27",
+            "backend/tests/test_review.py:146",
+            "CHK-BACKEND-UNIT",
+            "CHK-FRONTEND"
+          ],
+          "checkIds": [
+            "CHK-BACKEND-UNIT",
+            "CHK-FRONTEND"
+          ]
+        },
+        {
+          "id": "F-STRONG-BUILD-TESTS",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Сборка и автоматические проверки проекта воспроизводимы в изолированной среде.",
+          "expected": "Smoke image, backend tests, frontend tests и production build должны завершаться успешно.",
+          "actual": "Smoke image собран; backend: 105/105 OK; frontend: 24/24 OK и Vite build OK; синтаксис 25 Python-файлов корректен.",
+          "evidence": [
+            "captures/20260930T164022914469-build.stderr.log",
+            "captures/20260930T164815369706-test3.stderr.log",
+            "captures/20260930T165002240833-frontend.stdout.log",
+            "captures/20260930T164628839731-syntax.stdout.log"
+          ],
+          "checkIds": [
+            "CHK-BUILD",
+            "CHK-BACKEND-UNIT",
+            "CHK-FRONTEND",
+            "CHK-SYNTAX"
+          ]
+        },
+        {
+          "id": "F-LIMIT-ML-ASSETS",
+          "kind": "limitation",
+          "verification": "observed",
+          "responsibility": "review_environment",
+          "claim": "Реальный ML-результат на предоставленных MP3 не был получен, потому что в среде отсутствуют заранее подготовленные локальные Whisper/pyannote веса и CUDA runtime.",
+          "expected": "При наличии заявленных локальных моделей обработка должна перейти от transcription/diarization к ready и analysis.",
+          "actual": "Обе HTTP-задачи дошли до stage=transcription и завершились безопасным error_code=whisper_model_missing; код не маскировал это под готовый протокол.",
+          "evidence": [
+            "README.md:9",
+            "README.md:159",
+            "captures/20260930T165639462500-scenario1b.stdout.log",
+            "captures/20260930T165546570350-scenario2.stdout.log"
+          ],
+          "checkIds": [
+            "CHK-AUDIO-1",
+            "CHK-AUDIO-2"
+          ]
+        },
+        {
+          "id": "F-DEF-DEADLINE",
+          "kind": "defect",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Нормализатор сроков не поддерживает абсолютные календарные даты, встречающиеся в тестовых протоколах, и это может навсегда оставить поручение на ручной проверке.",
+          "expected": "Фраза «до 15 октября» при meeting_date=2026-09-23 и IANA timezone должна дать структурированную дату либо явный, разрешимый путь ручного подтверждения.",
+          "actual": "normalize_deadline('до 15 октября', ...) возвращает None; repository при сохранении deadline_original записывает deadline_date=NULL, а approval отвергает любой оставшийся requires_review action item.",
+          "evidence": [
+            "backend/app/processing/deadlines.py:15",
+            "backend/app/processing/deadlines.py:32",
+            "backend/app/processing/deadlines.py:41",
+            "backend/app/repository.py:112",
+            "backend/app/repository.py:115",
+            "backend/app/repository.py:126",
+            "captures/20260930T165756972889-domain.stdout.log"
+          ],
+          "checkIds": [
+            "CHK-DOMAIN-DEADLINE"
+          ]
+        },
+        {
+          "id": "F-DEF-LENGTH",
+          "kind": "defect",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Анализатор отказывается от входа больше 60 000 байт UTF-8 и не делит длинную стенограмму на части.",
+          "expected": "Запись в разрешённом диапазоне длительности должна либо анализироваться частями с сохранением source IDs, либо получать отдельный пользовательский режим продолжения.",
+          "actual": "OllamaAdapter считает весь JSON реплик, при превышении MAX_INPUT_BYTES=60000 немедленно выдаёт analysis_input_too_large; README признаёт, что даже допустимая 15-минутная запись может потребовать более короткого фрагмента, chunking отсутствует.",
+          "evidence": [
+            "backend/app/processing/ollama.py:29",
+            "backend/app/processing/ollama.py:45",
+            "backend/app/processing/ollama.py:49",
+            "backend/app/processing/ollama.py:50",
+            "README.md:264"
+          ],
+          "checkIds": []
+        }
+      ],
+      "gapFindingIds": [
+        "F-DEF-DEADLINE",
+        "F-DEF-LENGTH"
+      ]
+    }
+  ],
+  "score": 91.5,
+  "status": "complete",
+  "expectedJudges": 1
+}

@@ -1,0 +1,904 @@
+{
+  "methodVersion": 4,
+  "repoId": "hack-463da2da-gophers",
+  "repoUrl": "https://github.com/BAITC-Hacks/hack-463da2da-gophers",
+  "caseId": 3,
+  "snapshot": "53b08bf62474032285014f728520dfa9189d7cd1",
+  "judges": [
+    {
+      "methodVersion": 4,
+      "repoId": "hack-463da2da-gophers",
+      "caseId": 3,
+      "model": "GPT-5.6 Luna",
+      "snapshot": "53b08bf62474032285014f728520dfa9189d7cd1",
+      "overallSummary": "Проект представляет цельный MVP Career Quest: FastAPI-бэкенд загружает синтетический набор Career Quest, строит профиль и разрывы навыков, ранжирует до трёх добровольных активностей по нескольким факторам, объясняет рекомендации через OpenAI/NVIDIA/heuristic fallback, пересчитывает прогресс после завершения, строит два Career Twin-маршрута и предоставляет агрегированный HR-view. Основной API-сценарий подтверждён 45 пройденными тестами из 46 собранных, а production-сборка фронтенда проходит. Существенный сквозной дефект выявлен для части Lead-профилей без цели: API корректно возвращает next_grade=null, но EmployeePage без проверки обращается к next_grade.role/grade, поэтому такой профиль может упасть в UI. Кроме того, внешний LLM-ответ принимается без проверки обязательных трёх факторов, а три рекомендации вызывают объяснитель последовательно и могут превысить заявленный лимит ответа.",
+      "global": {
+        "criteria": [
+          {
+            "name": "Ценность решения",
+            "score": 23,
+            "max": 25,
+            "awarded": "Решение хорошо адресует понятную HR-проблему: сотруднику нужен связный путь развития, а HR — агрегированная картина пробелов и вовлечённости.",
+            "deductions": "2 балла сняты за подтверждённый провал employee-сценария на части реальных профилей.",
+            "evidence": [
+              "README.md: ключевые возможности и Demo Script",
+              "backend/app/api/store.py: profile() и dashboard()",
+              "backend/app/api/test_endpoint_access.py::test_employee_and_hr_endpoints_expose_only_their_expected_views"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "F-001",
+                "reason": "Для десяти Lead-профилей без карьерной цели API отдаёт null next_grade, а фронтенд не обрабатывает этот контракт."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Понятная аудитория",
+                "implementation": "Сотрудник получает профиль, текущую и целевую ступень, разрывы навыков и историю; HR получает weak_skills, сотрудников без рекомендаций и engagement.",
+                "value": "Это превращает разрозненные события обучения в управляемый маршрут развития для сотрудника и агрегированный сигнал для HR.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/app/api/store.py:173-215",
+                  "backend/app/api/store.py:246-272",
+                  "backend/app/api/test_endpoint_access.py::test_employee_and_hr_endpoints_expose_only_their_expected_views"
+                ]
+              },
+              {
+                "aspect": "Практический цикл развития",
+                "implementation": "POST /recommendations/{id} возвращает активности и факторы, POST /employees/{id}/complete/{event_id} меняет навыки и добавляет историю.",
+                "value": "Пользователь получает следующий конкретный шаг и видит, как действие влияет на траекторию.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/app/api/routes.py:93-137",
+                  "backend/app/api/store.py:274-294",
+                  "backend/app/api/test_routes.py::test_recommendation_response_matches_api_contract_and_recalculates"
+                ]
+              }
+            ],
+            "scoreReasoning": "Высокая ценность подтверждается реализованным employee/HR циклом и синтетическим набором на 200 профилей. До максимума не хватает устойчивого поведения для профилей верхней ступени без следующей цели: основной сценарий не должен зависеть от того, установлен ли career_goal."
+          },
+          {
+            "name": "Результат и качество решения",
+            "score": 17,
+            "max": 20,
+            "awarded": "MVP воспроизводимо собирается и проходит backend domain/API tests; ключевая рекомендация после completion действительно пересчитывается.",
+            "deductions": "3 балла сняты за незакрытый Lead edge case, который нарушает целостность полного employee-сценария.",
+            "evidence": [
+              "captures/20261002T022916885612-backend-test.stdout.log",
+              "captures/20261002T022928141722-frontend-build.stdout.log",
+              "backend/app/api/test_routes.py::test_recommendation_response_matches_api_contract_and_recalculates"
+            ],
+            "deductionItems": [
+              {
+                "points": 3,
+                "findingId": "F-001",
+                "reason": "Проверка рекомендаций проходит, но UI-контракт профиля не согласован с допустимым null next_grade."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Рабочая серверная вертикаль",
+                "implementation": "Тестовый набор покрывает analyzer, scoring, recommender, LLM fallback, Career Twin, доступы, загрузку jury dataset и маршруты FastAPI; итог — 45 passed, 1 skipped.",
+                "value": "Для пятичасового прототипа это сильное подтверждение работоспособности основной логики и API-контракта.",
+                "verification": "observed",
+                "evidence": [
+                  "captures/20261002T022916885612-backend-test.stdout.log"
+                ]
+              },
+              {
+                "aspect": "Пересчёт после действия",
+                "implementation": "Тест сначала вызывает рекомендации, завершает первую доступную активность, затем проверяет, что она исчезла из нового набора рекомендаций.",
+                "value": "Подтверждён не только статический экран, но и ключевой интерактивный переход состояния.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/app/api/test_routes.py::test_recommendation_response_matches_api_contract_and_recalculates"
+                ]
+              },
+              {
+                "aspect": "Сборка клиентской части",
+                "implementation": "TypeScript проверяется через tsc --noEmit, затем Vite собирает 86 модулей в production bundle.",
+                "value": "Фронтенд пригоден к упаковке в заявленный nginx-образ.",
+                "verification": "observed",
+                "evidence": [
+                  "captures/20261002T022928141722-frontend-build.stdout.log",
+                  "frontend/Dockerfile:1-14"
+                ]
+              }
+            ],
+            "scoreReasoning": "Результат существенно выше уровня макета: серверная вертикаль и сборка доказаны, а тесты проверяют последовательность изменения данных. Снижение относится к конкретному профилю-контракту, а не к отсутствию визуального осмотра."
+          },
+          {
+            "name": "Инновационность",
+            "score": 14,
+            "max": 15,
+            "awarded": "Связка explainable multi-factor scoring, Career Twin с ограничениями формата/времени и каскад OpenAI → NVIDIA → heuristic fallback заметно сильнее простого каталога курсов.",
+            "deductions": "1 балл снят за отсутствие защитной проверки качества ответа внешней модели.",
+            "evidence": [
+              "backend/app/ai/core/scoring.py:94-200",
+              "backend/app/ai/llm/explainer.py:101-197",
+              "backend/app/api/career_paths.py:140-197"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "F-002",
+                "reason": "Промпт требует минимум три разных фактора, но фактический текст провайдера не валидируется перед выдачей пользователю."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Многофакторная рекомендация",
+                "implementation": "Оценка учитывает закрытие skill gap, критичность, историю, prerequisites, соответствие grade и доступность сессии; критический gap получает множитель 1.6.",
+                "value": "Рекомендация объяснима и не сводится к правилу выбора минимального навыка.",
+                "verification": "source",
+                "evidence": [
+                  "backend/app/ai/core/scoring.py:15-21",
+                  "backend/app/ai/core/scoring.py:94-200"
+                ]
+              },
+              {
+                "aspect": "Career Twin",
+                "implementation": "Fast и flexible пути используют общий ranking, фильтруют формат, симулируют gain/max_level и считают readiness до/после.",
+                "value": "Пользователь видит альтернативы с ограничениями, а не только один линейный список.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/app/api/career_paths.py:29-37",
+                  "backend/app/api/career_paths.py:140-197",
+                  "backend/app/api/test_career_paths.py::test_career_twin_honors_format_and_projects_readiness"
+                ]
+              },
+              {
+                "aspect": "Graceful AI degradation",
+                "implementation": "При отсутствии ключей или ошибках провайдеров объяснение собирается из факторов heuristic-fallback; ключи читаются только из environment.",
+                "value": "Основной демонстрационный сценарий не блокируется отсутствием внешнего LLM.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/app/ai/llm/explainer.py:75-98",
+                  "backend/app/ai/llm/explainer.py:173-197",
+                  "backend/app/ai/tests/test_explainer.py::test_heuristic_when_no_keys"
+                ]
+              }
+            ],
+            "scoreReasoning": "Инновационная часть хорошо обоснована реализацией и тестами: есть не только LLM-вызов, но и детерминированное explainable ядро и альтернативные маршруты. Почти максимальный балл удерживает только отсутствие output guard для внешнего текста."
+          },
+          {
+            "name": "Потенциал развития и масштабирования",
+            "score": 15,
+            "max": 20,
+            "awarded": "Есть чистое разделение AI core/API/UI, детерминированная дата набора, загрузка новых профилей в опубликованном формате и контейнерная упаковка.",
+            "deductions": "5 баллов сняты за подтверждённые ограничения внешнего LLM-пути: последовательные синхронные вызовы и отсутствие output validation.",
+            "evidence": [
+              "backend/app/ai/recommender.py:91-114",
+              "backend/app/ai/llm/explainer.py:58-72",
+              "backend/app/api/routes.py:143-183",
+              "docker-compose.yml:1-25"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "F-002",
+                "reason": "Невалидированный провайдерский текст может нарушить требование языка, длины и трёхфакторной объяснимости при масштабировании интеграции."
+              },
+              {
+                "points": 3,
+                "findingId": "F-003",
+                "reason": "Каждая из до трёх рекомендаций синхронно вызывает explain(); бюджет 8 секунд задан на один candidate, а не на весь endpoint."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Расширяемая загрузка данных",
+                "implementation": "POST /admin/load-dataset принимает JSON или multipart, валидирует связи, статусы, идентификаторы и добавляет jury profiles/history.",
+                "value": "Новые синтетические профили можно проверять без переписывания алгоритма.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/app/api/routes.py:143-183",
+                  "backend/app/api/store.py:45-120",
+                  "backend/app/api/test_jury_upload.py::test_admin_loads_three_jury_profiles_and_reports_validation_errors"
+                ]
+              },
+              {
+                "aspect": "Детерминированная предметная логика",
+                "implementation": "DATASET_SNAPSHOT_DATE и CAREER_QUEST_TODAY отделяют дату набора от часов рабочей машины; gain ограничивается max_level.",
+                "value": "Результаты проще воспроизводить на jury dataset и в будущих интеграциях.",
+                "verification": "source",
+                "evidence": [
+                  "backend/app/api/store.py:14-16",
+                  "backend/app/api/store.py:132-145",
+                  "backend/app/api/store.py:274-294"
+                ]
+              },
+              {
+                "aspect": "Контейнерный контур",
+                "implementation": "docker-compose связывает backend, frontend и read-only dataset volume; Dockerfiles собирают Python API и nginx/Vite UI.",
+                "value": "Для MVP предусмотрен понятный путь к локальному развертыванию.",
+                "verification": "source",
+                "evidence": [
+                  "docker-compose.yml:1-25",
+                  "backend/Dockerfile:1-14",
+                  "frontend/Dockerfile:1-14"
+                ]
+              }
+            ],
+            "scoreReasoning": "Архитектура достаточно модульна для продолжения работы и уже умеет принимать новые профили. До верхней оценки не хватает безопасного контракта внешнего LLM и общего deadline/concurrency на выдачу трёх объяснений. In-memory store сам по себе не штрафуется как выход за рамки пятичасового MVP."
+          },
+          {
+            "name": "Презентация, демо и ответы на вопросы",
+            "score": 18,
+            "max": 20,
+            "awarded": "README содержит стек, запуск, API-таблицу и пошаговый demo script; код и тесты дают воспроизводимый материал для объяснения решения.",
+            "deductions": "2 балла сняты за то, что описанный employee flow не учитывает null next_grade для части набора.",
+            "evidence": [
+              "README.md: быстрый запуск",
+              "README.md: спецификация API",
+              "README.md: Demo Script",
+              "captures/20261002T022916885612-backend-test.stdout.log"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "F-001",
+                "reason": "Документированный сценарий профиля не оговаривает и не закрывает терминальный Lead-профиль без карьерной цели."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Воспроизводимый сценарий",
+                "implementation": "README ведёт от docker compose и локального запуска до выбора сотрудника, рекомендаций, completion, Career Twin, HR dashboard и jury check.",
+                "value": "Участнику и жюри понятно, какие observable результаты ожидать.",
+                "verification": "source",
+                "evidence": [
+                  "README.md: запуск через Docker Compose",
+                  "README.md: Demo Script"
+                ]
+              },
+              {
+                "aspect": "Поддержка вопросов по реализации",
+                "implementation": "Структура backend/app/ai, api, frontend/src и docs/openapi.yaml отражает границы компонентов и контракты.",
+                "value": "Архитектуру можно объяснить по исходникам, а не только по обещаниям README.",
+                "verification": "source",
+                "evidence": [
+                  "README.md: Архитектура проекта",
+                  "docs/openapi.yaml",
+                  "backend/app/ai/contracts.py"
+                ]
+              }
+            ],
+            "scoreReasoning": "README и проверяемый код обеспечивают сильную основу демонстрации; публичный URL и визуальный осмотр не требовались для начисления/снятия баллов по данной политике. Небольшое снижение связано только с обнаруженным расхождением основного сценария и edge case."
+          }
+        ],
+        "total": 87
+      },
+      "case": {
+        "criteria": [
+          {
+            "name": "Соответствие задаче и работоспособность",
+            "score": 21,
+            "max": 25,
+            "awarded": "Реализованы профиль, траектория, рекомендации, completion, Career Twin, HR-view и загрузка jury-профилей; основной API-сценарий проходит.",
+            "deductions": "4 балла сняты за падение UI-контракта на части допустимых профилей.",
+            "evidence": [
+              "backend/app/api/test_routes.py",
+              "backend/app/api/test_career_paths.py",
+              "backend/app/api/test_jury_upload.py",
+              "captures/20261002T022940626106-lead-profile-api.stdout.log"
+            ],
+            "deductionItems": [
+              {
+                "points": 4,
+                "findingId": "F-001",
+                "reason": "10 из 16 Lead-профилей возвращают next_grade=null, но EmployeePage обращается к нему как к объекту."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Профиль и карьерная цель",
+                "implementation": "Store строит skills с current/required/gap/critical, историю и available_steps; target_profile учитывает career_goal или следующую ступень.",
+                "value": "Покрыта центральная часть задания про понятную карьерную траекторию.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/app/api/store.py:132-215",
+                  "backend/app/api/test_endpoint_access.py"
+                ]
+              },
+              {
+                "aspect": "Рекомендации 1–3",
+                "implementation": "rank_candidates фильтрует mandatory, роли, grade, prerequisites, историю и availability, затем возвращает до top_k=3 с факторами.",
+                "value": "Результат соответствует требованию объяснимого следующего шага.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/app/ai/core/scoring.py:28-53",
+                  "backend/app/ai/core/scoring.py:210-226",
+                  "backend/app/api/test_routes.py"
+                ]
+              },
+              {
+                "aspect": "Изменение прогресса",
+                "implementation": "complete() применяет gain с ограничением max_level, пишет completed history и пересчитывает requirements_met.",
+                "value": "Интерактивная часть задания реализована на сервере и связана с рекомендациями.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/app/api/store.py:274-294",
+                  "backend/app/api/test_eligibility.py::test_target_grade_activity_is_available_and_can_be_completed"
+                ]
+              }
+            ],
+            "scoreReasoning": "Большая часть case brief закрыта работающим API и тестами. Ограничение существенно, но локализовано: обычные профили и весь рекомендательный цикл работают, а проблема проявляется при отсутствии следующей цели у Lead."
+          },
+          {
+            "name": "Техническая реализация",
+            "score": 20,
+            "max": 25,
+            "awarded": "Техническая реализация аккуратно разделяет анализ, scoring, LLM, API store и UI; 45 backend-тестов и TypeScript/Vite build проходят.",
+            "deductions": "5 баллов сняты за три подтверждённых технических риска: null-контракт UI, отсутствие валидации LLM-ответа и per-candidate timeout.",
+            "evidence": [
+              "captures/20261002T022916885612-backend-test.stdout.log",
+              "captures/20261002T022928141722-frontend-build.stdout.log",
+              "backend/app/ai/contracts.py",
+              "backend/app/api/routes.py"
+            ],
+            "deductionItems": [
+              {
+                "points": 3,
+                "findingId": "F-001",
+                "reason": "Фронтенд типизирует next_grade как обязательный объект, хотя backend возвращает null."
+              },
+              {
+                "points": 1,
+                "findingId": "F-002",
+                "reason": "Внешний текст сохраняется в Explanation без проверки обязательных условий задания."
+              },
+              {
+                "points": 1,
+                "findingId": "F-003",
+                "reason": "Последовательные синхронные LLM-вызовы на один запрос не ограничены общим deadline."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "AI core",
+                "implementation": "analyze_profile формирует skill gaps и history metrics, scoring нормализует компоненты и добавляет критичность, history, grade fit и availability factors.",
+                "value": "Техническая логика соответствует заявленной многофакторности и проверена jury conflict tests.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/app/ai/core/analyzer.py:42-152",
+                  "backend/app/ai/core/scoring.py:94-200",
+                  "backend/app/ai/tests/test_jury_check.py"
+                ]
+              },
+              {
+                "aspect": "Доступ и приватность",
+                "implementation": "Employee ограничен собственным X-Employee-Id, HR endpoints требуют X-Role: hr; опциональный token проверяется через compare_digest.",
+                "value": "Публичного employee ranking нет, а API-view разделены по ролям.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/app/api/routes.py:21-55",
+                  "backend/app/api/test_endpoint_access.py::test_employee_and_hr_endpoints_expose_only_their_expected_views"
+                ]
+              },
+              {
+                "aspect": "Загрузка проверочных профилей",
+                "implementation": "Admin endpoint поддерживает JSON/multipart, проверяет ссылки и duplicate record_id, а тест загружает три jury profiles.",
+                "value": "Ключевое требование проверки на новых наборах не осталось только в README.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/app/api/routes.py:143-183",
+                  "backend/app/api/store.py:45-120",
+                  "backend/app/api/test_jury_upload.py"
+                ]
+              }
+            ],
+            "scoreReasoning": "Код качественно закрывает предметную часть и имеет хороший тестовый контур. Снижение не связано с отсутствующими ключами: fallback предусмотрен и проверен. Оно относится к конкретным runtime-контрактам и к поведению при реальном ответе внешнего провайдера."
+          },
+          {
+            "name": "README и воспроизводимость",
+            "score": 23,
+            "max": 25,
+            "awarded": "README достаточно подробен для локального воспроизведения: описаны Docker Compose, backend/frontend commands, архитектура, API и demo script.",
+            "deductions": "2 балла сняты за неописанную в demo script terminal-grade ветку, выявленную в исходниках.",
+            "evidence": [
+              "README.md: быстрый запуск и локальная разработка",
+              "README.md: API и Demo Script",
+              "backend/app/ai/tests/test_jury_check.py",
+              "captures/20261002T022916885612-backend-test.stdout.log"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "F-001",
+                "reason": "Воспроизводимость основного employee-flow неполна для Lead-профилей без target profile."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Инструкции запуска",
+                "implementation": "Документированы docker compose up --build, локальные pytest/uvicorn и npm build/dev, а также адреса сервисов.",
+                "value": "Новый проверяющий может быстро собрать проект и выбрать подходящий уровень проверки.",
+                "verification": "source",
+                "evidence": [
+                  "README.md: Быстрый запуск и деплой",
+                  "README.md: Локальный запуск для разработки"
+                ]
+              },
+              {
+                "aspect": "Документированный demo script",
+                "implementation": "README перечисляет профиль E0028, рекомендации, completion, Career Twin, HR dashboard и jury conflict test.",
+                "value": "Ожидаемое поведение связано с конкретными действиями и файлами.",
+                "verification": "source",
+                "evidence": [
+                  "README.md: Сценарий демонстрации для жюри"
+                ]
+              }
+            ],
+            "scoreReasoning": "Документация выше среднего и согласуется с тестами и кодом. Небольшой вычет — за отсутствие оговорки/обработки terminal-grade профилей; это конкретное расхождение между полным синтетическим набором и описанным happy path."
+          },
+          {
+            "name": "Ценность и применимость решения",
+            "score": 13,
+            "max": 15,
+            "awarded": "MVP применим как внутренний инструмент навигации обучения: сотрудник получает объяснимый шаг, HR — агрегаты без публичного сравнения сотрудников.",
+            "deductions": "2 балла сняты за то, что применимость не гарантирована для всех профилей из стартового набора.",
+            "evidence": [
+              "README.md: ключевые возможности",
+              "backend/app/api/store.py:246-272",
+              "backend/app/api/test_endpoint_access.py",
+              "captures/20261002T022940626106-lead-profile-api.stdout.log"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "F-001",
+                "reason": "Терминальные профили без career_goal могут получить серверный ответ, который UI не может отобразить."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Польза для сотрудника",
+                "implementation": "Radar и skill meters показывают current/required, recommendations объясняют факторы, completion обновляет историю.",
+                "value": "Сотрудник видит связь между активностью и продвижением, а не только список обязательных курсов.",
+                "verification": "source",
+                "evidence": [
+                  "frontend/src/pages/Placeholders.tsx:78-115",
+                  "frontend/src/pages/Recommendations.tsx:36-48",
+                  "backend/app/api/store.py:184-215"
+                ]
+              },
+              {
+                "aspect": "Польза для HR",
+                "implementation": "dashboard агрегирует weak skills по department, сотрудников без рекомендаций и completion/drop rates.",
+                "value": "HR получает сигнал для планирования обучения без публикации индивидуальных оценок коллегам.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/app/api/store.py:246-272",
+                  "backend/app/api/test_endpoint_access.py"
+                ]
+              }
+            ],
+            "scoreReasoning": "Предметная полезность хорошо выражена в интерфейсном и API-контуре и соответствует управленческому кейсу. Снижение ограничено edge case полноты employee-аудитории, а не отсутствием production-инфраструктуры."
+          },
+          {
+            "name": "Потенциал развития и оригинальность подхода",
+            "score": 8,
+            "max": 10,
+            "awarded": "Проект оставляет понятные направления расширения: новые провайдеры, более богатые career paths, dataset-driven jury checks, приватные HR-агрегаты и локализация.",
+            "deductions": "2 балла сняты за риск задержки и качества при подключении реальных LLM-провайдеров.",
+            "evidence": [
+              "backend/app/ai/llm/explainer.py:75-197",
+              "backend/app/api/career_paths.py:92-204",
+              "frontend/src/i18n.ts",
+              "docker-compose.yml:1-25"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "F-003",
+                "reason": "Текущий per-candidate последовательный вызов ограничивает предсказуемость latency при росте числа рекомендаций/пользователей."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Оригинальная комбинация функций",
+                "implementation": "Career Twin сравнивает fast/flexible path, учитывает формат и часы, а общий scoring сохраняет объяснимые факторы.",
+                "value": "Подход выходит за пределы простого рекомендателя курсов и связывает выбор активности с траекторией.",
+                "verification": "source",
+                "evidence": [
+                  "backend/app/api/career_paths.py:140-197",
+                  "frontend/src/pages/CareerTwin.tsx:54-107"
+                ]
+              },
+              {
+                "aspect": "Расширение без смены формата данных",
+                "implementation": "load-dataset принимает тот же формат employees/events/skills/activity_history, что и стартовый kit.",
+                "value": "Jury profiles и будущие наборы можно использовать как естественное продолжение прототипа.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/app/api/test_jury_upload.py",
+                  "career_quest_dataset/case_1/career_quest_dataset/README.md"
+                ]
+              }
+            ],
+            "scoreReasoning": "Оригинальность и дальнейшее развитие обоснованы конкретными компонентами, а не общими обещаниями. Потенциал снижен только за технический предел внешнего объяснителя, который станет заметнее при масштабировании нагрузки."
+          }
+        ],
+        "total": 85
+      },
+      "judgeScore": 86,
+      "caseRequirements": [
+        {
+          "requirement": "Профиль сотрудника с текущими навыками, целевой траекторией, разрывами и историей",
+          "status": "partial",
+          "explanation": "Для обычных профилей API отдаёт employee, next_grade, skills, history и available_steps; для 10 Lead-профилей без career_goal next_grade=null, а текущий UI этот вариант не обрабатывает.",
+          "evidence": [
+            "backend/app/api/store.py:132-215",
+            "frontend/src/pages/Placeholders.tsx:78-90",
+            "captures/20261002T022940626106-lead-profile-api.stdout.log"
+          ]
+        },
+        {
+          "requirement": "1–3 AI-рекомендации активностей с объяснением минимум по трём различным факторам",
+          "status": "met",
+          "explanation": "rank_candidates возвращает до трёх кандидатов и добавляет skill_gap/history/grade/prerequisite/session factors; API-тест проверяет минимум три различных типа факторов, а fallback формирует текст из факторов.",
+          "evidence": [
+            "backend/app/ai/core/scoring.py:140-200",
+            "backend/app/api/routes.py:111-137",
+            "backend/app/api/test_routes.py::test_recommendation_response_matches_api_contract_and_recalculates",
+            "backend/app/ai/tests/test_recommender.py::test_recommend_happy_path"
+          ]
+        },
+        {
+          "requirement": "Учитывать grade, skill gaps, critical skills, историю участия, prerequisites и availability",
+          "status": "met",
+          "explanation": "Компоненты scoring и eligibility явно покрывают эти факторы; jury conflict test подтверждает, что critical System Design обгоняет больший, но плохо поддержанный историей Public Speaking gap.",
+          "evidence": [
+            "backend/app/ai/core/scoring.py:28-53",
+            "backend/app/ai/core/scoring.py:94-200",
+            "backend/app/ai/tests/test_jury_check.py::test_jury_case_system_design_beats_public_speaking"
+          ]
+        },
+        {
+          "requirement": "Проверяться на разных профилях и на загружаемом наборе",
+          "status": "met",
+          "explanation": "Набор содержит 200 синтетических сотрудников; API-тест проходит рекомендационный запрос для каждого employee, а admin upload принимает три дополнительных jury profiles и валидирует ошибки.",
+          "evidence": [
+            "career_quest_dataset/case_1/career_quest_dataset/README.md",
+            "backend/app/api/test_routes.py::test_recommendations_never_return_a_step_that_backend_rejects",
+            "backend/app/api/test_jury_upload.py::test_admin_loads_three_jury_profiles_and_reports_validation_errors"
+          ]
+        },
+        {
+          "requirement": "После completion обновлять навыки с gain/max_level, историю и рекомендации",
+          "status": "met",
+          "explanation": "complete() применяет cap по max_level, пишет completed record на snapshot date, а API-тест подтверждает исчезновение завершённой активности после повторного ranking.",
+          "evidence": [
+            "backend/app/api/store.py:274-294",
+            "backend/app/api/test_routes.py::test_recommendation_response_matches_api_contract_and_recalculates",
+            "backend/app/api/test_eligibility.py::test_recurring_club_stays_available_after_completion_and_snapshot_is_stable"
+          ]
+        },
+        {
+          "requirement": "Career Twin: fast/flexible paths, формат, часы в неделю и readiness",
+          "status": "met",
+          "explanation": "Есть два пути, фильтр preferred_format, estimated_weeks и readiness before/after; тест проверяет self_paced-фильтрацию и рост readiness.",
+          "evidence": [
+            "backend/app/api/career_paths.py:140-203",
+            "backend/app/api/test_career_paths.py::test_career_twin_honors_format_and_projects_readiness",
+            "frontend/src/pages/CareerTwin.tsx:54-107"
+          ]
+        },
+        {
+          "requirement": "Простой HR-view с агрегатами и ролевой приватностью",
+          "status": "met",
+          "explanation": "HR dashboard доступен только с X-Role: hr, employee не может открыть чужой профиль; индивидуальные recommendation/history endpoints требуют собственного employee id или HR.",
+          "evidence": [
+            "backend/app/api/routes.py:21-55",
+            "backend/app/api/store.py:246-272",
+            "backend/app/api/test_endpoint_access.py::test_employee_and_hr_endpoints_expose_only_their_expected_views"
+          ]
+        },
+        {
+          "requirement": "Не публиковать рейтинг сотрудников и реальные персональные данные; геймификация необязательна",
+          "status": "met",
+          "explanation": "В коде нет публичного leaderboard/ranking; датасет документирован как synthetic, а HR endpoint отдаёт агрегаты. Награды не требуются для case MVP.",
+          "evidence": [
+            "career_quest_dataset/case_1/career_quest_dataset/README.md",
+            "backend/app/api/store.py:246-272",
+            "backend/app/api/routes.py:122-141"
+          ]
+        },
+        {
+          "requirement": "OpenAI/NVIDIA/heuristic fallback и локализация ru/kk/en",
+          "status": "met",
+          "explanation": "Провайдеры выбираются через environment, при ошибках используется NVIDIA, затем heuristic; prompt получает Russian/Kazakh/English и UI имеет три языка. Реальные внешние вызовы не запускались без credentials, но статический путь и unit tests подтверждены.",
+          "evidence": [
+            "backend/app/ai/llm/explainer.py:75-112",
+            "backend/app/ai/llm/explainer.py:173-197",
+            "backend/app/ai/tests/test_explainer.py::test_openai_primary_and_language",
+            "backend/app/ai/tests/test_explainer.py::test_nvidia_fallback_on_openai_failure",
+            "frontend/src/i18n.ts"
+          ]
+        },
+        {
+          "requirement": "Jury-ready загрузка и воспроизводимый запуск",
+          "status": "met",
+          "explanation": "Есть validation ошибок и duplicate ids, Dockerfiles/Compose, README с локальными командами и тесты конфликтного jury case.",
+          "evidence": [
+            "backend/app/api/test_jury_upload.py",
+            "backend/app/ai/tests/test_jury_check.py",
+            "docker-compose.yml",
+            "README.md: быстрый запуск"
+          ]
+        }
+      ],
+      "testData": {
+        "provided": [
+          "cases/3/case-data/case_1/career_quest_dataset/employees.json",
+          "cases/3/case-data/case_1/career_quest_dataset/events.json",
+          "cases/3/case-data/case_1/career_quest_dataset/skills.json",
+          "cases/3/case-data/case_1/career_quest_dataset/activity_history.csv",
+          "cases/3/case-data/case_1/career_quest_dataset/README.md"
+        ],
+        "used": [
+          "career_quest_dataset/case_1/career_quest_dataset/employees.json",
+          "career_quest_dataset/case_1/career_quest_dataset/events.json",
+          "career_quest_dataset/case_1/career_quest_dataset/skills.json",
+          "career_quest_dataset/case_1/career_quest_dataset/activity_history.csv",
+          "career_quest_dataset/case_1/career_quest_dataset/README.md",
+          "backend/app/ai/tests/fixtures.py (проверочный конфликтный набор)"
+        ],
+        "checks": [
+          {
+            "input": "Стартовый dataset Career Quest: employees/events/skills/activity_history и snapshot date 2026-10-01",
+            "method": "python -m pytest",
+            "result": "Тесты загрузили default dataset; полный набор собран: 46 items, 45 passed, 1 skipped.",
+            "conclusion": "Структура и основной сценарий совместимы с опубликованным форматом набора."
+          },
+          {
+            "input": "Профили разных ролей/ступеней из default dataset",
+            "method": "backend/app/api/test_routes.py::test_recommendations_never_return_a_step_that_backend_rejects",
+            "result": "Рекомендационный endpoint успешно вызван для всех сотрудников; ни одна рекомендация не оказалась недоступной для completion.",
+            "conclusion": "Основная eligibility-логика работает на полном наборе; отдельно обнаружен только UI null-contract для части Lead profiles."
+          },
+          {
+            "input": "Jury conflict: критический System Design против большего Public Speaking gap с no_show/drop history",
+            "method": "backend/app/ai/tests/test_jury_check.py",
+            "result": "5/5 тестов прошли; System Design занял первое место, факторы critical/history присутствуют, margin не меньше 0.1.",
+            "conclusion": "Предусмотренный case конфликт факторов обработан требуемым образом."
+          },
+          {
+            "input": "Три дополнительных профиля и history в формате стартового набора",
+            "method": "backend/app/api/test_jury_upload.py::test_admin_loads_three_jury_profiles_and_reports_validation_errors",
+            "result": "Загрузка дала employees_loaded=3 и history_records_loaded=3; broken, incomplete и duplicate payloads получили 422 с errors.",
+            "conclusion": "Загрузка и базовая валидация расширенного jury dataset работают."
+          },
+          {
+            "input": "E0001, completion первой рекомендации и повторный запрос рекомендаций",
+            "method": "backend/app/api/test_routes.py::test_recommendation_response_matches_api_contract_and_recalculates",
+            "result": "До completion: 1–3 items и ≥3 factor types; completion 200; после completion event отсутствует из нового списка.",
+            "conclusion": "Изменение прогресса связано с последующим ranking."
+          },
+          {
+            "input": "E0001, preferred_format=self_paced, hours_per_week=8",
+            "method": "backend/app/api/test_career_paths.py::test_career_twin_honors_format_and_projects_readiness",
+            "result": "Ответ 200, paths={fast, flexible}; flexible steps имеют self_paced, estimated_weeks корректен, readiness.after не уменьшается.",
+            "conclusion": "Career Twin удовлетворяет проверенному сценарию ограничений."
+          }
+        ],
+        "limitations": [
+          "Реальные внешние OpenAI/NVIDIA вызовы не выполнялись: credentials в сессии не предоставлены; проверены исходный путь, fallback и provider mocks.",
+          "Визуальная проверка UI намеренно не выполнялась; это оставлено пользователю согласно политике проверки.",
+          "В отчёте не публикуются полные строки synthetic dataset."
+        ]
+      },
+      "runtime": {
+        "status": "working",
+        "build": "Backend dependency environment позволил выполнить pytest. После npm ci по package-lock.json фронтенд прошёл tsc --noEmit и vite build; собрано 86 модулей.",
+        "start": "FastAPI app импортируется и отвечает на GET /health через TestClient; заявленный production start — uvicorn app.main:app --host 0.0.0.0 --port 8000, а Compose связывает его с frontend.",
+        "scenario": "Проверены API-профиль/доступы, до трёх рекомендаций, completion с обновлением результата, Career Twin с форматом и часами, HR dashboard, загрузка jury dataset и конфликтный AI case. Browser/UI visual scenario не запускался.",
+        "environment": "Локальные проверки выполнены на Python 3.10.11 и Node/npm с зависимостями из frontend/package-lock.json; OPENAI_API_KEY и NVIDIA_API_KEY отсутствовали, поэтому live provider path не вызывался, а fallback тестировался локально.",
+        "summary": "Серверная вертикаль и клиентская production-сборка работают. Приложение не блокируется без LLM keys благодаря heuristic fallback. Найден один пользовательский edge-case в согласовании API и UI и два статически подтверждённых риска внешнего LLM-пути.",
+        "checks": [
+          {
+            "command": "python -m pytest",
+            "result": "45 passed, 1 skipped, 3 deprecation warnings; exit code 0.",
+            "id": "backend-full-suite",
+            "stage": "build",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Все unit/domain/API проверки backend должны пройти."
+          },
+          {
+            "command": "npm run build",
+            "result": "tsc --noEmit прошёл; Vite собрал 86 modules, dist/index.html и assets; exit code 0.",
+            "id": "frontend-production-build",
+            "stage": "build",
+            "status": "pass",
+            "cause": "none",
+            "expected": "TypeScript и production bundle должны собраться."
+          },
+          {
+            "command": "GET /health",
+            "result": "HTTP API check вернул {status: ok}; тот же suite подтвердил роли /employees, /employees/{id} и /hr/dashboard.",
+            "id": "health-and-access",
+            "stage": "start",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Приложение должно стартовать и отдавать health; закрытые endpoints должны соблюдать роли."
+          },
+          {
+            "command": "POST /recommendations/{employee_id} → POST /employees/{employee_id}/complete/{event_id} → POST /recommendations/{employee_id}",
+            "result": "Для E0001 первый результат содержит 1–3 recommendations и ≥3 factor types; completion 200; завершённый event отсутствует после пересчёта.",
+            "id": "employee-recommendation-loop",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Основной employee loop должен завершаться без 409 и менять состояние."
+          },
+          {
+            "command": "GET /employees/{lead_id} для всех Lead-профилей с X-Role: hr",
+            "result": "API probe: lead_profiles=16 null_next_grade=10; HTTP ответы профилей 200.",
+            "id": "lead-profile-contract-probe",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "API должен стабильно вернуть контракт профиля; результат отдельно выявил допустимый null, который UI обязан обработать."
+          }
+        ],
+        "limitations": [
+          "Публичной live demo URL нет; liveDemo отмечен как none.",
+          "Проверка внешнего LLM provider path ограничена статическим трассированием и unit mocks из-за отсутствия credentials.",
+          "Визуальное поведение React не подтверждалось браузером и не трактуется как проверенное."
+        ]
+      },
+      "liveDemo": {
+        "status": "none",
+        "url": null,
+        "notes": "Публичная ссылка, видео или готовая live demo в snapshot не предоставлены. UI визуально не проверялся; наличие production-сборки и HTTP/API-тестов отражено в runtime."
+      },
+      "fiveHourContext": "Оценка учитывает пятичасовой MVP: не штрафую за in-memory store, отсутствие production deployment или отсутствие предоставленных API keys. Оцениваю только функциональность case и подтверждённые исходниками дефекты. Визуальная проверка передана пользователю и не уменьшает баллы сама по себе.",
+      "strengths": [
+        "Цельный employee → recommendation → completion цикл подтверждён тестом с изменением состояния.",
+        "Jury conflict с critical skill и негативной историей реализован и проверен отдельными тестами.",
+        "Career Twin не является заглушкой: он учитывает формат/время, ограничивает шаги и симулирует readiness.",
+        "Ролевой API-доступ и загрузка дополнительных профилей проверены HTTP-тестами.",
+        "README и код дают воспроизводимый локальный сценарий; frontend production build проходит."
+      ],
+      "gaps": [
+        "F-001: UI не обрабатывает next_grade=null для части Lead-профилей без карьерной цели.",
+        "F-002: ответ OpenAI/NVIDIA принимается без проверки обязательных трёх факторов, языка и формата объяснения.",
+        "F-003: explain вызывается последовательно для каждого кандидата, а timeout-бюджет задан на один вызов, не на весь recommendation request."
+      ],
+      "futureAdvice": [
+        {
+          "principle": "Согласовывать nullable предметные состояния между API и UI",
+          "why": "Store.target_profile() законно возвращает null для части Lead-профилей, но frontend/src/pages/Placeholders.tsx использует next_grade.role и next_grade.grade без guard; это делает профиль необрабатываемым, что зафиксировано F-001.",
+          "how": "Сделать next_grade nullable в frontend type и добавить отдельное состояние terminal grade/no target в EmployeePage; затем прогнать API probe по всем grade/role комбинациям и проверить, что профиль, history и HR navigation остаются доступными.",
+          "findingIds": [
+            "F-001"
+          ],
+          "successCheck": "Для всех 200 сотрудников GET /employees/{id} возвращает отображаемый профиль; для 10 Lead-профилей с null target UI не падает и показывает понятное terminal-grade состояние.",
+          "timeboxMinutes": 45
+        },
+        {
+          "principle": "Валидировать выход внешнего AI перед публикацией",
+          "why": "explainer.py просит минимум три фактора только в system prompt, но строки provider response обрезаются и сохраняются без проверки; F-002 оставляет контракт объяснимости на добросовестности модели.",
+          "how": "Ввести небольшой parser/validator для длины, языка и ссылок на минимум три разных factor type; при нарушении отправлять в heuristic fallback, сохраняя engine и причину в диагностике, без публикации неполного текста.",
+          "findingIds": [
+            "F-002"
+          ],
+          "successCheck": "Тест с ответом провайдера из одной общей фразы выбирает fallback, а валидный ответ с тремя факторами проходит; API response всегда содержит объяснение, соответствующее contract.",
+          "timeboxMinutes": 60
+        },
+        {
+          "principle": "Ограничивать latency на уровне всего запроса",
+          "why": "recommender.py последовательно вызывает explain для каждого из до трёх кандидатов, а TOTAL_BUDGET_S применяется внутри каждого вызова; F-003 может нарушить UX deadline при задержке провайдера.",
+          "how": "Передавать общий monotonic deadline в provider calls, кэшировать/параллелить независимые объяснения с ограничением concurrency и немедленно использовать heuristic fallback для оставшихся кандидатов.",
+          "findingIds": [
+            "F-003"
+          ],
+          "successCheck": "Тест с тремя задержанными provider calls завершается в заданный общий deadline, возвращает до трёх рекомендаций и не блокирует FastAPI event loop сверх лимита.",
+          "timeboxMinutes": 75
+        }
+      ],
+      "uncertainties": [
+        "Внешние OpenAI/NVIDIA endpoints не вызывались без credentials, поэтому фактическая latency и ответы провайдеров не наблюдались; оценка этого пути основана на исходниках и unit mocks.",
+        "React UI не инспектировался визуально по обязательной политике; frontend build подтверждает компиляцию, но не layout/rendering.",
+        "Docker Compose не запускался в этой проверке; Dockerfiles и compose-конфигурация проверены чтением, а backend/frontend — отдельными локальными командами."
+      ],
+      "reviewPolicyVersion": 2,
+      "assessmentStatus": "ready",
+      "findings": [
+        {
+          "id": "F-001",
+          "kind": "defect",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Employee UI должен поддерживать допустимый профиль Lead без следующей карьерной цели.",
+          "expected": "API nullable next_grade должен быть обработан UI как terminal-grade/no-target state без исключения.",
+          "actual": "backend/app/api/store.py возвращает next_grade=null для 10 из 16 Lead-профилей; frontend/src/pages/Placeholders.tsx без проверки читает next_grade.role и next_grade.grade.",
+          "evidence": [
+            "backend/app/api/store.py:154-160",
+            "frontend/src/pages/Placeholders.tsx:89-90",
+            "captures/20261002T022940626106-lead-profile-api.stdout.log"
+          ],
+          "checkIds": [
+            "lead-profile-contract-probe"
+          ]
+        },
+        {
+          "id": "F-002",
+          "kind": "defect",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Внешнее AI-объяснение должно сохранять обязательную объяснимость рекомендации.",
+          "expected": "Перед выдачей пользователю проверяются минимум три различных фактора, язык и допустимый формат; при нарушении применяется fallback.",
+          "actual": "_build_messages() только инструктирует модель, а explain() принимает choices[0].message.content, обрезает до MAX_TEXT_LEN и создаёт Explanation без проверки содержимого.",
+          "evidence": [
+            "backend/app/ai/llm/explainer.py:101-142",
+            "backend/app/ai/llm/explainer.py:158-197",
+            "backend/app/ai/tests/test_explainer.py::test_openai_primary_and_language"
+          ],
+          "checkIds": [
+            "backend-full-suite"
+          ]
+        },
+        {
+          "id": "F-003",
+          "kind": "defect",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Рекомендационный запрос должен укладываться в общий лимит latency.",
+          "expected": "До трёх объяснений выполняются в общем deadline, не блокируя весь запрос последовательными provider waits.",
+          "actual": "recommender.recommend() вызывает explain() внутри цикла по кандидатам, а explainer задаёт TOTAL_BUDGET_S=8.0 на каждый вызов; три задержанных кандидата могут суммарно ждать дольше заявленного AI <10 s.",
+          "evidence": [
+            "backend/app/ai/recommender.py:91-114",
+            "backend/app/ai/llm/explainer.py:20-21",
+            "backend/app/ai/llm/explainer.py:170-184"
+          ],
+          "checkIds": [
+            "backend-full-suite"
+          ]
+        },
+        {
+          "id": "S-001",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Jury conflict case приоритизирует critical System Design с учётом негативной истории Public Speaking.",
+          "expected": "Критический навык и история должны влиять на ranking, а не только величина gap.",
+          "actual": "5 jury tests passed; System Design first, required factor types present, score margin meets test.",
+          "evidence": [
+            "backend/app/ai/tests/test_jury_check.py",
+            "captures/20261002T022916885612-backend-test.stdout.log"
+          ],
+          "checkIds": [
+            "backend-full-suite"
+          ]
+        },
+        {
+          "id": "S-002",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Завершение активности действительно меняет состояние рекомендаций.",
+          "expected": "После completion навык/история обновляются, а завершённый невозвратный event не рекомендуется снова.",
+          "actual": "API test получил completion 200 и подтвердил отсутствие event в последующем списке.",
+          "evidence": [
+            "backend/app/api/test_routes.py::test_recommendation_response_matches_api_contract_and_recalculates"
+          ],
+          "checkIds": [
+            "employee-recommendation-loop"
+          ]
+        }
+      ],
+      "gapFindingIds": [
+        "F-001",
+        "F-002",
+        "F-003"
+      ]
+    }
+  ],
+  "score": 86.0,
+  "status": "complete",
+  "expectedJudges": 1
+}

@@ -1,0 +1,866 @@
+{
+  "methodVersion": 4,
+  "repoId": "hack-9d786eb9-vt2k15",
+  "repoUrl": "https://github.com/BAITC-Hacks/hack-9d786eb9-vt2k15",
+  "caseId": 5,
+  "snapshot": "499229ee16033d61f85a77f787a5ff805399ecb1",
+  "judges": [
+    {
+      "methodVersion": 4,
+      "repoId": "hack-9d786eb9-vt2k15",
+      "caseId": 5,
+      "model": "GPT-5.6 Luna",
+      "snapshot": "499229ee16033d61f85a77f787a5ff805399ecb1",
+      "overallSummary": "Проект представляет собой содержательно реализованный MVP планировщика закупок: он принимает шесть Excel-отчётов для одного или обоих поставщиков, сопоставляет данные по коду 1С, рассчитывает прогноз на горизонт срока поставки и пересмотра, вычитает известный товар в пути, учитывает сезонность, устойчивый тренд, возможный stockout и аномальные расходные документы, а результат группирует по поставщикам и сопровождает объяснением. Сильная сторона — прозрачный расчёт с явными предупреждениями и большим набором предметных тестов. Полный backend-сценарий на 12 предоставленных XLSX в этой проверке не был запущен из-за окружения сборки JDK 21; это не трактуется как дефект. Подтверждённые ограничения самого проекта — отсутствие серверного сохранения утверждения и то, что категории пока только фильтруют выборку, а не меняют правила расчёта. Итоговая оценка: 86/100.",
+      "global": {
+        "criteria": [
+          {
+            "name": "Ценность решения",
+            "score": 23,
+            "max": 25,
+            "awarded": "Решение адресует конкретную и дорогую по времени задачу закупщика и даёт полезный объяснимый результат уже в формате MVP.",
+            "deductions": "Снято 2 балла: категория товара присутствует в данных и фильтре, но не влияет на целевой уровень запаса или иные правила расчёта.",
+            "evidence": [
+              "README.md:7-31",
+              "src/main/kotlin/kz/hackalem/backend/OrderPlanningService.kt:31-140",
+              "frontend/src/pages/PlanPage.tsx:57-168",
+              "docs/order_calculation.md:332-344"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "F-CATEGORY-RULES",
+                "reason": "Для требования учитывать категории фактическая реализация применяет category только как точный фильтр товаров; она не задаёт разные уровни сервиса, покрытие или параметры прогноза. Поэтому практическая польза для категорий с разной критичностью ниже заявленного потенциала."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Понятная бизнес-проблема закупщика",
+                "implementation": "README описывает ручную сводку десятка отчётов из 1С, редкие заказы и искажение регулярного спроса разовыми продажами. Реализация действительно принимает наборы отчётов по IEK и Systeme Electric и собирает из них единый PlanningSource.",
+                "value": "Это не абстрактная аналитика: на выходе получается конкретное количество к заказу по SKU, которое можно проверить и выгрузить для дальнейшей загрузки в 1С. Пользовательская ценность понятна без отдельной инфраструктуры или модели машинного обучения.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:7-31",
+                  "src/main/kotlin/kz/hackalem/backend/IekOrderSource.kt:10-51",
+                  "src/main/kotlin/kz/hackalem/backend/SystemeOrderSource.kt:10-103"
+                ]
+              },
+              {
+                "aspect": "Сведение разнородных выгрузок",
+                "implementation": "Оба адаптера объединяют коды из MOQ, продаж, остатков, динамики и пути; строки без кода, конфликтующие дубли, несовместимые единицы и пропущенные поля превращаются в предупреждения или блокирующие проблемы конкретного товара.",
+                "value": "Закупщик получает не только число, но и границу доверия к нему. Это снижает риск молча принять плохую строку Excel за нулевой остаток или нулевой спрос.",
+                "verification": "source",
+                "evidence": [
+                  "src/main/kotlin/kz/hackalem/backend/IekOrderSource.kt:15-29",
+                  "src/main/kotlin/kz/hackalem/backend/IekOrderSource.kt:62-109",
+                  "src/main/kotlin/kz/hackalem/backend/SystemeOrderSource.kt:35-100"
+                ]
+              },
+              {
+                "aspect": "Полезная детализация решения",
+                "implementation": "OrderPlanningService возвращает прогноз, остаток, использованный путь, срочность, условия партии, список предупреждений и текстовую формулу max(0, прогноз − остаток − путь). Frontend показывает таблицу, поставщиков, поиск, срочность и карточку позиции.",
+                "value": "Менеджер может понять, откуда взялось количество, отфильтровать срочные позиции и вручную скорректировать заказ с причиной. Это превращает расчёт в рабочее решение для принятия решения, а не в необъяснимый batch-скрипт.",
+                "verification": "source",
+                "evidence": [
+                  "src/main/kotlin/kz/hackalem/backend/OrderPlanningService.kt:90-140",
+                  "src/main/kotlin/kz/hackalem/backend/OrderPlanningData.kt:72-94",
+                  "frontend/src/pages/PlanPage.tsx:93-168",
+                  "frontend/src/components/ItemDrawer.tsx:80-141"
+                ]
+              },
+              {
+                "aspect": "Ограничения не скрыты",
+                "implementation": "В ответ добавляются предупреждения об отсутствии ID клиента, неполных датах пути, оценочном stockout и категориях без числовых правил; документация отдельно перечисляет отсутствие текущего IEK-остатка и отсутствие серверного workflow утверждения.",
+                "value": "Честные границы делают рекомендацию безопаснее для закупщика и позволяют отличить подтверждённый факт от допущения. Для пятичасового MVP это сильнее, чем имитация полной точности на неполных выгрузках.",
+                "verification": "source",
+                "evidence": [
+                  "src/main/kotlin/kz/hackalem/backend/OrderPlanningService.kt:38-42",
+                  "docs/order_calculation.md:328-344",
+                  "src/main/kotlin/kz/hackalem/backend/SaleAnomalyDetector.kt:61-72"
+                ]
+              }
+            ],
+            "scoreReasoning": "23/25 заслужены за прямое попадание в задачу закупщика, реальный путь от Excel к заказу и объяснимый результат с контролем качества входных данных. До максимума удерживает только подтверждённая неполнота использования категорий: поле категории сохраняется и фильтрует выборку, но не участвует в бизнес-правилах запаса. Остальные ограничения связаны с отсутствующими в исходном пакете полями и отдельно документированы, поэтому за них баллы не сняты."
+          },
+          {
+            "name": "Результат и качество решения",
+            "score": 16,
+            "max": 20,
+            "awarded": "Основной расчётный сценарий проработан последовательно и имеет сильную предметную тестовую базу; пользовательский слой собирается в рабочую таблицу и экспорт.",
+            "deductions": "Снято 4 балла: утверждение не записывается backend-сервисом, nullable-данные backend не полностью защищены в поиске frontend, а категории не меняют расчётные правила.",
+            "evidence": [
+              "src/main/kotlin/kz/hackalem/backend/OrderPlanningService.kt:17-140",
+              "src/test/kotlin/kz/hackalem/backend/OrderPlanningControllerTests.kt:23-98",
+              "frontend/src/pages/PlanPage.tsx:42-49",
+              "frontend/src/components/ApproveDialog.tsx:23-35"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "F-APPROVAL-NOT-PERSISTED",
+                "reason": "После ручного нажатия утверждение формирует локальный XLSX-файл, но не вызывает backend approve endpoint и не сохраняет подтверждение. Для сценария ручного экспорта это работает, но целостность результата как операции закупки и аудит утверждений отсутствуют."
+              },
+              {
+                "points": 1,
+                "findingId": "F-FRONTEND-NULLABLE-ASSUMPTION",
+                "reason": "Backend-модель допускает null для name и supplierArticle, однако PlanPage без проверки вызывает i.name.toLowerCase() и i.supplier_article.toLowerCase() в поиске. Валидная строка с неизвестным текстовым полем может сломать пользовательский сценарий фильтрации."
+              },
+              {
+                "points": 1,
+                "findingId": "F-CATEGORY-RULES",
+                "reason": "Для качества расчёта категория не задаёт разные правила покрытия или сервиса, а только исключает товары, не совпадающие с фильтром. Это оставляет важную часть предметного требования за пределами фактического результата."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Полный расчётный конвейер",
+                "implementation": "Контроллер требует leadDays и reviewDays, сервис берёт один immutable snapshot, строит источники поставщиков, проверяет согласованность даты и остатков, считает прогноз, вычитает incomingUsed, округляет shortage по минимуму и кратности и сортирует результат по поставщику и срочности.",
+                "value": "Сценарий не заканчивается парсингом файла: из входа проходит до конкретной рекомендации, при этом ошибки отдельного товара попадают в skipped, а сомнительные результаты — в review. Это хорошая целостность MVP.",
+                "verification": "source",
+                "evidence": [
+                  "src/main/kotlin/kz/hackalem/backend/OrderPlanningService.kt:17-140",
+                  "src/main/kotlin/kz/hackalem/backend/OrderPlanningController.kt:9-21",
+                  "src/main/kotlin/kz/hackalem/backend/OrderPlanningData.kt:122-130"
+                ]
+              },
+              {
+                "aspect": "Корректное обращение с неполными данными",
+                "implementation": "ExcelReader различает пустую ячейку, формулу без кеша, Excel error и настоящий ноль. Адаптеры не подставляют более ранний остаток вместо отсутствующего текущего, не суммируют противоречивые дубли и не делают неизвестный путь нулевым.",
+                "value": "Такой подход уменьшает наиболее опасные для закупок ложные рекомендации. Важные сомнения видны в issues, problems и warnings, а не теряются при нормализации.",
+                "verification": "source",
+                "evidence": [
+                  "src/main/kotlin/kz/hackalem/backend/ExcelReader.kt:27-57",
+                  "src/main/kotlin/kz/hackalem/backend/ExcelReader.kt:273-291",
+                  "src/main/kotlin/kz/hackalem/backend/IekOrderSource.kt:97-109",
+                  "src/main/kotlin/kz/hackalem/backend/SystemeOrderSource.kt:53-77"
+                ]
+              },
+              {
+                "aspect": "Предметные тесты расчёта",
+                "implementation": "DemandForecastEngineTests проверяют сезонность, устойчивый рост, возможный stockout, аномальную накладную, разделение роста источника и сценарного роста, неполный месяц и длину февраля. OrderPlanningControllerTests проверяют HTTP-параметры, объяснение, supplier_id, horizonDays и excludedSales.",
+                "value": "Тестовые входы проверяют не только happy path, но и чувствительные места из задания. Наличие ожидаемых числовых результатов делает формулу проверяемой и снижает риск незаметной регрессии.",
+                "verification": "source",
+                "evidence": [
+                  "src/test/kotlin/kz/hackalem/backend/DemandForecastEngineTests.kt:18-302",
+                  "src/test/kotlin/kz/hackalem/backend/OrderPlanningControllerTests.kt:23-98",
+                  "src/test/kotlin/kz/hackalem/backend/OrderPlanningServiceTests.kt:1-250"
+                ]
+              },
+              {
+                "aspect": "Собранный frontend-артефакт",
+                "implementation": "React/Vite production build собрал index, CSS и JS-бандлы; lint завершился без ошибок. Сборка отделяет MSW для dev от реального API для production, а HTTP-проверка собранного index вернула 200.",
+                "value": "Это подтверждает, что пользовательский слой не является только макетом: его можно собрать и отдать как статический артефакт. Визуальное качество намеренно не оценивалось браузерными инструментами.",
+                "verification": "observed",
+                "evidence": [
+                  "runtime-frontend-build",
+                  "runtime-frontend-start",
+                  "runtime-frontend-http",
+                  "captures/20261002T073851056577-frontend-build.stdout.log",
+                  "captures/20261002T074948741974-frontend-http.stdout.log"
+                ]
+              }
+            ],
+            "scoreReasoning": "16/20 — это высокий результат для пятичасового прототипа: расчёт и обработка источников связаны, а тесты охватывают именно рискованные места кейса. Четыре балла удержаны за подтверждённые разрывы целостности: утверждение не является серверной операцией, nullable-контракт не полностью безопасен в поиске и категория не влияет на формулу. Невыполненный в этой среде backend запуск не использован как основание для снятия баллов."
+          },
+          {
+            "name": "Инновационность",
+            "score": 14,
+            "max": 15,
+            "awarded": "Сильная особенность — прозрачная многофакторная очистка спроса и восстановление возможного потерянного спроса вместо наивного среднего по продажам.",
+            "deductions": "Снято 1 балл: категория не становится частью дифференцированной политики расчёта, поэтому инновационный подход пока не использует весь заявленный контекст товара.",
+            "evidence": [
+              "src/main/kotlin/kz/hackalem/backend/DemandForecastEngine.kt:47-126",
+              "src/main/kotlin/kz/hackalem/backend/SaleAnomalyDetector.kt:29-92",
+              "docs/order_calculation.md:61-111",
+              "src/test/kotlin/kz/hackalem/backend/DemandForecastEngineTests.kt:60-220"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "F-CATEGORY-RULES",
+                "reason": "Вместо нестандартного правила по категории используется только фильтрация по точному коду. Это не отменяет инновационность очистки спроса, но ограничивает отличие решения от общего прогнозатора с фильтром."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Документная детекция разовых покупок",
+                "implementation": "SaleAnomalyDetector группирует расходные строки по полной дате и номеру документа, суммирует строки одного документа, исключает неполные и неположительные документы, а каждый кандидат сравнивает со средним всех остальных с настраиваемым multiplier.",
+                "value": "Это существенно точнее простого удаления верхнего процентиля месячных продаж: один крупный документ с несколькими строками распознаётся как единая покупка, и его влияние можно объяснить конкретным порогом.",
+                "verification": "source",
+                "evidence": [
+                  "src/main/kotlin/kz/hackalem/backend/SaleAnomalyDetector.kt:40-92",
+                  "src/test/kotlin/kz/hackalem/backend/SaleAnomalyDetectorTests.kt:18-160",
+                  "src/test/kotlin/kz/hackalem/backend/DemandForecastEngineTests.kt:60-78"
+                ]
+              },
+              {
+                "aspect": "Восстановление возможного stockout",
+                "implementation": "Для нулевого месячного остатка движок использует референсный дневной спрос с сезонным коэффициентом и поднимает наблюдение до возможного потерянного спроса; неизвестный остаток не трактуется как stockout.",
+                "value": "Модель не наказывает будущий прогноз за месяц, когда продажи могли быть ограничены отсутствием товара. При этом она явно маркирует метод как возможную, а не точную компенсацию.",
+                "verification": "source",
+                "evidence": [
+                  "src/main/kotlin/kz/hackalem/backend/DemandForecastEngine.kt:76-96",
+                  "src/test/kotlin/kz/hackalem/backend/DemandForecastEngineTests.kt:42-56",
+                  "docs/order_calculation.md:89-111"
+                ]
+              },
+              {
+                "aspect": "Разделение сезонности, тренда и сценарного роста",
+                "implementation": "История очищается до восстановления stockout и тренда, сезонные коэффициенты нормализуются относительно среднего, устойчивый рост требует шести последовательных месяцев и двух согласованных сравнений, а forecastGrowthPercent остаётся отдельным параметром.",
+                "value": "Пользователь видит разные источники изменения прогноза и может менять сценарный рост без подмены исторической динамики. Это объяснимее и управляемее, чем один непрозрачный коэффициент.",
+                "verification": "source",
+                "evidence": [
+                  "src/main/kotlin/kz/hackalem/backend/DemandForecastEngine.kt:47-74",
+                  "src/main/kotlin/kz/hackalem/backend/DemandForecastEngine.kt:182-209",
+                  "src/test/kotlin/kz/hackalem/backend/DemandForecastEngineTests.kt:31-38",
+                  "src/test/kotlin/kz/hackalem/backend/DemandForecastEngineTests.kt:260-269"
+                ]
+              },
+              {
+                "aspect": "Инновация доведена до объяснения",
+                "implementation": "В OrderRecommendation сохраняются DemandForecast и excludedSales, а текст explanation перечисляет сезонность, тренд, рост, stockout, исключённые продажи, остаток, путь, shortage и округление.",
+                "value": "Нестандартные эвристики не остаются внутренней магией: закупщик может увидеть, почему крупная накладная удалена и как это отразилось на заказе.",
+                "verification": "source",
+                "evidence": [
+                  "src/main/kotlin/kz/hackalem/backend/OrderPlanningService.kt:71-126",
+                  "src/main/kotlin/kz/hackalem/backend/OrderPlanningData.kt:58-70",
+                  "frontend/src/components/ItemDrawer.tsx:80-103"
+                ]
+              }
+            ],
+            "scoreReasoning": "14/15: подход заметно отличается от простого среднего — он объединяет очистку на уровне документов, сезонную нормализацию, проверку устойчивого тренда и восстановление возможного stockout. Один балл удержан за категориальный контекст: категория в текущей версии не образует отдельной политики расчёта. Отсутствие клиентского ID и точных дней stockout является ограничением предоставленных полей и честно отражено в документации, поэтому не превращено в дополнительный штраф за инновационность."
+          },
+          {
+            "name": "Потенциал развития и масштабирования",
+            "score": 15,
+            "max": 20,
+            "awarded": "Архитектура адаптеров, typed DTO и отдельного forecast engine хорошо подготовлена к расширению поставщиков и правил, но эксплуатационный workflow пока остаётся локальным и однопроцессным.",
+            "deductions": "Снято 5 баллов: утверждение не сохраняется на backend, nullable-контракт создаёт хрупкость при масштабировании входных данных, а категория и клиентский контекст не развиты в политики.",
+            "evidence": [
+              "src/main/kotlin/kz/hackalem/backend/OrderPlanningData.kt:9-70",
+              "src/main/kotlin/kz/hackalem/backend/IekOrderSource.kt:10-51",
+              "src/main/kotlin/kz/hackalem/backend/SystemeOrderSource.kt:10-103",
+              "docs/order_calculation.md:328-344"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "F-APPROVAL-NOT-PERSISTED",
+                "reason": "Без backend-пути утверждения нет истории заказов, аудита правок, повторного открытия утверждения или безопасной передачи в следующую интеграцию. Масштабирование за пределы одной локальной выгрузки потребует отдельного workflow."
+              },
+              {
+                "points": 1,
+                "findingId": "F-FRONTEND-NULLABLE-ASSUMPTION",
+                "reason": "При расширении источников количество товаров с неизвестным названием или артикулом неизбежно растёт, а текущий поиск frontend не защищён от null. Это делает расширение набора поставщиков менее устойчивым."
+              },
+              {
+                "points": 2,
+                "findingId": "F-CATEGORY-RULES",
+                "reason": "Категории не позволяют масштабировать решение на разные уровни критичности, сервисные уровни или политики запасов: они лишь фильтруют уже рассчитанный общий сценарий."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Разделение предметных адаптеров и движка",
+                "implementation": "IekOrderSource и SystemeOrderSource переводят разные схемы Excel в общий PlanningSource/PlanningProduct, а DemandForecastEngine и OrderPlanningService не зависят от букв столбцов конкретного поставщика.",
+                "value": "Нового поставщика можно добавлять отдельным адаптером, не переписывая формулу заказа. Это хороший задел для расширения по организациям и схемам выгрузок.",
+                "verification": "source",
+                "evidence": [
+                  "src/main/kotlin/kz/hackalem/backend/OrderPlanningData.kt:9-37",
+                  "src/main/kotlin/kz/hackalem/backend/IekOrderSource.kt:10-51",
+                  "src/main/kotlin/kz/hackalem/backend/SystemeOrderSource.kt:10-103",
+                  "src/main/kotlin/kz/hackalem/backend/OrderPlanningService.kt:11-28"
+                ]
+              },
+              {
+                "aspect": "Детализация и расширяемость API",
+                "implementation": "GET /api/orders принимает горизонт, историю, сценарный рост, порог аномалии, supplierId и category; ответ содержит items, skipped, review, suppliers, warnings и excludedSales.",
+                "value": "Параметры можно подключить к будущим настройкам закупщика или batch-планированию без изменения структуры расчётного ядра. Отдельные массивы причин позволяют строить контроль качества на следующем UI.",
+                "verification": "source",
+                "evidence": [
+                  "src/main/kotlin/kz/hackalem/backend/OrderPlanningController.kt:10-21",
+                  "src/main/kotlin/kz/hackalem/backend/OrderPlanningData.kt:122-130",
+                  "README.md:95-102"
+                ]
+              },
+              {
+                "aspect": "Безопасная публикация snapshot",
+                "implementation": "ExcelFileStore хранит DTO последнего успешно разобранного upload, а сервис берёт ссылку на snapshot один раз перед построением источников. Невалидные строки не становятся частью расчёта молча.",
+                "value": "Это снижает риск смешать данные двух загрузок и даёт основу для последующего перехода к versioned import или БД. Для прототипа in-memory подход соответствует ограничению времени.",
+                "verification": "source",
+                "evidence": [
+                  "src/main/kotlin/kz/hackalem/backend/OrderPlanningService.kt:20-28",
+                  "src/main/kotlin/kz/hackalem/backend/ExcelUploadController.kt:90-110",
+                  "src/test/kotlin/kz/hackalem/backend/OrderPlanningControllerTests.kt:38-40",
+                  "src/test/kotlin/kz/hackalem/backend/SourceWorkbooksTests.kt:79-91"
+                ]
+              },
+              {
+                "aspect": "Документированные следующие этапы",
+                "implementation": "Документация явно отделяет текущий расчёт от БД, серверного сохранения утверждений, складского разреза, ID клиента, backtest и автоматической отправки, а также предлагает дальнейшее развитие по итерациям.",
+                "value": "Команде или следующему разработчику понятна граница MVP и направление роста; архитектура не выдаёт локальный расчёт за production-интеграцию.",
+                "verification": "source",
+                "evidence": [
+                  "docs/order_calculation.md:328-344",
+                  "docs/order_calculation.md:346-350",
+                  "README.md:54-82"
+                ]
+              }
+            ],
+            "scoreReasoning": "15/20 отражают хороший технический фундамент для расширения: общий контракт, отдельные адаптеры и параметризованный движок уже отделены друг от друга. Снижение связано с подтверждёнными границами проекта, а не с отсутствием production-функций, не требуемых пятичасовым MVP: нет серверного жизненного цикла утверждённого заказа, nullable-путь frontend не полностью устойчив, а категории и клиентская аналитика ещё не являются политиками расчёта."
+          },
+          {
+            "name": "Презентация, демо и ответы на вопросы",
+            "score": 18,
+            "max": 20,
+            "awarded": "README и документация хорошо объясняют запуск, API, формулы, ограничения и пользовательский сценарий; сборка frontend и HTTP-отдача артефакта подтверждены.",
+            "deductions": "Снято 2 балла за несогласованный с backend путь утверждения и хрупкость frontend-контракта для nullable полей. Устная презентация, live URL и визуальное поведение в этом разборе не оценивались и сами по себе баллы не уменьшали.",
+            "evidence": [
+              "README.md:32-102",
+              "frontend/README.md:1-112",
+              "docs/order_calculation.md:1-58",
+              "captures/20261002T073851056577-frontend-build.stdout.log",
+              "captures/20261002T074948741974-frontend-http.stdout.log"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "F-APPROVAL-NOT-PERSISTED",
+                "reason": "Frontend README описывает approve API, но production-компонент фактически формирует XLSX локально, а документация backend прямо говорит, что endpoint утверждения не добавлен. Это снижает воспроизводимость заявленного полного workflow по одной инструкции."
+              },
+              {
+                "points": 1,
+                "findingId": "F-FRONTEND-NULLABLE-ASSUMPTION",
+                "reason": "Объяснение контракта допускает неизвестные name и supplier_article, но поиск в PlanPage не отражает эту nullable-семантику. Демонстрационный сценарий на неполной строке может завершиться ошибкой вместо понятного состояния."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "README позволяет воспроизвести основной сценарий",
+                "implementation": "Корневой README описывает Docker Compose, запуск без Docker, два поставщика, шесть типов отчётов, POST /api/excel, GET /api/orders и ключевые шаги интерфейса от загрузки до выгрузки.",
+                "value": "Проверяющий или участник может понять, какие файлы нужны, какие параметры обязательны и какой результат ожидать. Для репозиторного демо это существенно повышает ясность.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:32-82",
+                  "README.md:95-112",
+                  "frontend/README.md:7-61"
+                ]
+              },
+              {
+                "aspect": "Формулы и границы объяснены отдельно",
+                "implementation": "docs/order_calculation.md раскрывает окно полных месяцев, порог аномалии, сезонное восстановление, тренд, горизонт, источники остатка и список ограничений; формулы совпадают с ветвлением движка.",
+                "value": "Документ служит не рекламным описанием, а инструкцией по интерпретации результата. Это делает демо убедительнее и снижает риск неверно прочитать оценочную рекомендацию как гарантированный заказ.",
+                "verification": "source",
+                "evidence": [
+                  "docs/order_calculation.md:1-58",
+                  "docs/order_calculation.md:61-111",
+                  "docs/order_calculation.md:328-344"
+                ]
+              },
+              {
+                "aspect": "Есть описанные состояния интерфейса",
+                "implementation": "Frontend README перечисляет import, plan, карточку, ручную правку, пустое состояние, ошибку, slow mock и mock upload-error. В коде есть TableSkeleton, ErrorState, EmptyState, фильтры и экран результата загрузки.",
+                "value": "Даже без устной презентации репозиторий показывает, как демонстрировать нормальный и ошибочные сценарии. Это хороший материал для короткого показа жюри.",
+                "verification": "source",
+                "evidence": [
+                  "frontend/README.md:23-61",
+                  "frontend/README.md:64-112",
+                  "frontend/src/pages/ImportPage.tsx:200-320",
+                  "frontend/src/pages/PlanPage.tsx:81-90"
+                ]
+              },
+              {
+                "aspect": "Сборка и HTTP-отдача проверены",
+                "implementation": "В изолированном Node 20 контейнере выполнены npm ci, npm run build и npm run lint: сборка завершилась с exit code 0, lint дал 1 warning и 0 errors. Собранный index был отдан ограниченным HTTP-сервером и вернул 200 с ожидаемыми script/style ссылками.",
+                "value": "Это подтверждает воспроизводимость frontend-артефакта на уровне сборки и HTTP, не выдавая статическую проверку за визуальный тест. Визуальные детали оставлены пользователю по заданной политике.",
+                "verification": "observed",
+                "evidence": [
+                  "runtime-frontend-build",
+                  "runtime-frontend-start",
+                  "runtime-frontend-http",
+                  "captures/20261002T073851056577-frontend-build.stdout.log",
+                  "captures/20261002T074948741974-frontend-http.stdout.log"
+                ]
+              }
+            ],
+            "scoreReasoning": "18/20: README, техническая документация и описания mock-сценариев дают достаточно материала для понятного локального демо, а frontend build и HTTP-ответ реально проверены. Два балла удержаны не за отсутствие live-ссылки или визуального просмотра, а за подтверждённое расхождение вокруг approve API и nullable-контракта. Устных ответов и браузерной визуальной проверки не было по условиям разбора, поэтому это отражено в ограничениях, а не превращено в штраф."
+          }
+        ],
+        "total": 86
+      },
+      "case": null,
+      "judgeScore": 86,
+      "caseRequirements": [
+        {
+          "requirement": "Расчёт по истории продаж, текущим остаткам, товарам в пути, поставщикам и горизонту пополнения",
+          "status": "partial",
+          "explanation": "Для Systeme используется свободный остаток из снимка и партии в пути; для IEK используется остаток на начало последнего общего месяца, потому что актуального свободного остатка в предоставленной IEK-выгрузке нет. Горизонт задаётся leadDays + reviewDays, а результат группируется по поставщикам. Это честная оценка для входных данных, но не полное подтверждение текущего IEK-остатка.",
+          "evidence": [
+            "src/main/kotlin/kz/hackalem/backend/IekOrderSource.kt:31-40",
+            "src/main/kotlin/kz/hackalem/backend/IekOrderSource.kt:97-102",
+            "src/main/kotlin/kz/hackalem/backend/SystemeOrderSource.kt:53-70",
+            "src/main/kotlin/kz/hackalem/backend/OrderPlanningData.kt:103-110",
+            "docs/order_calculation.md:328-339"
+          ]
+        },
+        {
+          "requirement": "Учитывать сезонность и устойчивый рост",
+          "status": "met",
+          "explanation": "Положительные коэффициенты сезонности нормализуются, устойчивый тренд вычисляется только при шести последовательных месяцах и согласованных сравнительных признаках, а рост из источника и сценарный forecastGrowthPercent разделены. Тесты проверяют влияние сезонности, устойчивого роста и границы коэффициентов.",
+          "evidence": [
+            "src/main/kotlin/kz/hackalem/backend/DemandForecastEngine.kt:47-74",
+            "src/main/kotlin/kz/hackalem/backend/DemandForecastEngine.kt:182-209",
+            "src/test/kotlin/kz/hackalem/backend/DemandForecastEngineTests.kt:18-38",
+            "src/test/kotlin/kz/hackalem/backend/DemandForecastEngineTests.kt:260-269"
+          ]
+        },
+        {
+          "requirement": "Компенсировать потерянный спрос при stockout",
+          "status": "partial",
+          "explanation": "Нулевой месячный остаток используется как признак возможного stockout и спрос восстанавливается по референсным месяцам с сезонным коэффициентом. Пустой остаток не превращается в stockout. Однако точные дни отсутствия товара отсутствуют в кейсовых данных, поэтому метод остаётся оценкой и явно предупреждает об этом.",
+          "evidence": [
+            "src/main/kotlin/kz/hackalem/backend/DemandForecastEngine.kt:76-96",
+            "src/test/kotlin/kz/hackalem/backend/DemandForecastEngineTests.kt:42-56",
+            "docs/order_calculation.md:332-335"
+          ]
+        },
+        {
+          "requirement": "Убирать разовые крупные покупки, включая повторные покупки одного клиента",
+          "status": "partial",
+          "explanation": "Разовые покупки детектируются по полным расходным документам для каждого SKU: строки документа суммируются, документ сравнивается со средним остальных, а влияние показывается в excludedSales. Идентификатора клиента нет ни в предоставленных заголовках динамики, ни в PlanningSale, поэтому покупки одного клиента в разных документах объединить нельзя; это ограничение явно раскрыто, а не скрыто.",
+          "evidence": [
+            "src/main/kotlin/kz/hackalem/backend/SaleAnomalyDetector.kt:24-92",
+            "src/main/kotlin/kz/hackalem/backend/OrderPlanningData.kt:39-44",
+            "src/main/kotlin/kz/hackalem/backend/OrderPlanningService.kt:38-41",
+            "docs/order_calculation.md:332-334",
+            "case-data/IEK/Динамика продаж_2025-2026.xlsx (заголовки: дата, номер, документ, код, номенклатура, единица, склад, количество)"
+          ]
+        },
+        {
+          "requirement": "Выдавать количество с объяснением и группировкой по поставщикам",
+          "status": "met",
+          "explanation": "Ответ содержит supplier_id, supplier_name, order_qty, forecast, остаток, использованный путь, условия партии, urgency, warnings и текстовую формулу. Сервис возвращает supplier summaries, а frontend строит вкладки поставщиков, поиск, срочность и карточку с пошаговым объяснением.",
+          "evidence": [
+            "src/main/kotlin/kz/hackalem/backend/OrderPlanningService.kt:118-140",
+            "src/main/kotlin/kz/hackalem/backend/OrderPlanningData.kt:72-110",
+            "frontend/src/pages/PlanPage.tsx:93-136",
+            "frontend/src/components/ItemDrawer.tsx:80-103"
+          ]
+        },
+        {
+          "requirement": "Не отправлять заказ без ручного подтверждения",
+          "status": "met",
+          "explanation": "В backend нет автоматической отправки поставщику; frontend открывает диалог только по ручному действию и формирует файл после нажатия подтверждения. Серверного хранения самого подтверждения нет, но это отдельное расширение workflow и не означает автоматическую отправку.",
+          "evidence": [
+            "src/main/kotlin/kz/hackalem/backend/OrderPlanningService.kt:38-40",
+            "frontend/src/pages/PlanPage.tsx:64-70",
+            "frontend/src/components/ApproveDialog.tsx:23-60",
+            "frontend/src/exportCsv.ts:24-31"
+          ]
+        },
+        {
+          "requirement": "Обезличить данные клиентов",
+          "status": "unverified",
+          "explanation": "В кейсовых XLSX были проверены заголовки динамики без идентификатора клиента, а модель продаж такого поля не содержит. Проект не вводит клиентский идентификатор и предупреждает, что анализ идёт по документам. Нельзя утверждать, что полноценная обезличенная клиентская обработка реализована или протестирована.",
+          "evidence": [
+            "case-data/IEK/Динамика продаж_2025-2026.xlsx (проверенные заголовки)",
+            "case-data/Systeme electric/Динамика продаж_Syseme Electric_2025-2026.xlsx (проверенные заголовки)",
+            "src/main/kotlin/kz/hackalem/backend/OrderPlanningData.kt:39-44",
+            "src/main/kotlin/kz/hackalem/backend/SaleAnomalyDetector.kt:61-67"
+          ]
+        },
+        {
+          "requirement": "Проверить чувствительность к пути, сезонности, stockout и выбросу",
+          "status": "partial",
+          "explanation": "В исходном наборе unit/domain тестов есть отдельные проверки сезонности, stockout, in-transit subtraction, anomaly multiplier и исключения документов; код также сохраняет соответствующие факторы и предупреждения в ответе. Полный REST upload и расчёт на всех 12 реальных XLSX в этой сессии не был выполнен из-за недоступной сборки backend, поэтому end-to-end чувствительность на полном пакете не подтверждена наблюдаемым запуском.",
+          "evidence": [
+            "src/test/kotlin/kz/hackalem/backend/DemandForecastEngineTests.kt:18-220",
+            "src/test/kotlin/kz/hackalem/backend/OrderPlanningServiceTests.kt:1-250",
+            "src/test/kotlin/kz/hackalem/backend/SourceWorkbooksTests.kt:26-91",
+            "runtime-backend-build",
+            "runtime-backend-scenario"
+          ]
+        }
+      ],
+      "testData": {
+        "provided": [
+          "case-data/HackAlem AI_ Автоматизация формирования заказов поставщикам.docx.md",
+          "case-data/IEK/MOQ  ИЭК.xlsx",
+          "case-data/IEK/Динамика продаж_2025-2026.xlsx",
+          "case-data/IEK/Ежемесячные остатки продукции за последние 2 года  ИЭК.xlsx",
+          "case-data/IEK/Ежемесячные продажи в количественном выражении за последние 2 года.xlsx",
+          "case-data/IEK/Путь ИЭК 22.09.2026.xlsx",
+          "case-data/IEK/Сезонность ИЭК.xlsx",
+          "case-data/Systeme electric/MOQ SystemElectric.xlsx",
+          "case-data/Systeme electric/Динамика продаж_Syseme Electric_2025-2026.xlsx",
+          "case-data/Systeme electric/Ежемесячные остатки SystemElectric 2024-2026.xlsx",
+          "case-data/Systeme electric/Ежемесячные продажи в кол-м выражении SystemElectric 2024-2026.xlsx",
+          "case-data/Systeme electric/Сезонность SystemElectric 2024-2026.xlsx",
+          "case-data/Systeme electric/Товар в пути_SystemElectric на 22.09.2026.xlsx"
+        ],
+        "used": [
+          "case-data/IEK/MOQ  ИЭК.xlsx",
+          "case-data/IEK/Динамика продаж_2025-2026.xlsx",
+          "case-data/IEK/Ежемесячные остатки продукции за последние 2 года  ИЭК.xlsx",
+          "case-data/IEK/Ежемесячные продажи в количественном выражении за последние 2 года.xlsx",
+          "case-data/IEK/Путь ИЭК 22.09.2026.xlsx",
+          "case-data/IEK/Сезонность ИЭК.xlsx",
+          "case-data/Systeme electric/MOQ SystemElectric.xlsx",
+          "case-data/Systeme electric/Динамика продаж_Syseme Electric_2025-2026.xlsx",
+          "case-data/Systeme electric/Ежемесячные остатки SystemElectric 2024-2026.xlsx",
+          "case-data/Systeme electric/Ежемесячные продажи в кол-м выражении SystemElectric 2024-2026.xlsx",
+          "case-data/Systeme electric/Сезонность SystemElectric 2024-2026.xlsx",
+          "case-data/Systeme electric/Товар в пути_SystemElectric на 22.09.2026.xlsx"
+        ],
+        "checks": [
+          {
+            "input": "Все 12 XLSX из IEK и Systeme electric",
+            "method": "Открыты read-only для сверки листов, размеров и первых заголовков с ExcelReader/IekExcelParser/SystemeExcelParser; проверены также кешированные значения формул в примере IEK MOQ.",
+            "result": "Структуры соответствуют ожидаемым схемам: IEK имеет Лист7, Лист_1, Лист4 и Сезонность; Systeme имеет Лист_1, TDSheet и Лист1. Размеры листов включают большие динамики 171605 и 77314 строк, месячные таблицы и отдельные листы сезонности.",
+            "conclusion": "Входной пакет применим к заявленным парсерам по структуре. Полное чтение через backend не наблюдалось, потому что backend-сборка заблокирована окружением."
+          },
+          {
+            "input": "IEK и Systeme: листы динамики продаж",
+            "method": "Сопоставлены заголовки XLSX с полями parser: дата, номер, документ, код, номенклатура, единица, склад, количество.",
+            "result": "Обе динамики содержат эти восемь полей; в примерах встречаются отрицательные количества, что согласуется с сохранением исходного знака и логикой детектора расходных документов.",
+            "conclusion": "Статически подтверждена применимость документного детектора и отсутствие в этих входах отдельного поля клиента; требование объединять покупки одного клиента остаётся непроверяемым/невыполнимым на таком формате."
+          },
+          {
+            "input": "MOQ, месячные продажи/остатки, путь и сезонность обоих поставщиков",
+            "method": "Проверены листы и заголовки, включая месячные колонки 2024–2026, TDSheet Systeme и заголовки партий IEK; сопоставлены с source adapters.",
+            "result": "У IEK в пути заголовки содержат партии с датами поступления, у Systeme TDSheet содержит СЭ в пути, свободный остаток и категорию; Systeme MOQ содержит Кратность, IEK MOQ — Мин. разр. к отгр.",
+            "conclusion": "Разделение IEK minimum shipment и Systeme order multiple подтверждается форматом реальных файлов и кодом адаптеров. Для Systeme точная дата партий из колонок не становится expectedBy, поэтому код использует явное предупреждение."
+          },
+          {
+            "input": "Репозиторные unit/domain и source-workbook тесты",
+            "method": "Проверены наборы тестов и assertions без заявления о прохождении: 84 аннотированных @Test в 11 Kotlin-файлах; SourceWorkbooksTests отдельно описывает upload 12 файлов, ожидаемые counts и GET /api/orders.",
+            "result": "Тесты содержат числовые проверки сезонности, stockout, outlier, custom multiplier, горизонта, in-transit и HTTP-ответа. SourceWorkbooksTests требует XLSX в task spec, которых в checkout нет; полный запуск backend в этой сессии также заблокирован JDK/base-image окружением.",
+            "conclusion": "Тестовая стратегия и ожидаемые проверки сильные, но фактический зелёный backend run на предоставленных XLSX не утверждается."
+          }
+        ],
+        "limitations": [
+          "Полный upload→orders на 12 реальных XLSX не был исполнен: backend требует Java 21, а изолированная сборка базового образа не завершилась в окружении проверки.",
+          "Визуальная проверка браузера запрещена заданной политикой; проверены только сборка, отдача статического index и HTTP-ответ.",
+          "Клиентских ID и точных периодов отсутствия товара нет в предоставленном входном формате, поэтому соответствующие требования оцениваются как ограниченные или непроверенные.",
+          "Структурная проверка XLSX не заменяет фактический backend parser run."
+        ]
+      },
+      "runtime": {
+        "status": "partial",
+        "build": "Frontend production build и lint прошли. Backend build не завершён: проект явно требует Java 21, а изолированная Docker-сборка не получила базовый eclipse-temurin образ в доступном окружении.",
+        "start": "Собранный frontend-артефакт был запущен в отдельном ограниченном контейнере и отдал index по HTTP с кодом 200. Spring backend не стартовал, поэтому полный Compose не объявляется working.",
+        "scenario": "Основной backend сценарий upload 6/12 XLSX → GET /api/orders → ручная выгрузка не воспроизведён end-to-end. Его ветвление и ожидаемые результаты подробно подтверждены исходниками и тестами; frontend export path проверен только статически.",
+        "environment": "Изолированный Node 20 контейнер для frontend build; отдельный ограниченный Python HTTP-контейнер для проверки собранного статического артефакта. Backend проект настроен на JDK 21 и Spring Boot 4.1.1.",
+        "summary": "Frontend deployable на уровне сборки и HTTP-отдачи. Backend deployability и полный пользовательский результат в этой сессии ограничены окружением, а не объявлены ошибкой проекта. Визуальный браузерный тест не выполнялся.",
+        "checks": [
+          {
+            "command": "npm ci --no-audit --no-fund && npm run build && npm run lint",
+            "result": "exitCode=0; Vite собрал production bundle (index.html, CSS и JS assets); oxlint завершился с 1 warning и 0 errors.",
+            "id": "runtime-frontend-build",
+            "stage": "build",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Frontend должен типизироваться, собраться и пройти lint без ошибок."
+          },
+          {
+            "command": "python -m http.server 8000 --bind 0.0.0.0",
+            "result": "Процесс статической отдачи собранного frontend dist стартовал в именованном ограниченном контейнере и завершён после проверки.",
+            "id": "runtime-frontend-start",
+            "stage": "start",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Собранный frontend-артефакт должен быть доступен для HTTP-проверки."
+          },
+          {
+            "command": "GET /",
+            "result": "HTTP/1.0 200 OK; Content-Type text/html; index содержит title «Закупки ekt.kz» и ссылки на собранные script/style assets.",
+            "id": "runtime-frontend-http",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Корневой путь собранного frontend должен вернуть HTML-точку входа."
+          },
+          {
+            "command": "./gradlew clean bootJar -x test",
+            "result": "blocked/not completed: проект требует Java 21 по build.gradle.kts и Dockerfile; изолированная Docker-сборка не завершила получение базового eclipse-temurin:21-jdk образа. Это ограничение среды проверки.",
+            "id": "runtime-backend-build",
+            "stage": "build",
+            "status": "blocked",
+            "cause": "review_environment",
+            "expected": "Backend должен собрать Spring Boot jar под JDK 21."
+          },
+          {
+            "command": "java -jar app.jar",
+            "result": "not_run: без успешно собранного backend jar и JDK 21 запуск не выполнялся.",
+            "id": "runtime-backend-start",
+            "stage": "start",
+            "status": "blocked",
+            "cause": "review_environment",
+            "expected": "Spring backend должен стартовать и предоставить POST /api/excel и GET /api/orders."
+          },
+          {
+            "command": "POST /api/excel; GET /api/orders?leadDays=60&reviewDays=30&historyMonths=12",
+            "result": "not_run end-to-end: backend не был запущен. SourceWorkbooksTests описывает ожидаемый upload всех 12 файлов, непустой items, двух suppliers, horizonDays=90 и excludedSales, но этот regression test в сессии не выполнялся.",
+            "id": "runtime-backend-scenario",
+            "stage": "scenario",
+            "status": "blocked",
+            "cause": "review_environment",
+            "expected": "Загрузка предоставленных XLSX должна привести к объяснимым рекомендациям и сводкам по двум поставщикам."
+          }
+        ],
+        "limitations": [
+          "Backend build/start/scenario ограничены отсутствием доступного завершённого JDK 21 container build; это не использовано в deductions.",
+          "HTTP-проверка frontend подтверждает отдачу собранного артефакта, но не заменяет запуск nginx+Spring Compose.",
+          "UI не открывался и визуально не проверялся по прямому запрету на browser/CUA automation."
+        ]
+      },
+      "liveDemo": {
+        "status": "none",
+        "url": null,
+        "notes": "Публичная live-ссылка в проверяемом репозитории не подтверждена. Это не использовано как причина снижения баллов; локально проверены сборка frontend и HTTP-отдача собранного артефакта."
+      },
+      "fiveHourContext": "Для пятичасового MVP объём выглядит реалистично: команда успела сделать два адаптера Excel, streaming reader, расчётный движок с несколькими защитными ветками, React-сценарий импорта/плана/правки/экспорта, документацию и предметные тесты. Отсутствие БД, авторизации, backtest, автоматической отправки и мультискладского production workflow само по себе не штрафуется. С учётом времени особенно хорошо сделаны прозрачность формулы и сохранение warnings/skipped/review; server-side approval, category policy и интеграционная проверка на полном пакете остаются следующими этапами.",
+      "strengths": [
+        "Прозрачный прогнозный конвейер: сезонность, устойчивый тренд, сценарный рост, stockout и документные выбросы видны в структуре ответа и объяснении.",
+        "Парсеры строго проверяют известные схемы XLSX, сохраняют координаты проблем и не подменяют неизвестные значения нулями.",
+        "Адаптеры IEK и Systeme Electric приводят разные отчёты к общему typed PlanningProduct, что облегчает расширение.",
+        "Тесты предметно покрывают чувствительность к сезонности, пути, stockout, выбросу, порогу аномалии и горизонту.",
+        "Frontend production build и HTTP-отдача собранного артефакта наблюдаемо проходят; README и docs/order_calculation.md достаточно подробно описывают запуск и допущения."
+      ],
+      "gaps": [
+        "Подтверждённый разрыв workflow утверждения: UI экспортирует файл локально, но backend не сохраняет утверждение и не предоставляет заявленный approve endpoint.",
+        "Категория товара пока является только фильтром, а не самостоятельным правилом уровня сервиса или целевого запаса.",
+        "Frontend-поиск без null-проверки не полностью соответствует nullable-полям backend и может упасть на строке с неизвестным названием или артикулом."
+      ],
+      "futureAdvice": [
+        {
+          "principle": "Согласовывать контракт подтверждения от UI до хранилища",
+          "why": "F-APPROVAL-NOT-PERSISTED подтверждает, что компонент называет действие утверждением, но фактически только скачивает XLSX; из-за этого нет server-side аудита и повторяемого статуса заказа.",
+          "how": "В следующем хакатоне зафиксировать один минимальный контракт approve: supplier_id, строки, правки и причину; добавить POST endpoint, хранение in-memory order_id и интеграционный тест, который проверяет, что повторное чтение возвращает утверждённые строки. Локальную выгрузку оставить последним шагом после успешного ответа.",
+          "findingIds": [
+            "F-APPROVAL-NOT-PERSISTED"
+          ],
+          "successCheck": "После ручного подтверждения API возвращает order_id, backend сохраняет состав и причины правок, а frontend скачивает файл только после успешного ответа; тест проверяет весь путь.",
+          "timeboxMinutes": 45
+        },
+        {
+          "principle": "Включать категорию в явную policy table, а не только в фильтр",
+          "why": "F-CATEGORY-RULES показывает, что category сейчас лишь ограничивает выборку, поэтому товары разных классов получают одинаковую политику покрытия.",
+          "how": "Для нового кейса сначала задать маленькую таблицу category → service level/coverage multiplier и передавать выбранное правило в объяснение; оставить нейтральное default только для неизвестной категории и покрыть два контрастных SKU числовым тестом.",
+          "findingIds": [
+            "F-CATEGORY-RULES"
+          ],
+          "successCheck": "Два товара с одинаковой историей и остатком, но разными категориями получают разные документированные цели заказа, а API объясняет применённую policy.",
+          "timeboxMinutes": 35
+        },
+        {
+          "principle": "Типизированный nullable-контракт должен быть безопасен на границе UI",
+          "why": "F-FRONTEND-NULLABLE-ASSUMPTION связывает nullable DTO backend с прямыми вызовами toLowerCase в PlanPage; неполная, но допустимая строка может сделать поиск недоступным.",
+          "how": "В другом проекте нормализовать отображаемые поля в одном mapper: name ?? 'Без названия', supplier_article ?? '—', erp_code как обязательный ключ; отдельно протестировать поиск по SKU при null name/article.",
+          "findingIds": [
+            "F-FRONTEND-NULLABLE-ASSUMPTION"
+          ],
+          "successCheck": "Строка с null name и supplier_article отображается с понятными заменами, поиск по коду работает, а TypeScript-контракт и тест mapper не допускают аварийного вызова метода строки.",
+          "timeboxMinutes": 20
+        }
+      ],
+      "uncertainties": [
+        "Полный backend build, start и upload 12 реальных XLSX не наблюдались из-за ограничения окружения JDK 21/base image; source tests и код дают статическую основу, но не заменяют этот запуск.",
+        "Визуальное качество, адаптивность и интерактивность frontend не проверялись браузером по заданной политике; HTTP 200 подтверждает только статическую отдачу.",
+        "Фактическая точность прогноза и качество порогов на бизнес-истории не измерялись backtest-ом; репозиторные тесты проверяют поведение на синтетических сценариях.",
+        "Кейс не содержит идентификатора клиента и точных дней stockout, поэтому соответствующие части оцениваются по честности обработки ограничений, а не по недоступной метрике."
+      ],
+      "reviewPolicyVersion": 2,
+      "assessmentStatus": "ready",
+      "findings": [
+        {
+          "id": "S-TRANSPARENT-FORECAST",
+          "kind": "strength",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Основной прогнозный движок явно разделяет историю, сезонность, устойчивый тренд, рост источника, сценарный рост, возможный stockout и исключённые документы.",
+          "expected": "Рекомендация должна быть воспроизводимой и объяснимой по исходным факторам.",
+          "actual": "DemandForecast содержит отдельные факторы и warnings; OrderPlanningService вставляет их в explanation и ответ.",
+          "evidence": [
+            "src/main/kotlin/kz/hackalem/backend/DemandForecastEngine.kt:47-126",
+            "src/main/kotlin/kz/hackalem/backend/OrderPlanningService.kt:118-140",
+            "src/main/kotlin/kz/hackalem/backend/OrderPlanningData.kt:58-70"
+          ],
+          "checkIds": [
+            "runtime-backend-scenario"
+          ]
+        },
+        {
+          "id": "S-ROBUST-EXCEL-INGESTION",
+          "kind": "strength",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "XLSX читается streaming-парсером с сохранением формул, ошибок, пустых значений и координат проблем, а поставщики имеют отдельные адаптеры.",
+          "expected": "Входные отчёты должны валидироваться по структуре и не терять сомнительные данные молча.",
+          "actual": "ExcelReader и оба parser проверяют листы/заголовки; проблемы записываются в ExcelIssue, конфликтные товары блокируются отдельно.",
+          "evidence": [
+            "src/main/kotlin/kz/hackalem/backend/ExcelReader.kt:152-211",
+            "src/main/kotlin/kz/hackalem/backend/ExcelReader.kt:241-291",
+            "src/main/kotlin/kz/hackalem/backend/IekExcelParser.kt:10-63",
+            "src/main/kotlin/kz/hackalem/backend/SystemeExcelParser.kt:8-55"
+          ],
+          "checkIds": [
+            "runtime-backend-scenario"
+          ]
+        },
+        {
+          "id": "S-TEST-MATRIX",
+          "kind": "strength",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Репозиторные тесты покрывают основные формульные риски и HTTP-валидацию, включая sensitivity к stockout, сезонности, пути и выбросу.",
+          "expected": "Ключевые требования кейса должны иметь проверяемые входы и числовые ожидания.",
+          "actual": "В 11 Kotlin test-файлах обнаружены 84 @Test; отдельные assertions проверяют конкретные значения forecast, adjustment, excludedSales, horizon и API statuses.",
+          "evidence": [
+            "src/test/kotlin/kz/hackalem/backend/DemandForecastEngineTests.kt:18-302",
+            "src/test/kotlin/kz/hackalem/backend/SaleAnomalyDetectorTests.kt:18-180",
+            "src/test/kotlin/kz/hackalem/backend/OrderPlanningControllerTests.kt:23-98"
+          ],
+          "checkIds": [
+            "runtime-backend-scenario"
+          ]
+        },
+        {
+          "id": "S-FRONTEND-BUILD",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Frontend production build and static HTTP artifact are reproducible at проверенном уровне.",
+          "expected": "npm build/lint должны завершиться без ошибок, а собранная точка входа должна отдаваться по HTTP.",
+          "actual": "npm ci, npm run build и npm run lint завершились с exitCode=0; lint сообщил один warning и ноль errors; GET / вернул 200 с index.html.",
+          "evidence": [
+            "captures/20261002T073851056577-frontend-build.stdout.log",
+            "captures/20261002T074948741974-frontend-http.stdout.log"
+          ],
+          "checkIds": [
+            "runtime-frontend-build",
+            "runtime-frontend-start",
+            "runtime-frontend-http"
+          ]
+        },
+        {
+          "id": "F-CATEGORY-RULES",
+          "kind": "defect",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Категория товара используется для отбора, но не для изменения цели запаса, покрытия или уровня сервиса.",
+          "expected": "Требование учитывать категории должно отражаться в логике расчёта, а не только в фильтре API.",
+          "actual": "OrderPlanningService фильтрует products по exact category; дальше forecast и shortage рассчитываются одинаково для оставшихся категорий. Документация прямо называет это ограничением.",
+          "evidence": [
+            "src/main/kotlin/kz/hackalem/backend/OrderPlanningService.kt:43-46",
+            "docs/order_calculation.md:332-337"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "F-APPROVAL-NOT-PERSISTED",
+          "kind": "defect",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Ручное утверждение в production frontend не проходит через backend и не сохраняет статус заказа.",
+          "expected": "После подтверждения должен существовать согласованный и проверяемый результат утверждения; как минимум UI и backend contract должны совпадать.",
+          "actual": "ApproveDialog вызывает только downloadXlsx; api.approve объявлен, но не используется, а документация backend указывает, что /api/orders/approve этим проектом не добавлен.",
+          "evidence": [
+            "frontend/src/components/ApproveDialog.tsx:23-35",
+            "frontend/src/api/client.ts:61-63",
+            "docs/order_calculation.md:326",
+            "docs/order_calculation.md:342"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "F-FRONTEND-NULLABLE-ASSUMPTION",
+          "kind": "defect",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "PlanPage вызывает методы строковых полей без защиты, хотя backend OrderRecommendation допускает null для name и supplierArticle.",
+          "expected": "Неизвестные текстовые поля должны отображаться безопасно, а поиск по обязательному коду должен продолжать работать.",
+          "actual": "Поиск вызывает i.name.toLowerCase() и i.supplier_article.toLowerCase(); при null строка приводит к исключению во время рендера фильтра.",
+          "evidence": [
+            "src/main/kotlin/kz/hackalem/backend/OrderPlanningData.kt:72-80",
+            "frontend/src/pages/PlanPage.tsx:42-49",
+            "frontend/src/api/types.ts:1-10"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "L-CLIENT-ID-ABSENT",
+          "kind": "limitation",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Решение не может объединять крупные покупки одного клиента в разные документы.",
+          "expected": "При наличии обезличенного клиентского ID выброс должен проверяться также на уровне клиента.",
+          "actual": "PlanningSale содержит только дату, номер документа, описание и количество; детектор сравнивает документы и добавляет предупреждение об отсутствии ID клиента.",
+          "evidence": [
+            "src/main/kotlin/kz/hackalem/backend/OrderPlanningData.kt:39-44",
+            "src/main/kotlin/kz/hackalem/backend/SaleAnomalyDetector.kt:61-67",
+            "docs/order_calculation.md:332"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "L-IEK-STOCK-HISTORICAL",
+          "kind": "limitation",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Для IEK заказ опирается на остаток на начало последнего общего месяца, а не на текущий свободный остаток.",
+          "expected": "Для точного текущего заказа нужен актуальный свободный остаток на дату расчёта.",
+          "actual": "IekOrderSource сохраняет stockBasis=MONTH_OPENING и stockMonth, добавляя предупреждение; документация объясняет, что текущий IEK free stock отсутствует во входных файлах.",
+          "evidence": [
+            "src/main/kotlin/kz/hackalem/backend/IekOrderSource.kt:31-39",
+            "src/main/kotlin/kz/hackalem/backend/IekOrderSource.kt:97-102",
+            "docs/order_calculation.md:334-336"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "L-SYSTEME-TRANSIT-DATE",
+          "kind": "limitation",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "В Systeme партии пути не получают полную expectedBy дату и при расчёте считаются доступными в горизонте с предупреждением.",
+          "expected": "Партия должна уменьшать заказ только если её подтверждённое поступление попадает в горизонт.",
+          "actual": "SystemeOrderSource сохраняет reference/dateLabel, но expectedBy=null; сервис явно сообщает, что срок поступления не подтверждён полной датой.",
+          "evidence": [
+            "src/main/kotlin/kz/hackalem/backend/SystemeOrderSource.kt:64-70",
+            "src/main/kotlin/kz/hackalem/backend/OrderPlanningService.kt:77-89"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "L-BACKEND-RUNTIME-ENV",
+          "kind": "limitation",
+          "verification": "observed",
+          "responsibility": "review_environment",
+          "claim": "Полный backend runtime не был получен в текущей проверке из-за недоступного завершённого JDK 21 container build.",
+          "expected": "Можно собрать jar и запустить Spring Boot для upload и orders checks.",
+          "actual": "Frontend прошёл build/start/HTTP; backend build был заблокирован review environment. Проектные ограничения не выводятся из этого факта.",
+          "evidence": [
+            "runtime-backend-build",
+            "runtime-backend-start",
+            "build.gradle.kts:11-15",
+            "Dockerfile:4-19"
+          ],
+          "checkIds": [
+            "runtime-backend-build",
+            "runtime-backend-start",
+            "runtime-backend-scenario"
+          ]
+        }
+      ],
+      "gapFindingIds": [
+        "F-APPROVAL-NOT-PERSISTED",
+        "F-CATEGORY-RULES",
+        "F-FRONTEND-NULLABLE-ASSUMPTION"
+      ]
+    }
+  ],
+  "score": 86.0,
+  "status": "complete",
+  "expectedJudges": 1
+}

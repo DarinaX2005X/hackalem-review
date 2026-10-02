@@ -1,0 +1,50 @@
+ФОРМАТ ВОЗВРАЩАЕМОГО АРХИВА — hackalem-external-reviews-v1
+
+review-results.zip
+  manifest.json
+  SUMMARY.txt
+  reports/hack-XXXXXXXX-team.json
+  decisions/hack-YYYYYYYY-team.json
+  evidence/hack-XXXXXXXX-team/snapshot.json
+  evidence/hack-XXXXXXXX-team/files.txt
+  evidence/hack-XXXXXXXX-team/checks.jsonl
+  evidence/hack-XXXXXXXX-team/captures/*.log
+
+В JSON не допускаются NaN, Infinity, комментарии или Markdown-ограждения.
+Точный формат отчёта: schemas/report.schema.json. Не добавляй произвольные поля в отчёт; служебные сведения храни в evidence/ и manifest.json.
+
+Основные поля отчёта:
+methodVersion: 4
+reviewPolicyVersion: 2
+repoId: точный ID репозитория из inventory/repos.json
+caseId: номер кейса из того же списка, не классифицируй заново
+model: фактическая внешняя модель или Model not disclosed
+snapshot: 40-символьный Git SHA, разрешённый манифестом веток
+assessmentStatus: ready для готовой обоснованной оценки
+overallSummary: содержательное резюме по-русски
+global: критерии общих весов 25/20/15/20/20 и total
+case: критерии кейса из inventory/rubrics.json либо null, если отдельной шкалы нет
+judgeScore: (global.total + case.total) / 2; если case=null, то global.total
+findings: факты с ID, доказательствами, ответственностью и связями с проверками
+caseRequirements: все существенные требования с met/partial/missing/unverified
+testData: предоставленные данные, что использовано, что реально проверено
+runtime: статус, сборка, старт, основной сценарий, checks и ограничения
+liveDemo: статус, URL либо null, пояснение; наличие URL не доказывает работоспособность
+fiveHourContext, strengths, gaps, gapFindingIds, futureAdvice, uncertainties
+
+Каждый критерий содержит name, max, score, awarded, awardedDetails, scoreReasoning, deductions, deductionItems и evidence — сверяй обязательные поля со схемой. Не ограничивай объяснения общими фразами. В deductionItems перечисли points, findingId и reason; сумма снятий = max-score. Основание штрафа — подтверждённый дефект проекта, не отсутствие нашей проверки.
+
+runtime.status:
+working — основной сценарий реально воспроизведён;
+partial — приложение стартовало, основной сценарий проверен частично;
+failed — подтверждённая ошибка проекта препятствует работе;
+blocked — препятствие среды проверки.
+runtime.checks.status: pass/fail/blocked/not_run. pass/fail требуют записи реальной команды в checks.jsonl с тем же ID. Не назначай pass команде, завершившейся ошибкой.
+
+Если невозможно обоснованно оценить проект: results/decisions/<repoId>.json со status=blocked, reasonCode=review_environment/timing_unresolved/insufficient_evidence, подробной причиной и ссылками на доказательства. Поля score у blocked НЕТ. Не создавай одновременно report и decision одного ID.
+
+Для подтверждённой дисквалификации: decision со status=disqualified, score=0 и reasonCode=late_submission/no_commits. Для late_submission обязательны первый SHA решения и firstSolutionCommitAt; для no_commits — allBranchesChecked=true и windowCommitCount=0. В evidence укажи результат проверки дерева и истории, а не только своё утверждение. Схема: schemas/decision.schema.json.
+
+Готовый manifest создаётся tools/kit.py finalize, не рисуй счётчики вручную. complete=true только если все ожидаемые ID имеют валидный ready-отчёт либо подтверждённую дисквалификацию. blocked/pending/invalid оставляют complete=false. Валидация не гарантирует корректность экспертного суждения: журналы и исходники должны позволять его проверить.
+
+Ссылки на код: относительный путь:строка, при необходимости GitHub URL с точным SHA. Ссылки на логи: evidence/<repoId>/captures/<имя>.log относительно results/. Никаких паролей, токенов, пользовательских домашних путей или файлов авторизации.

@@ -1,0 +1,1081 @@
+{
+  "methodVersion": 4,
+  "repoId": "hack-ef3da0e3-aib2bsaassixseven",
+  "repoUrl": "https://github.com/BAITC-Hacks/hack-ef3da0e3-aib2bsaassixseven",
+  "caseId": 8,
+  "snapshot": "d3b26f3187b9d39f094d4f3dd473fc81fd1ceb5b",
+  "judges": [
+    {
+      "methodVersion": 4,
+      "repoId": "hack-ef3da0e3-aib2bsaassixseven",
+      "caseId": 8,
+      "model": "GPT-5.6 Luna",
+      "snapshot": "d3b26f3187b9d39f094d4f3dd473fc81fd1ceb5b",
+      "overallSummary": "Tirke — сильный, хорошо спроектированный MVP контура автопротоколирования: загрузка и локальная валидация аудио/видео, защищённый backend-to-backend контракт с NVIDIA, durable-артефакты, evidence-ссылки, человеческая проверка, approval и Unicode PDF реализованы последовательно. Это подтверждено исходниками, 211 успешными backend-тестами из 212 в Linux-окружении с ffmpeg, фронтендными lint/typecheck/build и отдельным HTTP smoke-check. Главные ограничения не скрыты в README: реальный STT/диаризация находятся во внешнем worker, а демо-режим подставляет синтетический результат и не распознаёт выбранный файл. Поэтому качество распознавания именно двух предоставленных записей и полный путь queued → processing → review_required → approved на реальном GPU не доказаны. Установленный дефект в собственном adapter не связывает extracted responsible с конкретным speaker_id, а тестовый набор содержит устаревшее имя лимита; эти проблемы удерживают оценку от максимума, но не отменяют значительный объём корректной инфраструктуры MVP.",
+      "global": {
+        "criteria": [
+          {
+            "name": "Ценность решения",
+            "score": 22,
+            "max": 25,
+            "awarded": "Решение адресует понятную и дорогую для секретаря проблему: превращает запись в проверяемый черновик протокола, а не выдаёт непрозрачный текст.",
+            "deductions": "3 балла сняты за то, что обязательная связь поручения с конкретным участником не доведена adapter-ом до speaker_id; это ослабляет контроль исполнительской дисциплины именно в ключевом выходе продукта.",
+            "evidence": [
+              "README.md:3-29",
+              "docs/product/PRD.md:3-13",
+              "backend/app/services/pipeline_result_adapter.py:210-211",
+              "backend/app/services/pipeline_result_adapter.py:273-285"
+            ],
+            "deductionItems": [
+              {
+                "points": 3,
+                "findingId": "D1",
+                "reason": "Для пользовательской ценности важно не только извлечь текст поручения, но и надёжно показать, кому оно принадлежит. В canonical bundle adapter всегда оставляет assignee_speaker_id=null и переносит responsible в assignee_name, поэтому diarization не даёт подтверждённой привязки поручения к голосу."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Снижение ручной работы секретаря",
+                "implementation": "README описывает единый путь от записи к черновику, где сохраняются транскрипт, summary, поручения, цитаты и таймкоды, после чего человек утверждает PDF. В PRD тот же путь сформулирован как P0-сценарий.",
+                "value": "Это превращает проблему из общего обещания AI в конкретный рабочий документ: секретарь получает места для проверки и может передать утверждённую версию руководителю.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:3-16",
+                  "docs/product/PRD.md:9-13",
+                  "backend/app/services/pdf_export.py:188-221"
+                ]
+              },
+              {
+                "aspect": "Проверяемость поручений",
+                "implementation": "Insights требуют evidence с segment_id и интервалом внутри сегмента; validate_against отклоняет ссылки на неизвестный сегмент или выход за его границы. PDF выводит ответственного, срок, цитату и временной интервал.",
+                "value": "Пользователь может сопоставить формулировку поручения с исходной репликой, что снижает риск потери сроков и выдуманных ответственных.",
+                "verification": "source",
+                "evidence": [
+                  "backend/app/models/insights.py:106-124",
+                  "backend/app/services/pdf_export.py:71-90",
+                  "backend/app/services/pdf_export.py:204-221"
+                ]
+              },
+              {
+                "aspect": "Приватность как часть ценности",
+                "implementation": "Репозиторий хранит результаты локально, передаёт на NVIDIA только backend, не кладёт GPU token во frontend и прямо запрещает внешние AI API для содержимого встреч.",
+                "value": "Для чувствительных корпоративных совещаний закрытый контур — практическое преимущество, а не только архитектурная деталь.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:19-29",
+                  "README.md:110-116",
+                  "docs/product/PRD.md:115-117"
+                ]
+              }
+            ],
+            "scoreReasoning": "Высокий балл заслужен ясной пользовательской проблемой, human-in-the-loop и проверяемыми основаниями каждого вывода. Снижение ограничено D1: без speaker_id ответственное лицо остаётся строкой имени, поэтому самая важная управленческая связь может быть ошибочно сопоставлена или потребовать ручного уточнения. Это существенный, но локальный пробел в уже работающем контуре review/export."
+          },
+          {
+            "name": "Результат и качество решения",
+            "score": 16,
+            "max": 20,
+            "awarded": "Сценарий продукта собран целостно на уровне backend-контрактов, review lifecycle и PDF; фактический AI-результат на предоставленных аудиозаписях не воспроизведён.",
+            "deductions": "4 балла сняты за подтверждённые проблемы качества проверочного контура: frontend unit suite падает в 4 тестах, backend suite — в одном тесте из-за устаревшего имени константы. Само отсутствие внешнего GPU не штрафовалось.",
+            "evidence": [
+              "backend/app/services/reviews.py:218-245",
+              "backend/app/services/pdf_export.py:92-105",
+              "frontend/src/features/meetings/api/client.test.ts:175-188",
+              "frontend/src/features/meetings/ui/new-meeting-modal.test.tsx:32-45",
+              "backend/tests/test_meetings_api.py:559-585",
+              "backend/app/services/uploads.py:27-30"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "D2",
+                "reason": "Frontend npm test завершился с 4 failed tests из 27: PDF blob-тест и три теста NewMeetingModal. Это снижает подтверждённость пользовательского результата, даже если часть падений вызвана неполным test harness, а не runtime-компонентом."
+              },
+              {
+                "points": 2,
+                "findingId": "D3",
+                "reason": "Backend pytest в Linux с ffmpeg завершился 211 passed, 1 failed; тест пытается monkeypatch-ить отсутствующую uploads.MAX_AUDIO_BYTES, тогда как код использует MAX_UPLOAD_BYTES. Ошибка мешает заявленному полному quality gate."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Lifecycle review → approval",
+                "implementation": "approve_review требует текущую ревизию, запрещает approval при unreviewed speaker identities и повторно валидирует insights против transcript; update_review повышает revision и возвращает approved-встречу в review_required.",
+                "value": "Состояние документа не маскирует незавершённую проверку и защищает от утверждения устаревшей версии.",
+                "verification": "source",
+                "evidence": [
+                  "backend/app/services/reviews.py:165-216",
+                  "backend/app/services/reviews.py:224-245",
+                  "backend/tests/test_review_routes.py:182-317"
+                ]
+              },
+              {
+                "aspect": "Экспорт как пользовательский результат",
+                "implementation": "render_pdf проверяет approved и совпадение meeting/revision, валидирует evidence, регистрирует NotoSans и выводит summary, action items, сроки, ответственных, цитаты и transcript.",
+                "value": "Команда реализовала не только JSON API, но и конечный артефакт, который можно передать дальше по деловому процессу.",
+                "verification": "source",
+                "evidence": [
+                  "backend/app/services/pdf_export.py:27-45",
+                  "backend/app/services/pdf_export.py:92-105",
+                  "backend/app/services/pdf_export.py:156-239",
+                  "backend/tests/test_pdf_export.py:1-220"
+                ]
+              },
+              {
+                "aspect": "Реальная проверка transport и upload",
+                "implementation": "В Linux smoke-check health вернул 200, WAV upload вернул 202 queued с owner-scoped meeting JSON. Backend suite с установленным ffmpeg прошёл 211 тестов; frontend build также завершился успешно.",
+                "value": "Базовый HTTP и persistence-контур подтверждены исполнением, а не только README.",
+                "verification": "observed",
+                "evidence": [
+                  "check-backend-http",
+                  "check-backend-tests-linux",
+                  "check-frontend-build"
+                ]
+              }
+            ],
+            "scoreReasoning": "Архитектурная целостность и PDF/review результат сильные. Однако пользовательский quality gate не зелёный: 4 frontend-теста и 1 backend-тест не проходят. Кроме того, поставленный кейсом AI-результат остаётся зависимым от внешнего worker и не был показан на реальных MP3, поэтому максимальная оценка качества была бы необоснованной."
+          },
+          {
+            "name": "Инновационность",
+            "score": 12,
+            "max": 15,
+            "awarded": "Нестандартность решения — в сочетании self-hosted inference, доказательных ссылок и обязательной человеческой верификации, а не в попытке скрыть ML-неопределённость.",
+            "deductions": "3 балла сняты за D1: оригинальная evidence-модель хорошо фиксирует сегмент, но адаптер сознательно не делает последний шаг от extracted имени к diarized participant.",
+            "evidence": [
+              "docs/technical/ARCHITECTURE.md:32-36",
+              "backend/app/services/pipeline_result_adapter.py:210-211",
+              "backend/app/services/gpu_client.py:98-128",
+              "README.md:104-106"
+            ],
+            "deductionItems": [
+              {
+                "points": 3,
+                "findingId": "D1",
+                "reason": "Инновационный контур должен давать преимущество именно в надёжном контроле поручений. Явный отказ adapter-а угадывать identity безопасен, но в текущем виде оставляет core linkage недореализованным."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Закрытый inference boundary",
+                "implementation": "GPUClient принимает только backend service token, отправляет audio и context на internal/v1/jobs и не раскрывает этот token браузеру; README требует HTTPS или защищённый tunnel.",
+                "value": "Это разумно отличается от типичного хакатонного вызова внешнего облачного STT и соответствует ограничению кейса о закрытом контуре.",
+                "verification": "source",
+                "evidence": [
+                  "backend/app/services/gpu_client.py:69-128",
+                  "README.md:19-20",
+                  "README.md:58-64"
+                ]
+              },
+              {
+                "aspect": "Доказательный AI output",
+                "implementation": "ResultBundle имеет schema/hash/model_versions, а summary и tasks ссылаются на исходные utterances и нормализуются в стабильные UUID-сегменты.",
+                "value": "Модельный ответ превращён в аудируемый объект, который можно проверять и отклонять, вместо свободного текста без provenance.",
+                "verification": "source",
+                "evidence": [
+                  "backend/app/services/pipeline_result_adapter.py:198-316",
+                  "backend/app/models/insights.py:126-168",
+                  "docs/technical/API_CONTRACT.md:291-300"
+                ]
+              },
+              {
+                "aspect": "Честный демо-контур",
+                "implementation": "Frontend имеет отдельный in-memory demo adapter со стадиями Uploading, Transcribing и Extracting assignments, а README прямо говорит, что выбранный файл не распознаётся и данные синтетические.",
+                "value": "Такой разделённый demo/live boundary позволяет показать продуктовую идею без подмены fake результата настоящим ML в production API.",
+                "verification": "source",
+                "evidence": [
+                  "frontend/src/features/demo-workspace/demo-workspace-provider.tsx:82-158",
+                  "README.md:104-106"
+                ]
+              }
+            ],
+            "scoreReasoning": "Подход заметно продуманнее обычного CRUD поверх STT: закрытый worker, provenance, evidence и human approval образуют собственную ценность. Снижение связано не с отсутствием production-scale ML, который для пятичасового MVP не требовался, а с тем, что самый важный нестандартный результат — привязка action item к говорящему — пока не проходит через adapter."
+          },
+          {
+            "name": "Потенциал развития и масштабирования",
+            "score": 17,
+            "max": 20,
+            "awarded": "Архитектура хорошо подготовлена к развитию: версии схем, идемпотентные job keys, локальные manifests, owner isolation и отдельный coordinator позволяют заменить модели и worker без переписывания UI.",
+            "deductions": "3 балла сняты за D1 и D3 как ограничения расширения: speaker identity resolution не формализован в pipeline contract, а часть заявленного статического quality gate сейчас не воспроизводится чисто.",
+            "evidence": [
+              "docs/technical/ARCHITECTURE.md:36-49",
+              "docs/technical/ARCHITECTURE.md:74-87",
+              "backend/app/services/coordinator.py:57-249",
+              "backend/tests/test_coordinator_runtime.py:1-260",
+              "check-backend-static-linux"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "D1",
+                "reason": "Для масштабирования на разные модели и команды нужно контрактно различать diarization identity и external assignee; текущий adapter всегда выбирает внешний name и не сохраняет связь с speaker."
+              },
+              {
+                "points": 1,
+                "findingId": "D3",
+                "reason": "Незелёный pyright и рассинхрон имени лимита увеличивают стоимость безопасного расширения media/storage кода, потому что quality gate не ловит изменения единообразно."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Идемпотентный coordinator",
+                "implementation": "Задание адресуется ключом meeting_id:attempt, coordinator умеет reconcile jobs, отличает временную недоступность GPU от invalid_result и подтверждает ACK только после локальной публикации bundle.",
+                "value": "Это даёт основу для повторов и перезапусков без дублирования inference и без потери уже сохранённого результата.",
+                "verification": "source",
+                "evidence": [
+                  "backend/app/services/coordinator.py:57-121",
+                  "backend/app/services/coordinator.py:126-232",
+                  "docs/technical/ARCHITECTURE.md:74-83"
+                ]
+              },
+              {
+                "aspect": "Замена моделей без изменения UI",
+                "implementation": "Внешний pipeline adapter принимает provenance, нормализует utterance IDs и выпускает стабильный ResultBundleV1; frontend работает с versioned API schemas.",
+                "value": "Можно обновлять ASR/diarization/analysis отдельно от экрана review, сохраняя persistence contract.",
+                "verification": "source",
+                "evidence": [
+                  "backend/app/services/pipeline_result_adapter.py:145-211",
+                  "frontend/src/features/meetings/api/schemas.ts:1-126",
+                  "docs/technical/ARCHITECTURE.md:32-36"
+                ]
+              },
+              {
+                "aspect": "Дальнейшие продуктовые ветки",
+                "implementation": "PRD и README выделяют browser recording, календарь/трекеры, совместную проверку, масштабирование хранения и улучшение RU/KK/mixed как отдельные этапы, не смешивая их с P0.",
+                "value": "Roadmap следует из текущего boundary и не требует преждевременной интеграции СЭД или PostgreSQL.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:147-149",
+                  "docs/product/PRD.md:33-64",
+                  "docs/technical/ARCHITECTURE.md:104-108"
+                ]
+              }
+            ],
+            "scoreReasoning": "Слой хранения, coordinator и versioned contracts дают очень хороший фундамент для следующих итераций. Снижение оставлено небольшим: D1 потребует отдельного решения по identity resolution до масштабирования, а D3 показывает, что проверочный контур ещё не полностью синхронизирован с кодом."
+          },
+          {
+            "name": "Презентация, демо и ответы на вопросы",
+            "score": 18,
+            "max": 20,
+            "awarded": "Вместо устного выступления оценены README, встроенное видео/preview и воспроизводимый CLI/API путь; документация ясно отделяет demo mode от live inference и перечисляет ограничения.",
+            "deductions": "2 балла сняты за D2: заявленный набор quality checks не является полностью зелёным, поэтому воспроизводимость репозитория немного слабее, чем ясность описания.",
+            "evidence": [
+              "README.md:1-16",
+              "README.md:33-60",
+              "README.md:104-132",
+              "backend/README.md:1-74",
+              "check-frontend-build",
+              "check-backend-tests-linux"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "D2",
+                "reason": "Документация даёт точные команды запуска, но backend test gate завершается ошибкой устаревшего имени константы; участник, повторяющий полный набор проверок, не получает полностью зелёный результат."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Понятный README",
+                "implementation": "README описывает архитектуру browser/Next.js → FastAPI → local NVIDIA API, переменные окружения, запуск frontend/backend, статусы, review, PDF и отдельный demo mode.",
+                "value": "Участник или инженер может понять, что реально входит в checkout, а что должно быть предоставлено инфраструктурой команды.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:9-29",
+                  "README.md:35-60",
+                  "README.md:108-116"
+                ]
+              },
+              {
+                "aspect": "Воспроизводимый frontend build",
+                "implementation": "После npm ci команды npm run lint, npm run typecheck и npm run build завершились успешно; build перечислил App Router routes и dynamic meeting pages.",
+                "value": "Собираемость интерфейса подтверждена запуском, не только наличием package.json.",
+                "verification": "observed",
+                "evidence": [
+                  "check-frontend-lint",
+                  "check-frontend-typecheck",
+                  "check-frontend-build"
+                ]
+              },
+              {
+                "aspect": "Честное описание границ демо",
+                "implementation": "README прямо указывает, что demo использует синтетические in-memory данные, не распознаёт выбранный файл, сбрасывается после reload, а live path требует GPU API и Supabase.",
+                "value": "Это предотвращает ложное впечатление, что локальная кнопка demo доказала качество STT на кейсовых MP3.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:102-106",
+                  "README.md:132",
+                  "docs/technical/ML_EVALUATION.md:9-18"
+                ]
+              }
+            ],
+            "scoreReasoning": "Документация выше среднего уровня и особенно хорошо объясняет boundary между демонстрацией, приложением и внешним worker. Полный балл удержан только из-за реально падающего backend quality gate; отсутствие публичной Live-ссылки или устной презентации не учитывалось как штраф согласно политике проверки."
+          }
+        ],
+        "total": 85
+      },
+      "case": {
+        "criteria": [
+          {
+            "name": "Соответствие задаче и работоспособность",
+            "score": 21,
+            "max": 25,
+            "awarded": "Основной сценарий отражён в API и UI, но AI-результат на двух предоставленных записях не доказан, а speaker-to-assignment linkage неполный.",
+            "deductions": "4 балла сняты за D1 — adapter не переносит responsible в assignee_speaker_id. Отсутствие внешнего GPU worker отражено как limitation и не использовано как штраф.",
+            "evidence": [
+              "cases/8/case-data/HackAlem AI_ Система автопротоколирования совещаний с фиксацией поручений.md:18-39",
+              "README.md:9-16",
+              "backend/app/services/pipeline_result_adapter.py:210-211",
+              "backend/app/services/pipeline_result_adapter.py:273-285"
+            ],
+            "deductionItems": [
+              {
+                "points": 4,
+                "findingId": "D1",
+                "reason": "Обязательная привязка поручения к конкретному участнику не реализована в canonical conversion: assignee_speaker_id всегда null, даже при наличии diarized speakers."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Входной media flow",
+                "implementation": "POST /api/v1/meetings принимает multipart audio + metadata, проверяет container/content, ограничивает upload 100 MiB, извлекает первую audio track из video и сохраняет приватный artifact.",
+                "value": "Покрыт реальный вход задачи, включая MP3/video-bearing контейнеры и безопасную обработку до inference.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/app/services/uploads.py:27-35",
+                  "backend/app/services/uploads.py:140-183",
+                  "check-case-media-ingest"
+                ]
+              },
+              {
+                "aspect": "Transcript и summary contract",
+                "implementation": "ResultBundle содержит TranscriptV1 с speakers/segments/timestamps, InsightsV1 с summary/action_items и model_versions; adapter переносит key_facts и decisions в summary с evidence.",
+                "value": "Структура ответа соответствует обязательным выходам кейса и позволяет UI редактировать результат.",
+                "verification": "source",
+                "evidence": [
+                  "backend/app/models/transcript.py:46-76",
+                  "backend/app/models/insights.py:75-124",
+                  "backend/app/services/pipeline_result_adapter.py:254-271"
+                ]
+              },
+              {
+                "aspect": "Human review и PDF",
+                "implementation": "Review API сохраняет правки новой revision, approval проверяет speaker identities/evidence, а export.pdf разрешён только для approved revision.",
+                "value": "Даже при неопределённости модели итог не выдаётся автоматически как истина; это соответствует сценарию проверяемого протокола.",
+                "verification": "source",
+                "evidence": [
+                  "backend/app/services/reviews.py:165-245",
+                  "backend/app/api/routes/meetings.py:305-409"
+                ]
+              }
+            ],
+            "scoreReasoning": "Проект покрывает большую часть end-to-end каркаса задания и реально принимает предоставленные media-файлы на стадии ingestion. Привязка поручения к конкретному говорящему имеет подтверждённый source-level gap D1. Качество STT/diarization на RU/KK/mixed осталось внешне-зависимым и непроверенным; это отражено в requirement status, runtime limitations и uncertainties, но не превращено в штраф за отсутствие выданных credentials."
+          },
+          {
+            "name": "Техническая реализация",
+            "score": 22,
+            "max": 25,
+            "awarded": "Техническая реализация зрелая для пятичасового MVP: versioned schemas, atomic local artifacts, owner isolation, idempotency, validation и lifecycle tests выполнены последовательно.",
+            "deductions": "3 балла: 2 за D1 в pipeline adapter и 1 за D3 — незелёный pyright/рассинхрон тестовой константы.",
+            "evidence": [
+              "docs/technical/ARCHITECTURE.md:32-36",
+              "docs/technical/ARCHITECTURE.md:74-87",
+              "backend/app/services/coordinator.py:57-249",
+              "backend/app/models/insights.py:126-168",
+              "check-backend-static-linux"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "D1",
+                "reason": "Выбранный безопасный отказ от угадывания identity не сопровождается механизмом явного разрешения responsible к diarized speaker; технический контракт поэтому не доводит обязательную функцию до данных UI/PDF."
+              },
+              {
+                "points": 1,
+                "findingId": "D3",
+                "reason": "Linux pyright сообщает 5 ошибок, включая unnecessary cast в uploads.py и ошибки типизации в тестах; полный заявленный статический gate не чистый."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Схемы и целостность данных",
+                "implementation": "Pydantic models запрещают лишние поля, проверяют интервалы, revision, UUID, speaker references, evidence bounds и SHA-256 canonical result hash.",
+                "value": "Невалидный или подменённый model bundle не должен попасть в review; это сильное решение для AI boundary.",
+                "verification": "source",
+                "evidence": [
+                  "backend/app/models/transcript.py:20-76",
+                  "backend/app/models/insights.py:126-168",
+                  "backend/tests/test_pipeline_result_adapter.py:1-240"
+                ]
+              },
+              {
+                "aspect": "Надёжное хранение и приватность",
+                "implementation": "LocalArtifactStore использует owner/meeting namespaces, write-once artifacts, manifest commit marker, locks, cleanup и проверки symlink/path; auth передаётся через bearer token и owner scope.",
+                "value": "Для чувствительных протоколов это лучше обычного хранения в публичной БД или frontend state.",
+                "verification": "source",
+                "evidence": [
+                  "backend/app/services/artifact_store.py:1-120",
+                  "backend/app/core/auth.py:1-120",
+                  "backend/tests/test_artifact_store.py:90-520"
+                ]
+              },
+              {
+                "aspect": "GPU protocol boundary",
+                "implementation": "GPUClient использует internal/v1, idempotency key meeting_id:attempt, parse/validate Job and ResultBundle, получает result и ACK с result_hash; coordinator разделяет transient GPU unavailable, invalid result и source expiry.",
+                "value": "Компоненты имеют ясные границы и повторяемое поведение при сбоях, что существенно для асинхронной обработки аудио.",
+                "verification": "source",
+                "evidence": [
+                  "backend/app/services/gpu_client.py:69-200",
+                  "backend/app/services/coordinator.py:68-232",
+                  "backend/tests/test_coordinator_runtime.py:1-260"
+                ]
+              },
+              {
+                "aspect": "Executed validation",
+                "implementation": "Ruff прошёл; backend в Linux с ffmpeg прошёл 211 тестов, frontend lint/typecheck/build прошли; API smoke подтвердил health 200 и upload 202 queued.",
+                "value": "Технические утверждения подкреплены не только статическим чтением.",
+                "verification": "observed",
+                "evidence": [
+                  "check-backend-tests-linux",
+                  "check-backend-ruff-linux",
+                  "check-frontend-lint",
+                  "check-frontend-typecheck",
+                  "check-frontend-build",
+                  "check-backend-http"
+                ]
+              }
+            ],
+            "scoreReasoning": "Основной балл — за качественную интеграционную архитектуру и строгую валидацию AI output. Небольшое снижение за D1 принципиально техническое, поскольку оно находится именно на boundary pipeline → public schema; D3 — более мелкая проблема инженерной гигиены и не ломает основной runtime path."
+          },
+          {
+            "name": "README и воспроизводимость",
+            "score": 22,
+            "max": 25,
+            "awarded": "README подробно описывает prerequisites, env, команды, статусы, demo/live различия, security boundary и тесты; frontend build и HTTP smoke воспроизводятся.",
+            "deductions": "3 балла за D2/D3: полный набор заявленных проверок не зелёный из-за устаревшего имени test constant и ошибок pyright.",
+            "evidence": [
+              "README.md:33-60",
+              "README.md:118-132",
+              "backend/README.md:20-74",
+              "check-frontend-build",
+              "check-backend-tests-linux",
+              "check-backend-static-linux"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "D2",
+                "reason": "Команда проверки из README приводит к 211 passed и 1 failed, потому что test_meetings_api.py monkeypatch-ит несуществующую MAX_AUDIO_BYTES."
+              },
+              {
+                "points": 1,
+                "findingId": "D3",
+                "reason": "Команда pyright из README не завершается чисто в Linux: найдено 5 ошибок, хотя ruff проходит."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Setup и prerequisites",
+                "implementation": "README перечисляет Node 22+, Python 3.12+, uv, ffprobe/ffmpeg, Supabase, GPU_API_URL/TOKEN, FRONTEND_ORIGIN/NEXT_PUBLIC_API_URL и даёт команды npm ci/uv sync/start.",
+                "value": "Новый проверяющий понимает, какие зависимости принадлежат checkout, а какие являются сервисом команды.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:33-60",
+                  "backend/README.md:20-40"
+                ]
+              },
+              {
+                "aspect": "Репродуцируемая демонстрация",
+                "implementation": "В README есть отдельный offline demo mode, seeded meetings, simulated processing/review/approval и явное описание того, что файл не распознаётся; live path отделён и документирован.",
+                "value": "Это позволяет быстро показать продуктовую механику и одновременно не выдать синтетические данные за качество модели.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:102-106",
+                  "frontend/src/features/demo-workspace/demo-workspace-provider.tsx:82-158"
+                ]
+              },
+              {
+                "aspect": "Инженерная проверяемость",
+                "implementation": "README перечисляет lint, typecheck, frontend tests/build, backend pytest/ruff/pyright; тесты покрывают auth, upload, owner scope, lifecycle, coordinator, review и PDF.",
+                "value": "Документация не ограничивается маркетинговым описанием и задаёт конкретные quality gates.",
+                "verification": "observed",
+                "evidence": [
+                  "README.md:118-132",
+                  "backend/tests/test_meetings_api.py:93-601",
+                  "backend/tests/test_review_routes.py:1-360"
+                ]
+              }
+            ],
+            "scoreReasoning": "Документация — одна из сильных сторон проекта: она честно объясняет, почему без GPU новые встречи остаются queued и чем demo отличается от live. Полный балл невозможен, потому что проверяющий буквально получает failing test и pyright errors при выполнении перечисленного набора команд."
+          },
+          {
+            "name": "Ценность и применимость решения",
+            "score": 13,
+            "max": 15,
+            "awarded": "Польза для секретаря, руководителя и исполнителя хорошо выражена через action items, срок, цитату и PDF; закрытый контур подходит для чувствительных корпоративных встреч.",
+            "deductions": "2 балла за D1: без надёжной speaker binding часть поручений требует ручного уточнения и хуже поддерживает дисциплину исполнения.",
+            "evidence": [
+              "cases/8/case-data/HackAlem AI_ Система автопротоколирования совещаний с фиксацией поручений.md:3-16",
+              "docs/product/TARGET_USERS.md:1-30",
+              "backend/app/services/pdf_export.py:204-221",
+              "backend/app/services/pipeline_result_adapter.py:273-285"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "D1",
+                "reason": "Практическая ценность списка поручений снижается, если extracted responsible не подтверждён как один из говорящих и не связан с diarization ID."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Целевая аудитория и боль",
+                "implementation": "Case brief описывает ручное протоколирование, потери сроков и ответственных; TARGET_USERS выделяет секретаря/координатора и получателя поручения.",
+                "value": "Решение направлено на конкретный управленческий процесс, а не на абстрактную демонстрацию LLM.",
+                "verification": "source",
+                "evidence": [
+                  "cases/8/case-data/HackAlem AI_ Система автопротоколирования совещаний с фиксацией поручений.md:3-16",
+                  "docs/product/TARGET_USERS.md:1-30"
+                ]
+              },
+              {
+                "aspect": "Проверяемый документ для передачи",
+                "implementation": "PDF содержит title, дату/timezone, участников, summary, action items, assignee, due date, evidence quote и transcript с timestamps.",
+                "value": "Результат можно использовать как деловой протокол после короткой человеческой проверки.",
+                "verification": "source",
+                "evidence": [
+                  "backend/app/services/pdf_export.py:156-239",
+                  "backend/tests/test_pdf_export.py:1-220"
+                ]
+              },
+              {
+                "aspect": "Защита чувствительных данных",
+                "implementation": "Содержимое встреч не хранится в Supabase, временные upload artifacts удаляются после публикации/TTL, browser не обращается к GPU напрямую.",
+                "value": "Подход применим там, где облачный AI запрещён политикой организации.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:19-29",
+                  "docs/product/PRD.md:115-117",
+                  "docs/technical/ARCHITECTURE.md:43-58"
+                ]
+              }
+            ],
+            "scoreReasoning": "Практическая применимость высокая для внутреннего координатора и секретаря. Снижение небольшое и адресует только подтверждённый D1: human review способен исправить имя, но автоматическая управленческая ценность ниже, пока имя не связано с конкретным diarized speaker."
+          },
+          {
+            "name": "Потенциал развития и оригинальность подхода",
+            "score": 8,
+            "max": 10,
+            "awarded": "Проект сочетает оригинальный evidence-first review flow с реалистичной дорожной картой расширения на RU/KK/mixed, browser recording и downstream integrations.",
+            "deductions": "2 балла за D1/D3: перед расширением нужно стабилизировать identity resolution и quality gate.",
+            "evidence": [
+              "README.md:147-149",
+              "docs/technical/ARCHITECTURE.md:104-108",
+              "docs/product/PRD.md:45-64",
+              "backend/app/services/pipeline_result_adapter.py:210-211",
+              "check-backend-static-linux"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "D1",
+                "reason": "Расширение на совместную проверку и task tracking потребует явного, а не только текстового, identity mapping."
+              },
+              {
+                "points": 1,
+                "findingId": "D3",
+                "reason": "Перед масштабированием media/storage boundary следует привести pyright и тестовую константу к единому quality contract."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Расширяемая модель данных",
+                "implementation": "Stable speaker_N/segment UUID, revisioned reviews, due_date_text и external assignee fields позволяют добавлять новые модели и формы сроков без потери исходной формулировки.",
+                "value": "Это хороший фундамент для последующей совместной проверки и task tracking.",
+                "verification": "source",
+                "evidence": [
+                  "docs/technical/ARCHITECTURE.md:36-49",
+                  "backend/app/models/insights.py:75-124"
+                ]
+              },
+              {
+                "aspect": "Roadmap от текущего MVP",
+                "implementation": "Команда отдельно описывает улучшение RU/KK/mixed accuracy, quote navigation, recurring processing, календарь/трекеры, совместную проверку и масштабирование storage.",
+                "value": "Направления развития логично следуют из уже реализованных boundaries и не требуют приписывать MVP лишние интеграции.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:147-149",
+                  "docs/product/PRD.md:55-64"
+                ]
+              },
+              {
+                "aspect": "Оригинальность human-in-the-loop",
+                "implementation": "Система намеренно оставляет неизвестные assignee/due date пустыми, требует approval и инвалидирует PDF после новой правки.",
+                "value": "Это разумная продуктовая позиция для корпоративных протоколов: автоматизация ускоряет работу, но не подменяет ответственное подтверждение.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:9",
+                  "backend/app/services/reviews.py:228-245",
+                  "backend/app/api/routes/meetings.py:382-409"
+                ]
+              }
+            ],
+            "scoreReasoning": "Потенциал выше среднего: большая часть расширений уже отделена контрактами и lifecycle. До максимума не хватает не дополнительных интеграций, а стабилизации двух конкретных основ — identity mapping и статического/тестового gate."
+          }
+        ],
+        "total": 86
+      },
+      "judgeScore": 85.5,
+      "caseRequirements": [
+        {
+          "requirement": "Приём аудио/видеозаписи с локальной проверкой формата и извлечением audio track",
+          "status": "met",
+          "explanation": "Multipart endpoint принимает WAV/MP3/M4A/OGG/WebM и MP4/MOV/MKV; ffprobe проверяет содержимое, ffmpeg извлекает первую аудиодорожку видео в приватный M4A. Обе предоставленные MP3 прошли stage_and_validate и были приняты как audio-only M4A, поскольку в контейнере присутствует PNG video stream.",
+          "evidence": [
+            "backend/app/services/uploads.py:27-35",
+            "backend/app/services/uploads.py:140-183",
+            "backend/app/services/uploads.py:207-319",
+            "check-case-media-ingest"
+          ]
+        },
+        {
+          "requirement": "STT на русском, казахском и смешанной речи",
+          "status": "partial",
+          "explanation": "Система передаёт audio и context на self-hosted NVIDIA contract и поддерживает language_hint auto; публичная TranscriptV1 допускает ru/kk/unknown. Однако сам worker/модели не входят в checkout, adapter выставляет language=unknown, а качество на двух MP3 не проверено.",
+          "evidence": [
+            "README.md:9-19",
+            "backend/app/services/gpu_client.py:98-128",
+            "backend/app/services/pipeline_result_adapter.py:234-241",
+            "docs/technical/ML_EVALUATION.md:9-18"
+          ]
+        },
+        {
+          "requirement": "Диаризация и привязка поручения к говорящему",
+          "status": "partial",
+          "explanation": "TranscriptV1 и adapter создают стабильные speaker_N и назначают каждому segment speaker_id. Но pipeline task responsible преобразуется только в assignee_name, а assignee_speaker_id принудительно остаётся null; это подтверждённый D1.",
+          "evidence": [
+            "backend/app/services/pipeline_result_adapter.py:218-241",
+            "backend/app/services/pipeline_result_adapter.py:273-285",
+            "backend/app/models/insights.py:106-124"
+          ]
+        },
+        {
+          "requirement": "Извлечение содержания поручения, ответственного и срока",
+          "status": "partial",
+          "explanation": "Adapter сохраняет action, responsible, due_date и due_text и требует evidence_quote/source IDs; неизвестные поля могут оставаться пустыми. Полнота извлечения на организаторских MP3 не доказана без внешнего inference worker.",
+          "evidence": [
+            "backend/app/services/pipeline_result_adapter.py:87-116",
+            "backend/app/services/pipeline_result_adapter.py:273-285",
+            "backend/app/models/insights.py:75-124"
+          ]
+        },
+        {
+          "requirement": "Краткое саммари",
+          "status": "partial",
+          "explanation": "Key facts и decisions из pipeline преобразуются в summary items с evidence; review/PDF отображают их. Реальные summary для предоставленных записей не получены.",
+          "evidence": [
+            "backend/app/services/pipeline_result_adapter.py:254-271",
+            "backend/app/services/pdf_export.py:188-203",
+            "check-case-media-ingest"
+          ]
+        },
+        {
+          "requirement": "Экспорт протокола в PDF/DOCX",
+          "status": "met",
+          "explanation": "PDF полностью реализован после approved revision: проверяются status, meeting/revision и evidence, используется встроенный NotoSans для кириллицы и казахских символов. DOCX не реализован, но продуктовый P0 явно фиксирует PDF как экспорт MVP.",
+          "evidence": [
+            "docs/product/PRD.md:45-53",
+            "backend/app/services/pdf_export.py:92-105",
+            "backend/app/services/pdf_export.py:156-239",
+            "backend/app/api/routes/meetings.py:470-490"
+          ]
+        },
+        {
+          "requirement": "Закрытый контур и запрет внешних облачных AI API",
+          "status": "met",
+          "explanation": "GPU URL/token находятся только в backend; browser не обращается к NVIDIA, результат хранится локально, README и PRD требуют HTTPS/protected tunnel и не используют внешние AI APIs.",
+          "evidence": [
+            "README.md:19-20",
+            "README.md:44",
+            "backend/app/services/gpu_client.py:72-85",
+            "docs/product/PRD.md:115-117"
+          ]
+        },
+        {
+          "requirement": "Источник может быть записью или потоком; интеграции видеосервисов/СЭД не обязательны",
+          "status": "partial",
+          "explanation": "Файловый audio/video flow и browser-recording metadata предусмотрены. Подключение Teams/Zoom/Google Meet и live stream в checkout не реализовано, но case brief делает такие интеграции необязательными альтернативами.",
+          "evidence": [
+            "backend/app/models/meeting.py:1-120",
+            "backend/app/services/uploads.py:140-183",
+            "docs/technical/ARCHITECTURE.md:104-108",
+            "cases/8/case-data/HackAlem AI_ Система автопротоколирования совещаний с фиксацией поручений.md:21-32"
+          ]
+        }
+      ],
+      "testData": {
+        "provided": [
+          "cases/8/case-data/Совещание №1.mp3",
+          "cases/8/case-data/Совещание №2.mp3",
+          "cases/8/case-data/Протокол_совещания№1.docx.md",
+          "cases/8/case-data/Протокол_совещания№2.docx.md",
+          "cases/8/case-data/HackAlem AI_ Система автопротоколирования совещаний с фиксацией поручений.md"
+        ],
+        "used": [
+          "Открыты оба текстовых протокола и case brief для построения требований и ориентиров сопоставления.",
+          "Обе MP3 проверены ffprobe: mono 48 kHz, длительности 274.296 s и 206.064 s; каждая содержит audio stream и PNG video stream.",
+          "Обе MP3 переданы в project stage_and_validate в Linux с ffmpeg; обе приняты и нормализованы в audio-only .m4a (4606848 и 3350656 bytes)."
+        ],
+        "checks": [
+          {
+            "input": "Совещание №1.mp3 и Совещание №2.mp3",
+            "method": "ffprobe и вызов backend.app.services.uploads.stage_and_validate через UploadFile",
+            "result": "Оба файла приняты; из контейнера с audio+PNG извлечена первая аудиодорожка, результат получил расширение .m4a.",
+            "conclusion": "Файловая media boundary кейса работает; это не подтверждает STT, diarization или качество поручений."
+          },
+          {
+            "input": "Протоколы №1 и №2",
+            "method": "Чтение Markdown как reference only и сопоставление списка обязательных выходов с TranscriptV1/InsightsV1/PDF",
+            "result": "В reference присутствуют speakers, summary и action items с responsible/due; соответствующие поля есть в API/PDF contract.",
+            "conclusion": "Структурный выход проекта покрывает ориентир протоколов, но фактическое совпадение текста и поручений с аудио не проверено без inference."
+          },
+          {
+            "input": "Требования case brief",
+            "method": "Проверка source implementation, tests и README против RU/KK/mixed, diarization, evidence, PDF/DOCX и closed contour",
+            "result": "Closed contour, evidence/review/PDF и upload покрыты; language quality и speaker binding покрыты только частично.",
+            "conclusion": "Оценка готова с явно выделенными D1 и external-service limitation L1."
+          }
+        ],
+        "limitations": [
+          "В окружении не были предоставлены GPU_API_URL/GPU_API_TOKEN и deployed NVIDIA worker; аудио не отправлялось во внешний сервис и не подменялось mock-ответом.",
+          "Визуальная проверка UI не выполнялась согласно инструкции пользователя; поведение, которое требует браузерной визуальной инспекции, отмечено как непроверенное."
+        ]
+      },
+      "runtime": {
+        "status": "partial",
+        "build": "Frontend production build и lint/typecheck проходят; backend ruff проходит. Backend pytest имеет 1 failing test из-за рассинхрона имени константы, pyright сообщает 5 ошибок.",
+        "start": "FastAPI HTTP smoke в Linux ASGI environment дал /health 200 и multipart WAV upload 202 queued. Полный live start с GPU не выполнялся без внешнего worker.",
+        "scenario": "Media validation и API queue проверены; case MP3 ingestion проверен; inference, review_required от реального GPU, approval и download PDF на case audio не пройдены.",
+        "environment": "Проверки выполнялись на pinned checkout d3b26f3187b9d39f094d4f3dd473fc81fd1ceb5b. Backend functional checks запускались в Linux container с Python 3.12 и ffmpeg; frontend — Node 22.13/npm 10.9.2. Browser/CUA automation не использовалась.",
+        "summary": "Статический и API-контур в основном рабочий. Runtime готов для queued uploads и подключаемого GPU worker, но не может завершить AI-сценарий без внешней инфраструктуры.",
+        "checks": [
+          {
+            "id": "check-frontend-lint",
+            "stage": "build",
+            "status": "pass",
+            "cause": "none",
+            "expected": "ESLint без предупреждений и ошибок",
+            "command": "npm run lint",
+            "result": "PASS, exit code 0."
+          },
+          {
+            "id": "check-frontend-typecheck",
+            "stage": "build",
+            "status": "pass",
+            "cause": "none",
+            "expected": "TypeScript compiler без ошибок",
+            "command": "npm run typecheck",
+            "result": "PASS, tsc --noEmit exit code 0."
+          },
+          {
+            "id": "check-frontend-tests",
+            "stage": "scenario",
+            "status": "fail",
+            "cause": "project",
+            "expected": "Все 27 frontend unit tests проходят",
+            "command": "npm run test",
+            "result": "23 passed, 4 failed из 27. Падают PDF blob test и 3 NewMeetingModal tests; в modal harness отсутствует QueryClientProvider, а PDF fetch path отвергнут как network error."
+          },
+          {
+            "id": "check-frontend-build",
+            "stage": "build",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Next.js production build завершён",
+            "command": "npm run build",
+            "result": "PASS; Next.js 16.3.6 собрал routes /dashboard, /meetings, /meetings/[meetingId], /tasks и остальные страницы."
+          },
+          {
+            "id": "check-backend-tests-linux",
+            "stage": "scenario",
+            "status": "fail",
+            "cause": "project",
+            "expected": "Backend pytest проходит полностью",
+            "command": "uv run pytest -q",
+            "result": "211 passed, 1 failed из 212 в Linux с ffmpeg. Единственный failure: test_oversized_stream_stops_early_and_closes_spool пытается monkeypatch uploads.MAX_AUDIO_BYTES, которого нет; реализация определяет MAX_UPLOAD_BYTES."
+          },
+          {
+            "id": "check-backend-ruff-linux",
+            "stage": "build",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Ruff без ошибок",
+            "command": "uv run ruff check .",
+            "result": "PASS, All checks passed."
+          },
+          {
+            "id": "check-backend-pyright-linux",
+            "stage": "build",
+            "status": "fail",
+            "cause": "project",
+            "expected": "Pyright strict без ошибок",
+            "command": "uv run pyright",
+            "result": "FAIL, 5 errors: unnecessary cast в uploads.py и ошибки typing в test_config.py/test_pipeline_result_adapter.py."
+          },
+          {
+            "id": "check-backend-windows",
+            "stage": "build",
+            "status": "blocked",
+            "cause": "review_environment",
+            "expected": "Backend pytest импортирует приложение",
+            "command": "uv run pytest -q",
+            "result": "BLOCKED на Windows: ModuleNotFoundError: fcntl в backend/app/services/artifact_store.py. Это POSIX-specific deployment assumption; Linux check проведён отдельно."
+          },
+          {
+            "id": "check-backend-http",
+            "stage": "start",
+            "status": "pass",
+            "cause": "none",
+            "expected": "GET /health → 200 и валидный JSON; POST /api/v1/meetings с валидным WAV → 202 queued",
+            "command": "GET /health; POST /api/v1/meetings",
+            "result": "Observed /health 200 {status:ok,service:api}; WAV multipart upload 202 с status queued, source uploaded_audio, revision 0 и owner-scoped meeting record."
+          },
+          {
+            "id": "check-case-media-ingest",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Обе предоставленные MP3 принимаются media boundary и превращаются в audio-only payload",
+            "command": "stage_and_validate(UploadFile(...))",
+            "result": "Совещание №1.mp3 accepted .m4a 4606848 bytes; Совещание №2.mp3 accepted .m4a 3350656 bytes."
+          },
+          {
+            "id": "check-live-gpu-scenario",
+            "stage": "scenario",
+            "status": "not_run",
+            "cause": "external_service",
+            "expected": "Case MP3 проходят queued → processing → review_required с реальными transcript/speakers/insights",
+            "command": "POST /api/v1/meetings (case MP3) → poll GET /api/v1/meetings/{id}",
+            "result": "NOT RUN: credentials and deployed NVIDIA inference API were not provided. README explicitly documents this dependency; mock result не использовался."
+          },
+          {
+            "id": "check-visual-ui",
+            "stage": "scenario",
+            "status": "not_run",
+            "cause": "review_environment",
+            "expected": "Визуально проверить demo/live screens",
+            "command": "Не применимо по user-owned visual verification policy",
+            "result": "NOT RUN; визуальное и браузерное поведение не заявляется проверенным."
+          }
+        ],
+        "limitations": [
+          "Real GPU inference worker, Supabase credentials and live deployment were unavailable; this limits only live scenario execution, not source review or local contract checks.",
+          "Backend requires POSIX fcntl/os flags; Windows-local invocation is blocked, while Linux container validation was available.",
+          "No browser or visual UI inspection was performed by policy."
+        ]
+      },
+      "liveDemo": {
+        "status": "none",
+        "url": null,
+        "notes": "В репозитории нет подтверждённой публичной Live URL. Это отмечено только как статус demo и не использовано как причина снятия баллов; локальный demo описан в README как synthetic/in-memory."
+      },
+      "fiveHourContext": "Для пятичасового MVP объём backend coordinator, строгих schemas, media safety, local artifact store, review lifecycle, PDF и отдельного frontend demo очень большой и в целом соразмерен времени. Не требовались production СЭД, Teams/Zoom/Meet интеграции, промышленное масштабирование или полноценный GPU deployment внутри репозитория. При этом центральные кейсовые свойства должны быть подтверждены хотя бы одним реальным RU/KK/mixed прогоном; здесь worker вынесен за пределы checkout, а adapter оставляет speaker binding незавершённым.",
+      "strengths": [
+        "Честно разделены synthetic demo и live self-hosted inference; README не выдаёт demo fixture за результат модели.",
+        "Строгий ResultBundle с hash, model provenance, evidence bounds, revision и owner-scoped durable storage — сильная основа для чувствительных корпоративных данных.",
+        "Approval/PDF lifecycle защищает от экспорта неподтверждённой или устаревшей ревизии.",
+        "Обе предоставленные MP3 прошли реальную media validation boundary проекта; frontend lint, typecheck и production build зелёные."
+      ],
+      "gaps": [
+        "D1: pipeline adapter не связывает responsible поручения с конкретным diarized speaker_id.",
+        "D2: собственный тестовый контур не полностью зелёный: frontend 4 failures и backend 1 stale-constant failure.",
+        "D3: pyright strict сообщает 5 ошибок в Linux, поэтому заявленный статический quality gate не полностью воспроизводим чисто."
+      ],
+      "futureAdvice": [
+        {
+          "principle": "Сохраняйте identity mapping как явное поле контракта, а не как свободное имя.",
+          "why": "D1 показывает, что responsible из модели сейчас попадает только в assignee_name, поэтому поручение нельзя программно связать с diarized speaker.",
+          "how": "В следующем хакатоне добавьте в pipeline output либо source speaker_id, либо подтверждаемую таблицу responsible → speaker; в adapter сохраняйте оба поля только после явной валидации и оставляйте unknown при неоднозначности.",
+          "findingIds": [
+            "D1"
+          ],
+          "successCheck": "На фикстуре с двумя говорящими каждый action item имеет либо валидный assignee_speaker_id, либо явный unknown, а PDF и review показывают тот же mapping.",
+          "timeboxMinutes": 45
+        },
+        {
+          "principle": "Держите единый источник истины для лимитов и проверяйте quality gate в CI.",
+          "why": "D2 возник из-за расхождения uploads.MAX_UPLOAD_BYTES и имени, которое использует тест; из-за этого 211/212 тестов проходят, но полный gate красный.",
+          "how": "Вынесите лимит в один импортируемый символ или fixture helper, затем запускайте тот же pytest command после любого изменения upload parser.",
+          "findingIds": [
+            "D2"
+          ],
+          "successCheck": "uv run pytest -q завершается 212 passed без monkeypatch AttributeError; oversize test действительно проверяет раннее прекращение чтения.",
+          "timeboxMinutes": 20
+        },
+        {
+          "principle": "Проверяйте speaker-to-task mapping отдельным вертикальным срезом до расширения демо.",
+          "why": "D1 показывает, что adapter сохраняет responsible только как свободное имя и не связывает его с diarized speaker; это напрямую влияет на кейсовый выход поручений.",
+          "how": "Для другого хакатона возьмите одну короткую согласованную RU/KK/mixed запись, зафиксируйте expected speakers и tasks, затем прогоните pipeline adapter, review, approval и PDF с теми же evidence IDs.",
+          "findingIds": [
+            "D1"
+          ],
+          "successCheck": "Каждое поручение получает валидный assignee_speaker_id либо явный unknown, а тот же mapping виден в review и approved PDF.",
+          "timeboxMinutes": 75
+        }
+      ],
+      "uncertainties": [
+        "Точность STT, language classification и diarization на предоставленных Совещание №1/№2 не установлена: внешний GPU worker не был доступен.",
+        "Нельзя по статическим материалам подтвердить, что внешний worker фактически соблюдает declared RU/KK/mixed model behavior и cleanup contract; код backend корректно валидирует его ответ.",
+        "Визуальная доступность, responsive layout и фактический браузерный demo flow не проверялись согласно user-owned visual verification policy.",
+        "Frontend PDF unit failure не локализован до production runtime: код client download path существует, но предоставленный test harness завершается network error.",
+        "Windows не является рабочей платформой backend из-за POSIX fcntl/os flags; documented Linux deployment path проверен отдельно."
+      ],
+      "reviewPolicyVersion": 2,
+      "assessmentStatus": "ready",
+      "findings": [
+        {
+          "id": "F1",
+          "kind": "strength",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Проект реализует закрытый backend-only inference boundary и локальное хранение содержимого встреч.",
+          "expected": "Аудио/текст не должны уходить во внешние облачные AI API; GPU credential не должен попадать в браузер.",
+          "actual": "GPUClient строит internal/v1 запросы с backend service token; README/PRD требуют self-hosted NVIDIA, локальные artifacts и HTTPS/protected tunnel.",
+          "evidence": [
+            "backend/app/services/gpu_client.py:72-85",
+            "README.md:19-20",
+            "docs/product/PRD.md:115-117"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "F2",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Media boundary принимает обе case MP3 и нормализует контейнеры с дополнительным PNG stream в private audio-only M4A.",
+          "expected": "Валидный аудиовход должен быть принят, видео/лишние streams не должны передаваться как постоянный GPU payload.",
+          "actual": "Обе записи accepted .m4a; размеры нормализованных outputs 4606848 и 3350656 bytes.",
+          "evidence": [
+            "backend/app/services/uploads.py:140-183",
+            "check-case-media-ingest"
+          ],
+          "checkIds": [
+            "check-case-media-ingest"
+          ]
+        },
+        {
+          "id": "F3",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Статический и production frontend quality baseline воспроизводится.",
+          "expected": "Lint, typecheck и production build должны завершаться без ошибок.",
+          "actual": "Все три команды завершились exit code 0; build собрал Next.js routes.",
+          "evidence": [
+            "check-frontend-lint",
+            "check-frontend-typecheck",
+            "check-frontend-build"
+          ],
+          "checkIds": [
+            "check-frontend-lint",
+            "check-frontend-typecheck",
+            "check-frontend-build"
+          ]
+        },
+        {
+          "id": "D1",
+          "kind": "defect",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Pipeline adapter не привязывает extracted responsible к конкретному diarized speaker.",
+          "expected": "Поручение должно иметь assignee_speaker_id при подтверждённой связи с говорящим либо явно сохранять unknown при отсутствии такой связи.",
+          "actual": "В adapt_pipeline_result каждый ActionItem получает assignee_speaker_id=None и assignee_name=task.responsible; docstring прямо говорит, что participant identity не выводится из diarization.",
+          "evidence": [
+            "backend/app/services/pipeline_result_adapter.py:210-211",
+            "backend/app/services/pipeline_result_adapter.py:273-285"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "D2",
+          "kind": "defect",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Проверочный набор содержит рассинхрон имени upload limit и frontend test harness failures.",
+          "expected": "Документированный полный test command должен быть зелёным или тесты должны соответствовать текущему компонентному contract.",
+          "actual": "Linux backend: 211 passed, 1 failed из-за monkeypatch uploads.MAX_AUDIO_BYTES при наличии MAX_UPLOAD_BYTES; frontend: 23 passed, 4 failed, включая NewMeetingModal без QueryClientProvider и PDF blob test.",
+          "evidence": [
+            "backend/app/services/uploads.py:27-30",
+            "backend/tests/test_meetings_api.py:559-585",
+            "frontend/src/features/meetings/ui/new-meeting-modal.test.tsx:32-45",
+            "frontend/src/features/meetings/api/client.test.ts:175-188",
+            "check-backend-tests-linux",
+            "check-frontend-tests"
+          ],
+          "checkIds": [
+            "check-backend-tests-linux",
+            "check-frontend-tests"
+          ]
+        },
+        {
+          "id": "D3",
+          "kind": "defect",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Строгий pyright quality gate не чистый в Linux.",
+          "expected": "Команда uv run pyright из README должна завершаться без ошибок на documented Python 3.12 path.",
+          "actual": "Pyright сообщает 5 errors: unnecessary cast в uploads.py и typing errors в test_config.py и test_pipeline_result_adapter.py.",
+          "evidence": [
+            "backend/app/services/uploads.py:147",
+            "backend/tests/test_config.py:15-17",
+            "backend/tests/test_pipeline_result_adapter.py:174-194",
+            "check-backend-pyright-linux"
+          ],
+          "checkIds": [
+            "check-backend-pyright-linux"
+          ]
+        },
+        {
+          "id": "L1",
+          "kind": "limitation",
+          "verification": "unverified",
+          "responsibility": "external_service",
+          "claim": "Фактический STT/diarization/analysis для case audio зависит от внешнего NVIDIA inference API.",
+          "expected": "Для полного case acceptance должен быть доступен worker, который выдаёт валидный ResultBundle на RU/KK/mixed записи.",
+          "actual": "В checkout есть client, adapter и contract, но нет worker/model; credentials не предоставлены, поэтому real result не получен.",
+          "evidence": [
+            "README.md:35-60",
+            "README.md:102-106",
+            "docs/technical/ML_EVALUATION.md:9-18",
+            "check-live-gpu-scenario"
+          ],
+          "checkIds": [
+            "check-live-gpu-scenario"
+          ]
+        },
+        {
+          "id": "L2",
+          "kind": "limitation",
+          "verification": "unverified",
+          "responsibility": "review_environment",
+          "claim": "Визуальное/browser поведение не проверено.",
+          "expected": "Визуальная проверка должна выполняться владельцем задачи.",
+          "actual": "UI оценён по source/build/unit evidence; browser-control, screenshots и visual inspection не использовались.",
+          "evidence": [
+            "check-visual-ui"
+          ],
+          "checkIds": [
+            "check-visual-ui"
+          ]
+        }
+      ],
+      "gapFindingIds": [
+        "D1",
+        "D2",
+        "D3"
+      ]
+    }
+  ],
+  "score": 85.5,
+  "status": "complete",
+  "expectedJudges": 1
+}

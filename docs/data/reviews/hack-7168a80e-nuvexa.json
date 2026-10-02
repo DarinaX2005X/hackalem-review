@@ -1,0 +1,1218 @@
+{
+  "methodVersion": 4,
+  "repoId": "hack-7168a80e-nuvexa",
+  "repoUrl": "https://github.com/BAITC-Hacks/hack-7168a80e-nuvexa",
+  "caseId": 3,
+  "snapshot": "be0f39b83f13f69a14cbae6dd38b0eadf0b640dc",
+  "judges": [
+    {
+      "methodVersion": 4,
+      "repoId": "hack-7168a80e-nuvexa",
+      "caseId": 3,
+      "model": "GPT-5.6 Luna",
+      "snapshot": "be0f39b83f13f69a14cbae6dd38b0eadf0b640dc",
+      "overallSummary": "Сильный, воспроизводимый прототип Career Quest с рабочим сквозным сценарием: профиль сотрудника, расчёт следующего грейда, объяснимое ранжирование активностей, capped gains после completion, импорты и HR-агрегации. Проверка прошла на bundled-данных и отдельно на исходном организаторском датасете: backend-тесты и API smoke завершились успешно, frontend собрался. Оценка снижена за отсутствие в коде какого-либо разграничения employee/HR/import и за то, что API возвращает next_grade, но EmployeePage явно его не показывает; process-local in-memory состояние также ограничивает масштабирование. Публичной live-ссылки не было, но локальная воспроизводимость подтверждена и отсутствие ссылки не использовалось как штраф.",
+      "global": {
+        "criteria": [
+          {
+            "name": "Ценность решения",
+            "score": 24,
+            "max": 25,
+            "awarded": "Решение адресует понятную HR-проблему: сотрудник получает связанный с текущим грейдом следующий шаг, а HR видит агрегированные дефициты компетенций и участие.",
+            "deductions": "1 балл снят за отсутствие разграничения доступа: HR-сводки и импорт доступны тем же публичным маршрутам, что и employee view.",
+            "evidence": [
+              "README.md:1-14",
+              "backend/main.py:226-276",
+              "captures/20261002T024732133771-api-scenario2.stdout.log"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "D1",
+                "reason": "Для корпоративного инструмента ценность ограничена тем, что код не отделяет роль сотрудника от HR: любой клиент, знающий маршрут, получает HR-срез и может вызвать импорт. Это не публичный рейтинг, но это подтверждённый пробел приватности и применимости в реальном внутреннем контуре."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Связка личного развития и HR-контекста",
+                "implementation": "Backend строит next_grade для текущей роли, положительные skill_gaps и рекомендации, а отдельные маршруты /hr/skill-gaps, /hr/employees-without-recommendation и /hr/participation-stats дают HR срезы по компетенциям, людям без следующего шага и статусам участия.",
+                "value": "Это закрывает обе стороны кейса: сотрудник получает действие с понятным результатом, HR получает данные для адресного follow-up вместо общего списка активности.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/main.py:162-176",
+                  "backend/main.py:226-276",
+                  "captures/20261002T024732133771-api-scenario2.stdout.log"
+                ]
+              },
+              {
+                "aspect": "Рекомендация не сводится к минимальному навыку",
+                "implementation": "recommendation_engine.py учитывает role/grade, next-grade gaps, critical weight, capped improvement, prerequisites, upcoming sessions и негативную историю похожих активностей; tie-break использует event_id.",
+                "value": "Такой набор факторов соответствует специально подобранному конфликтному профилю кейса и уменьшает риск формально рекомендовать самый низкий навык без учёта вовлечённости и критичности.",
+                "verification": "source",
+                "evidence": [
+                  "backend/recommendation_engine.py:52-77",
+                  "backend/recommendation_engine.py:80-107",
+                  "backend/recommendation_engine.py:121-220",
+                  "tests/test_engine.py:249-263"
+                ]
+              },
+              {
+                "aspect": "Пользовательский эффект после действия",
+                "implementation": "POST completion добавляет запись, применяет event gain только до max_level, возвращает новые skills и рекомендации; frontend затем повторно загружает профиль, чтобы обновить gaps и history.",
+                "value": "Пользователь видит не просто совет, а изменение состояния плана после выполнения. Это превращает каталог обучения в замкнутый feedback loop.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/data_store.py:295-335",
+                  "frontend/src/pages/EmployeePage.jsx:28-46",
+                  "captures/20261002T024934685801-provided-dataset.stdout.log"
+                ]
+              },
+              {
+                "aspect": "Безопасные исходные данные",
+                "implementation": "В bundled и case-data README данные помечены как synthetic; HR endpoint возвращает не рейтинг и не performance score, а агрегированные gaps, участие и список без рекомендации.",
+                "value": "Команда соблюдает запрет на публичное ранжирование и реальные персональные данные, сохраняя полезность HR-аналитики.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:14-20",
+                  "data/README.md:1-28",
+                  "backend/main.py:249-276"
+                ]
+              }
+            ],
+            "scoreReasoning": "24/25 заслужены за прямое попадание в боль кейса, связку employee/HR и подтверждённый эффект после completion. Единственное существенное снижение — D1: без авторизации и серверного разделения ролей решение нельзя считать готовым к реальному внутреннему контуру, хотя для пятичасового synthetic MVP полезный сценарий уже целостен."
+          },
+          {
+            "name": "Результат и качество решения",
+            "score": 17,
+            "max": 20,
+            "awarded": "Основной сценарий работает end-to-end, ошибки валидируются, повторное completion защищено, а результаты backend и frontend согласованы.",
+            "deductions": "3 балла сняты за отсутствие явного next-grade/trajectory блока в EmployeePage и отсутствие ролевого контроля.",
+            "evidence": [
+              "captures/20261002T024619815426-backend-tests.stdout.log",
+              "captures/20261002T024732133771-api-scenario2.stdout.log",
+              "captures/20261002T024833063878-frontend-tests.stdout.log"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "D2",
+                "reason": "Основной результат должен показывать профиль и карьерную траекторию. API формирует next_grade, но EmployeePage рендерит текущий grade, skills, gaps и рекомендации без отдельного отображения next_grade или target trajectory; направление приходится восстанавливать из текста rationale и списка навыков."
+              },
+              {
+                "points": 1,
+                "findingId": "D1",
+                "reason": "Все UI-маршруты /hr и /import доступны из общей Shell без проверки роли, поэтому работающий результат не имеет необходимого для корпоративного сценария boundary между employee и HR."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Целостный backend-сценарий",
+                "implementation": "180 backend-тестов покрывают engine, API, store, history reconciliation, rationale, supplied dataset, latency, performance и smoke script. Отдельный smoke на E0099 прошёл профиль, рекомендации, completion, refreshed recommendations и три HR-отчёта.",
+                "value": "Это сильнее демонстрации отдельных функций: проверена последовательность состояний и сохранение результата после действия.",
+                "verification": "observed",
+                "evidence": [
+                  "captures/20261002T024619815426-backend-tests.stdout.log",
+                  "captures/20261002T024732133771-api-scenario2.stdout.log"
+                ]
+              },
+              {
+                "aspect": "Защита от некорректного состояния",
+                "implementation": "Pydantic-модели запрещают лишние поля и проверяют диапазоны; unknown employee/event дают 404, invalid imports — 422, повторное non-recurring completion — 409, а DataStore строит derived state после полной валидации batch.",
+                "value": "Ошибки становятся понятными пользователю, а частично применённые импорты и двойные gains не разрушают демонстрационный набор.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/models.py:18-21",
+                  "backend/api_models.py:67-79",
+                  "backend/main.py:136-147",
+                  "tests/test_api.py:159-210",
+                  "tests/test_store.py:75-112"
+                ]
+              },
+              {
+                "aspect": "Обновление UI после completion",
+                "implementation": "EmployeePage применяет skills и recommendations из ответа completion немедленно, затем запрашивает профиль для history и skill_gaps; loading/error states и readable API errors предусмотрены.",
+                "value": "Даже если последующий read временно не удался, UI не возвращает старую рекомендацию после уже успешного completion и сообщает пользователю границу ошибки.",
+                "verification": "source",
+                "evidence": [
+                  "frontend/src/pages/EmployeePage.jsx:28-46",
+                  "frontend/src/lib/api.js:10-31"
+                ]
+              },
+              {
+                "aspect": "Реальный API smoke",
+                "implementation": "На E0099 ответ рекомендаций пришёл за 0.005 с, completion изменил SK_COMMUNICATION с 1 на 2, EV_008 исчез, а skill-gaps, employees-without-recommendation и participation-stats вернули well-formed данные. Для E0050 пустые рекомендации корректно обработаны как valid Lead case.",
+                "value": "Проверен фактический пользовательский результат, включая допустимый edge case верхнего грейда, а не только успешный HTTP status.",
+                "verification": "observed",
+                "evidence": [
+                  "captures/20261002T024732133771-api-scenario2.stdout.log"
+                ]
+              }
+            ],
+            "scoreReasoning": "17/20 отражают реально работающий flow и хорошую обработку состояний. D2 заметен в пользовательском результате: trajectory вычисляется backend-ом, но не вынесена в отдельный UI-элемент. D1 дополнительно снижает качество deployable продукта, хотя не помешал локальному smoke."
+          },
+          {
+            "name": "Инновационность",
+            "score": 15,
+            "max": 15,
+            "awarded": "Обоснованный нестандартный подход — детерминированное объяснимое ранжирование с optional LLM только для формулировки rationale, а не для выбора и изменения навыков.",
+            "deductions": "Снятий нет: optional provider не является дефектом MVP, а отсутствие ключа относится к ограничениям проверки, не к качеству локального сценария.",
+            "evidence": [
+              "backend/recommendation_engine.py:121-220",
+              "backend/rationale_generator.py:45-199",
+              "README.md:298-321",
+              "captures/20261002T024934685801-provided-dataset.stdout.log"
+            ],
+            "deductionItems": [],
+            "awardedDetails": [
+              {
+                "aspect": "Разделение решения и объяснения",
+                "implementation": "recommend_next_steps и score_event полностью считают eligibility, capped gap reduction, critical bonus и participation penalty; rationale_generator получает уже вычисленные факты и не может менять ranking или skills.",
+                "value": "Для HR-домена это более надёжная архитектура, чем передать модели право выбирать действие: решение воспроизводимо, аудируемо и одинаково при отсутствии внешней модели.",
+                "verification": "source",
+                "evidence": [
+                  "backend/recommendation_engine.py:121-178",
+                  "backend/recommendation_engine.py:181-220",
+                  "backend/rationale_generator.py:1-6"
+                ]
+              },
+              {
+                "aspect": "История как сигнал пригодности",
+                "implementation": "Для похожих событий отдельно считаются negative statuses и low feedback; penalty влияет на score, а factual negative count попадает в rationale отдельно.",
+                "value": "Это конкретно отвечает конфликтному профилю задания, где самый большой gap может быть плохим следующим шагом из-за прошлых пропусков.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/recommendation_engine.py:80-107",
+                  "tests/test_engine.py:191-207",
+                  "captures/20261002T024934685801-provided-dataset.stdout.log"
+                ]
+              },
+              {
+                "aspect": "Bounded multilingual AI layer",
+                "implementation": "При наличии compatible provider запрос ограничен timeout, отправляет только activity/skill facts без имени и ID сотрудника, проверяет числа и минимум факторов, а при ошибке возвращает en/ru/kk template fallback.",
+                "value": "LLM добавляет выразительность без превращения внешнего сервиса в единственную точку отказа или источник непроверяемых чисел.",
+                "verification": "source",
+                "evidence": [
+                  "backend/rationale_generator.py:45-91",
+                  "backend/rationale_generator.py:184-199",
+                  "tests/test_rationale.py:112-189",
+                  "tests/test_latency.py:40-120"
+                ]
+              },
+              {
+                "aspect": "Прозрачная логика caps",
+                "implementation": "score_event моделирует gap_before/gap_after по каждому развитию, не даёт duplicate skill entries закрыть gap дважды и не повышает уровень выше max_level.",
+                "value": "Это полезная предметная деталь, которая делает recommendation score объяснимым и предотвращает типичную ошибку прототипа с простым выбором минимального навыка.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/recommendation_engine.py:134-166",
+                  "tests/test_engine.py:210-247"
+                ]
+              }
+            ],
+            "scoreReasoning": "Полный балл заслужен тем, что нестандартность здесь не декоративная: команда сохранила AI-слой, но вынесла критическую бизнес-логику в проверяемый deterministic engine и использовала LLM только в bounded explanation path. Это особенно уместно для корпоративного развития, где важнее обоснованность и воспроизводимость."
+          },
+          {
+            "name": "Потенциал развития и масштабирования",
+            "score": 18,
+            "max": 20,
+            "awarded": "Архитектура хорошо расширяется по данным, языкам, провайдерам, activity rules и frontend-страницам; тестовые контракты и валидируемый import создают основу для следующего этапа.",
+            "deductions": "2 балла сняты за явно process-local in-memory хранение, один worker и reset состояния при рестарте.",
+            "evidence": [
+              "backend/data_store.py:85-124",
+              "README.md:31-43",
+              "README.md:365-384"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "D3",
+                "reason": "DataStore держит employees, history и derived state только в памяти; README требует один worker и прямо указывает, что imports/completions сбрасываются при restart. Это не мешает пятичасовому demo, но ограничивает горизонтальное масштабирование, долговечность и многопользовательское применение."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Расширение через единый датасетный контракт",
+                "implementation": "DataStore загружает employees/events/skills/activity_history, проверяет ссылки skill/event/employee, а /data/import принимает bulk JSON, employee JSON wrapper, history JSON и точный CSV schema.",
+                "value": "Новые профили и история могут добавляться без переписывания recommendation engine; это прямо поддерживает проверочные профили жюри и последующий rollout на другие роли.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/data_store.py:92-124",
+                  "backend/main.py:278-300",
+                  "tests/test_api.py:200-278",
+                  "frontend/tests/importPayload.test.js:1-120"
+                ]
+              },
+              {
+                "aspect": "Готовая граница для внешнего AI-провайдера",
+                "implementation": "Settings отделяет base URL, model, timeout и credential; explain_recommendation использует OpenAI-compatible chat/completions и локальный fallback.",
+                "value": "Провайдер можно заменить конфигурацией, не меняя расчёт рекомендаций или UI-контракты; это разумный путь от hackathon prototype к внутреннему inference service.",
+                "verification": "source",
+                "evidence": [
+                  "backend/config.py:22-57",
+                  "backend/rationale_generator.py:184-199",
+                  "README.md:298-321"
+                ]
+              },
+              {
+                "aspect": "Контрактное покрытие frontend/backend",
+                "implementation": "FastAPI response models описывают employee detail, recommendation, completion, HR aggregates и imports; Node tests проверяют API/data adapter и import normalization, а production build проходит.",
+                "value": "Это уменьшает стоимость подключения будущего persistent backend или другого client и оставляет проверяемые границы интеграции.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/api_models.py:10-84",
+                  "frontend/src/lib/api.js:8-49",
+                  "captures/20261002T024833063878-frontend-tests.stdout.log"
+                ]
+              },
+              {
+                "aspect": "Предсказуемое развитие правил",
+                "implementation": "GRADE_ORDER, critical weights, recurring event exception, history reconciliation и event max_level вынесены в небольшие тестируемые функции; supplied-dataset regression tests фиксируют исходные данные и повторный import.",
+                "value": "Предметные изменения можно вносить точечно и проверять regression suite, вместо скрытой логики внутри UI или prompt.",
+                "verification": "source",
+                "evidence": [
+                  "backend/config.py:11-13",
+                  "backend/recommendation_engine.py:13-24",
+                  "tests/test_history_reconciliation.py:76-269",
+                  "tests/test_supplied_dataset.py:48-143"
+                ]
+              }
+            ],
+            "scoreReasoning": "18/20 — высокий потенциал для MVP благодаря data contract, isolated engine и provider boundary. D3 удерживает от максимума: in-memory модель хорошо подходит локальному прототипу, но при переходе к нескольким worker или длительной эксплуатации completion/import не имеют durable shared state."
+          },
+          {
+            "name": "Презентация, демо и ответы на вопросы",
+            "score": 19,
+            "max": 20,
+            "awarded": "README содержит запуск, конфигурацию, API handoff, правила scoring, импорт, сценарии E0099/E0050 и команды тестирования; локальное демо воспроизводимо.",
+            "deductions": "1 балл снят только за то, что в EmployeePage траектория не выделена отдельным UI-блоком, что ослабляет ясность демонстрации. Отсутствие публичной ссылки и устного выступления не штрафовалось.",
+            "evidence": [
+              "README.md:22-115",
+              "README.md:154-296",
+              "README.md:326-384",
+              "captures/20261002T024732133771-api-scenario2.stdout.log",
+              "captures/20261002T024833063878-frontend-tests.stdout.log"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "D2",
+                "reason": "Документация хорошо описывает next-grade, но визуальный employee result по исходнику показывает current grade и skills без отдельного trajectory/next-grade presentation; это делает live walkthrough менее очевидным, хотя API и rationale содержат нужные факты."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Воспроизводимый запуск",
+                "implementation": "README разделяет backend и frontend, перечисляет Python/Node prerequisites, .env, CORS, DATA_DIR, mock/live modes, API URL и strict port behavior.",
+                "value": "Новый проверяющий может поднять backend, подключить frontend и понимать, какой процесс сбрасывает in-memory state; это соответствует оценке README вместо несуществующей устной презентации.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:22-78",
+                  "frontend/README.md:1-74"
+                ]
+              },
+              {
+                "aspect": "Сценарии защиты",
+                "implementation": "README указывает E0099 как gap-versus-history case, E0050 как Lead с валидным empty recommendation state, описывает порядок profile → recommendations → completion → refresh → HR → import.",
+                "value": "Документ не обещает несуществующие new-hire/near-ceiling совпадения и даёт проверяющему конкретные входы с ожидаемыми граничными результатами.",
+                "verification": "observed",
+                "evidence": [
+                  "README.md:326-363",
+                  "captures/20261002T024732133771-api-scenario2.stdout.log",
+                  "captures/20261002T024934685801-provided-dataset.stdout.log"
+                ]
+              },
+              {
+                "aspect": "Документированный API handoff",
+                "implementation": "README перечисляет response shapes всех employee/HR/import routes, top_n limits, 404/422/409 semantics, CSV header и upsert rules.",
+                "value": "Это делает demo reproducible не только через UI, но и через HTTP/CLI, что особенно полезно для проверки без браузерной автоматизации.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:154-218",
+                  "README.md:222-296",
+                  "backend/api_models.py:14-84"
+                ]
+              },
+              {
+                "aspect": "Реально подтверждённый результат",
+                "implementation": "Backend pytest, API smoke на bundled и case-data, frontend Node tests и Vite build дали конкретные проходы; smoke показывает фактические значения latency, skill change, disappearance of completed activity и HR response sizes.",
+                "value": "README-повествование подкреплено запуском проекта и domain checks, а не только наличием файлов.",
+                "verification": "observed",
+                "evidence": [
+                  "captures/20261002T024619815426-backend-tests.stdout.log",
+                  "captures/20261002T024732133771-api-scenario2.stdout.log",
+                  "captures/20261002T024934685801-provided-dataset.stdout.log",
+                  "captures/20261002T024833063878-frontend-tests.stdout.log"
+                ]
+              }
+            ],
+            "scoreReasoning": "19/20: документация и CLI/API-доказательства дают воспроизводимую демонстрацию, а отсутствие live URL или устных ответов не является недостатком в этом формате ревью. Один балл удержан за D2, потому что визуальный путь от текущего грейда к следующему в коде UI выражен косвенно."
+          }
+        ],
+        "total": 93
+      },
+      "case": {
+        "criteria": [
+          {
+            "name": "Соответствие задаче и работоспособность",
+            "score": 22,
+            "max": 25,
+            "awarded": "Основной сценарий кейса воспроизведён на E0099 и на исходном наборе данных; профиль, рекомендации, completion, progress refresh и HR-view работают.",
+            "deductions": "3 балла сняты за косвенно представленную карьерную траекторию и отсутствие ролевого доступа.",
+            "evidence": [
+              "backend/main.py:162-224",
+              "frontend/src/pages/EmployeePage.jsx:61-77",
+              "captures/20261002T024934685801-provided-dataset.stdout.log"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "D2",
+                "reason": "Требование profile and career trajectory частично выполнено: API вычисляет next_grade и skill_gaps, но employee UI не выводит next_grade/target trajectory как самостоятельный элемент; текущая страница показывает только current grade, skills, history и recommendations."
+              },
+              {
+                "points": 1,
+                "findingId": "D1",
+                "reason": "Требование приватного внутреннего контура и role separation частично нарушено: /hr и /import не защищены от employee/public caller на уровне backend или frontend navigation."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Профиль и next-grade computation",
+                "implementation": "GET /employees/{id} собирает EmployeeDetail, вычисляет следующий грейд в той же роли, positive gaps и activity_history с названиями событий.",
+                "value": "Сущность профиля и вычислительное ядро траектории присутствуют и служат входом для рекомендаций, а не являются статическим mock card.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/main.py:162-180",
+                  "backend/recommendation_engine.py:27-49",
+                  "captures/20261002T024934685801-provided-dataset.stdout.log"
+                ]
+              },
+              {
+                "aspect": "1–3 релевантных шага",
+                "implementation": "API ограничивает top_n диапазоном 1–3, отбрасывает события без skill benefit, учитывает role/grade, prerequisites, session date и prior completion, после чего сортирует score.",
+                "value": "Система выдаёт ограниченный список действий, которые действительно закрывают gaps текущего employee, а не общий каталог курсов.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/main.py:186-202",
+                  "backend/recommendation_engine.py:52-77",
+                  "backend/recommendation_engine.py:181-220",
+                  "captures/20261002T024934685801-provided-dataset.stdout.log"
+                ]
+              },
+              {
+                "aspect": "Прогресс после выполнения",
+                "implementation": "На case-data для E0099 первый рекомендованный EV_008 был выполнен; smoke зафиксировал SK_COMMUNICATION 1 → 2, исчезновение EV_008 и обновлённые рекомендации.",
+                "value": "Это прямо подтверждает ключевую последовательность кейса, включая изменение derived progress и history.",
+                "verification": "observed",
+                "evidence": [
+                  "captures/20261002T024934685801-provided-dataset.stdout.log",
+                  "tests/test_supplied_dataset.py:119-143"
+                ]
+              },
+              {
+                "aspect": "HR-view",
+                "implementation": "HR routes возвращают top skill gaps, unranked employees without recommendation и все шесть status counts per activity; frontend HrPage отображает соответствующие sections.",
+                "value": "Второй пользователь кейса получает требуемый operational view, включая людей, которым может понадобиться manual check-in.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/main.py:226-276",
+                  "frontend/src/pages/HrPage.jsx:52-113",
+                  "captures/20261002T024934685801-provided-dataset.stdout.log"
+                ]
+              }
+            ],
+            "scoreReasoning": "22/25: функциональное ядро соответствует задаче и воспроизведено на организаторском наборе. D2 — функциональный gap именно в представлении trajectory, а D1 — в приватности и разделении ролей; оба не ломают API smoke, но не позволяют назвать пользовательский сценарий полностью завершённым для внутреннего продукта."
+          },
+          {
+            "name": "Техническая реализация",
+            "score": 23,
+            "max": 25,
+            "awarded": "Архитектура разделяет schemas, data store, scoring engine, rationale provider, API и frontend adapter; тесты подтверждают фактическую реализацию заявленной логики.",
+            "deductions": "2 балла сняты за отсутствие authorization layer и process-local state.",
+            "evidence": [
+              "backend/models.py:18-131",
+              "backend/data_store.py:179-335",
+              "backend/recommendation_engine.py:27-220",
+              "captures/20261002T024619815426-backend-tests.stdout.log"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "D1",
+                "reason": "В main.py нет dependency/middleware/permission check для employee versus HR; App.jsx безусловно добавляет HR dashboard и Import data в навигацию. Для заявленного внутреннего контура это технически подтверждённый missing layer."
+              },
+              {
+                "points": 1,
+                "findingId": "D3",
+                "reason": "DataStore и derived state живут в памяти процесса и требуют one worker; это осознанный MVP trade-off, но технически снижает deployability при нескольких экземплярах и рестартах."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Слоистая backend-архитектура",
+                "implementation": "Pydantic contracts находятся отдельно от DataStore и recommendation_engine; main.py связывает их с FastAPI routes, а frontend обращается к узкому api.js adapter.",
+                "value": "Компоненты можно тестировать отдельно и заменять без переноса доменной логики в UI; это хороший уровень технической дисциплины для короткого прототипа.",
+                "verification": "source",
+                "evidence": [
+                  "backend/main.py:18-34",
+                  "backend/data_store.py:85-124",
+                  "backend/recommendation_engine.py:1-10",
+                  "frontend/src/lib/api.js:8-49"
+                ]
+              },
+              {
+                "aspect": "Корректная reconciliation-модель",
+                "implementation": "Assessment baseline хранится отдельно от derived employee skills; completed history после last_review_date replay-ится с датами и event caps, reimport заменяет records без повторного накопления gains.",
+                "value": "Это решает сложную для датасета проблему: completion после оценки должна влиять на текущий уровень, а повторная загрузка источника не должна давать двойной рост.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/data_store.py:113-124",
+                  "backend/data_store.py:179-225",
+                  "backend/data_store.py:235-293",
+                  "captures/20261002T024619815426-backend-tests.stdout.log"
+                ]
+              },
+              {
+                "aspect": "AI/LLM integration без потери контроля",
+                "implementation": "HTTP provider вызывается конкурентно для максимум трёх rationales, ограничен timeout, проверяет provider response, supported numbers и factor keywords; при отсутствии клиента или ошибке используется локальный fallback.",
+                "value": "Провайдер ускоряет формулировку, но не получает employee name и не может изменить score, eligibility или gains. Это фактически соответствует заявленной границе AI.",
+                "verification": "source",
+                "evidence": [
+                  "backend/main.py:54-83",
+                  "backend/rationale_generator.py:1-6",
+                  "backend/rationale_generator.py:184-199",
+                  "tests/test_latency.py:40-120"
+                ]
+              },
+              {
+                "aspect": "Atomic imports и concurrent safety",
+                "implementation": "RLock покрывает связанные чтения/записи, batch records валидируется до публикации, duplicate IDs и bad references отклоняются, concurrent duplicate completion тестируется отдельно.",
+                "value": "Для in-memory demo это снижает риск гонок и труднообъяснимых промежуточных состояний при параллельных действиях.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/data_store.py:179-225",
+                  "backend/data_store.py:295-335",
+                  "tests/test_store.py:75-132",
+                  "tests/test_history_reconciliation.py:213-269"
+                ]
+              }
+            ],
+            "scoreReasoning": "23/25: техническая реализация заметно выше минимального CRUD-прототипа и подтверждена 180 тестами. D1 и D3 — не проблемы корректности текущего single-process demo, а конкретные ограничения перехода к корпоративному deploy: permissions и durable shared state отсутствуют."
+          },
+          {
+            "name": "README и воспроизводимость",
+            "score": 25,
+            "max": 25,
+            "awarded": "Документация практически полностью покрывает запуск, конфигурацию, data schema, scoring, imports, API, smoke scenarios и тестовые команды; все заявленные локальные проверки воспроизведены.",
+            "deductions": "Снятий нет.",
+            "evidence": [
+              "README.md:22-115",
+              "README.md:154-296",
+              "README.md:326-384",
+              "frontend/README.md:1-128",
+              "captures/20261002T024619815426-backend-tests.stdout.log",
+              "captures/20261002T024833063878-frontend-tests.stdout.log"
+            ],
+            "deductionItems": [],
+            "awardedDetails": [
+              {
+                "aspect": "Setup и конфигурация",
+                "implementation": "README даёт команды venv/pip/uvicorn, frontend npm ci/dev, env variables, DATA_DIR behavior, CORS defaults, fixed snapshot date и one-worker in-memory semantics.",
+                "value": "Инструкции достаточны для чистого окружения и честно описывают важные runtime assumptions вместо скрытых prerequisites.",
+                "verification": "observed",
+                "evidence": [
+                  "README.md:22-78",
+                  "README.md:88-115",
+                  "frontend/README.md:7-74"
+                ]
+              },
+              {
+                "aspect": "Предметная модель и правила",
+                "implementation": "Документированы next-grade rule, eligibility, critical weights, penalties, recurring EV_036, capped gains, completion conflict, reimport behavior и distinction assessment/current skills.",
+                "value": "Проверяющий может предсказать, почему activity попала в выдачу и какой skill должен измениться, не читая весь исходник.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:222-296",
+                  "README.md:389-405",
+                  "data/README.md:53-112"
+                ]
+              },
+              {
+                "aspect": "Полный handoff для API и imports",
+                "implementation": "Описаны response fields, route paths, status codes, JSON/CSV wrappers, exact header, validation, upsert semantics и no-partial-write promise; frontend README связывает это с ImportPage.",
+                "value": "Документация пригодна и для ручной демонстрации, и для написания внешнего test client.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:154-218",
+                  "README.md:247-296",
+                  "frontend/README.md:75-116"
+                ]
+              },
+              {
+                "aspect": "Reproducible evidence",
+                "implementation": "README предлагает E0099/E0050, smoke script и backend/frontend checks; фактически получены 180 passed, 8 frontend tests passed with one optional integration skipped, Vite build и successful API smoke на case-data.",
+                "value": "Воспроизводимость подтверждена запуском, а не оценена по одному тексту README.",
+                "verification": "observed",
+                "evidence": [
+                  "captures/20261002T024619815426-backend-tests.stdout.log",
+                  "captures/20261002T024732133771-api-scenario2.stdout.log",
+                  "captures/20261002T024934685801-provided-dataset.stdout.log",
+                  "captures/20261002T024833063878-frontend-tests.stdout.log",
+                  "captures/20261002T025243369747-lint2.stdout.log"
+                ]
+              }
+            ],
+            "scoreReasoning": "25/25: README соответствует тому, что реально запускается. Команды, схема данных, edge cases и expected outputs достаточно конкретны, а две независимые runtime-проверки на bundled и организаторском наборе подтверждают воспроизводимость."
+          },
+          {
+            "name": "Ценность и применимость решения",
+            "score": 14,
+            "max": 15,
+            "awarded": "Практический сценарий применим к сотруднику и HR: персональный next step объясняется через gaps/history, а HR получает aggregate signals для follow-up.",
+            "deductions": "1 балл снят за отсутствие доступа по ролям, что препятствует безопасному применению с реальными внутренними профилями.",
+            "evidence": [
+              "README.md:1-14",
+              "README.md:222-244",
+              "frontend/src/pages/HrPage.jsx:52-113",
+              "captures/20261002T024934685801-provided-dataset.stdout.log"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "D1",
+                "reason": "HR-view полезен, но отсутствие server-side authorization означает, что в реальном employee/HR deployment нельзя безопасно показать персональные профили и HR follow-up только правильной роли."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Польза для сотрудника",
+                "implementation": "EmployeePage показывает role, department, grade, skills, history и до трёх карточек с rationale, skill chips, critical marker, duration и completion action.",
+                "value": "Сотрудник получает конкретный ответ на вопрос «что делать дальше и зачем», а не только список обязательных HR-событий.",
+                "verification": "source",
+                "evidence": [
+                  "frontend/src/pages/EmployeePage.jsx:61-77",
+                  "backend/rationale_generator.py:111-183"
+                ]
+              },
+              {
+                "aspect": "Польза для HR",
+                "implementation": "HR dashboard показывает top 15 total gaps, число затронутых людей, список employees without recommendation и activity participation by six statuses.",
+                "value": "Это поддерживает приоритизацию развития и manual check-in, не превращая результативность в публичную гонку сотрудников.",
+                "verification": "observed",
+                "evidence": [
+                  "frontend/src/pages/HrPage.jsx:59-110",
+                  "captures/20261002T024934685801-provided-dataset.stdout.log"
+                ]
+              },
+              {
+                "aspect": "Объяснимость",
+                "implementation": "Fallback text показывает current versus required, gap_before/gap_after, critical marker, duration и negative participation count; optional LLM получает те же structured facts.",
+                "value": "HR и employee могут связать recommendation с наблюдаемыми данными, а не доверять неаудируемому AI score.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/rationale_generator.py:111-183",
+                  "captures/20261002T024934685801-provided-dataset.stdout.log",
+                  "tests/test_rationale.py:83-112"
+                ]
+              },
+              {
+                "aspect": "Synthetic-safe applicability",
+                "implementation": "Проект явно маркирует dataset synthetic и сохраняет names/IDs внутри заданного synthetic contour; README предупреждает про in-memory state и не обещает production persistence.",
+                "value": "Для hackathon demonstration это позволяет показать полезный сценарий без обращения с реальными персональными данными.",
+                "verification": "source",
+                "evidence": [
+                  "data/README.md:1-28",
+                  "backend/main.py:149-160",
+                  "README.md:31-43"
+                ]
+              }
+            ],
+            "scoreReasoning": "14/15: ценность хорошо видна в фактическом E0099 flow и HR output. Единственная существенная практическая оговорка — D1: применимость к реальной организации требует role-aware access, даже если synthetic local demo этого не требует для запуска."
+          },
+          {
+            "name": "Потенциал развития и оригинальность подхода",
+            "score": 9,
+            "max": 10,
+            "awarded": "Сочетание dataset-driven rules, history-aware ranking, capped replay и optional bounded LLM создаёт хорошую основу для расширения на другие роли и активности.",
+            "deductions": "1 балл снят за process-local state, который нужно заменить перед масштабированием.",
+            "evidence": [
+              "backend/recommendation_engine.py:121-220",
+              "backend/data_store.py:85-124",
+              "README.md:365-405"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "D3",
+                "reason": "Потенциал расширения предметных правил высокий, но process-local storage и reset при restart препятствуют shared multi-user rollout без отдельного слоя durable storage и concurrency coordination."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Оригинальность history-aware score",
+                "implementation": "Кандидаты ранжируются по фактическому capped gap reduction, критичности, bonus за полное закрытие critical gap и participation penalty на похожих событиях.",
+                "value": "Это содержательно отличается от простого lowest-skill selector и прямо проверено конфликтным E0099.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/recommendation_engine.py:80-178",
+                  "captures/20261002T024934685801-provided-dataset.stdout.log"
+                ]
+              },
+              {
+                "aspect": "Расширение на новые роли и профили",
+                "implementation": "Role profiles, skills и events загружаются из JSON, а imports поддерживают новые employees/history с reference validation.",
+                "value": "Следующий хакатон или внутренний пилот может добавить роль и набор активностей через data contract, сохранив engine/API.",
+                "verification": "source",
+                "evidence": [
+                  "backend/data_store.py:96-112",
+                  "backend/main.py:278-300",
+                  "tests/test_api.py:212-267"
+                ]
+              },
+              {
+                "aspect": "LLM как заменяемый слой",
+                "implementation": "LLM_BASE_URL, LLM_MODEL и timeout конфигурируются отдельно; provider failure, invalid response и unsupported facts возвращают deterministic localized fallback.",
+                "value": "Можно перейти на локальный или корпоративный compatible endpoint, не меняя domain ranking и не блокируя demo при недоступности AI.",
+                "verification": "source",
+                "evidence": [
+                  "backend/config.py:22-57",
+                  "backend/rationale_generator.py:184-199",
+                  "README.md:298-321"
+                ]
+              },
+              {
+                "aspect": "Основа для измерения эффекта",
+                "implementation": "Participation stats, status history, feedback ratings и employees without recommendation уже доступны как агрегаты; completion records сохраняют event/date/status.",
+                "value": "В дальнейшем можно добавить cohort metrics, adoption и outcome tracking, не меняя базовый workflow.",
+                "verification": "source",
+                "evidence": [
+                  "backend/models.py:93-105",
+                  "backend/main.py:264-276",
+                  "frontend/src/pages/HrPage.jsx:87-110"
+                ]
+              }
+            ],
+            "scoreReasoning": "9/10: подход оригинален не визуальным gimmick, а способом сочетать объяснимое предметное scoring и optional AI wording. D3 — конкретная граница перехода от прототипа к масштабному сервису, но она честно документирована и не умаляет потенциал самого data/engine слоя."
+          }
+        ],
+        "total": 93
+      },
+      "judgeScore": 93,
+      "caseRequirements": [
+        {
+          "requirement": "Профиль сотрудника и карьерная траектория по следующему грейду",
+          "status": "partial",
+          "explanation": "Backend возвращает роль, грейд, skills, history, next_grade и skill_gaps, а recommendation engine использует следующий грейд в текущей роли. В EmployeePage отображаются профиль и gaps/skills, но отдельного next-grade/trajectory блока в JSX нет; направление восстановления остаётся косвенным через rationale и рекомендации.",
+          "evidence": [
+            "backend/main.py:162-180",
+            "backend/api_models.py:14-18",
+            "frontend/src/pages/EmployeePage.jsx:61-77"
+          ]
+        },
+        {
+          "requirement": "1–3 релевантных AI/объяснимых рекомендаций",
+          "status": "met",
+          "explanation": "top_n ограничен 1–3; eligibility и ranking используют role/grade, gaps, criticality, prerequisites, sessions, completion history и penalties. Для E0099 на организаторском датасете фактически получены EV_008, EV_030 и EV_037.",
+          "evidence": [
+            "backend/main.py:186-202",
+            "backend/recommendation_engine.py:181-220",
+            "captures/20261002T024934685801-provided-dataset.stdout.log"
+          ]
+        },
+        {
+          "requirement": "Обоснование минимум по грейду/следующему уровню, skill gaps, criticality и history",
+          "status": "met",
+          "explanation": "Deterministic fallback формирует current versus required, gap before/after, critical flag, duration и число declines/no-shows/dropouts по похожим активностям. Smoke heuristic подтвердил 4/4 факторов для каждой из трёх рекомендаций E0099; optional LLM path проверяет минимум три фактора и unsupported numbers.",
+          "evidence": [
+            "backend/rationale_generator.py:111-183",
+            "backend/rationale_generator.py:184-199",
+            "captures/20261002T024934685801-provided-dataset.stdout.log",
+            "tests/test_rationale.py:83-189"
+          ]
+        },
+        {
+          "requirement": "Рост навыка подчиняется gain/max_level из events.json",
+          "status": "met",
+          "explanation": "И replay истории, и live completion применяют gain с max_level и не снижают уже существующий уровень. На E0099 completion EV_008 дал SK_COMMUNICATION 1 → 2, после чего событие исчезло из рекомендаций.",
+          "evidence": [
+            "backend/data_store.py:227-233",
+            "backend/recommendation_engine.py:137-149",
+            "captures/20261002T024934685801-provided-dataset.stdout.log",
+            "tests/test_engine.py:210-247"
+          ]
+        },
+        {
+          "requirement": "Обновление progress и history после выполнения",
+          "status": "met",
+          "explanation": "POST completion создаёт completed record, перестраивает derived employee skills и возвращает свежие recommendations; frontend применяет response и повторно загружает profile. Smoke подтвердил skills, refreshed recommendations и history behavior.",
+          "evidence": [
+            "backend/data_store.py:295-335",
+            "frontend/src/pages/EmployeePage.jsx:28-46",
+            "tests/test_supplied_dataset.py:119-143",
+            "captures/20261002T024934685801-provided-dataset.stdout.log"
+          ]
+        },
+        {
+          "requirement": "Простой HR-view: gaps, сотрудники без шага, участие",
+          "status": "met",
+          "explanation": "Реализованы три HR routes и frontend sections. На smoke получены 15 skill-gap rows, 41 employee rows without recommendation и 40 participation rows; participation model содержит completed, declined, no_show, dropped, in_progress и overdue.",
+          "evidence": [
+            "backend/main.py:226-276",
+            "backend/api_models.py:41-65",
+            "frontend/src/pages/HrPage.jsx:59-110",
+            "captures/20261002T024934685801-provided-dataset.stdout.log"
+          ]
+        },
+        {
+          "requirement": "Загрузка дополнительных профилей и истории в формате датасета",
+          "status": "met",
+          "explanation": "Backend принимает bulk JSON и file wrapper для employees/history, raw CSV с exact ten-column header, validates references, upserts by IDs и отклоняет batch без partial write. Тесты проверяют CSV nulls, wrappers, duplicate IDs, unknown references и idempotent reimport.",
+          "evidence": [
+            "backend/data_store.py:36-72",
+            "backend/main.py:87-99",
+            "backend/main.py:278-300",
+            "tests/test_api.py:200-278",
+            "frontend/src/lib/importPayload.js:1-76"
+          ]
+        },
+        {
+          "requirement": "Проверка на конфликтном профиле, а не только минимальном навыке",
+          "status": "met",
+          "explanation": "Предоставленный case-data сканер нашёл E0099 с communication gap 3, critical HR analytics gap 1 и двумя негативными EV_008 records; запуск проекта на этом же наборе дал три рекомендации с четырьмя объяснительными факторами. Unit tests отдельно проверяют shift priority из-за negative history.",
+          "evidence": [
+            "captures/20261002T024934685801-provided-dataset.stdout.log",
+            "backend/recommendation_engine.py:80-107",
+            "tests/test_engine.py:249-263",
+            "tests/test_scenarios.py:53-102"
+          ]
+        },
+        {
+          "requirement": "Нет публичного рейтинга сотрудников и реальных персональных данных",
+          "status": "met",
+          "explanation": "Набор данных документирован как synthetic; HR employee list не сортируется по performance score и не выдаёт ranking, а participation/gaps агрегированы по activity и skill. Ограничение приватности из-за отсутствия authorization указано отдельно как D1.",
+          "evidence": [
+            "data/README.md:1-28",
+            "backend/main.py:249-276",
+            "README.md:14-20"
+          ]
+        },
+        {
+          "requirement": "Допустимая скорость рекомендации до 10 секунд",
+          "status": "met",
+          "explanation": "Smoke test на E0099 измерил 0.005 с для initial recommendations и 0.003 с после completion; provider-free deterministic path работает без API key. Отдельные latency tests проверяют bounded concurrent explanation path.",
+          "evidence": [
+            "captures/20261002T024732133771-api-scenario2.stdout.log",
+            "tests/test_latency.py:40-120",
+            "backend/main.py:54-83"
+          ]
+        },
+        {
+          "requirement": "Приватность и разграничение employee/HR контуров",
+          "status": "missing",
+          "explanation": "В исходнике нет authentication/authorization middleware или route dependency. Shell безусловно показывает HR dashboard и Import data, а backend не проверяет роль caller; следовательно, boundary не реализован даже при том, что публичного ranking нет.",
+          "evidence": [
+            "frontend/src/components/Shell.jsx:4-18",
+            "frontend/src/App.jsx:13-18",
+            "backend/main.py:128-134",
+            "backend/main.py:226-300"
+          ]
+        }
+      ],
+      "testData": {
+        "provided": [
+          "cases/3/case-data/HackAlem AI_ Career Quest - платформа геймификации жизненного цикла сотрудника..md",
+          "cases/3/case-data/case_1/career_quest_dataset/README.md",
+          "cases/3/case-data/case_1/career_quest_dataset/README.ru.md",
+          "cases/3/case-data/case_1/career_quest_dataset/README.kz.md",
+          "cases/3/case-data/case_1/career_quest_dataset/employees.json",
+          "cases/3/case-data/case_1/career_quest_dataset/events.json",
+          "cases/3/case-data/case_1/career_quest_dataset/skills.json",
+          "cases/3/case-data/case_1/career_quest_dataset/activity_history.csv"
+        ],
+        "used": [
+          "cases/3/case-data/case_1/career_quest_dataset/employees.json",
+          "cases/3/case-data/case_1/career_quest_dataset/events.json",
+          "cases/3/case-data/case_1/career_quest_dataset/skills.json",
+          "cases/3/case-data/case_1/career_quest_dataset/activity_history.csv",
+          "cases/3/case-data/case_1/career_quest_dataset/README.md",
+          "cases/3/case-data/case_1/career_quest_dataset/README.ru.md",
+          "cases/3/case-data/case_1/career_quest_dataset/README.kz.md"
+        ],
+        "checks": [
+          {
+            "input": "Четыре организаторских файла career_quest_dataset, DATA_DIR указывает на этот каталог.",
+            "method": "Запуск scripts/find_test_scenarios.py --data-dir <provided career_quest_dataset> --json и backend с тем же DATA_DIR; каталог смонтирован только для чтения.",
+            "result": "Данные загрузились: employees=200, events=40, skills=60, role profiles=32, history=2743. Сканер нашёл E0099: communication 1/4 gap 3, critical HR analytics 2/3 gap 1, две негативные записи EV_008; new_hire и near_grade_ceiling пусты.",
+            "conclusion": "Формат и связи исходного датасета совместимы с проектом; проверка не подменяла организаторские файлы bundled-копией."
+          },
+          {
+            "input": "Организаторский E0099, текущий профиль и история; GET recommendations.",
+            "method": "scripts/e2e_smoke_test.py E0099 с локальным backend, запущенным на provided dataset.",
+            "result": "PASS: профиль; response за 0.005 с; EV_008, EV_030, EV_037; все три rationale получили 4/4 heuristic factors: level/requirement, criticality, history, gap reduction.",
+            "conclusion": "История действительно влияет на объяснимый recommendation result, а не только считывается из README."
+          },
+          {
+            "input": "Completion первого рекомендованного E0099 activity EV_008.",
+            "method": "Продолжение e2e smoke flow на provided dataset: POST completion, затем profile/recommendations/history.",
+            "result": "PASS: SK_COMMUNICATION 1 -> 2, updated recommendations returned, EV_008 disappeared, three HR endpoints returned 15 gaps, 41 without recommendation and 40 participation rows.",
+            "conclusion": "Capped gain, state transition и HR refresh работают на фактическом кейсовом наборе."
+          },
+          {
+            "input": "Bundled E0050 Lead profile и bundled E0099 scenario.",
+            "method": "e2e smoke tests against repository data.",
+            "result": "E0099 PASS 7/7; E0050 PASS 6, SKIP completion because recommendations are empty. Empty recommendation state accepted by smoke as valid for Lead.",
+            "conclusion": "Проверены и обычный конфликтный профиль, и допустимый top-grade edge case."
+          },
+          {
+            "input": "API JSON/CSV imports, invalid values, duplicate completion, reconciliation и supplied dataset regression.",
+            "method": "python -m pytest -q inside the isolated project environment.",
+            "result": "180 passed; tests include test_api.py, test_store.py, test_history_reconciliation.py, test_rationale.py, test_latency.py, test_performance.py, test_scenarios.py and test_supplied_dataset.py.",
+            "conclusion": "Схемы импорта, caps, reimport idempotency, API contracts и локализация rationale покрыты исполняемыми проверками."
+          },
+          {
+            "input": "Frontend import normalization and API adapter.",
+            "method": "npm test и npm run build в каталоге frontend.",
+            "result": "Node test runner: 8 passed, 1 optional backend integration skipped; Vite 6.4.3 production build: 35 modules transformed, build completed.",
+            "conclusion": "Frontend contract/import code собирается и проходит доступные non-visual checks; визуальное поведение намеренно не проверялось."
+          }
+        ],
+        "limitations": [
+          "Case-data и repository data имеют разные байтовые представления, но одинаковые проверенные counts и E0099 content; исходный case-data был отдельно подключён и запущен.",
+          "Предоставленные API credentials отсутствуют; внешний NVIDIA/LLM network path оценён по исходнику и mock/provider unit tests, а не по реальному inference account.",
+          "Визуальное поведение браузера, responsive layout и accessibility walkthrough не проверялись по установленному правилу user-owned visual verification."
+        ]
+      },
+      "runtime": {
+        "status": "working",
+        "build": "Backend dependencies установились, frontend production build завершился успешно; Ruff check также прошёл.",
+        "start": "FastAPI backend стартовал и обслужил health/profile/recommendation/completion/HR запросы в smoke flow.",
+        "scenario": "E0099 полностью воспроизведён на bundled и на исходном case-data; E0050 проверил валидный empty-recommendations Lead path.",
+        "environment": "Изолированные контейнерные проверки без секретов: Python 3.12 для backend и Node 22 для frontend. UI/browser automation не использовалась.",
+        "summary": "Основной сценарий работает; отсутствие API key не блокирует deterministic fallback и не влияет на startup. Ограничение касается только optional external LLM wording.",
+        "checks": [
+          {
+            "command": "python -m pytest -q",
+            "result": "180 passed in 6.27s; только предупреждения pytest/Starlette и read-only cache окружения, без failures.",
+            "id": "backend-pytest",
+            "stage": "build",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Все backend unit/domain/API/reconciliation/supplied-dataset tests проходят."
+          },
+          {
+            "command": "ruff check --no-cache backend tests scripts",
+            "result": "All checks passed!",
+            "id": "backend-ruff",
+            "stage": "build",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Python backend, tests и scripts проходят заявленный lint check."
+          },
+          {
+            "command": "npm test && npm run build",
+            "result": "Node tests: 8 passed, 1 optional integration skipped; Vite build: 35 modules transformed and completed successfully.",
+            "id": "frontend-tests-build",
+            "stage": "build",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Frontend adapter/import tests проходят, а production bundle собирается."
+          },
+          {
+            "command": "python -m uvicorn backend.main:app",
+            "result": "Backend запустился в isolated environment; последующие smoke requests получили ответы от health/profile/recommendation/completion/HR routes.",
+            "id": "api-start",
+            "stage": "start",
+            "status": "pass",
+            "cause": "none",
+            "expected": "FastAPI app стартует на bundled synthetic dataset без API credentials."
+          },
+          {
+            "command": "python scripts/e2e_smoke_test.py E0099 --base-url <running backend>",
+            "result": "Шаблон команды с локальной подстановкой: PASS 7 passed, 0 failed, 0 skipped; recommendation 0.005s; SK_COMMUNICATION 1 -> 2; EV_008 disappeared; all three HR checks passed.",
+            "id": "api-smoke-bundled-e0099",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Профиль, 1–3 explanations, completion refresh и HR endpoints работают на bundled dataset."
+          },
+          {
+            "command": "python scripts/e2e_smoke_test.py E0050 --base-url <running backend>",
+            "result": "Шаблон команды с локальной подстановкой: PASS 6 passed, 0 failed, 1 skipped; empty recommendations приняты как valid Lead state.",
+            "id": "api-smoke-bundled-e0050",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Top-grade employee корректно обслуживается без ложной рекомендации и без crash."
+          },
+          {
+            "command": "python scripts/find_test_scenarios.py --data-dir <provided career_quest_dataset> --json",
+            "result": "Сканер успешно обработал организаторские файлы и нашёл E0099 gap_vs_history_conflict; new_hire и near_grade_ceiling отсутствуют без подмены predicates.",
+            "id": "provided-data-scan",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Проектный scanner читает предоставленный кейсовый датасет и сообщает реальные сценарии."
+          },
+          {
+            "command": "python scripts/e2e_smoke_test.py E0099 --data-dir <provided career_quest_dataset> --base-url <running backend>",
+            "result": "Шаблон команды с локальными подстановками: PASS 7 passed, 0 failed, 0 skipped на исходном case-data; EV_008 completion и HR checks успешны.",
+            "id": "api-smoke-provided-e0099",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Основной сценарий работает именно на предоставленном организатором наборе."
+          }
+        ],
+        "limitations": [
+          "Optional NVIDIA/LLM provider не запускался с credentials: credentials deliberately not provided. Deterministic fallback и provider path проверены статически и unit tests.",
+          "Визуальная проверка frontend не выполнялась; build и Node/API adapter checks не заменяют пользовательский browser walkthrough."
+        ]
+      },
+      "liveDemo": {
+        "status": "none",
+        "url": null,
+        "notes": "Публичная live demo URL в материалах не заявлена. Это не снижало баллы: локальный API smoke и production build воспроизводимы. Визуальное browser-поведение оставлено непроверенным по правилам ревью."
+      },
+      "fiveHourContext": "Для пятичасового хакатона объём решения реалистично сфокусирован на основном employee/HR workflow, synthetic dataset и объяснимом engine, без обязательной геймификационной надстройки. Full production persistence и auth не требовались для запуска локального MVP, но отсутствие authorization уже отмечено как конкретный gap относительно условий внутреннего корпоративного контура; process-local storage учтён только в критериях масштабирования.",
+      "strengths": [
+        "Сквозной сценарий подтверждён API smoke на bundled и на исходном case-data, включая фактический skill update и refreshed recommendations.",
+        "Recommendation engine учитывает criticality, gaps, event caps, prerequisites, sessions и историю негативного участия, поэтому не является правилом выбора минимального навыка.",
+        "Assessment baseline и derived current skills разделены; reimport и completion reconciliation защищены тестами от двойного начисления.",
+        "Optional LLM аккуратно ограничен: deterministic selection остаётся локальным, provider получает факты без имени, а ошибки переходят в multilingual fallback.",
+        "README, API contracts, import schema, scenario scanner и тесты дают высокий уровень воспроизводимости."
+      ],
+      "gaps": [
+        "В проекте нет authentication/authorization или role-aware routing: employee caller может открыть HR dashboard и import routes, а backend не проверяет роль.",
+        "next_grade вычисляется и возвращается API, но EmployeePage не отображает отдельную карьерную траекторию/целевой следующий грейд; пользователь видит текущий grade, gaps и рекомендации.",
+        "DataStore и history/completion state process-local и сбрасываются при рестарте; это ограничивает multi-worker и durable deployment."
+      ],
+      "futureAdvice": [
+        {
+          "principle": "Роль должна быть проверена на сервере, а не только обозначена навигацией.",
+          "why": "D1: Shell показывает employee, HR и import routes всем, а backend не имеет permission dependency; при переходе от synthetic demo к реальным сотрудникам это нарушит privacy boundary.",
+          "how": "В другом хакатоне сначала добавьте минимальный role context в request, закройте HR/import отдельной dependency и напишите два API сценария: employee получает 403 на HR/import, HR получает 200. UI-скройте только как дополнительный UX слой.",
+          "findingIds": [
+            "D1"
+          ],
+          "successCheck": "Без браузера curl/HTTP тест с employee и HR identities показывает корректные 200/403 для employee profile, HR reports и import; прямой вызов route без роли не раскрывает данные.",
+          "timeboxMinutes": 35
+        },
+        {
+          "principle": "Траектория должна быть явным первым экраном результата.",
+          "why": "D2: backend уже считает next_grade, но EmployeePage не рендерит его как самостоятельную цель, поэтому связь текущего навыка и следующего уровня приходится читать из rationale.",
+          "how": "В другом кейсе сразу после profile header выведите current grade → next grade и несколько critical gaps с required/current; используйте уже возвращаемые API поля, не вводя новую бизнес-логику.",
+          "findingIds": [
+            "D2"
+          ],
+          "successCheck": "На profile route target next grade виден без чтения recommendation text, а после completion изменяется соответствующий gap/trajectory state; API smoke остаётся зелёным.",
+          "timeboxMinutes": 25
+        },
+        {
+          "principle": "Для масштабирования отделяйте доменный engine от durable state с самого начала.",
+          "why": "D3: README и DataStore прямо фиксируют one-worker in-memory semantics и reset imports/completions при restart; это подходит demo, но ломает shared state между экземплярами.",
+          "how": "В другом пятичасовом прототипе оставьте pure recommendation_engine, а records/assessments вынесите за repository interface; затем добавьте минимальный persistent adapter или хотя бы explicit single-process boundary в deployment manifest.",
+          "findingIds": [
+            "D3"
+          ],
+          "successCheck": "После restart или запуска второго worker completion/history остаются согласованными, а reconciliation и duplicate-completion tests проходят без изменения scoring behavior.",
+          "timeboxMinutes": 50
+        }
+      ],
+      "uncertainties": [
+        "Визуальный layout, browser navigation, responsive behavior и фактическая доступность UI не проверялись; выводы о frontend trajectory основаны на исходном JSX, build и API/data tests.",
+        "Real NVIDIA/compatible LLM call не выполнялся из-за отсутствия credentials; deterministic fallback прошёл, а optional provider путь оценён по коду и unit tests.",
+        "Performance измерялась на isolated synthetic dataset и локальном deterministic path; production network latency и multi-user persistence не проверялись."
+      ],
+      "reviewPolicyVersion": 2,
+      "assessmentStatus": "ready",
+      "findings": [
+        {
+          "id": "S1",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Основной backend/API сценарий реально запускается и проходит end-to-end на E0099, включая completion и HR routes.",
+          "expected": "Профиль, 1–3 recommendations, completion, refreshed state и три HR checks должны завершиться без project failure.",
+          "actual": "Bundled smoke: E0099 7 passed; provided case-data smoke: E0099 7 passed; recommendation 0.005s, SK_COMMUNICATION 1 -> 2, EV_008 disappeared, HR rows 15/41/40.",
+          "evidence": [
+            "captures/20261002T024732133771-api-scenario2.stdout.log",
+            "captures/20261002T024934685801-provided-dataset.stdout.log"
+          ],
+          "checkIds": [
+            "api-start",
+            "api-smoke-bundled-e0099",
+            "api-smoke-provided-e0099"
+          ]
+        },
+        {
+          "id": "S2",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Backend test suite покрывает доменную логику, API, supplied dataset, reconciliation, rationale, latency и performance.",
+          "expected": "Заявленные backend checks должны завершиться без failure.",
+          "actual": "180 тестов прошли; ruff check также завершился All checks passed.",
+          "evidence": [
+            "captures/20261002T024619815426-backend-tests.stdout.log",
+            "captures/20261002T025243369747-lint2.stdout.log"
+          ],
+          "checkIds": [
+            "backend-pytest",
+            "backend-ruff"
+          ]
+        },
+        {
+          "id": "S3",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Frontend adapter/import tests и production build проходят.",
+          "expected": "Node tests должны завершиться без failures, а Vite production bundle должен собраться.",
+          "actual": "8 frontend tests passed, 1 optional integration test skipped, 0 failed; Vite transformed 35 modules and built successfully.",
+          "evidence": [
+            "captures/20261002T024833063878-frontend-tests.stdout.log"
+          ],
+          "checkIds": [
+            "frontend-tests-build"
+          ]
+        },
+        {
+          "id": "S4",
+          "kind": "strength",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Recommendation selection deterministic and history-aware, а LLM ограничен explainability path.",
+          "expected": "Ranking должен использовать несколько факторов и не отдавать внешней модели контроль над scores/skills.",
+          "actual": "Engine считает gaps, critical weight, capped gains, penalties, bonus, prerequisites, sessions и history; rationale получает structured facts и fallback.",
+          "evidence": [
+            "backend/recommendation_engine.py:52-220",
+            "backend/rationale_generator.py:45-91",
+            "backend/rationale_generator.py:184-199"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "S5",
+          "kind": "strength",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "DataStore отделяет assessment baseline от derived skills и атомарно поддерживает import/reconciliation.",
+          "expected": "Повторные imports и corrections не должны накапливать один и тот же gain несколько раз.",
+          "actual": "_assessments, _records, replay order и live completion order перестраиваются до публикации batch; соответствующие regression tests проходят.",
+          "evidence": [
+            "backend/data_store.py:113-124",
+            "backend/data_store.py:179-225",
+            "backend/data_store.py:235-293",
+            "tests/test_history_reconciliation.py:76-269"
+          ],
+          "checkIds": [
+            "backend-pytest"
+          ]
+        },
+        {
+          "id": "S6",
+          "kind": "strength",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "README и сценарии E0099/E0050 дают конкретный воспроизводимый handoff.",
+          "expected": "Проверяющий должен понимать setup, data contract, сценарий и ожидаемые edge cases.",
+          "actual": "README документирует запуск, imports, scoring, smoke commands, E0099 gap/history case и E0050 valid empty case; все локальные команды проверены.",
+          "evidence": [
+            "README.md:22-115",
+            "README.md:326-384",
+            "captures/20261002T024619815426-backend-tests.stdout.log",
+            "captures/20261002T024833063878-frontend-tests.stdout.log"
+          ],
+          "checkIds": [
+            "backend-pytest",
+            "frontend-tests-build"
+          ]
+        },
+        {
+          "id": "D1",
+          "kind": "defect",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "В приложении отсутствует authentication/authorization и разграничение employee/HR/import.",
+          "expected": "Employee и HR должны иметь отдельные права; HR reports и imports не должны быть доступны любому caller.",
+          "actual": "App.jsx и Shell.jsx безусловно дают /hr и /import, а backend main.py содержит CORS, но не identity/role check для этих routes.",
+          "evidence": [
+            "frontend/src/App.jsx:13-18",
+            "frontend/src/components/Shell.jsx:11-18",
+            "backend/main.py:128-134",
+            "backend/main.py:226-300"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "D2",
+          "kind": "defect",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "EmployeePage не отображает next_grade или отдельную карьерную траекторию, хотя backend её вычисляет и возвращает.",
+          "expected": "Основной employee view должен явно показывать текущий и целевой следующий грейд вместе с прогрессом.",
+          "actual": "EmployeePage JSX выводит current employee.grade, skills/gaps, recommendations и history; next_grade не используется в render.",
+          "evidence": [
+            "backend/main.py:166-172",
+            "backend/api_models.py:14-18",
+            "frontend/src/pages/EmployeePage.jsx:61-77"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "D3",
+          "kind": "defect",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "DataStore и completion/import state process-local и reset при рестарте.",
+          "expected": "Для масштабного multi-user deployment state должен быть durable и shared между worker instances.",
+          "actual": "DataStore хранит employees/history/derived state в памяти, README требует one worker и документирует reset при restart.",
+          "evidence": [
+            "backend/data_store.py:85-124",
+            "README.md:31-43"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "L1",
+          "kind": "limitation",
+          "verification": "unverified",
+          "responsibility": "external_service",
+          "claim": "Реальный NVIDIA/compatible provider response не проверен с credentials.",
+          "expected": "При наличии валидного ключа provider должен вернуть accepted rationale или deterministic fallback при ошибке.",
+          "actual": "Credentials deliberately отсутствовали; код provider path и mock/unit tests проверены, фактический внешний inference не запускался.",
+          "evidence": [
+            "backend/rationale_generator.py:184-199",
+            "tests/test_rationale.py:112-189",
+            "api-requirements: credentialsProvided=false"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "L2",
+          "kind": "limitation",
+          "verification": "unverified",
+          "responsibility": "review_environment",
+          "claim": "Визуальное browser-поведение не проверено.",
+          "expected": "Responsive layout, navigation и визуальный trajectory block могли бы быть проверены пользователем.",
+          "actual": "Проверены source, frontend tests и build; browser/CUA/Playwright/Selenium и screenshot inspection не выполнялись по обязательной политике.",
+          "evidence": [
+            "captures/20261002T024833063878-frontend-tests.stdout.log",
+            "frontend/src/pages/EmployeePage.jsx:61-77"
+          ],
+          "checkIds": [
+            "frontend-tests-build"
+          ]
+        }
+      ],
+      "gapFindingIds": [
+        "D1",
+        "D2",
+        "D3"
+      ]
+    }
+  ],
+  "score": 93.0,
+  "status": "complete",
+  "expectedJudges": 1
+}

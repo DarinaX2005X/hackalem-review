@@ -1,0 +1,1145 @@
+{
+  "methodVersion": 4,
+  "repoId": "hack-510e990a-requiem",
+  "repoUrl": "https://github.com/BAITC-Hacks/hack-510e990a-requiem",
+  "caseId": 6,
+  "snapshot": "e5769de0473b587ef4e2ba1fbe2203492eb492ec",
+  "judges": [
+    {
+      "methodVersion": 4,
+      "repoId": "hack-510e990a-requiem",
+      "caseId": 6,
+      "model": "GPT-5.6 Luna",
+      "snapshot": "e5769de0473b587ef4e2ba1fbe2203492eb492ec",
+      "overallSummary": "EventMatch — сильный и практически воспроизводимый MVP для объяснимого подбора подрядчиков. Сервер действительно загружает исходный каталог из CSV, проверяет город, категорию, дату, занятость, бюджет, формат, язык и длительность, возвращает не более трёх карточек и формирует для каждой конкретное объяснение с фрагментом исходного описания. Локальная сборка и все 25 тестов прошли, а HTTP-проверки на предоставленном организаторами CSV воспроизвели плотную категорию, смену даты, редкую категорию, отсутствие категории, пустой бюджетный результат, null-длительность и повторяемость порядка. Основные снижения — небольшие: две неточности в README и отсутствие гарантии межперезапускной детерминированности в AI-режиме с ключевыми предпочтениями. Реальный вызов OpenAI и визуальное поведение не проверялись из-за правил и отсутствия ключа; это отражено как ограничение проверки, а не как дефект проекта.",
+      "global": {
+        "criteria": [
+          {
+            "name": "Ценность решения",
+            "score": 25,
+            "max": 25,
+            "awarded": "Полный балл: сервис решает понятную задачу быстрого выбора из уже имеющегося каталога, а его ценность сосредоточена на проверяемом объяснении, а не на добавлении длинного списка.",
+            "deductions": "Снятий нет.",
+            "evidence": [
+              "contractor-picker/README.md:3",
+              "contractor-picker/server/explanations.js:40",
+              "scenario-hosts-10",
+              "scenario-florist"
+            ],
+            "deductionItems": [],
+            "awardedDetails": [
+              {
+                "aspect": "Фокус на выборе из каталога",
+                "implementation": "POST /api/recommend работает поверх 66 профилей из data/contractors.csv и возвращает только прошедших кандидатов; для запроса ведущего в Алматы на корпоратив 10 октября API показал три карточки из пяти допустимых, а не неподходящие профили для заполнения лимита.",
+                "value": "Это непосредственно сокращает перебор каталога заказчиком и соответствует легенде кейса: пользователь получает короткий список с проверяемыми причинами присутствия карточки.",
+                "verification": "observed",
+                "evidence": [
+                  "contractor-picker/server/index.js:46",
+                  "contractor-picker/server/matching.js:46",
+                  "scenario-hosts-10"
+                ]
+              },
+              {
+                "aspect": "Объяснение вместо рекламной формулы",
+                "implementation": "makeCard собирает дату, формат, начальную цену и бюджет, добавляет язык и длительность при их наличии, а evidenceFor выбирает буквальный фрагмент description. В HTTP-ответе для ведущих были разные исходные фрагменты, включая корпоративные мероприятия и стиль подачи.",
+                "value": "Пользователь может понять, какие условия проверены и какая часть описания отличает карточку; это полезнее общего сообщения вроде «отличный выбор».",
+                "verification": "observed",
+                "evidence": [
+                  "contractor-picker/server/explanations.js:19",
+                  "contractor-picker/server/explanations.js:40",
+                  "scenario-hosts-10"
+                ]
+              },
+              {
+                "aspect": "Практичная честность результата",
+                "implementation": "Сервер различает matched, category_absent и no_matches, не добавляет неподходящих кандидатов и раскрывает counts, причины исключения и занятых на дату.",
+                "value": "Такой результат помогает принять решение даже при одном или нулевом совпадении и не выдаёт справочную цену или рекомендацию за подтверждённое бронирование.",
+                "verification": "observed",
+                "evidence": [
+                  "contractor-picker/server/matching.js:61",
+                  "contractor-picker/server/matching.js:65",
+                  "scenario-category-absent",
+                  "scenario-budget-empty"
+                ]
+              }
+            ],
+            "scoreReasoning": "Задача, аудитория и полезный результат сформулированы точно, а проверенный API-сценарий превращает каталог в короткий объяснимый выбор. Полный балл оправдан: ограничения вроде отсутствия бронирования и использования цен «от» явно обозначены как границы MVP и не противоречат кейсу."
+          },
+          {
+            "name": "Результат и качество решения",
+            "score": 19,
+            "max": 20,
+            "awarded": "Почти полный балл: основной пользовательский сценарий работает целиком, включая крайние случаи и fallback без AI; один балл снят за отсутствие строгой гарантии детерминированного порядка в AI-режиме с предпочтениями.",
+            "deductions": "1 балл за подтверждённое source-ограничение детерминированности AI-ранжирования при непустых ключевых предпочтениях.",
+            "evidence": [
+              "build-001",
+              "start-001",
+              "scenario-hosts-repeat",
+              "scenario-date-change",
+              "scenario-florist",
+              "scenario-budget-empty",
+              "F-AI-ORDER"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "F-AI-ORDER",
+                "reason": "В обязательном для кейса свойстве «один запрос — один порядок» базовый режим стабилен, но при current_keywords и настроенном ключе порядок выбирается моделью; кеш живёт только до перезапуска и постоянный tie-breaker не задан."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Рабочий основной путь",
+                "implementation": "Приложение стартует одним Node/Express-процессом, загружает CSV в память и последовательно выполняет validateQuery, matchProfiles, объяснение и формирование JSON-ответа.",
+                "value": "Сценарий не является только макетом: после npm ci и запуска API принял реальные запросы и вернул пользовательские результаты.",
+                "verification": "observed",
+                "evidence": [
+                  "contractor-picker/server/index.js:11",
+                  "contractor-picker/server/index.js:46",
+                  "build-001",
+                  "start-001"
+                ]
+              },
+              {
+                "aspect": "Корректность фильтров и крайних случаев",
+                "implementation": "В HTTP-проверках занятые 10 октября были исключены, смена даты на 11 октября изменила состав и показала busy_contractors, null max_hours не отфильтровал флориста при 24 часах, а строковый budget получил 400.",
+                "value": "Это покрывает существенные ошибки, которые могли бы сделать рекомендацию недостоверной: занятость, строгие типы ввода и специальную семантику null.",
+                "verification": "observed",
+                "evidence": [
+                  "contractor-picker/server/matching.js:50",
+                  "contractor-picker/server/matching.js:55",
+                  "scenario-date-change",
+                  "scenario-null-hours",
+                  "scenario-invalid-input"
+                ]
+              },
+              {
+                "aspect": "Честный резервный режим",
+                "implementation": "При отсутствии ключа createExplainer возвращает каталоговые объяснения, а при ошибке/таймауте провайдера — fallback; пустой результат не вызывает AI. Автотесты отдельно проверяют invented ID, повтор ID, отказ, сеть и таймаут.",
+                "value": "Сбой внешнего сервиса не превращает пригодный подбор в пустую выдачу и не позволяет модели незаметно подменить структурированные факты.",
+                "verification": "observed",
+                "evidence": [
+                  "contractor-picker/server/ai.js:58",
+                  "contractor-picker/server/ai.js:102",
+                  "contractor-picker/server/ai.js:116",
+                  "build-001"
+                ]
+              },
+              {
+                "aspect": "Детерминированная базовая сортировка",
+                "implementation": "Без ключевых предпочтений доступные профили сортируются по price_from_kzt, затем по id; повторная проверка пяти одинаковых запросов дала один и тот же порядок HK-88430, HK-29829, HK-27222.",
+                "value": "Для ручной формы результат предсказуем, объясним и не зависит от случайного порядка CSV или температуры модели.",
+                "verification": "observed",
+                "evidence": [
+                  "contractor-picker/server/matching.js:60",
+                  "scenario-hosts-repeat",
+                  "timing-001"
+                ]
+              }
+            ],
+            "scoreReasoning": "Серверный сценарий и тестовый контур заметно сильнее типичного пятичасового прототипа: 25 тестов прошли, а реальные запросы проверили все основные бизнес-исходы. До максимума не хватает только полной гарантии повторяемости в ветке, где AI сортирует кандидатов по пользовательским keywords; это не ломает ручной MVP, но является реальным расхождением с общим требованием детерминизма."
+          },
+          {
+            "name": "Инновационность",
+            "score": 15,
+            "max": 15,
+            "awarded": "Полный балл: нестандартность здесь не в сложной модели, а в безопасном разделении обязанностей — каталог проверяет факты, AI выбирает смысловой фрагмент/релевантность, сервер валидирует результат.",
+            "deductions": "Снятий нет.",
+            "evidence": [
+              "contractor-picker/server/ai.js:79",
+              "contractor-picker/server/ai.js:104",
+              "contractor-picker/server/explanations.js:22",
+              "build-001"
+            ],
+            "deductionItems": [],
+            "awardedDetails": [
+              {
+                "aspect": "AI ограничен ролью поверх hard filters",
+                "implementation": "В запрос к Responses API передаётся уже отфильтрованный список и набор фрагментов, а системная инструкция запрещает модели менять цену, язык, доступность и формат. Ответ содержит только contractor_id и evidence_id.",
+                "value": "Это обоснованный подход для небольшого каталога: семантическая часть добавляет пользу, но не получает полномочий нарушить обязательные условия кейса.",
+                "verification": "source",
+                "evidence": [
+                  "contractor-picker/server/ai.js:70",
+                  "contractor-picker/server/ai.js:79",
+                  "contractor-picker/server/ai.js:91"
+                ]
+              },
+              {
+                "aspect": "Доказательства привязаны к исходным данным",
+                "implementation": "evidenceFor делит исходное description на предложения, а makeCard принимает только найденный фрагмент; при неизвестном ID или evidence_id AI-ответ отбрасывается и включается fallback.",
+                "value": "Получается объяснение, которое можно сопоставить с конкретным объявлением, а не свободно сгенерированное утверждение о подрядчике.",
+                "verification": "observed",
+                "evidence": [
+                  "contractor-picker/server/explanations.js:22",
+                  "contractor-picker/server/ai.js:104",
+                  "build-001"
+                ]
+              },
+              {
+                "aspect": "Ассистент как структурированный интерфейс",
+                "implementation": "assistant.js использует строгую JSON Schema для patches, нормализует явные значения и затем пропускает draft через ту же validateQuery и рекомендационный сервис; модель не получает полный CSV.",
+                "value": "Свободный текст расширяет интерфейс, но не создаёт второй, менее надёжный путь к фактам каталога.",
+                "verification": "source",
+                "evidence": [
+                  "contractor-picker/server/assistant.js:44",
+                  "contractor-picker/server/assistant.js:122",
+                  "contractor-picker/server/index.js:75",
+                  "build-001"
+                ]
+              }
+            ],
+            "scoreReasoning": "Для кейса с приоритетом объяснений выбран уместный и оригинальный компромисс: структурированные ограничения остаются детерминированными, а LLM используется для смысловой части и проходит проверку допустимых ID/фрагментов. Отсутствие обучения модели на 66 строках — осознанное соответствие условию задачи, а не недоработка."
+          },
+          {
+            "name": "Потенциал развития и масштабирования",
+            "score": 20,
+            "max": 20,
+            "awarded": "Полный балл в контексте пятичасового MVP: границы расширения обозначены, а разделение каталога, фильтрации, AI-объяснений и HTTP-контракта оставляет ясные точки для дальнейшего развития.",
+            "deductions": "Снятий нет.",
+            "evidence": [
+              "contractor-picker/README.md:98",
+              "contractor-picker/README.md:100",
+              "contractor-picker/server/recommendations.js:22",
+              "contractor-picker/docs/api-contract.md:77"
+            ],
+            "deductionItems": [],
+            "awardedDetails": [
+              {
+                "aspect": "Расширяемый API-контур",
+                "implementation": "GET /api/meta, GET /api/catalog, POST /api/recommend и POST /api/assistant отделены от статической страницы; контракт описывает вход, статусы, ошибки, counts, evidence и dataset_version.",
+                "value": "Такой интерфейс позволяет заменить UI, подключить обновляемый источник каталога или добавить клиент без переписывания правил подбора.",
+                "verification": "source",
+                "evidence": [
+                  "contractor-picker/server/index.js:26",
+                  "contractor-picker/server/index.js:46",
+                  "contractor-picker/docs/api-contract.md:5",
+                  "contractor-picker/docs/api-contract.md:77"
+                ]
+              },
+              {
+                "aspect": "Проверяемые рекомендации для пустого результата",
+                "implementation": "verifiedSuggestions перебирает ближайшие даты и повторно запускает matchProfiles, а также проверяет минимальный рабочий бюджет; предложения не доверяются модели и не применяются автоматически.",
+                "value": "Подход можно перенести на другой каталог или календарь, сохранив принцип: изменение условия показывается только после повторной проверки полного подбора.",
+                "verification": "observed",
+                "evidence": [
+                  "contractor-picker/server/recommendations.js:22",
+                  "contractor-picker/server/recommendations.js:26",
+                  "contractor-picker/server/recommendations.js:40",
+                  "scenario-budget-empty",
+                  "build-001"
+                ]
+              },
+              {
+                "aspect": "Явно очерченные следующие шаги",
+                "implementation": "README фиксирует отсутствие бронирования и уведомлений, необходимость rate limit, контроля AI-бюджета, мониторинга и актуальных календарей; отдельно названы будущие пожелания по стилю и оценке объяснений пользователями.",
+                "value": "Команда не выдаёт локальный каталог за production-платформу и показывает реалистичную дорожку расширения.",
+                "verification": "source",
+                "evidence": [
+                  "contractor-picker/README.md:98",
+                  "contractor-picker/README.md:100",
+                  "contractor-picker/README.md:114"
+                ]
+              }
+            ],
+            "scoreReasoning": "Архитектура уже разделяет данные, правила, объяснения, ассистента и транспорт, а рекомендации для пустого результата построены как повторно проверяемые операции. Для пятичасового прототипа это достаточно сильная основа для подключения живых календарей, хранения и наблюдаемости; функции вне задания разумно оставлены за пределами MVP."
+          },
+          {
+            "name": "Презентация, демо и ответы на вопросы",
+            "score": 18,
+            "max": 20,
+            "awarded": "README и сценарии демонстрации хорошо объясняют запуск, архитектуру и ожидаемые результаты; два балла сняты только за неточность порта и противоречивую формулировку роли AI в README.",
+            "deductions": "2 балла за две подтверждённые документальные неточности, ухудшающие воспроизводимость и объяснение поведения.",
+            "evidence": [
+              "contractor-picker/README.md:5",
+              "contractor-picker/README.md:14",
+              "contractor-picker/README.md:62",
+              "contractor-picker/README.md:74",
+              "contractor-picker/docs/demo-scenarios.md:5",
+              "F-DOC-PORT",
+              "F-DOC-AI-RANK"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "F-DOC-PORT",
+                "reason": "README направляет пользователя на 127.0.0.1:3001, тогда как npm start без переменной PORT слушает 3000; первый запуск по инструкции приводит к неправильному URL."
+              },
+              {
+                "points": 1,
+                "findingId": "F-DOC-AI-RANK",
+                "reason": "README утверждает, что AI не ранжирует кандидатов, хотя режим с keywords передаёт всех eligible-кандидатов в семантическое ранжирование; это мешает точно объяснить демонстрационный сценарий."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Воспроизводимая инструкция",
+                "implementation": "README указывает требование Node.js, npm ci, npm start, режим без ключа, ручную форму, AI-настройку и команды npm test/npm run check; docs/demo-scenarios.md содержит конкретные входы и ожидаемые ID.",
+                "value": "Жюри может понять назначение проекта и проверить его локально без устной презентации или внешней ссылки.",
+                "verification": "source",
+                "evidence": [
+                  "contractor-picker/README.md:5",
+                  "contractor-picker/README.md:14",
+                  "contractor-picker/README.md:16",
+                  "contractor-picker/docs/demo-scenarios.md:5"
+                ]
+              },
+              {
+                "aspect": "Объяснение архитектуры и ограничений",
+                "implementation": "В README есть схема Browser → Express → фильтры → AI/fallback → карточки, описание порядка фильтров и явное предупреждение, что цена «от», описание и рекомендация не являются сметой, независимой проверкой или бронированием.",
+                "value": "Документация помогает отвечать на ключевые вопросы жюри: где принимаются решения, что делает AI и каким утверждениям доверять нельзя.",
+                "verification": "source",
+                "evidence": [
+                  "contractor-picker/README.md:62",
+                  "contractor-picker/README.md:86",
+                  "contractor-picker/README.md:98",
+                  "contractor-picker/docs/demo-scenarios.md:43"
+                ]
+              },
+              {
+                "aspect": "Связь документации с реальными результатами",
+                "implementation": "Сценарии README/docs предсказывают фактические ID ведущих, флориста и банкетного зала; live API подтвердил эти значения и счётчики для предоставленного CSV.",
+                "value": "Документация не ограничивается маркетинговым описанием: её основные примеры можно сопоставить с исполняемым контрактом.",
+                "verification": "observed",
+                "evidence": [
+                  "contractor-picker/docs/demo-scenarios.md:5",
+                  "scenario-hosts-10",
+                  "scenario-date-change",
+                  "scenario-florist"
+                ]
+              }
+            ],
+            "scoreReasoning": "README заметно облегчает воспроизведение и объяснение решения, особенно для AI/fallback и крайних исходов. Однако ошибочный порт — практическая помеха первому запуску, а фраза о том, что AI не ранжирует кандидатов, противоречит реализованной ветке keywords. Оба дефекта локальны и не отменяют рабочую демонстрацию, поэтому снятие ограничено двумя баллами."
+          }
+        ],
+        "total": 97
+      },
+      "case": {
+        "criteria": [
+          {
+            "name": "Соответствие задаче и работоспособность",
+            "score": 24,
+            "max": 25,
+            "awarded": "Основной сценарий кейса реализован и проверен почти полностью; один балл снят за неполную гарантию детерминизма в AI-режиме с предпочтениями.",
+            "deductions": "1 балл за source-ограничение порядка карточек в keyword/AI-ветке.",
+            "evidence": [
+              "contractor-picker/server/matching.js:46",
+              "contractor-picker/server/explanations.js:40",
+              "scenario-hosts-10",
+              "scenario-date-change",
+              "scenario-florist",
+              "scenario-category-absent",
+              "scenario-budget-empty",
+              "F-AI-ORDER"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "F-AI-ORDER",
+                "reason": "Для ручного запроса сортировка стабильна, но тот же запрос с current_keywords и внешним AI не имеет source-гарантии одинакового порядка после перезапуска; это затрагивает прямое требование кейса о повторяемости."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Полный набор входных условий",
+                "implementation": "validateQuery принимает город, YYYY-MM-DD, формат, категорию и целый бюджет, а также опциональные язык и duration_hours; справочники и календарное окно берутся из CSV-метаданных.",
+                "value": "Обязательные и дополнительные параметры кейса не являются декоративными: они участвуют в серверной проверке до формирования карточек.",
+                "verification": "source",
+                "evidence": [
+                  "contractor-picker/server/matching.js:11",
+                  "contractor-picker/server/dataset.js:45",
+                  "contractor-picker/docs/api-contract.md:17"
+                ]
+              },
+              {
+                "aspect": "До трёх конкретных карточек",
+                "implementation": "matchProfiles ограничивает selected.slice(0, 3), а makeCard возвращает имя, категорию, город, цену, языки, max_hours, флаги данных, explanation и evidence.",
+                "value": "Формат выхода соответствует задаче и не маскирует малый результат неподходящими профилями.",
+                "verification": "observed",
+                "evidence": [
+                  "contractor-picker/server/matching.js:61",
+                  "contractor-picker/server/explanations.js:55",
+                  "scenario-hosts-10",
+                  "scenario-florist"
+                ]
+              },
+              {
+                "aspect": "Занятость и смена даты",
+                "implementation": "busyDates проверяется первой причиной исключения. На 10 октября в категории ведущих 4 профиля были заняты; на 11 октября API вернул другой набор и перечислил HK-88430, HK-35215, HK-75012 и HK-29829 как занятых.",
+                "value": "Это закрывает один из самых важных бизнес-рисков задания: не рекомендовать подрядчика, уже занятого на выбранную дату.",
+                "verification": "observed",
+                "evidence": [
+                  "contractor-picker/server/matching.js:50",
+                  "contractor-picker/server/matching.js:67",
+                  "scenario-date-change"
+                ]
+              },
+              {
+                "aspect": "Различение исходов и причин малого результата",
+                "implementation": "API вернул matched для обычного и редкого запроса, category_absent для Астана + Декоратор, no_matches для бюджета 100000; в последнем случае counts показал 4 busy и 6 budget, а suggestions предложил повторно проверенный бюджет 500000.",
+                "value": "Пользователь получает смысловой ответ, а не пустую страницу или ошибку с неясной причиной.",
+                "verification": "observed",
+                "evidence": [
+                  "contractor-picker/server/matching.js:61",
+                  "contractor-picker/server/recommendations.js:22",
+                  "scenario-category-absent",
+                  "scenario-budget-empty"
+                ]
+              }
+            ],
+            "scoreReasoning": "Все существенные требования основного кейса подтверждены кодом, тестами и HTTP-запросами на том же 66-профильном CSV. Снятие минимально и относится не к ручному сценарию, а к дополнительной AI-ветке: её порядок использует ответ модели и потому не закреплён межперезапускным алгоритмом."
+          },
+          {
+            "name": "Техническая реализация",
+            "score": 24,
+            "max": 25,
+            "awarded": "Сильная модульная реализация с хорошим контролем внешнего AI; один балл снят за архитектурную неполноту гарантии порядка при семантическом ранжировании.",
+            "deductions": "1 балл за отсутствие детерминирующего финального tie-breaker/seed после выбора порядка моделью в keyword-режиме.",
+            "evidence": [
+              "contractor-picker/server/dataset.js:16",
+              "contractor-picker/server/matching.js:46",
+              "contractor-picker/server/ai.js:49",
+              "contractor-picker/server/assistant.js:122",
+              "build-001",
+              "F-AI-ORDER"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "F-AI-ORDER",
+                "reason": "Технический контракт заявляет повторяемость порядка, но createExplainer при keywords принимает selections модели как порядок карточек; кеш Map не сохраняется между процессами и после перезапуска новый ответ провайдера может отличаться."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Строгий разбор каталога",
+                "implementation": "parseDataset проверяет наличие колонок, уникальность id, типы цен/флагов, допустимые даты занятости и max_hours, затем создаёт Set busyDates и версию SHA-256 исходного CSV.",
+                "value": "Ошибки данных обнаруживаются на старте, а не превращаются в тихо неверные рекомендации; версия помогает связывать результат с конкретным набором данных.",
+                "verification": "source",
+                "evidence": [
+                  "contractor-picker/server/dataset.js:16",
+                  "contractor-picker/server/dataset.js:20",
+                  "contractor-picker/server/dataset.js:45",
+                  "start-001"
+                ]
+              },
+              {
+                "aspect": "Явный порядок бизнес-фильтров",
+                "implementation": "matchProfiles последовательно проверяет busy, budget, format, language и duration, считает первую причину исключения и возвращает busy_contractors, minimum_price, counts и ranking.",
+                "value": "Результат можно объяснить и тестировать по конкретным структурированным полям; counts сходятся на всех 100 датах для трёх категорий в тестах.",
+                "verification": "observed",
+                "evidence": [
+                  "contractor-picker/server/matching.js:46",
+                  "contractor-picker/server/matching.js:50",
+                  "contractor-picker/tests/matching.test.js:92",
+                  "build-001"
+                ]
+              },
+              {
+                "aspect": "Защита границы AI",
+                "implementation": "Responses API вызывается с strict JSON Schema; сервер проверяет completed, уникальность ID, принадлежность shortlist и существование выбранного evidence_id, а ошибки переводит в catalog/fallback.",
+                "value": "Неправильный или недоверенный ответ модели не меняет hard-filtered кандидатов и не выдаёт выдуманную цитату.",
+                "verification": "observed",
+                "evidence": [
+                  "contractor-picker/server/ai.js:51",
+                  "contractor-picker/server/ai.js:85",
+                  "contractor-picker/server/ai.js:102",
+                  "build-001"
+                ]
+              },
+              {
+                "aspect": "HTTP и безопасность поверхности",
+                "implementation": "Express ограничивает JSON 8 KB, выдаёт CSP и nosniff, отдаёт только public, не публикует CSV/server/.env, имеет отдельные 400/413/404/500 ответы.",
+                "value": "Для локального MVP это аккуратная граница между пользовательским HTTP и внутренней реализацией; тесты подтвердили недоступность исходников и ключей.",
+                "verification": "observed",
+                "evidence": [
+                  "contractor-picker/server/index.js:21",
+                  "contractor-picker/server/index.js:25",
+                  "contractor-picker/server/index.js:148",
+                  "build-001"
+                ]
+              }
+            ],
+            "scoreReasoning": "Реализация хорошо разделена на dataset, matching, explanations, recommendations, assistant и HTTP, а внешняя модель не получает полномочий переписать факты. Снижение касается узкой, но технически реальной границы: AI-порядок сохраняется только в памяти процесса. Для ручной основной ветки это не мешает работоспособности, поэтому почти максимальный балл обоснован."
+          },
+          {
+            "name": "README и воспроизводимость",
+            "score": 22,
+            "max": 25,
+            "awarded": "Документация подробная и в целом воспроизводимая, но три балла сняты за ошибочный порт и противоречивое описание AI-ранжирования.",
+            "deductions": "3 балла за две подтверждённые документальные неточности, одна из которых напрямую мешает запуску по инструкции, а другая искажает роль AI.",
+            "evidence": [
+              "contractor-picker/README.md:5",
+              "contractor-picker/README.md:14",
+              "contractor-picker/README.md:62",
+              "contractor-picker/README.md:74",
+              "contractor-picker/docs/api-contract.md:45",
+              "F-DOC-PORT",
+              "F-DOC-AI-RANK"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "F-DOC-PORT",
+                "reason": "Указан URL 127.0.0.1:3001, но .env.example и server/index.js задают порт 3000 по умолчанию; читатель README должен вручную догадаться проверить другой порт."
+              },
+              {
+                "points": 2,
+                "findingId": "F-DOC-AI-RANK",
+                "reason": "Фраза «AI не ранжирует кандидатов» противоречит server/ai.js и API-контракту, где при current_keywords используется keyword_relevance и модель выбирает порядок eligible-кандидатов; это снижает точность воспроизводимого объяснения сценария."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Команды и структура проекта",
+                "implementation": "README описывает npm ci/npm start, Node >=22.12, тестовые команды, .env.example, назначение public/server/tests и ссылки на API-контракт и demo-сценарии.",
+                "value": "Новый проверяющий понимает, где запускать проект и какие компоненты читать, без необходимости восстанавливать архитектуру по всему дереву.",
+                "verification": "source",
+                "evidence": [
+                  "contractor-picker/README.md:5",
+                  "contractor-picker/README.md:16",
+                  "contractor-picker/README.md:102",
+                  "contractor-picker/docs/api-contract.md:1"
+                ]
+              },
+              {
+                "aspect": "Документированный алгоритм",
+                "implementation": "README перечисляет семь проверок, затем сортировку по цене/ID, лимит три и формирование объяснения; отдельно описывает три бизнес-исхода и смысл counts.",
+                "value": "Документация позволяет сопоставить вход, фильтр и ожидаемое объяснение с реализацией matching.js.",
+                "verification": "source",
+                "evidence": [
+                  "contractor-picker/README.md:62",
+                  "contractor-picker/README.md:78",
+                  "contractor-picker/server/matching.js:46"
+                ]
+              },
+              {
+                "aspect": "Данные и демонстрационные примеры",
+                "implementation": "README описывает 66 профилей, флаги synthetic/city_imputed/price_imputed, календарное окно, семантику null max_hours и ограничения цены «от»; demo-scenarios.md даёт конкретные входы и ID.",
+                "value": "Проверка может быть воспроизведена на том же датасете, а ограничения результата не скрыты.",
+                "verification": "observed",
+                "evidence": [
+                  "contractor-picker/README.md:52",
+                  "contractor-picker/README.md:58",
+                  "contractor-picker/docs/demo-scenarios.md:5",
+                  "scenario-hosts-10",
+                  "scenario-florist"
+                ]
+              }
+            ],
+            "scoreReasoning": "Это существенно больше минимального README: есть контракт, сценарии, алгоритм, ограничения и описание AI/fallback. Но воспроизводимость должна начинаться с точного URL, а роль AI должна быть описана одинаково в README и коде. Поэтому 22/25 отражает сильную основу с локальными исправимыми расхождениями."
+          },
+          {
+            "name": "Ценность и применимость решения",
+            "score": 15,
+            "max": 15,
+            "awarded": "Полный балл: решение применимо к реальному рабочему моменту выбора event-подрядчика и даёт проверяемую причину каждой рекомендации, включая отсутствие результата.",
+            "deductions": "Снятий нет.",
+            "evidence": [
+              "contractor-picker/server/explanations.js:40",
+              "contractor-picker/public/app.js:163",
+              "scenario-hosts-10",
+              "scenario-budget-empty"
+            ],
+            "deductionItems": [],
+            "awardedDetails": [
+              {
+                "aspect": "Полезность короткого списка",
+                "implementation": "Сервис выбирает максимум три допустимых профиля и сортирует базовую выдачу по начальной цене, не называя её рейтингом качества.",
+                "value": "Для заказчика это снижает стоимость внимания и оставляет понятный следующий шаг — сравнить несколько реальных объявлений.",
+                "verification": "observed",
+                "evidence": [
+                  "contractor-picker/server/matching.js:60",
+                  "contractor-picker/server/matching.js:63",
+                  "scenario-hosts-10"
+                ]
+              },
+              {
+                "aspect": "Применимость к редким и пустым категориям",
+                "implementation": "Флорист вернулся одной карточкой с причиной busy для второго профиля; Астана + Декоратор вернул category_absent; низкий бюджет вернул no_matches и проверенное бюджетное предложение.",
+                "value": "Продукт помогает не только при идеальном совпадении и честно сообщает, какое условие стоит изменить.",
+                "verification": "observed",
+                "evidence": [
+                  "scenario-florist",
+                  "scenario-category-absent",
+                  "scenario-budget-empty"
+                ]
+              },
+              {
+                "aspect": "Прозрачные границы доверия",
+                "implementation": "Код и UI-переводы говорят о начальной цене, структурированных полях каталога и доступности; evidence помечен source=description, а бронирование отсутствует.",
+                "value": "Такой уровень честности подходит для анонимизированного хакатонного набора и снижает риск воспринять рекомендацию как гарантию заказа.",
+                "verification": "source",
+                "evidence": [
+                  "contractor-picker/server/explanations.js:60",
+                  "contractor-picker/public/i18n.js:13",
+                  "contractor-picker/README.md:60"
+                ]
+              }
+            ],
+            "scoreReasoning": "Ценность полностью видна в проверенном результате: сервис экономит время на каталоге, но не жертвует честностью по занятой дате, бюджету или отсутствию категории. Ограничения данных явно названы и не являются недостатком соответствия пятичасовому MVP."
+          },
+          {
+            "name": "Потенциал развития и оригинальность подхода",
+            "score": 10,
+            "max": 10,
+            "awarded": "Полный балл: сочетание серверной проверки фактов, цитируемых фрагментов и необязательного семантического слоя хорошо переносится на другие каталоги и категории.",
+            "deductions": "Снятий нет.",
+            "evidence": [
+              "contractor-picker/server/ai.js:79",
+              "contractor-picker/server/recommendations.js:22",
+              "contractor-picker/docs/api-contract.md:99",
+              "contractor-picker/README.md:114"
+            ],
+            "deductionItems": [],
+            "awardedDetails": [
+              {
+                "aspect": "Переносимый паттерн «факты сначала, смысл после»",
+                "implementation": "Структурированные фильтры выполняются до AI, а модель получает только кандидатов и fragments; после ответа ID и evidence валидируются сервером.",
+                "value": "Паттерн можно применить к другим агрегаторам, не отдавая модели контроль над ценой, доступностью и юридически значимыми условиями.",
+                "verification": "source",
+                "evidence": [
+                  "contractor-picker/server/ai.js:70",
+                  "contractor-picker/server/ai.js:79",
+                  "contractor-picker/server/ai.js:104"
+                ]
+              },
+              {
+                "aspect": "Развитие от каталога к живому сервису",
+                "implementation": "API уже выделяет dataset_version, календарь, counts и suggestions, а README называет обновляемые календари, rate limit, мониторинг и пользовательскую оценку объяснений следующими шагами.",
+                "value": "Расширение не требует менять смысл пользовательского результата: можно постепенно заменить источник данных и добавить эксплуатационные контуры.",
+                "verification": "source",
+                "evidence": [
+                  "contractor-picker/server/dataset.js:49",
+                  "contractor-picker/server/recommendations.js:22",
+                  "contractor-picker/README.md:100",
+                  "contractor-picker/README.md:114"
+                ]
+              },
+              {
+                "aspect": "Ассистент без отдельного доменного движка",
+                "implementation": "Natural-language assistant преобразует запрос в canonical patches и передаёт его в тот же подбор, а явные значения страхуют пропуски модели через enrichIntent.",
+                "value": "Это оригинально расширяет доступность сервиса, сохраняя один источник истины для правил и результатов.",
+                "verification": "source",
+                "evidence": [
+                  "contractor-picker/server/assistant.js:92",
+                  "contractor-picker/server/assistant.js:194",
+                  "contractor-picker/server/index.js:123"
+                ]
+              }
+            ],
+            "scoreReasoning": "В рамках задания выбранная оригинальность — explainability-by-construction, а не демонстративная сложность модели. Код уже оставляет устойчивые точки расширения для живых календарей, новых языков/категорий и пользовательской обратной связи, поэтому полный балл оправдан."
+          }
+        ],
+        "total": 95
+      },
+      "judgeScore": 96,
+      "caseRequirements": [
+        {
+          "requirement": "Принимать город, дату, формат, категорию и бюджет; длительность и язык должны быть опциональными.",
+          "status": "met",
+          "explanation": "validateQuery проверяет обязательные поля по справочникам и календарному окну, а language и duration_hours допускают null/пустое значение; отдельные тесты также проверяют строгие типы.",
+          "evidence": [
+            "contractor-picker/server/matching.js:11",
+            "contractor-picker/server/matching.js:22",
+            "contractor-picker/server/matching.js:30",
+            "build-001",
+            "scenario-invalid-input"
+          ]
+        },
+        {
+          "requirement": "Возвращать не более трёх карточек с именем, категорией, городом, ценой и конкретным объяснением.",
+          "status": "met",
+          "explanation": "selected ограничивается тремя профилями, makeCard включает требуемые поля и explanation из проверенных условий; HTTP-запрос ведущих вернул три карточки с разными evidence-фрагментами.",
+          "evidence": [
+            "contractor-picker/server/matching.js:63",
+            "contractor-picker/server/explanations.js:55",
+            "scenario-hosts-10"
+          ]
+        },
+        {
+          "requirement": "Не показывать подрядчика, занятого на выбранную дату.",
+          "status": "met",
+          "explanation": "Занятость проверяется до остальных причин исключения, занятые профили не попадают в selected, а их ID/имена выдаются отдельно для объяснения.",
+          "evidence": [
+            "contractor-picker/server/matching.js:50",
+            "contractor-picker/server/matching.js:67",
+            "scenario-hosts-10",
+            "scenario-date-change",
+            "build-001"
+          ]
+        },
+        {
+          "requirement": "Показывать сколько вариантов доступно и объяснять, почему результат меньше трёх.",
+          "status": "met",
+          "explanation": "Ответ содержит counts и excluded; для одного флориста показана одна eligible-карточка и одна busy-причина, а UI-код строит filter-summary и список занятых.",
+          "evidence": [
+            "contractor-picker/server/matching.js:65",
+            "contractor-picker/public/app.js:177",
+            "scenario-florist"
+          ]
+        },
+        {
+          "requirement": "Одинаковый запрос должен давать один порядок, а другая дата может менять результат.",
+          "status": "partial",
+          "explanation": "Ручной режим без keywords подтверждён пятью одинаковыми HTTP-запросами и детерминированной сортировкой по цене/ID; для AI-режима с current_keywords source-код передаёт порядок selections модели, а кеш сбрасывается при перезапуске.",
+          "evidence": [
+            "contractor-picker/server/matching.js:60",
+            "contractor-picker/server/ai.js:70",
+            "contractor-picker/server/ai.js:76",
+            "timing-001",
+            "F-AI-ORDER"
+          ]
+        },
+        {
+          "requirement": "Явно различать подходящие результаты, отсутствие категории в городе и наличие кандидатов без прохождения фильтров.",
+          "status": "met",
+          "explanation": "Статусы matched, category_absent и no_matches вычисляются отдельно; live API подтвердил все три исхода на заданных примерах.",
+          "evidence": [
+            "contractor-picker/server/matching.js:61",
+            "scenario-hosts-10",
+            "scenario-category-absent",
+            "scenario-budget-empty"
+          ]
+        },
+        {
+          "requirement": "Для пустого результата объяснять причину, а не показывать пустой экран или ошибку.",
+          "status": "met",
+          "explanation": "no_matches возвращается HTTP 200 с counts, minimum_price и проверенными suggestions; frontend имеет отдельные тексты для category_absent и no_matches.",
+          "evidence": [
+            "contractor-picker/server/recommendations.js:22",
+            "contractor-picker/public/app.js:199",
+            "contractor-picker/public/app.js:205",
+            "scenario-budget-empty"
+          ]
+        },
+        {
+          "requirement": "Работать на плотной, редкой и пустой категориях, включая площадки из того же каталога.",
+          "status": "met",
+          "explanation": "Проверены ведущие, флорист, банкетный зал, отсутствие декоратора в Астане и бюджетный пустой результат; тесты дополнительно проверяют несколько категорий площадок.",
+          "evidence": [
+            "contractor-picker/tests/matching.test.js:24",
+            "contractor-picker/tests/matching.test.js:42",
+            "contractor-picker/tests/matching.test.js:57",
+            "scenario-hosts-10",
+            "scenario-florist",
+            "scenario-category-absent"
+          ]
+        },
+        {
+          "requirement": "Соблюдать разумное время ответа и не маскировать внешнюю недоступность под отсутствие кандидатов.",
+          "status": "met",
+          "explanation": "Пять одинаковых ручных запросов завершились с server elapsed_ms 1–11 и HTTP 200; без ключа ассистент отдельно вернул HTTP 503 assistant_unavailable, тогда как ручной подбор продолжил работать.",
+          "evidence": [
+            "timing-001",
+            "assistant-no-key",
+            "contractor-picker/server/index.js:65",
+            "contractor-picker/server/index.js:129"
+          ]
+        }
+      ],
+      "testData": {
+        "provided": [
+          "cases/6/case-data/HackAlem AI_ Хакатон-задача_ умный подбор подрядчиков.md",
+          "cases/6/case-data/hackathon dataset anonymized .csv"
+        ],
+        "used": [
+          "cases/6/case-data/HackAlem AI_ Хакатон-задача_ умный подбор подрядчиков.md",
+          "cases/6/case-data/hackathon dataset anonymized .csv",
+          "contractor-picker/data/contractors.csv"
+        ],
+        "checks": [
+          {
+            "input": "Сравнение предоставленного hackathon dataset anonymized .csv с contractor-picker/data/contractors.csv: заголовок и 66 профилей.",
+            "method": "SHA-256 и подсчёт строк без запуска приложения.",
+            "result": "Файлы байт-в-байт совпали; SHA-256 начинается с 6a724b6b7dfb, 67 строк включая заголовок.",
+            "conclusion": "Рантайм-проверки выполнены на том же наборе, который предоставлен для кейса."
+          },
+          {
+            "input": "Алматы, 2026-10-10, корпоратив, Ведущий, бюджет 1500000.",
+            "method": "POST /api/recommend в запущенном приложении без AI-ключа.",
+            "result": "HTTP 200, status=matched; IDs HK-88430, HK-29829, HK-27222; eligible=5, busy=4, budget=1, shown=3; explanation_mode=catalog.",
+            "conclusion": "Плотная категория и конкретные объяснения работают."
+          },
+          {
+            "input": "Тот же запрос пять раз подряд.",
+            "method": "Пять одинаковых POST /api/recommend; сравнение массива IDs.",
+            "result": "Все пять ответов дали один порядок HK-88430, HK-29829, HK-27222; server elapsed_ms был 1–11.",
+            "conclusion": "Ручной режим детерминирован и укладывается в ориентир скорости."
+          },
+          {
+            "input": "Алматы, 2026-10-11, остальные условия как в запросе ведущих.",
+            "method": "POST /api/recommend с изменённой только датой.",
+            "result": "HTTP 200, status=matched; IDs HK-44923, HK-27222, HK-44733; busy_contractors включает HK-88430, HK-35215, HK-75012, HK-29829.",
+            "conclusion": "Дата реально влияет на выдачу и объяснение занятости."
+          },
+          {
+            "input": "Алматы, 2026-10-10, свадьба, Флорист, бюджет 500000; затем duration_hours=24.",
+            "method": "Два POST /api/recommend с предоставленным CSV.",
+            "result": "В обоих случаях HTTP 200, status=matched, единственный ID HK-39372; counts in_category=2, eligible=1, busy=1.",
+            "conclusion": "Редкая категория и max_hours=null обработаны корректно."
+          },
+          {
+            "input": "Астана, 2026-10-10, корпоратив, Декоратор, бюджет 1500000.",
+            "method": "POST /api/recommend.",
+            "result": "HTTP 200, status=category_absent, in_category=0, eligible=0.",
+            "conclusion": "Отсутствие категории в городе не смешивается с фильтрами."
+          },
+          {
+            "input": "Алматы, 2026-10-10, корпоратив, Ведущий, бюджет 100000.",
+            "method": "POST /api/recommend.",
+            "result": "HTTP 200, status=no_matches; in_category=10, eligible=0, excluded busy=4, budget=6; budget suggestion 500000 проверен повторным подбором.",
+            "conclusion": "Пустой результат содержит причину и проверенную альтернативу."
+          },
+          {
+            "input": "Корректный запрос с budget=\"1500000\" строкой.",
+            "method": "POST /api/recommend.",
+            "result": "HTTP 400 invalid_input с полем budget.",
+            "conclusion": "Сервер не принимает строку вместо числа и не скрывает ошибку как no_matches."
+          }
+        ],
+        "limitations": [
+          "Реальный OpenAI-вызов не выполнялся: ключ намеренно не предоставлен. Контракт успешного/ошибочного AI-ответа проверен тестовыми fetch-реализациями, а ручной подбор проверен в catalog-режиме.",
+          "HTML/CSS и визуальное поведение не проверялись по правилам задания; оценка UI основана только на статическом чтении исходников и HTTP-контракта."
+        ]
+      },
+      "runtime": {
+        "status": "working",
+        "build": "npm ci и npm run check завершились с кодом 0; Node test сообщил 25 tests, 25 pass, 0 fail.",
+        "start": "npm start успешно поднял приложение; GET /api/health вернул HTTP 200, status=ok, profiles=66 и dataset_version=6a724b6b7dfb.",
+        "scenario": "Основной ручной сценарий полностью воспроизведён через HTTP без API-ключа: matched, смена даты, редкая категория, category_absent, no_matches, повторяемость, ошибки ввода и null-длительность. Дополнительный AI-ассистент без ключа корректно сообщил assistant_unavailable.",
+        "environment": "Node.js 22.13.0 в изолированном Docker-окружении; зависимости установлены через npm ci из package-lock.json.",
+        "summary": "Проект deployable и working для заявленного локального MVP. Ограничение внешнего AI не блокирует ручной подбор и не переводит runtime в failed.",
+        "checks": [
+          {
+            "command": "npm ci && npm run check",
+            "result": "Код выхода 0; 25 тестов прошли, 0 упало.",
+            "id": "build-001",
+            "stage": "build",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Зависимости устанавливаются, синтаксис и полный локальный тестовый набор проходят."
+          },
+          {
+            "command": "npm start; GET /api/health",
+            "result": "HTTP 200: {status:ok, profiles:66, dataset_version:6a724b6b7dfb, assistant_configured:false}.",
+            "id": "start-001",
+            "stage": "start",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Сервер стартует без OPENAI_API_KEY и сообщает состояние каталога."
+          },
+          {
+            "command": "GET /api/meta",
+            "result": "HTTP 200; total=66, calendar=2026-09-23..2026-12-31, dataset_version=6a724b6b7dfb.",
+            "id": "scenario-meta",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Метаданные и календарное окно соответствуют предоставленному CSV и заданию."
+          },
+          {
+            "command": "POST /api/recommend",
+            "result": "HTTP 200 matched; 3 IDs HK-88430, HK-29829, HK-27222; counts eligible=5, busy=4, budget=1.",
+            "id": "scenario-hosts-10",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Плотная категория возвращает до трёх допустимых ведущих с объяснениями и счётчиками."
+          },
+          {
+            "command": "POST /api/recommend (повтор одного запроса)",
+            "result": "Одинаковый порядок IDs подтверждён пятью запросами; server elapsed_ms 1–11.",
+            "id": "scenario-hosts-repeat",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Повторный ручной запрос даёт тот же порядок и разумное время ответа."
+          },
+          {
+            "command": "POST /api/recommend (date=2026-10-11)",
+            "result": "HTTP 200 matched; IDs HK-44923, HK-27222, HK-44733; занятые профили перечислены в busy_contractors.",
+            "id": "scenario-date-change",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Изменение только даты может изменить выдачу и показать занятых."
+          },
+          {
+            "command": "POST /api/recommend (Флорист, свадьба)",
+            "result": "HTTP 200 matched; ID HK-39372; eligible=1 из 2, busy=1.",
+            "id": "scenario-florist",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Редкая категория возвращает фактический малый результат и причину исключения."
+          },
+          {
+            "command": "POST /api/recommend (Астана + Декоратор)",
+            "result": "HTTP 200 category_absent; in_category=0.",
+            "id": "scenario-category-absent",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Отсутствующая категория в городе имеет отдельный бизнес-статус."
+          },
+          {
+            "command": "POST /api/recommend (бюджет 100000)",
+            "result": "HTTP 200 no_matches; busy=4, budget=6, suggestion budget=500000.",
+            "id": "scenario-budget-empty",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Пустая выдача объясняет первую причину исключения и предлагает только повторно проверенную альтернативу."
+          },
+          {
+            "command": "POST /api/recommend (duration_hours=24 для Флориста)",
+            "result": "HTTP 200 matched; HK-39372 сохранён, поскольку max_hours=null означает неприменимое ограничение часов.",
+            "id": "scenario-null-hours",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "null max_hours не трактуется как ноль."
+          },
+          {
+            "command": "POST /api/recommend (budget как строка)",
+            "result": "HTTP 400 invalid_input с полем budget.",
+            "id": "scenario-invalid-input",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Неверный тип входа отклоняется отдельной ошибкой."
+          },
+          {
+            "command": "POST /api/assistant",
+            "result": "HTTP 503 assistant_unavailable с state_revision=4; ручной API при этом работает.",
+            "id": "assistant-no-key",
+            "stage": "scenario",
+            "status": "blocked",
+            "cause": "review_environment",
+            "expected": "При наличии credentials внешний ассистент должен разобрать сообщение; без credentials ограничение должно быть явно сообщено и не маскироваться под no_matches."
+          }
+        ],
+        "limitations": [
+          "Проверка успешного реального OpenAI Responses API невозможна без намеренно не предоставленного ключа; имитация провайдера в unit-тестах не считается реальным внешним вызовом.",
+          "Визуальная проверка страницы не выполнялась; пользовательское UI-поведение остаётся частично непроверенным статически."
+        ]
+      },
+      "liveDemo": {
+        "status": "none",
+        "url": null,
+        "notes": "Публичная Live-ссылка не заявлена и не требуется условиями кейса. Локальный HTTP-сценарий из репозитория подтверждён; визуальная проверка страницы намеренно не выполнялась."
+      },
+      "fiveHourContext": "Для пятичасового MVP объём реализации выглядит целостным и приоритеты кейса соблюдены: объяснения, честные исходы и занятость получили больше внимания, чем декоративный UI. 25 автоматических тестов покрывают не только happy path, но и 100-дневный календарь, доказательные фрагменты, AI-ошибки и HTTP-границы. Не требую от прототипа бронирования, production-календарей или постоянного хранилища. Снижения ограничены тем, что реально видно в проекте: две документальные неточности и неполная гарантия порядка в дополнительном AI-keyword режиме.",
+      "strengths": [
+        "Основной ручной сценарий воспроизводится без внешнего ключа и даёт до трёх реально допустимых карточек.",
+        "Занятость, бюджет, формат, язык и длительность проверяются на сервере до AI-объяснения.",
+        "Объяснения содержат буквальные фрагменты описаний; тесты проверяют, что они действительно присутствуют в исходном тексте.",
+        "Есть честные matched/category_absent/no_matches, counts, занятые профили и повторно проверенные предложения для пустого результата.",
+        "AI изолирован строгой схемой и fallback-режимом, а исходный CSV не передаётся ассистенту целиком."
+      ],
+      "gaps": [
+        "README указывает 127.0.0.1:3001, хотя npm start по умолчанию слушает 3000.",
+        "README говорит, что AI не ранжирует кандидатов, хотя keyword-режим фактически использует AI для смыслового порядка eligible-кандидатов.",
+        "Для keyword/AI-режима порядок карточек не имеет гарантированного детерминирующего правила после перезапуска: результат модели хранится только в памяти процесса."
+      ],
+      "futureAdvice": [
+        {
+          "principle": "Синхронизируйте smoke-инструкцию и описание поведения с исполняемым контрактом.",
+          "why": "F-DOC-PORT показывает, что один неверный порт блокирует первый запуск по README, а F-DOC-AI-RANK — что противоречивая фраза мешает объяснить, когда AI выбирает смысловой порядок.",
+          "how": "В другом хакатоне держите порт в одном источнике конфигурации и перед сдачей прогоните README-команды буквально; затем сверьте каждое обещание о роли модели с ветками, где формируется ranking. Добавьте короткий smoke-раздел с фактическими HTTP-статусами и режимами.",
+          "findingIds": [
+            "F-DOC-PORT",
+            "F-DOC-AI-RANK"
+          ],
+          "successCheck": "Чистый запуск по трём командам из README открывает фактический default URL, а документация одинаково описывает catalog, fallback и keyword_relevance.",
+          "timeboxMinutes": 15
+        },
+        {
+          "principle": "После вероятностного semantic ranking закрепляйте финальный порядок детерминированным правилом.",
+          "why": "F-AI-ORDER: при current_keywords код принимает selections внешней модели как порядок, а Map-кеш исчезает после перезапуска; это оставляет риск нарушения требования «один запрос — один порядок».",
+          "how": "В следующем кейсе зафиксируйте версию/seed провайдера, сохраните нормализованный ranking или используйте модель только для score/evidence, после чего отсортируйте результат серверным score → price → id. Добавьте тест, который создаёт новый explainer и проверяет одинаковый порядок на одном входе.",
+          "findingIds": [
+            "F-AI-ORDER"
+          ],
+          "successCheck": "Одинаковый keyword-запрос даёт одинаковые ID до и после перезапуска процесса, а тест проверяет это без обращения к реальному провайдеру.",
+          "timeboxMinutes": 30
+        }
+      ],
+      "uncertainties": [
+        "Успешный внешний OpenAI-вызов, реальный semantic ranking и отображение режима ai не подтверждены, потому что credentials не предоставлены; код этого пути изучен статически и его ошибки покрыты mock-тестами.",
+        "Визуальная доступность, responsive-верстка, текстовые переносы и фактическое поведение браузерных элементов не оценивались по обязательному запрету UI-автоматизации."
+      ],
+      "reviewPolicyVersion": 2,
+      "assessmentStatus": "ready",
+      "findings": [
+        {
+          "id": "S-CORE-FILTER",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Основной ручной подбор проверяет обязательные условия, исключает занятых и возвращает до трёх допустимых профилей.",
+          "expected": "Запросы из кейса должны давать только кандидатов, прошедших город, категорию, дату, бюджет и формат, с опциональными ограничениями.",
+          "actual": "HTTP-сценарии подтвердили matched, смену состава по дате, редкую категорию, нулевой результат и строгую ошибку входа; тесты проверили инварианты на 100 датах.",
+          "evidence": [
+            "contractor-picker/server/matching.js:46",
+            "contractor-picker/server/matching.js:60",
+            "contractor-picker/tests/matching.test.js:92",
+            "scenario-hosts-10",
+            "scenario-date-change",
+            "scenario-budget-empty"
+          ],
+          "checkIds": [
+            "build-001",
+            "scenario-hosts-10",
+            "scenario-date-change",
+            "scenario-budget-empty"
+          ]
+        },
+        {
+          "id": "S-EVIDENCE",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Карточки получают конкретные, различимые фрагменты исходного description и проверяемые структурированные факты.",
+          "expected": "Объяснение каждой карточки должно быть связано с конкретным подрядчиком и не должно быть общей фразой.",
+          "actual": "Три карточки ведущих получили разные evidence-тексты; полный тестовый набор подтвердил буквальное присутствие фрагментов в описаниях.",
+          "evidence": [
+            "contractor-picker/server/explanations.js:22",
+            "contractor-picker/server/explanations.js:40",
+            "contractor-picker/tests/matching.test.js:111",
+            "scenario-hosts-10"
+          ],
+          "checkIds": [
+            "build-001",
+            "scenario-hosts-10"
+          ]
+        },
+        {
+          "id": "S-OUTCOMES",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Проект явно различает наличие результатов, отсутствие категории и наличие кандидатов без прохождения фильтров.",
+          "expected": "Пользователь должен понимать причину пустого или малого результата.",
+          "actual": "Получены matched, category_absent и no_matches; no_matches содержит раздельные counts и проверенную budget suggestion.",
+          "evidence": [
+            "contractor-picker/server/matching.js:61",
+            "contractor-picker/server/recommendations.js:22",
+            "scenario-category-absent",
+            "scenario-budget-empty"
+          ],
+          "checkIds": [
+            "scenario-category-absent",
+            "scenario-budget-empty"
+          ]
+        },
+        {
+          "id": "S-AI-GUARDRAILS",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "AI-ответ ограничен строгой схемой и валидируется по допустимым профилям и evidence-фрагментам; при сбое применяется честный fallback.",
+          "expected": "Внешний AI не должен менять hard constraints или придумывать ID/цитату.",
+          "actual": "Тесты прошли сценарии invented ID, duplicate ID, отказа, сетевой ошибки и таймаута; без ключа реальный подбор работает в catalog-режиме.",
+          "evidence": [
+            "contractor-picker/server/ai.js:51",
+            "contractor-picker/server/ai.js:102",
+            "contractor-picker/server/ai.js:116",
+            "build-001"
+          ],
+          "checkIds": [
+            "build-001"
+          ]
+        },
+        {
+          "id": "F-DOC-PORT",
+          "kind": "defect",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "README направляет пользователя на порт 3001, несовместимый с default-конфигурацией запуска.",
+          "expected": "После npm start без дополнительного PORT пользователь должен открыть URL, на котором реально слушает сервер.",
+          "actual": "README указывает http://127.0.0.1:3001, но server/index.js использует Number(process.env.PORT) || 3000, а .env.example задаёт PORT=3000.",
+          "evidence": [
+            "contractor-picker/README.md:14",
+            "contractor-picker/server/index.js:160",
+            "contractor-picker/.env.example:6"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "F-DOC-AI-RANK",
+          "kind": "defect",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "README противоречит реализованному keyword-режиму, утверждая, что AI не ранжирует кандидатов.",
+          "expected": "Документация должна точно объяснять, что AI делает с предпочтениями и как формируется порядок.",
+          "actual": "README:74 говорит «AI не ранжирует кандидатов», но recommendations.js выставляет keyword_relevance, а ai.js при keywords отправляет eligible-кандидатов модели и использует её selections.",
+          "evidence": [
+            "contractor-picker/README.md:74",
+            "contractor-picker/server/recommendations.js:63",
+            "contractor-picker/server/ai.js:70",
+            "contractor-picker/server/ai.js:105"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "F-AI-ORDER",
+          "kind": "defect",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "В keyword-режиме порядок карточек зависит от ответа внешней модели и не имеет межперезапускной детерминирующей гарантии.",
+          "expected": "Один и тот же запрос и CSV должны давать один порядок карточек независимо от перезапуска процесса.",
+          "actual": "При keywords ai.js получает selections модели и сохраняет результат только в памяти Map; после перезапуска cache пуст, а код не задаёт seed или серверный финальный tie-breaker для model order.",
+          "evidence": [
+            "contractor-picker/server/ai.js:50",
+            "contractor-picker/server/ai.js:70",
+            "contractor-picker/server/ai.js:76",
+            "contractor-picker/server/ai.js:102",
+            "contractor-picker/docs/api-contract.md:62"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "L-AI-CREDENTIAL",
+          "kind": "limitation",
+          "verification": "observed",
+          "responsibility": "review_environment",
+          "claim": "Реальный OpenAI Responses API и успешный AI-ассистент не были проверены без предоставленного ключа.",
+          "expected": "При наличии credentials можно отдельно подтвердить внешний вызов и режим ai.",
+          "actual": "assistant endpoint вернул HTTP 503 assistant_unavailable, а ручная форма продолжила работать без ключа; mock-контракт AI прошёл в unit-тестах.",
+          "evidence": [
+            "assistant-no-key",
+            "build-001",
+            "contractor-picker/server/index.js:65"
+          ],
+          "checkIds": [
+            "assistant-no-key",
+            "build-001"
+          ]
+        },
+        {
+          "id": "L-UI-VISUAL",
+          "kind": "limitation",
+          "verification": "unverified",
+          "responsibility": "review_environment",
+          "claim": "Визуальная и браузерная проверка страницы не выполнялась.",
+          "expected": "Визуальное поведение, responsive-верстка и доступность интерактивных элементов требуют отдельной пользовательской проверки.",
+          "actual": "Проверены статические HTML/JS-файлы и HTTP/API-контракт; скриншоты и UI-автоматизация не использовались.",
+          "evidence": [
+            "contractor-picker/public/index.html:1",
+            "contractor-picker/public/app.js:163"
+          ],
+          "checkIds": []
+        }
+      ],
+      "gapFindingIds": [
+        "F-DOC-PORT",
+        "F-DOC-AI-RANK",
+        "F-AI-ORDER"
+      ]
+    }
+  ],
+  "score": 96.0,
+  "status": "complete",
+  "expectedJudges": 1
+}

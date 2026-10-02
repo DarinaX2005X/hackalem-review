@@ -1,0 +1,990 @@
+{
+  "methodVersion": 4,
+  "repoId": "hack-2a953101-11",
+  "repoUrl": "https://github.com/BAITC-Hacks/hack-2a953101-11",
+  "caseId": 5,
+  "snapshot": "88b845eb9aae3ef9705b1f4b1d8d7aa15a1ed689",
+  "judges": [
+    {
+      "methodVersion": 4,
+      "repoId": "hack-2a953101-11",
+      "caseId": 5,
+      "model": "GPT-5.6 Luna",
+      "snapshot": "88b845eb9aae3ef9705b1f4b1d8d7aa15a1ed689",
+      "overallSummary": "Проект представляет собой воспроизводимый прототип планирования закупок: он импортирует и валидирует Excel, хранит снимок склада, рассчитывает дневной и месячный спрос, учитывает остатки, резерв, товары в пути, сезонность, тренд, выбросы, stockout-компенсацию, MOQ и кратность, а затем группирует положительные рекомендации по поставщикам и экспортирует их в CSV. Сборка, старт контейнера, HTTP health/readiness, загрузка встроенного набора, расчёт и экспорт реально прошли. Документированный SKU IVR21-1-25 через HTTP дал целевой запас 7, доступный остаток 0, товар в пути 5 и заказ 2; в аудите видны корректировки sales_spike и stockout_compensation. Оценка снижена не за непроверенные внешние или визуальные части, а за подтверждённые ограничения модели: в канонической схеме нет категории товара и customer-level признака, выход не содержит отдельной срочности, а хранилище рассчитано на один процесс и один JSON-файл.",
+      "global": {
+        "criteria": [
+          {
+            "name": "Ценность решения",
+            "score": 22,
+            "max": 25,
+            "awarded": "Решение непосредственно сокращает ручную консолидацию закупочных данных и делает расчёт потребности объяснимым для менеджера закупок.",
+            "deductions": "Снижение связано с тем, что категория товара и customer-level контекст крупной продажи не являются частью входной модели, поэтому две существенные части бизнес-задачи не получают специализированной обработки.",
+            "evidence": [
+              "README.md:1-7",
+              "internal/planning/model.go:21-40",
+              "internal/httpapi/server.go:152-195",
+              "captures/20261002T062131945424-http-scenario2.stdout.log"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "F-D1",
+                "reason": "Без поля категории и ветвления расчёта по категории решение не может учитывать различия ассортимента, хотя это прямо входит в постановку; ценность остаётся высокой за счёт остальных факторов, но покрытие бизнес-контекста неполное."
+              },
+              {
+                "points": 1,
+                "findingId": "F-D2",
+                "reason": "Алгоритм видит только агрегат product/date/quantity и не может подтвердить, что всплеск пришёлся на одного клиента; это ограничивает обещанную защиту регулярной потребности от такой конкретной причины выброса."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Понятная операционная задача",
+                "implementation": "README описывает поток менеджера: загрузить или использовать встроенные данные, задать параметры, получить список по поставщикам, открыть объяснение и экспортировать подготовленные строки. API разделяет снимок данных и расчёт рекомендаций.",
+                "value": "Это превращает ручное сведение Excel в повторяемый сценарий, где менеджер получает не только число, но и контекст для проверки.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:1-5",
+                  "README.md:27-37",
+                  "internal/httpapi/server.go:41-54"
+                ]
+              },
+              {
+                "aspect": "Покрытие источников закупочного решения",
+                "implementation": "Dataset содержит поставщиков, товары, продажи, остатки, shipments, monthly и seasonality; planner строит доступный остаток как on_hand минус reserved и вычитает поставки в горизонте.",
+                "value": "Главные причины пере- или недозаказа сведены в одну расчётную модель, поэтому результат полезен для ежедневного решения менеджера.",
+                "verification": "source",
+                "evidence": [
+                  "internal/planning/model.go:71-90",
+                  "internal/planning/planner.go:142-188",
+                  "internal/planning/planner.go:284-323"
+                ]
+              },
+              {
+                "aspect": "Объяснимый результат для пользователя",
+                "implementation": "Каждая линия содержит forecast, safety stock, available stock, incoming quantity, net requirement, order quantity, warnings, adjustments и текстовое explanation; UI показывает цепочку «Нужно → Есть → Приедет → Заказать».",
+                "value": "Менеджер может проверить рекомендацию и принять ответственное решение, а не слепо переносить число в заказ.",
+                "verification": "source",
+                "evidence": [
+                  "internal/planning/planner.go:58-89",
+                  "internal/planning/planner.go:324-345",
+                  "internal/webui/public/app.js:780-786"
+                ]
+              },
+              {
+                "aspect": "Реальный результат на предоставленном наборе",
+                "implementation": "Встроенный Excel-снимок загрузился в контейнере; HTTP-расчёт вернул 3 907 товаров и 2 заказа поставщикам. Для контрольного SKU результат совпал с README и тестом.",
+                "value": "Польза не осталась декларацией: основной закупочный сценарий воспроизведён на данных кейса и через API.",
+                "verification": "observed",
+                "evidence": [
+                  "check-http-dataset",
+                  "check-http-scenario",
+                  "captures/20261002T062039420237-http-dataset3.stdout.log",
+                  "captures/20261002T062131945424-http-scenario2.stdout.log"
+                ]
+              }
+            ],
+            "scoreReasoning": "22/25 отражает сильную практическую ценность и воспроизведённый результат. До максимума не хватает специализированного измерения по категориям и клиентским группам: текущий продукт хорошо решает агрегированное пополнение, но не весь заявленный бизнес-контекст."
+          },
+          {
+            "name": "Результат и качество решения",
+            "score": 17,
+            "max": 20,
+            "awarded": "Основной сценарий целостен: входные книги проходят импорт, снимок сохраняется, расчёт выполняется, результат группируется и экспортируется.",
+            "deductions": "Снижение связано с отсутствием category/customer-level расчёта и отдельного поля срочности в выдаче; при этом проверенные ошибки входа и сомнительные данные не превращаются молча в готовый заказ.",
+            "evidence": [
+              "Dockerfile:1-13",
+              "internal/workbook/import.go:572-629",
+              "internal/planning/monthly.go:10-133",
+              "captures/20261002T061049294115-test.stdout.log",
+              "captures/20261002T062141369694-http-csv.stdout.log"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "F-D1",
+                "reason": "Полноценность пользовательского расчёта ограничена: категория не может влиять на прогноз, приоритет или правила пополнения."
+              },
+              {
+                "points": 1,
+                "findingId": "F-D3",
+                "reason": "Подробное объяснение и risk/blocked warnings есть, но в JSON/CSV нет отдельного значения urgency, хотя оно заявлено в требуемом выходе."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Воспроизводимая сборка и запуск",
+                "implementation": "Dockerfile собирает статический Go-бинарник, переносит его в минимальный runtime-образ и запускает от непривилегированного пользователя. Образ реально собран, контейнер стартовал, /healthz и /readyz вернули 200.",
+                "value": "Прототип можно поднять без Node.js, Python или отдельной базы, а успешный health/readiness даёт рабочую границу для демонстрации.",
+                "verification": "observed",
+                "evidence": [
+                  "Dockerfile:1-13",
+                  "check-build",
+                  "check-start",
+                  "check-health",
+                  "check-ready",
+                  "captures/20261002T061831126683-build2.stderr.log",
+                  "captures/20261002T061936150840-http-health.stdout.log",
+                  "captures/20261002T061941958111-http-ready.stdout.log"
+                ]
+              },
+              {
+                "aspect": "Целостный расчёт monthly и daily",
+                "implementation": "planner выбирает историю по датам, разделяет дневной и месячный путь, для месячного пути исключает незавершённые месяцы, корректирует spike_excess, компенсирует низкий спрос при известном нулевом остатке, считает тренд и сезонный горизонт.",
+                "value": "Результат соответствует реальному сценарию поставщика, а не только демонстрационному среднему по продажам.",
+                "verification": "source",
+                "evidence": [
+                  "internal/planning/planner.go:119-176",
+                  "internal/planning/monthly.go:10-133",
+                  "internal/realdata/data_test.go:39-63"
+                ]
+              },
+              {
+                "aspect": "Контроль качества импортируемых данных",
+                "implementation": "Импортер требует полный комплект распознанных отчётов, сохраняет review_reasons, помечает непроверенный остаток, считает reconciliation mismatches и добавляет предупреждения о датах остатков и сроках поставки.",
+                "value": "Сомнительная строка не маскируется под надёжную рекомендацию; менеджер получает границы применимости и может исправить исходник.",
+                "verification": "source",
+                "evidence": [
+                  "internal/workbook/import.go:109-149",
+                  "internal/workbook/import.go:572-629",
+                  "internal/planning/planner.go:191-209",
+                  "internal/webui/public/app.js:411-453"
+                ]
+              },
+              {
+                "aspect": "Проверенный пользовательский выход",
+                "implementation": "HTTP POST рекомендаций вернул 3 907 продуктов и 2 supplier orders; для IVR21-1-25 вернул target_stock 7, available_stock 0, incoming_quantity 5, order_quantity 2. CSV вернул заголовок с поставщиком, SKU, количеством, датой, demand, stock, transit и explanation.",
+                "value": "Проверен именно тот результат, который должен увидеть закупщик: готовые строки, объяснения и экспортируемая форма.",
+                "verification": "observed",
+                "evidence": [
+                  "check-http-scenario",
+                  "check-http-csv",
+                  "captures/20261002T062131945424-http-scenario2.stdout.log",
+                  "captures/20261002T062141369694-http-csv.stdout.log"
+                ]
+              }
+            ],
+            "scoreReasoning": "17/20: основной сценарий фактически работает и защищён тестами, но выдача всё ещё является агрегированным пополнением без категорий и явной срочности. Это заметные пробелы результата, но не поломка проверенного MVP."
+          },
+          {
+            "name": "Инновационность",
+            "score": 12,
+            "max": 15,
+            "awarded": "Собственное преимущество решения — прозрачная цепочка коррекций спроса с audit trail, а не непрозрачный прогноз.",
+            "deductions": "Метод остаётся в основном эвристическим агрегированным планированием: нет category-aware и customer-aware слоя, который отличал бы его от хорошо сделанного классического replenishment.",
+            "evidence": [
+              "README.md:39-67",
+              "internal/planning/monthly.go:46-87",
+              "internal/planning/planner.go:218-249",
+              "internal/realdata/data_test.go:66-99"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "F-D1",
+                "reason": "Без категорий инновационная часть не использует потенциально важную бизнес-структуру ассортимента и ограничивается общими supplier-level факторами."
+              },
+              {
+                "points": 1,
+                "findingId": "F-D2",
+                "reason": "Фильтрация выбросов по агрегированной серии не отделяет покупку одного клиента от нормального многоклиентского спроса; это снижает нестандартность относительно требования кейса."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Пояснимые robust-коррекции",
+                "implementation": "Для дневных данных используется медиана положительных продаж и MAD-порог; для monthly audit отдельно хранит raw, after_spikes и after_stockouts. В каждой линии adjustments сохраняет дату, исходное и использованное количество и причину.",
+                "value": "Это сильнее обычного среднего: менеджер видит, какая часть спроса была исключена или восстановлена, и может оспорить эвристику.",
+                "verification": "source",
+                "evidence": [
+                  "internal/planning/planner.go:218-250",
+                  "internal/planning/monthly.go:52-89",
+                  "internal/planning/planner.go:325-342"
+                ]
+              },
+              {
+                "aspect": "Связка seasonality и bounded trend",
+                "implementation": "Месячный путь сравнивает медианы последних и предыдущих трёх месяцев и ограничивает trend factor диапазоном 0.75–1.25; затем накладывает коэффициенты будущих месяцев на coverage horizon.",
+                "value": "Прогноз не сводится к одному среднему и защищён от чрезмерного разгона по короткой истории.",
+                "verification": "source",
+                "evidence": [
+                  "internal/planning/monthly.go:97-130",
+                  "internal/planning/planner.go:255-283",
+                  "internal/planning/supplier_data_test.go:12-26"
+                ]
+              },
+              {
+                "aspect": "Audit-driven демонстрация",
+                "implementation": "Реальный SKU IVR21-1-25 имеет видимые переходы raw → filtered → compensated и итоговую связь target = forecast + safety stock.",
+                "value": "Новизна алгоритма доказана конкретным trace, а не только описанием в README.",
+                "verification": "observed",
+                "evidence": [
+                  "check-http-scenario",
+                  "captures/20261002T062131945424-http-scenario2.stdout.log",
+                  "internal/realdata/data_test.go:72-99"
+                ]
+              },
+              {
+                "aspect": "Безопасный импорт формул и экспорт",
+                "implementation": "XLSX reader читает cached values, отклоняет формулу без cached value, внешние relationships и небезопасные ZIP entries; CSV экранирует formula-like cells.",
+                "value": "Для хакатонного прототипа это аккуратное инженерное отличие: пользовательский Excel не превращается автоматически в исполняемый источник.",
+                "verification": "source",
+                "evidence": [
+                  "internal/workbook/reader.go:41-80",
+                  "internal/workbook/reader.go:172-299",
+                  "internal/httpapi/server.go:197-206"
+                ]
+              }
+            ],
+            "scoreReasoning": "12/15: robust-аудит, сезонность, ограниченный тренд и безопасный Excel-путь дают заметную индивидуальность. Максимум удерживается отсутствием требуемого слоя по категориям и клиентской структуре; текущий метод всё же остаётся эвристическим aggregate replenishment."
+          },
+          {
+            "name": "Потенциал развития и масштабирования",
+            "score": 16,
+            "max": 20,
+            "awarded": "Код хорошо разделён на planning, workbook, API, storage, realdata и webui; входной контракт и предупреждения позволяют расширять поставщиков и источники без переписывания расчёта.",
+            "deductions": "Подтверждены ограничения схемы по категориям/customer-level данным и задокументирован потолок хранения одним процессом на один JSON-файл.",
+            "evidence": [
+              "README.md:191-200",
+              "internal/planning/model.go:71-90",
+              "internal/storage/store.go:24-26",
+              "internal/storage/store.go:89-121"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "F-D1",
+                "reason": "Схема Product не содержит category или аналогичной dimension, поэтому перенос на разные категории и их политики заказа потребует изменения базового контракта."
+              },
+              {
+                "points": 1,
+                "findingId": "F-D2",
+                "reason": "Отсутствие customer-level признака в Sale препятствует масштабированию кейса на клиентские когорты, B2B-контракты и защиту от повторяющихся крупных заказов одного клиента."
+              },
+              {
+                "points": 1,
+                "findingId": "F-D4",
+                "reason": "Store прямо рассчитан на один процесс на файл; для нескольких экземпляров, аудита изменений и конкурентной работы потребуется другая persistence-модель."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Модульная архитектура",
+                "implementation": "Валидация и модели находятся в planning, конвертация Excel — в workbook, расчёты — в planner/monthly, HTTP — в httpapi, атомарный снимок — в storage, встроенные данные — в realdata, интерфейс — в webui.",
+                "value": "Новые источники или UI могут развиваться отдельно от формулы расчёта, что реалистично для следующего этапа после MVP.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:191-198",
+                  "internal/httpapi/server.go:19-54",
+                  "internal/storage/store.go:24-30"
+                ]
+              },
+              {
+                "aspect": "Расширяемый импорт поставщиков",
+                "implementation": "Классификатор распознаёт layout по структуре, не подменяет неизвестный общий файл IEK автоматически, поддерживает комплекты одного или двух поставщиков и выдаёт отдельные сообщения о недостающих отчётах.",
+                "value": "Подход можно переносить на дополнительные поставщики через новые классификаторы и readers, сохраняя защищённый preview/confirm поток.",
+                "verification": "source",
+                "evidence": [
+                  "internal/workbook/classify.go:20-97",
+                  "internal/workbook/import.go:109-149",
+                  "internal/httpapi/import.go:18-131"
+                ]
+              },
+              {
+                "aspect": "Безопасное изменение снапшота",
+                "implementation": "PUT требует If-Match, валидирует полный Dataset, проверяет конфликт ревизий и записывает snapshot атомарно; импорт XLSX является read-only preview до подтверждающего PUT.",
+                "value": "Это хорошая основа для ручного процесса и будущего подключения ERP, потому что замена данных не происходит незаметно.",
+                "verification": "source",
+                "evidence": [
+                  "internal/httpapi/server.go:115-149",
+                  "internal/httpapi/import.go:18-20",
+                  "internal/storage/store.go:89-121"
+                ]
+              },
+              {
+                "aspect": "Расширение качества данных",
+                "implementation": "В коде уже есть ReviewReasons, Unverified stock, lead_time_unconfirmed, source warnings, incomplete history и reconciliation report.",
+                "value": "Следующая версия может добавлять источники и проверки постепенно, не скрывая неопределённость от менеджера.",
+                "verification": "observed",
+                "evidence": [
+                  "check-case-import",
+                  "check-case-scenario",
+                  "captures/20261002T061516659626-case-import2.stdout.log",
+                  "captures/20261002T061731259656-case-go-scenario.stdout.log"
+                ]
+              }
+            ],
+            "scoreReasoning": "16/20: декомпозиция и import/validation contract дают хороший путь к развитию, но категории и customer-level данные потребуют изменения доменной схемы, а текущий JSON Store не является многопроцессным production-хранилищем. Для пятичасового MVP это приемлемый потолок, но он ограничивает масштабирование."
+          },
+          {
+            "name": "Презентация, демо и ответы на вопросы",
+            "score": 20,
+            "max": 20,
+            "awarded": "README достаточно ясен для воспроизводимого локального демо и связывает пользовательские действия, формулу, источники, ограничения, API и проверки.",
+            "deductions": "Снятий нет: публичная Live-ссылка и устное выступление не требовались в данной процедуре, а визуальную часть я не оцениваю из-за установленного запрета на браузерную проверку.",
+            "evidence": [
+              "README.md:9-37",
+              "README.md:39-67",
+              "README.md:117-189",
+              "captures/20261002T062131945424-http-scenario2.stdout.log"
+            ],
+            "deductionItems": [],
+            "awardedDetails": [
+              {
+                "aspect": "Сценарий показа",
+                "implementation": "README даёт последовательность от «Пример расчёта» и параметров до карточки товара, фильтра поставщика и CSV; отдельно приведён контрольный SKU с ожидаемыми числами.",
+                "value": "Жюри или пользователь может быстро понять, что именно демонстрировать и какое число сверять.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:27-37"
+                ]
+              },
+              {
+                "aspect": "Методика без сокрытия допущений",
+                "implementation": "Документированы monthly/daily режимы, median/MAD-порог, stockout-компенсация, bounded trend, горизонт, MOQ, устаревшие остатки и отсутствие автоматической отправки.",
+                "value": "Описание помогает отличить реализованный прототип от маркетингового обещания и задаёт честные границы результата.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:39-67",
+                  "README.md:96-102"
+                ]
+              },
+              {
+                "aspect": "Воспроизводимость API",
+                "implementation": "README содержит маршруты, JSON-пример расчёта, правила If-Match, ограничения параметров, Docker Compose и команды локальных тестов.",
+                "value": "Демо можно повторить из репозитория и проверить отдельно от визуального интерфейса.",
+                "verification": "observed",
+                "evidence": [
+                  "README.md:117-189",
+                  "check-http-health",
+                  "check-http-scenario",
+                  "check-http-csv"
+                ]
+              },
+              {
+                "aspect": "Ручное решение оставлено пользователю",
+                "implementation": "README и UI прямо говорят, что расчёт и экспорт не отправляют заказ поставщику; импорт сначала показывает preview, а затем выполняет подтверждающий PUT.",
+                "value": "Критичное ограничение кейса отражено и в продуктовой коммуникации, и в кодовом потоке.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:35-37",
+                  "internal/webui/public/app.js:1017-1057",
+                  "internal/httpapi/import.go:18-20"
+                ]
+              }
+            ],
+            "scoreReasoning": "20/20: README даёт ясный и воспроизводимый план демонстрации, а HTTP-путь подтверждён. В этой оценке отсутствие публичного URL, видео, устного выступления и визуального браузерного теста не считается недостатком."
+          }
+        ],
+        "total": 87
+      },
+      "case": null,
+      "judgeScore": 87,
+      "caseRequirements": [
+        {
+          "requirement": "Расчёт базовой потребности по артикулам с учётом истории продаж, текущих остатков, резервов, товаров в пути, срока поставки, MOQ и кратности.",
+          "status": "met",
+          "explanation": "Planner формирует отдельную Line по каждому Product, считает available_stock как on_hand минус reserved, покрывает горизонт lead time + review period + safety stock, вычитает incoming shipments в горизонте, применяет минимум и округление до pack size, затем группирует положительные строки по поставщику. Это реально сработало на встроенном снимке и на полном кейсовом импорте.",
+          "evidence": [
+            "internal/planning/planner.go:180-188",
+            "internal/planning/planner.go:284-355",
+            "check-http-scenario",
+            "check-case-scenario"
+          ]
+        },
+        {
+          "requirement": "Учёт сезонности и устойчивого роста спроса.",
+          "status": "met",
+          "explanation": "В месячном пути сезонные коэффициенты нормализуют историю и применяются к будущему горизонту; trend сравнивает медианы последних и предыдущих трёх месяцев и ограничен 0.75–1.25. Тесты и встроенный trace подтверждают наличие сезонных и trend-полей. Требование о категориях выделено отдельно и остаётся невыполненным.",
+          "evidence": [
+            "internal/planning/monthly.go:97-130",
+            "internal/planning/planner.go:242-263",
+            "internal/planning/supplier_data_test.go:12-26",
+            "internal/realdata/data_test.go:72-99"
+          ]
+        },
+        {
+          "requirement": "Оценка и компенсация упущенного спроса в периоды stockout.",
+          "status": "met",
+          "explanation": "Для известного нулевого остатка и аномально низкой продажи monthlyDemand поднимает rate до медианы нормальных периодов и пишет adjustment stockout_compensation. В реальном SKU после корректировки stockout_total больше after_spikes_total.",
+          "evidence": [
+            "internal/planning/monthly.go:65-89",
+            "internal/realdata/data_test.go:83-99",
+            "check-http-scenario"
+          ]
+        },
+        {
+          "requirement": "Выявление и исключение разовых крупных продаж из регулярного спроса.",
+          "status": "partial",
+          "explanation": "Aggregate outlier handling реализовано: дневной путь использует медиану/MAD, месячный путь использует spike_excess и audit, а добавленный spike в тесте заменяется baseline. Но модель Sale не содержит customer или anonymized customer key, поэтому отдельно проверить и обработать именно крупную продажу одного клиента невозможно.",
+          "evidence": [
+            "internal/planning/model.go:35-40",
+            "internal/planning/planner.go:218-250",
+            "internal/planning/monthly.go:52-87",
+            "internal/planning/planner_test.go:22-35",
+            "F-D2"
+          ]
+        },
+        {
+          "requirement": "Группировка итоговых заказов по поставщикам и объяснение количества по каждой позиции.",
+          "status": "met",
+          "explanation": "Result.Orders содержит supplier_id, supplier_name, expected_date, total_quantity и Lines; Line.Explanation включает forecast, safety stock, stock, transit, MOQ, pack size, сезонный коэффициент и trend. HTTP JSON и CSV отдали эти поля.",
+          "evidence": [
+            "internal/planning/planner.go:91-105",
+            "internal/planning/planner.go:324-355",
+            "internal/httpapi/server.go:175-194",
+            "check-http-csv"
+          ]
+        },
+        {
+          "requirement": "Срочность или приоритет позиции в требуемом выходном списке.",
+          "status": "missing",
+          "explanation": "В выходной модели есть warnings, Blocked и отдельный UI attention-класс risk, но нет urgency/priority поля или согласованного вычисленного значения в Result/CSV. Поэтому менеджер видит причины внимания, но не получает отдельную срочность как поле результата.",
+          "evidence": [
+            "internal/planning/planner.go:58-89",
+            "internal/httpapi/server.go:178-182",
+            "internal/webui/public/app.js:431-453",
+            "F-D3"
+          ]
+        },
+        {
+          "requirement": "Ручное подтверждение и отсутствие автоматической отправки поставщику.",
+          "status": "met",
+          "explanation": "API предоставляет только расчёт и CSV; автоматической отправки нет. Excel preview не меняет склад, а замена снапшота выполняется отдельным PUT с If-Match после действия confirm-import. README явно сообщает, что поставщику ничего не отправляется.",
+          "evidence": [
+            "internal/httpapi/import.go:18-20",
+            "internal/webui/public/app.js:1017-1057",
+            "README.md:35-37",
+            "internal/httpapi/server.go:115-149"
+          ]
+        },
+        {
+          "requirement": "Обезличенность данных клиентов.",
+          "status": "met",
+          "explanation": "Каноническая Sale хранит только product_id, date, quantity и exclude_from_demand; customer identifier в снимок не попадает и клиентская сущность не отображается. Это обеспечивает отсутствие клиентских PII в собственном хранилище. Ограничение customer-level анализа отражено отдельно.",
+          "evidence": [
+            "internal/planning/model.go:35-40",
+            "internal/workbook/import.go:589-593",
+            "README.md:94-102"
+          ]
+        },
+        {
+          "requirement": "Использование категорий товаров и категориальных политик пополнения.",
+          "status": "missing",
+          "explanation": "Product содержит SKU, имя, поставщика, pack size, MOQ и review reasons, но не содержит category; planner не принимает и не использует категориальную dimension. Встроенные и импортированные данные могут считаться по поставщику, но не по категориям.",
+          "evidence": [
+            "internal/planning/model.go:21-32",
+            "internal/planning/planner.go:156-188",
+            "F-D1"
+          ]
+        },
+        {
+          "requirement": "Совместимость с предоставленными Excel-выгрузками и контроль качества источников.",
+          "status": "partial",
+          "explanation": "Все 12 предоставленных XLSX были реально поданы в importer после приведения только имени каталога к ожидаемому project layout. Импорт прошёл и получил 3 909 товаров, 140 922 daily sales и 313 shipments; проект также выявил 1 433 missing_order_rules, 680 supplier_article_missing, 6 purchase_unit_conversion_unconfirmed и 13 891 reconciliation mismatches. Это сильный контроль качества, но исходный пакет не становится полностью готовым к автоматическому заказу.",
+          "evidence": [
+            "check-case-import",
+            "check-case-go-import",
+            "captures/20261002T061516659626-case-import2.stdout.log",
+            "captures/20261002T061629512239-case-go-import.stdout.log"
+          ]
+        },
+        {
+          "requirement": "Опциональные MOQ, pack size и безопасный экспорт.",
+          "status": "met",
+          "explanation": "MOQ и pack size участвуют в положительной потребности, заказ округляется вверх и CSV нейтрализует formula-like cells. Это подтверждено source tests и фактическим CSV HTTP-ответом.",
+          "evidence": [
+            "internal/planning/planner.go:314-323",
+            "internal/httpapi/server.go:175-206",
+            "internal/planning/monthly_test.go:35-63",
+            "check-http-csv"
+          ]
+        }
+      ],
+      "testData": {
+        "provided": [
+          "cases/5/case-data/HackAlem AI_ Автоматизация формирования заказов поставщикам.docx.md",
+          "cases/5/case-data/IEK/MOQ  ИЭК.xlsx",
+          "cases/5/case-data/IEK/Динамика продаж_2025-2026.xlsx",
+          "cases/5/case-data/IEK/Ежемесячные остатки продукции за последние 2 года  ИЭК.xlsx",
+          "cases/5/case-data/IEK/Ежемесячные продажи в количественном выражении за последние 2 года.xlsx",
+          "cases/5/case-data/IEK/Путь ИЭК 22.09.2026.xlsx",
+          "cases/5/case-data/IEK/Сезонность ИЭК.xlsx",
+          "cases/5/case-data/Systeme electric/MOQ SystemElectric.xlsx",
+          "cases/5/case-data/Systeme electric/Динамика продаж_Syseme Electric_2025-2026.xlsx",
+          "cases/5/case-data/Systeme electric/Ежемесячные остатки SystemElectric 2024-2026.xlsx",
+          "cases/5/case-data/Systeme electric/Ежемесячные продажи в кол-м выражении SystemElectric 2024-2026.xlsx",
+          "cases/5/case-data/Systeme electric/Сезонность SystemElectric 2024-2026.xlsx",
+          "cases/5/case-data/Systeme electric/Товар в пути_SystemElectric на 22.09.2026.xlsx"
+        ],
+        "used": [
+          "cases/5/case-data/HackAlem AI_ Автоматизация формирования заказов поставщикам.docx.md",
+          "cases/5/case-data/IEK/MOQ  ИЭК.xlsx",
+          "cases/5/case-data/IEK/Динамика продаж_2025-2026.xlsx",
+          "cases/5/case-data/IEK/Ежемесячные остатки продукции за последние 2 года  ИЭК.xlsx",
+          "cases/5/case-data/IEK/Ежемесячные продажи в количественном выражении за последние 2 года.xlsx",
+          "cases/5/case-data/IEK/Путь ИЭК 22.09.2026.xlsx",
+          "cases/5/case-data/IEK/Сезонность ИЭК.xlsx",
+          "cases/5/case-data/Systeme electric/MOQ SystemElectric.xlsx",
+          "cases/5/case-data/Systeme electric/Динамика продаж_Syseme Electric_2025-2026.xlsx",
+          "cases/5/case-data/Systeme electric/Ежемесячные остатки SystemElectric 2024-2026.xlsx",
+          "cases/5/case-data/Systeme electric/Ежемесячные продажи в кол-м выражении SystemElectric 2024-2026.xlsx",
+          "cases/5/case-data/Systeme electric/Сезонность SystemElectric 2024-2026.xlsx",
+          "cases/5/case-data/Systeme electric/Товар в пути_SystemElectric на 22.09.2026.xlsx"
+        ],
+        "checks": [
+          {
+            "input": "Все 12 XLSX из case-data, дата снимка 2026-09-22 и история с 2025-01-01.",
+            "method": "Запуск scripts/import_supplier_workbooks.py с полным комплектом в изолированном контейнере, затем чтение результата Go-тестом TestRealSupplierWorkbooks.",
+            "result": "Импорт завершился успешно: 3 909 products, 140 922 daily_sales, 313 shipments; issues: 1 433 missing_order_rules, 680 supplier_article_missing, 6 purchase_unit_conversion_unconfirmed; 13 891 reconciliation mismatches.",
+            "conclusion": "Формат и содержимое всех предоставленных XLSX совместимы с импортёром; качество исходных связей неоднородно и корректно surfaced в review_reasons/report."
+          },
+          {
+            "input": "Сгенерированный из тех же 12 XLSX supplier-import.json.",
+            "method": "Go test ./internal/planning -run TestActualSupplierImport -v с SUPPLIER_IMPORT_FILE; расчёт с явными 14 днями поставки.",
+            "result": "PASS; 3 909 products, 140 922 daily sales, 313 incoming lines; 19 Systeme Electric lines ready, 3 440 lines need review.",
+            "conclusion": "После явного подтверждения сроков расчёт выдаёт готовые строки для проверенных данных и блокирует сомнительные строки, не превращая их в orders."
+          },
+          {
+            "input": "Встроенный snapshot, подготовленный из Excel.",
+            "method": "GET /api/v1/excel-dataset после контейнерного старта.",
+            "result": "HTTP 200; 3 907 products, 99 561 monthly records, 24 seasonality coefficients, 313 shipments, source_date 2026-09-22.",
+            "conclusion": "Встроенный демонстрационный набор доступен через рабочий API и отличается от полного direct-import набора ожидаемыми snapshot/normalization деталями."
+          },
+          {
+            "input": "Встроенный snapshot и пустой JSON request для documented default.",
+            "method": "POST /api/v1/recommendations с Content-Type application/json.",
+            "result": "HTTP 200; 2 supplier orders, 3 907 product lines; IVR21-1-25: target 7, available 0, incoming 5, order 2, adjustments sales_spike и stockout_compensation.",
+            "conclusion": "Главный пользовательский результат воспроизведён по HTTP на реальных встроенных данных."
+          },
+          {
+            "input": "Результат recommendations.csv для того же snapshot.",
+            "method": "POST /api/v1/recommendations.csv с тем же JSON request.",
+            "result": "HTTP 200; CSV содержит supplier/SKU/quantity/expected_date/demand/stock/incoming/explanation и строки заказа.",
+            "conclusion": "Экспорт результата работает и сохраняет объяснение для бухгалтерского/Excel-потока."
+          },
+          {
+            "input": "GET dataset без Authorization.",
+            "method": "GET /api/v1/dataset.",
+            "result": "HTTP 401 с WWW-Authenticate: Bearer и JSON code unauthorized.",
+            "conclusion": "Защита API включена; health/readiness остаются публичными для проверки доступности."
+          }
+        ],
+        "limitations": [
+          "В архиве кейса каталог называется Systeme electric, а project importer ожидает systemElectric; проверка использовала те же предоставленные файлы, смонтированные под ожидаемым логическим именем, без подмены содержимого.",
+          "Предоставленные таблицы не содержат customer-level идентификатора и category dimension в используемом контракте, поэтому соответствующие требования оценены по исходной модели и не объявлены полностью проверенными на данных.",
+          "Визуальное поведение UI и browser.test.mjs не запускались по обязательному запрету на браузерную/UI-автоматизацию; HTTP, static, unit и domain проверки выполнены."
+        ]
+      },
+      "runtime": {
+        "status": "working",
+        "build": "pass: Docker image built successfully; containerized Go build completed without errors.",
+        "start": "pass: named container started; /healthz and /readyz returned HTTP 200.",
+        "scenario": "pass: authenticated Excel snapshot loaded; recommendations and CSV were returned over HTTP, including the documented IVR21-1-25 result.",
+        "environment": "Проверка выполнена в изолированных контейнерах с Go 1.26, Python 3.13 и Node 20; внешние API и внешние credentials не требовались.",
+        "summary": "Основной сценарий реально воспроизведён, поэтому status=working. Визуальная проверка не заявляется; это ограничение метода, а не runtime failure.",
+        "checks": [
+          {
+            "command": "docker build -t backend .",
+            "result": "Образ собран; финальный Go build завершился успешно.",
+            "id": "check-build",
+            "stage": "build",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Проект собирается в deployable image."
+          },
+          {
+            "command": "go test -race ./...",
+            "result": "PASS: httpapi, planning, realdata, storage, webui и workbook; все пакеты завершились с exit code 0.",
+            "id": "check-go-tests",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Unit/domain/API тесты проходят без data race."
+          },
+          {
+            "command": "go vet ./...",
+            "result": "PASS, предупреждений нет.",
+            "id": "check-go-vet",
+            "stage": "build",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Статическая проверка Go-кода не находит ошибок."
+          },
+          {
+            "command": "python -m unittest discover -s scripts -p test_*.py",
+            "result": "PASS: 6 tests, OK.",
+            "id": "check-python-tests",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Python importer tests проходят."
+          },
+          {
+            "command": "node --check internal/webui/public/app.js",
+            "result": "PASS: синтаксическая проверка JavaScript завершилась с exit code 0.",
+            "id": "check-js-syntax",
+            "stage": "build",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Клиентский JS парсится."
+          },
+          {
+            "command": "run backend",
+            "result": "Контейнер запущен; процесс остался доступен для HTTP-запросов.",
+            "id": "check-start",
+            "stage": "start",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Сервис стартует в runtime-образе."
+          },
+          {
+            "command": "GET /healthz",
+            "result": "HTTP 200, body {\"status\":\"ok\"}.",
+            "id": "check-http-health",
+            "stage": "start",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Публичный health endpoint отвечает ok."
+          },
+          {
+            "command": "GET /readyz",
+            "result": "HTTP 200, body {\"status\":\"ready\"}.",
+            "id": "check-http-ready",
+            "stage": "start",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Сервис сообщает readiness."
+          },
+          {
+            "command": "GET /api/v1/excel-dataset",
+            "result": "HTTP 200; 3 907 products, 99 561 monthly records, 24 seasonality entries, 313 shipments, source_date 2026-09-22.",
+            "id": "check-http-dataset",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Встроенный набор загружается через API."
+          },
+          {
+            "command": "POST /api/v1/recommendations",
+            "result": "HTTP 200; 2 supplier orders and 3 907 product lines. IVR21-1-25 yielded target 7, available 0, incoming 5, order 2.",
+            "id": "check-http-scenario",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Основной расчёт возвращает рекомендации и объяснения на встроенном наборе."
+          },
+          {
+            "command": "POST /api/v1/recommendations.csv",
+            "result": "HTTP 200; CSV header and order rows returned, with explanation and stock/transit columns.",
+            "id": "check-http-csv",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Готовые строки заказа экспортируются в CSV."
+          },
+          {
+            "command": "GET /api/v1/dataset without Authorization",
+            "result": "HTTP 401 unauthorized with WWW-Authenticate: Bearer.",
+            "id": "check-http-auth",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Защищённый dataset endpoint отклоняет запрос без bearer credentials."
+          },
+          {
+            "command": "python scripts/import_supplier_workbooks.py",
+            "result": "PASS on all supplied workbooks: 3 909 products, 140 922 daily sales, 313 shipments; report preserved data-quality issues.",
+            "id": "check-case-import",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Предоставленные XLSX конвертируются в валидируемый dataset."
+          },
+          {
+            "command": "go test ./internal/workbook -run TestRealSupplierWorkbooks -v",
+            "result": "PASS: TestRealSupplierWorkbooks.",
+            "id": "check-case-go-import",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Go importer принимает тот же полный набор supplied workbooks."
+          },
+          {
+            "command": "go test ./internal/planning -run TestActualSupplierImport -v",
+            "result": "PASS: 19 ready Systeme Electric lines and 3 440 lines requiring review after explicit test lead times.",
+            "id": "check-case-scenario",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "На импортированном кейсовом dataset рекомендации выдаются только для проверенных строк, а сомнительные блокируются."
+          }
+        ],
+        "limitations": [
+          "Browser and visual behavior are unverified by design; no Playwright, Selenium, Puppeteer, CUA, screenshot or equivalent UI automation was used.",
+          "Внешние API и production credentials отсутствуют и не нужны для заявленного локального прототипа; оценка внешних интеграций основана на исходниках.",
+          "Публичная Live-ссылка не предоставлена; локальный HTTP-сценарий подтверждён отдельно."
+        ]
+      },
+      "liveDemo": {
+        "status": "none",
+        "url": null,
+        "notes": "Публичная live URL в репозитории не обнаружена. Это не снижало баллы: локальный HTTP/API сценарий был воспроизведён."
+      },
+      "fiveHourContext": "Для пятичасового MVP объём реализации сильный: есть рабочий Go backend, embedded real-data snapshot, импорт полного комплекта XLSX, расчётный audit trail, API, CSV и аккуратные блокировки сомнительных строк. От production-системы не требовались распределённое хранилище, ERP-интеграция или готовая multi-warehouse эксплуатация, поэтому эти отсутствия сами по себе не штрафовались. Штрафы отражают только границы уже заявленного кейса: отсутствующие category/customer-level измерения, отсутствие urgency-поля и задокументированный single-process store.",
+      "strengths": [
+        "Основной сценарий подтверждён end-to-end: build → start → dataset → recommendations → CSV.",
+        "Реальные кейсовые XLSX прошли и Python-, и Go-importer; проблемы источников surfaced численно и по строкам.",
+        "Monthly audit делает видимыми raw, spike correction и stockout compensation, включая реальный SKU IVR21-1-25.",
+        "Товары в пути, резерв, MOQ, pack size, сроки и группировка по поставщикам участвуют в фактическом результате.",
+        "Preview/confirm и If-Match защищают замену склада, а отсутствие send endpoint сохраняет ручное решение менеджера.",
+        "README содержит конкретный сценарий демонстрации, формулу, ограничения, API и команды воспроизведения."
+      ],
+      "gaps": [
+        "F-D1: в Product/Dataset нет категории товара и category-aware политики или прогноза.",
+        "F-D2: Sale не хранит customer или anonymized customer key, поэтому не реализовано различение крупной продажи одного клиента.",
+        "F-D3: API/CSV не содержит отдельного urgency/priority результата; UI attention-классы не заменяют поле срочности.",
+        "F-D4: storage.Store прямо рассчитан на один процесс на один JSON-файл, без межпроцессной блокировки и истории изменений."
+      ],
+      "futureAdvice": [
+        {
+          "principle": "Сначала расширяйте доменную схему тем измерением, которое меняет решение.",
+          "why": "F-D1: отсутствие category в Product не позволяет отличать политики для разных классов ассортимента; сейчас все товары проходят общий расчёт поставщика и горизонта.",
+          "how": "В следующем хакатоне добавьте необязательный category_id и конфигурацию политики категории в Dataset, затем сделайте одну синтетическую фикстуру с одинаковыми продажами, но разными категориями, и сравните forecast, safety stock и order.",
+          "findingIds": [
+            "F-D1"
+          ],
+          "successCheck": "Один и тот же SKU-сценарий с двумя категориями даёт разные, объяснимые параметры, а старый dataset без category продолжает валидироваться с явным default.",
+          "timeboxMinutes": 45
+        },
+        {
+          "principle": "Если требование говорит «один клиент», клиентский агрегат должен пройти через весь data path.",
+          "why": "F-D2: текущий Sale агрегирует product/date/quantity до расчёта и теряет возможность отличить customer-specific bulk order от устойчивого спроса.",
+          "how": "Для другого кейса принимайте только обезличенный customer_key или предварительно агрегированный customer-day input, рассчитывайте per-customer caps/robust baseline, а в публичный output выводите только причину корректировки без раскрытия ключа.",
+          "findingIds": [
+            "F-D2"
+          ],
+          "successCheck": "Контрольный тест с одним клиентом и тест с десятью клиентами при одинаковом общем количестве дают различимый, документированный результат; в JSON и CSV нет исходного идентификатора.",
+          "timeboxMinutes": 50
+        },
+        {
+          "principle": "Каждое обязательное слово из output-контракта должно быть отдельным проверяемым полем.",
+          "why": "F-D3: warnings и UI risk помогают человеку, но downstream API/CSV не получает машинно читаемую срочность.",
+          "how": "Введите urgency enum или priority score в Line, вычислите его из lead-time risk, overdue shipment и blocked status, добавьте колонку CSV и один API fixture с ожидаемыми уровнями.",
+          "findingIds": [
+            "F-D3"
+          ],
+          "successCheck": "Один overdue и один blocked сценарий возвращают разные urgency значения в JSON и CSV, а UI отображает то же поле без отдельной эвристики.",
+          "timeboxMinutes": 35
+        },
+        {
+          "principle": "Отделяйте быстрый локальный snapshot от persistence, нужного для нескольких процессов.",
+          "why": "F-D4: один JSON-файл удобен для демо, но Store сам документирует отсутствие межпроцессной блокировки и истории.",
+          "how": "Для следующей итерации сохраните Dataset/Calculate как чистый слой, а Store замените на SQLite/PostgreSQL с revision/ETag, migration и audit table; сначала покройте два конкурентных PUT.",
+          "findingIds": [
+            "F-D4"
+          ],
+          "successCheck": "Два экземпляра безопасно обновляют разные ревизии, конфликт возвращается предсказуемо, а история позволяет восстановить предыдущий snapshot.",
+          "timeboxMinutes": 60
+        }
+      ],
+      "uncertainties": [
+        "Визуальная компоновка, адаптивность и реальное поведение браузера не оценивались; static JS syntax и backend API проверены.",
+        "Customer-level outlier и category-aware forecast нельзя подтвердить на supplied tables, потому что в используемом входном контракте этих полей нет; это не заменено предположением о наличии данных.",
+        "Встроенный snapshot содержит 3 907 товаров, тогда как direct importer полного набора даёт 3 909; это зафиксировано как различие двух поддержанных путей загрузки, а не автоматически объявлено дефектом.",
+        "Числа 1 433 missing_order_rules, 680 supplier_article_missing, 6 purchase_unit_conversion_unconfirmed и 13 891 reconciliation mismatches относятся к предоставленному тестовому набору и не являются результатом работы внешней production-базы."
+      ],
+      "reviewPolicyVersion": 2,
+      "assessmentStatus": "ready",
+      "findings": [
+        {
+          "id": "F-S1",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Основной локальный сценарий от старта до рекомендации и CSV работает.",
+          "expected": "После запуска сервис должен отдать dataset, рекомендации и экспорт без внешнего API.",
+          "actual": "Build и start прошли; health/readiness дали 200; recommendations дали 2 supplier orders и 3 907 product lines; CSV дал 200.",
+          "evidence": [
+            "check-build",
+            "check-start",
+            "check-http-health",
+            "check-http-ready",
+            "check-http-dataset",
+            "check-http-scenario",
+            "check-http-csv",
+            "captures/20261002T062131945424-http-scenario2.stdout.log",
+            "captures/20261002T062141369694-http-csv.stdout.log"
+          ],
+          "checkIds": [
+            "check-build",
+            "check-start",
+            "check-http-health",
+            "check-http-ready",
+            "check-http-dataset",
+            "check-http-scenario",
+            "check-http-csv"
+          ]
+        },
+        {
+          "id": "F-S2",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Полный набор поставленных XLSX проходит оба предусмотренных пути импорта.",
+          "expected": "Импортер должен прочитать и валидировать структуру поставленных IEK и Systeme Electric книг.",
+          "actual": "Python conversion и TestRealSupplierWorkbooks прошли; получено 3 909 товаров, 140 922 дневных продаж и 313 shipments.",
+          "evidence": [
+            "check-case-import",
+            "check-case-go-import",
+            "captures/20261002T061516659626-case-import2.stdout.log",
+            "captures/20261002T061629512239-case-go-import.stdout.log"
+          ],
+          "checkIds": [
+            "check-case-import",
+            "check-case-go-import"
+          ]
+        },
+        {
+          "id": "F-S3",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Контрольный реальный SKU показывает последовательные корректировки выбросов и stockout.",
+          "expected": "Для IVR21-1-25 должны быть видимы target 7, stock 0, incoming 5 и order 2 с audit adjustments.",
+          "actual": "HTTP result: target_stock 7, available_stock 0, incoming_quantity 5, order_quantity 2; adjustments включают sales_spike и stockout_compensation.",
+          "evidence": [
+            "check-http-scenario",
+            "internal/realdata/data_test.go:66-99",
+            "captures/20261002T062131945424-http-scenario2.stdout.log"
+          ],
+          "checkIds": [
+            "check-http-scenario"
+          ]
+        },
+        {
+          "id": "F-S4",
+          "kind": "strength",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Импорт и подтверждение снапшота разделены, а API использует ревизии и ручной PUT.",
+          "expected": "Предпросмотр Excel не должен сам заменять склад или отправлять заказ поставщику.",
+          "actual": "importXLSX только возвращает preview; UI confirmImport вызывает PUT dataset с If-Match; send endpoint отсутствует.",
+          "evidence": [
+            "internal/httpapi/import.go:18-20",
+            "internal/webui/public/app.js:1017-1057",
+            "internal/httpapi/server.go:115-149",
+            "README.md:35-37"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "F-D1",
+          "kind": "defect",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Проект не моделирует категории товаров и не использует их в прогнозе или политике заказа.",
+          "expected": "Вход и расчёт должны позволять учитывать категории товаров из постановки кейса.",
+          "actual": "Product содержит id, sku, name, supplier_id, pack_size, MOQ, коды и review reasons; поля category нет, planner группирует и рассчитывает по supplier/product без category branch.",
+          "evidence": [
+            "internal/planning/model.go:21-32",
+            "internal/planning/planner.go:156-188",
+            "internal/planning/planner.go:347-361"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "F-D2",
+          "kind": "defect",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Проект не может определить крупную продажу одному клиенту как отдельную причину выброса.",
+          "expected": "Входная история должна сохранять хотя бы обезличенный customer-level сигнал либо заранее агрегированный customer-day признак, чтобы проверять это требование.",
+          "actual": "Sale хранит только product_id, date, quantity и exclude_from_demand; importer записывает только эти поля, а spike threshold строится по агрегированным количествам.",
+          "evidence": [
+            "internal/planning/model.go:35-40",
+            "internal/workbook/import.go:589-593",
+            "internal/planning/planner.go:212-250"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "F-D3",
+          "kind": "defect",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Отдельная срочность позиции отсутствует в результатах API и CSV.",
+          "expected": "Выходной список должен содержать машинно читаемую срочность или приоритет рядом с SKU, поставщиком и количеством.",
+          "actual": "Line содержит blocked и warnings, UI вычисляет attention kind blocked/risk/data, но Result и CSV headers не содержат urgency/priority.",
+          "evidence": [
+            "internal/planning/planner.go:58-89",
+            "internal/httpapi/server.go:178-182",
+            "internal/webui/public/app.js:431-453"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "F-D4",
+          "kind": "defect",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Persistence рассчитан на один процесс на один JSON-файл и не имеет истории изменений.",
+          "expected": "Для масштабирования на несколько экземпляров нужна межпроцессная конкурентность и история снапшотов.",
+          "actual": "Store прямо документирует «Run exactly one process per data file»; revision защищает только состояние внутри экземпляра, отдельной блокировки или audit history нет.",
+          "evidence": [
+            "internal/storage/store.go:24-26",
+            "internal/storage/store.go:89-121",
+            "README.md:200"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "F-L1",
+          "kind": "limitation",
+          "verification": "observed",
+          "responsibility": "review_environment",
+          "claim": "Визуальное поведение браузера не проверялось.",
+          "expected": "UI review потребовал бы browser/visual inspection.",
+          "actual": "Проверены только embedded assets, JS syntax и HTTP/API; browser automation намеренно не запускалась.",
+          "evidence": [
+            "check-js-syntax",
+            "check-http-scenario",
+            "runtime.limitations"
+          ],
+          "checkIds": [
+            "check-js-syntax",
+            "check-http-scenario"
+          ]
+        },
+        {
+          "id": "F-L2",
+          "kind": "limitation",
+          "verification": "observed",
+          "responsibility": "review_environment",
+          "claim": "Внешние credentials и внешние API отсутствуют.",
+          "expected": "Для этого локального прототипа основной сценарий должен работать без внешнего провайдера.",
+          "actual": "Локальный API прошёл с локальной auth-проверкой; внешняя интеграция не заявлена как необходимая и не использовалась.",
+          "evidence": [
+            "README.md:141-160",
+            "check-http-auth",
+            "check-http-scenario"
+          ],
+          "checkIds": [
+            "check-http-auth",
+            "check-http-scenario"
+          ]
+        }
+      ],
+      "gapFindingIds": [
+        "F-D1",
+        "F-D2",
+        "F-D3",
+        "F-D4"
+      ]
+    }
+  ],
+  "score": 87.0,
+  "status": "complete",
+  "expectedJudges": 1
+}

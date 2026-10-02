@@ -1,0 +1,918 @@
+{
+  "methodVersion": 4,
+  "repoId": "hack-84dbe8eb-sherkhandev",
+  "repoUrl": "https://github.com/BAITC-Hacks/hack-84dbe8eb-sherkhandev",
+  "caseId": 10,
+  "snapshot": "b2044b6ecd6cee693f63fdabadb29bb6e58be225",
+  "judges": [
+    {
+      "methodVersion": 4,
+      "repoId": "hack-84dbe8eb-sherkhandev",
+      "caseId": 10,
+      "model": "GPT-5.6 Luna",
+      "snapshot": "b2044b6ecd6cee693f63fdabadb29bb6e58be225",
+      "overallSummary": "EKT AI — сильный пятичасовой прототип консультанта по электротехническому каталогу. В fixture-режиме он действительно стартует, создаёт сессию, показывает склад и пустую корзину, а доменные и интеграционные тесты подтверждают поиск товара, сохранение нулевого остатка как нуля, подбор аналога, сертификат, условия покупки, серверное pending-предложение, явное подтверждение, ограничение количества остатком, идемпотентность и read-only ссылку на актуальную корзину. Архитектурно удачно разделены LLM-инструменты, каталог, условия и транзакционная корзина; секрет сессии и ссылка корзины не передаются модели. Основные подтверждённые ограничения — отсутствие обработки вложений из задания, live-режим импортирует только явно заданные detail-записи и не использует предоставленный список /api/products для наполнения каталога, а статическая шапка интерфейса безусловно сообщает «Live-каталог подключён» даже при fixture-режиме. Ключ и квота OpenAI, а также реальный EKT API намеренно не предоставлялись, поэтому внешний LLM/live-сценарий не объявлен пройденным и не штрафуется за недоступность среды. Итоговая оценка общего хакатонного результата: 87/100.",
+      "global": {
+        "criteria": [
+          {
+            "name": "Ценность решения",
+            "score": 23,
+            "max": 25,
+            "awarded": "Решение прямо сокращает путь от вопроса закупщика до проверяемого предложения в корзину и снимает типовые вопросы с менеджера.",
+            "deductions": "Сняты 2 балла за две подтверждённые границы ценности в полном кейсовом сценарии: клиент не может передать фото/спецификацию как вложение, а live-каталог не открывает весь ассортимент автоматически.",
+            "evidence": [
+              "README.md:22-35",
+              "README.md:233-245",
+              "backend/app/api/chat.py:13-22",
+              "backend/app/catalog/live.py:29-50",
+              "backend/scripts/import_catalog.py:20-37",
+              "backend/tests/integration/test_full_flow.py:23-108",
+              "backend/tests/catalog/test_catalog.py:29-69"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "D-ATTACHMENTS",
+                "reason": "Отсутствует входной контракт и обработчик фото/Excel/Word/PDF/JPEG, поэтому важный путь закупщика со спецификацией не получает заявленную экономию времени."
+              },
+              {
+                "points": 1,
+                "findingId": "D-LIVE-CATALOG",
+                "reason": "В live-режиме сервис не загружает список /api/products и запускается без товаров; пользователь получает полный эффект только после ручного импорта отдельных product id."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Понятная боль B2B-закупки",
+                "implementation": "README связывает продукт с конкретной проблемой ekt.kz: характеристики, остатки, сертификаты, аналоги и условия приходится уточнять у менеджера. В прототипе эти операции сведены в окно чата и несколькими серверными инструментами.",
+                "value": "Польза понятна целевой аудитории — закупщику, электрику или инженеру: типовой вопрос получает структурированный ответ, а переход к корзине не требует ручного поиска по сайту.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:22-35",
+                  "C:\\Users\\user\\Desktop\\hackalem-review\\cases\\10\\case-data\\HackAlem AI_ ИИ-ассистент для чата на сайте ekt.kz.md:20-58"
+                ]
+              },
+              {
+                "aspect": "Снижение риска ошибочной покупки",
+                "implementation": "CatalogService сохраняет различие между quantity=0 и неизвестным quantity, требует подтверждённый eligible-склад, а CartService перед подготовкой и подтверждением повторно получает ProductSnapshot.",
+                "value": "Это превращает ценность из простого чат-поиска в безопасный B2B-процесс: ассистент не должен обещать наличие там, где источник его не подтвердил, и не должен принять заказ сверх остатка.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/app/catalog/normalize.py:33-46",
+                  "backend/app/cart/service.py:126-174",
+                  "backend/app/cart/service.py:232-315",
+                  "backend/tests/catalog/test_catalog.py:29-52",
+                  "backend/tests/cart/test_cart_service.py:164-212",
+                  "check BUILD-45"
+                ]
+              },
+              {
+                "aspect": "Аналог вместо тупикового ответа",
+                "implementation": "Для DEMO-002 с нулевым остатком CatalogService ищет товары той же категории и требует совпадения poles, rated_current_a, trip_curve и breaking_capacity_ka, после чего возвращает matched_specs, differences и limitations.",
+                "value": "Клиент получает объяснимую следующую опцию, а не только сообщение «нет в наличии»; для закупки электротехники это практически полезнее общего текстового сходства.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/app/catalog/service.py:217-255",
+                  "backend/tests/catalog/test_catalog.py:42-52",
+                  "backend/data/catalog/fixture.json:41-97",
+                  "check BUILD-45"
+                ]
+              },
+              {
+                "aspect": "Ограничение обещаний демо-данными",
+                "implementation": "Fixture и условия явно помечены synthetic/демонстрационными, сертификат прямо назван учебным, а системная инструкция модели запрещает выдумывать цену, остаток, URL и сертификаты.",
+                "value": "Такой disclosure сохраняет полезность прототипа без маскировки синтетических данных под данные EKT и уменьшает риск принятия решения на ложном основании.",
+                "verification": "source",
+                "evidence": [
+                  "backend/data/catalog/fixture.json:1-4",
+                  "backend/data/conditions/fixture/payment.json:1-6",
+                  "backend/data/certificates/DEMO-CERT-001.html:1-12",
+                  "backend/app/agent/__init__.py:362-373"
+                ]
+              }
+            ],
+            "scoreReasoning": "23 балла заслужены за очень конкретную пользовательскую ценность: в одном MVP собраны консультация по товару, остаток, аналог, условия и безопасная корзина. Снижение небольшое, потому что fixture-сценарий закрывает основной путь, а ограничения не делают уже работающий сценарий недостоверным. Один балл удержан за отсутствие вложений, которые в исходном задании перечислены как вход, и один — за то, что live-каталог требует ручного импорта отдельных карточек вместо наполнения через доступный список."
+          },
+          {
+            "name": "Результат и качество решения",
+            "score": 17,
+            "max": 20,
+            "awarded": "Основной локальный сценарий целостен и подтверждён 45 тестами и отдельным e2e-набором из 4 тестов; ограничения ниже максимума относятся к непокрытым входам и live-режиму.",
+            "deductions": "Сняты 3 балла: один за отсутствие вложений, один за частичную live-реализацию, один за безусловный статический статус live в UI, который может создать неверное ожидание при fixture-запуске.",
+            "evidence": [
+              "backend/tests/integration/test_full_flow.py:23-206",
+              "backend/tests/cart/test_cart_concurrency.py:77-127",
+              "backend/app/contracts.py:141-243",
+              "web/index.html:21-31",
+              "check BUILD-45",
+              "check SCENARIO-FIXTURE"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "D-ATTACHMENTS",
+                "reason": "ChatRequest принимает только message, warehouse_id и confirmation_action_id; multipart/file-путь отсутствует, поэтому часть заявленного пользовательского входа не может участвовать в результате."
+              },
+              {
+                "points": 1,
+                "findingId": "D-LIVE-CATALOG",
+                "reason": "LiveProvider умеет detail-запрос, но CatalogService.initialize в live-режиме не наполняет базу, а importer требует ручного --product-id; целостность продукта зависит от предварительной ручной операции."
+              },
+              {
+                "points": 1,
+                "findingId": "D-UI-LIVE-LABEL",
+                "reason": "web/index.html содержит фиксированный текст «Live-каталог подключён», тогда как конфигурация по умолчанию — CATALOG_MODE=fixture; это снижает точность пользовательского результата и демо-объяснения режима."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Серверная граница между предложением и изменением корзины",
+                "implementation": "prepare_cart_action вызывает CartService.prepare_action и сохраняет pending action, но не вставляет cart_items. Подтверждение проходит отдельным endpoint, снова проверяет snapshot и только потом вставляет строку в SQLite.",
+                "value": "Пользовательский результат соответствует требованию «только после явного подтверждения», а модель не получает прямого инструмента изменения корзины.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/app/agent/__init__.py:220-229",
+                  "backend/app/cart/service.py:126-154",
+                  "backend/app/cart/service.py:232-315",
+                  "backend/tests/integration/test_full_flow.py:55-80"
+                ]
+              },
+              {
+                "aspect": "Корректность количества и цены",
+                "implementation": "PendingAction валидирует positive integer и формулу added_amount=unit_price*quantity; CartService проверяет unit, quantity_step, eligibility и stock, а commit не допускает сумму корзины выше свежего остатка.",
+                "value": "Это даёт не только красивую карточку подтверждения, но и серверный инвариант против переполнения остатка, смены цены и неверной кратности.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/app/contracts.py:141-171",
+                  "backend/app/cart/service.py:156-187",
+                  "backend/app/cart/service.py:268-315",
+                  "backend/tests/cart/test_cart_service.py:100-212",
+                  "check BUILD-45"
+                ]
+              },
+              {
+                "aspect": "Идемпотентность и конкурентный доступ",
+                "implementation": "Уникальный source_action_id, BEGIN IMMEDIATE и ветка committed/already_applied не создают вторую строку при повторном подтверждении; отдельный тест запускает конкурентные подтверждения и проверяет уважение остатка.",
+                "value": "Для реальной корзины это существенная часть качества: двойной клик или параллельные запросы не превращаются в двойное добавление.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/app/cart/service.py:275-327",
+                  "backend/tests/cart/test_cart_concurrency.py:77-127",
+                  "backend/tests/cart/test_cart_service.py:214-248",
+                  "check BUILD-45"
+                ]
+              },
+              {
+                "aspect": "Доказанный локальный результат",
+                "implementation": "Сквозной тест создаёт сессию, выбирает demo-warehouse, через fake Responses API подготавливает DEMO-001 на 2 штуки, подтверждает его, повторяет подтверждение, открывает read-only view и проверяет условия/сертификат; запуск завершился 4 passed.",
+                "value": "Проверка показывает воспроизводимый пользовательский результат без необходимости выдавать судье секретный OpenAI ключ. Дополнительно 45/45 unit/domain/API/integration тестов прошли.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/tests/integration/test_full_flow.py:23-206",
+                  "captures/20261002T121535893344-scenario.stdout.log",
+                  "captures/20261002T121106661974-test.stdout.log"
+                ]
+              }
+            ],
+            "scoreReasoning": "17 баллов отражают работающий и хорошо защищённый локальный сценарий, а не только наличие файлов. Снижение до 17 связано с реальными несовпадениями с полным входом кейса: вложения не принимаются, live-наполнение не автоматизировано, а статический статус режима может быть неверным. Непредоставленный ключ не использован как причина снятия."
+          },
+          {
+            "name": "Инновационность",
+            "score": 14,
+            "max": 15,
+            "awarded": "Нестандартная часть решения — объяснимый алгоритм аналогов и серверный двухфазный commit для корзины, объединённые с tool-calling ассистентом.",
+            "deductions": "Снят 1 балл за то, что мультимодальный вход из кейса не стал частью инновационного сценария: решение остаётся текстовым консультантом с API-инструментами.",
+            "evidence": [
+              "README.md:22-35",
+              "backend/app/agent/__init__.py:110-229",
+              "backend/app/catalog/service.py:217-255",
+              "backend/app/cart/service.py:126-315"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "D-ATTACHMENTS",
+                "reason": "Отсутствие заявленного фото/документного входа ограничивает отличительность ассистента как единого окна для спецификации или накладной; инновационный путь реализован только для текста."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Tool registry вместо свободного изменения домена моделью",
+                "implementation": "AgentService регистрирует ограниченный набор строго валидируемых инструментов и передаёт модели только безопасно сериализованные DTO; неизвестный tool и неверные аргументы превращаются в ошибку.",
+                "value": "Это более надёжный подход для commerce-assistant, чем позволить LLM формировать произвольные SQL/HTTP действия: модель предлагает намерение, а доменные сервисы решают, допустимо ли оно.",
+                "verification": "source",
+                "evidence": [
+                  "backend/app/agent/__init__.py:45-122",
+                  "backend/app/agent/__init__.py:232-266",
+                  "backend/app/agent/__init__.py:347-360",
+                  "backend/tests/agent/test_agent.py:122-184"
+                ]
+              },
+              {
+                "aspect": "Объяснимый аналог по обязательным характеристикам",
+                "implementation": "Поиск DEMO-003 не основан на неясном embedding-похожем результате: сервис сравнивает четыре обязательных поля, доступность склада и положительный остаток, а ответ содержит matched_specs, differences и limitations.",
+                "value": "Такой подход полезен там, где инженерная совместимость важнее лингвистической близости названия; пользователь может понять, почему кандидат допущен и какие ограничения остаются.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/app/catalog/service.py:217-255",
+                  "backend/tests/catalog/test_catalog.py:42-52",
+                  "backend/data/catalog/fixture.json:71-96"
+                ]
+              },
+              {
+                "aspect": "Two-phase commit для ассистируемой покупки",
+                "implementation": "Сначала формируется PendingAction с TTL, свежим snapshot, количеством, ценой и складом; подтверждение выделено в отдельный endpoint и повторно проверяет товар перед транзакцией.",
+                "value": "Это хорошая предметная инновация для LLM-сценария: чат не получает опасную возможность незаметно изменить заказ, но пользователь всё равно получает быстрый путь к корзине.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/app/contracts.py:141-171",
+                  "backend/app/cart/service.py:126-154",
+                  "backend/app/cart/service.py:232-315",
+                  "backend/tests/agent/test_agent.py:139-186"
+                ]
+              },
+              {
+                "aspect": "Безопасная read-only ссылка как отдельный результат",
+                "implementation": "После commit создаётся токен просмотра, в базе хранится только его hash, view endpoint не требует сессионный bearer и отдаёт экранированный HTML с no-store/no-referrer.",
+                "value": "Решение закрывает практическую потребность поделиться текущим состоянием корзины, не передавая LLM или публичной странице секрет сессии.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/app/cart/service.py:104-124",
+                  "backend/app/cart/service.py:338-349",
+                  "backend/app/agent/__init__.py:348-360",
+                  "backend/tests/integration/test_full_flow.py:82-108"
+                ]
+              }
+            ],
+            "scoreReasoning": "14 баллов заслужены за собственную предметную механику, а не за сам факт использования LLM: строгие инструменты, объяснимый матчинг и двухфазное подтверждение дают заметное преимущество перед обычным чат-ответом или кнопкой «добавить». Один балл удержан за отсутствие мультимодального/документного пути, который мог бы сделать решение ещё более специфичным для закупочного кейса."
+          },
+          {
+            "name": "Потенциал развития и масштабирования",
+            "score": 16,
+            "max": 20,
+            "awarded": "Модульная структура, DTO-контракты, SQLite-персистентность, адаптер live/fixture и отдельные сервисы создают хороший каркас для дальнейшего расширения.",
+            "deductions": "Сняты 4 балла: один за отсутствие вложений как расширяемого входа и три за live-путь, который не синхронизирует ассортимент через /api/products и требует ручного выбора карточек.",
+            "evidence": [
+              "backend/app/contracts.py:268-299",
+              "backend/app/catalog/service.py:54-115",
+              "backend/app/cart/service.py:19-84",
+              "backend/scripts/import_catalog.py:19-39",
+              "README.md:145-200",
+              "docs/catalog.md:45-84"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "D-ATTACHMENTS",
+                "reason": "Без общего attachment-контракта и извлечения структурированных позиций из документов расширение на спецификации и накладные потребует отдельного не связанного с текущим chat API слоя."
+              },
+              {
+                "points": 3,
+                "findingId": "D-LIVE-CATALOG",
+                "reason": "LiveProvider покрывает только detail endpoint; приложение не использует /api/products?page=... для первоначального ассортимента, а ручной importer ограничен максимум 20 явно заданными id. Это препятствует масштабированию на полный каталог без дополнительной операции."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Разделение портов и адаптеров",
+                "implementation": "CatalogPort, CartPort и ConditionsPort определены в contracts.py; CatalogService изолирует SQLite и режимы, LiveProvider изолирует HTTP, а AgentService зависит от портов, а не от конкретной реализации.",
+                "value": "Новые провайдеры каталога, другой storage или другой front-end можно добавлять без переписывания основного сценария агента.",
+                "verification": "source",
+                "evidence": [
+                  "backend/app/contracts.py:268-299",
+                  "backend/app/catalog/service.py:54-115",
+                  "backend/app/catalog/live.py:17-50"
+                ]
+              },
+              {
+                "aspect": "Контролируемая персистентность",
+                "implementation": "SQLite-схемы отделяют products, stocks, warehouses, carts, actions и cart_views; операции открывают короткие соединения и используют транзакции, а сырой ответ и provenance сохраняются рядом с нормализованными значениями.",
+                "value": "Для MVP это разумная база для аудита источника и последующей миграции к серверной БД, не смешивающая данные каталога с состоянием корзины.",
+                "verification": "source",
+                "evidence": [
+                  "backend/app/catalog/storage.py:19-43",
+                  "backend/app/catalog/storage.py:78-127",
+                  "backend/app/cart/service.py:19-84",
+                  "backend/tests/cart/test_cart_service.py:250-269"
+                ]
+              },
+              {
+                "aspect": "Провайдер live с консервативной нормализацией",
+                "implementation": "LiveProvider использует Basic Auth и detail URL из кейса, normalize_product не превращает неизвестное число в ноль, сохраняет ведущие нули и отмечает data_issues; тесты проверяют offers/stores, zero/unknown stock и ошибки свежего запроса.",
+                "value": "Такой контракт уменьшает риск тихой порчи бизнес-данных при подключении реального API и даёт ясную точку для добавления пагинации, кэша и фоновой синхронизации.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/app/catalog/live.py:17-50",
+                  "backend/app/catalog/normalize.py:33-46",
+                  "backend/tests/catalog/test_live.py:37-180",
+                  "check BUILD-45"
+                ]
+              },
+              {
+                "aspect": "Открытые направления расширения",
+                "implementation": "README и contracts уже выделяют условия, сертификаты, историю сессии, казахский язык, сопутствующие товары и эскалацию менеджеру; данные и инструменты разнесены по предметным модулям.",
+                "value": "Команда оставила понятные seams для следующего этапа, а не связала всю логику с одним prompt или одной страницей.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:186-230",
+                  "backend/app/agent/__init__.py:220-230",
+                  "backend/app/conditions/service.py:12-45"
+                ]
+              }
+            ],
+            "scoreReasoning": "16 баллов — это хороший масштабируемый каркас, но не готовая синхронизация промышленного каталога. Основной минус live-режима подтверждён кодом: initialize создаёт HTTP-клиент, но не импортирует список; importer работает только по заданным ID и максимум по 20 карточкам. Это существеннее для масштабирования, чем для локального MVP, поэтому здесь снято три балла. Ещё один балл связан с отсутствием attachment-пайплайна."
+          },
+          {
+            "name": "Презентация, демо и ответы на вопросы",
+            "score": 17,
+            "max": 20,
+            "awarded": "README и docs дают ясную архитектуру, быстрый старт, демо-сценарии, API, тесты и ограничения; воспроизводимое локальное демо подтверждено тестами и HTTP-проверкой.",
+            "deductions": "Сняты 3 балла: два за безусловную надпись «Live-каталог подключён» в разметке, не согласованную с fixture-конфигурацией, и один за отсутствие в описанном интерфейсе входа вложений из задания. Устное выступление и live URL за отсутствие не штрафовались.",
+            "evidence": [
+              "README.md:1-18",
+              "README.md:38-118",
+              "README.md:210-259",
+              "docs/demo.md:1-32",
+              "web/index.html:21-31",
+              "captures/20261002T121535893344-scenario.stdout.log",
+              "check HTTP-FIXTURE"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "D-UI-LIVE-LABEL",
+                "reason": "Текст статуса в web/index.html фиксирован и сообщает о live-каталоге независимо от CATALOG_MODE; при рекомендованном README fixture-запуске это делает демо-объяснение менее точным."
+              },
+              {
+                "points": 1,
+                "findingId": "D-ATTACHMENTS",
+                "reason": "README подробно описывает текстовые сценарии, но не показывает способ передать требуемые фото/Excel/Word/PDF/JPEG; это оставляет существенную часть кейса без демо-пути."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Воспроизводимый быстрый старт",
+                "implementation": "README фиксирует установку зависимостей, CATALOG_MODE=fixture, запуск uvicorn, healthcheck и отдельный раздел с четырьмя сценариями: заказ, аналог, сертификат и условия.",
+                "value": "Жюри может понять, что запускать и какой результат ожидать, а проект не зависит от устного объяснения команды.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:38-59",
+                  "README.md:105-138",
+                  "README.md:233-259"
+                ]
+              },
+              {
+                "aspect": "Архитектура изложена через пользовательский поток",
+                "implementation": "README связывает frontend, FastAPI, AgentService, Catalog/Conditions/Cart, SQLite и внешние интеграции в одну схему, а затем раскрывает API и режимы каталога.",
+                "value": "Материал объясняет не только список технологий, но и почему модель не меняет корзину напрямую и где проверяется остаток.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:145-230",
+                  "backend/app/agent/__init__.py:110-229",
+                  "backend/app/cart/service.py:232-315"
+                ]
+              },
+              {
+                "aspect": "Демо не маскирует synthetic-данные",
+                "implementation": "README называет DEMO-001/002/003 учебными товарами, документы conditions помечают fixture как демонстрационный, а сертификат HTML прямо сообщает, что это не сертификат EKT.",
+                "value": "Это делает репозиторное демо честным и позволяет отделить проверенный MVP от непроверенного production-источника.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:225-231",
+                  "backend/data/conditions/fixture/delivery.json:1-6",
+                  "backend/data/certificates/DEMO-CERT-001.html:1-12"
+                ]
+              },
+              {
+                "aspect": "Техническая воспроизводимость подтверждена",
+                "implementation": "Фактический запуск дал 45 passed; отдельный integration-запуск дал 4 passed; HTTP-проверка получила 200 на health, 201 на session, 200 на warehouses/cart/root, 401 без bearer и 503 LLM_UNAVAILABLE без ключа.",
+                "value": "Даже без устной презентации и предоставленных внешних credentials результат можно показать и проверить по репозиторию.",
+                "verification": "observed",
+                "evidence": [
+                  "captures/20261002T121106661974-test.stdout.log",
+                  "captures/20261002T121535893344-scenario.stdout.log",
+                  "check HTTP-FIXTURE"
+                ]
+              }
+            ],
+            "scoreReasoning": "17 баллов соответствуют ясному README и реально воспроизводимому fixture-demo. Устной презентации, видео и публичного live URL не было, но политика прямо запрещает снимать за сам факт их отсутствия; локальные доказательства достаточны. Снижение относится только к содержательным неточностям демонстрации: фиксированный live-статус при fixture и отсутствие описания/реализации attachment-сценария."
+          }
+        ],
+        "total": 87
+      },
+      "case": null,
+      "judgeScore": 87,
+      "caseRequirements": [
+        {
+          "requirement": "Консультация по существующему товару: артикул, название, характеристики и цена только из каталога.",
+          "status": "met",
+          "explanation": "DTO Product и CatalogService хранят article/name/specs/price, а агент получает данные только через зарегистрированные catalog tools. Fixture содержит DEMO-001, а интеграционный тест подтверждает серверный поток подготовки товара. Обычный LLM-вызов без ключа отдельно отмечен как ограничение, а не как дефект данных.",
+          "evidence": [
+            "backend/app/contracts.py:61-78",
+            "backend/app/catalog/service.py:122-167",
+            "backend/app/agent/__init__.py:220-275",
+            "backend/tests/catalog/test_catalog.py:29-69",
+            "backend/tests/integration/test_full_flow.py:45-80"
+          ]
+        },
+        {
+          "requirement": "Проверка наличия с различением нулевого и неизвестного остатка.",
+          "status": "met",
+          "explanation": "Нормализатор сохраняет ноль как 0, пропускает неизвестное значение как null, а CartService не разрешает добавление при нулевом/неизвестном остатке. Это отдельно покрыто catalog и cart тестами.",
+          "evidence": [
+            "backend/app/catalog/normalize.py:33-46",
+            "backend/app/catalog/service.py:169-215",
+            "backend/app/cart/service.py:156-174",
+            "backend/tests/catalog/test_catalog.py:29-52",
+            "backend/tests/catalog/test_live.py:140-180"
+          ]
+        },
+        {
+          "requirement": "При нулевом остатке предложить релевантный аналог с кратким обоснованием.",
+          "status": "met",
+          "explanation": "Для поддержанной demo_breaker категории алгоритм требует совпадения четырёх обязательных характеристик и положительного доступного остатка; результат содержит matched_specs, differences и limitations. DEMO-003 принят как учебный аналог DEMO-002, а DEMO-002 имеет нулевой остаток.",
+          "evidence": [
+            "backend/app/catalog/service.py:217-255",
+            "backend/data/catalog/fixture.json:41-97",
+            "backend/tests/catalog/test_catalog.py:42-52",
+            "backend/tests/agent/test_agent.py:199-237"
+          ]
+        },
+        {
+          "requirement": "Ответы об оплате, доставке и минимальной партии.",
+          "status": "met",
+          "explanation": "Есть отдельный ConditionsService с темами payment/delivery/minimum_order и раздельными fixture/live JSON. Fixture-условия явно помечены демонстрационными; интеграционный тест проверяет delivery и payment.",
+          "evidence": [
+            "backend/app/conditions/service.py:12-45",
+            "backend/data/conditions/fixture/payment.json:1-6",
+            "backend/data/conditions/fixture/delivery.json:1-6",
+            "backend/data/conditions/fixture/minimum_order.json:1-6",
+            "backend/tests/integration/test_full_flow.py:148-167"
+          ]
+        },
+        {
+          "requirement": "Сертификат или ссылка на него, если он есть в доступных данных.",
+          "status": "met",
+          "explanation": "Product содержит certificate_urls, отдельный get_certificate возвращает found/not_found_in_available_data, фронтенд фильтрует ссылки, а fixture-сертификат раздаётся отдельным endpoint. Интеграционный тест подтвердил demo certificate HTTP 200.",
+          "evidence": [
+            "backend/app/contracts.py:61-78",
+            "backend/app/catalog/service.py:257-264",
+            "backend/app/main.py:116-118",
+            "web/assets/app.js:156-180",
+            "backend/tests/integration/test_full_flow.py:148-167"
+          ]
+        },
+        {
+          "requirement": "Добавление только после явного подтверждения клиента.",
+          "status": "met",
+          "explanation": "Подготовка создаёт pending action и не вставляет cart_items; commit находится в отдельном confirm endpoint. Exact confirmation с action_id обходит LLM только для серверного подтверждения, а UI содержит отдельную кнопку подтверждения.",
+          "evidence": [
+            "backend/app/agent/__init__.py:124-144",
+            "backend/app/agent/__init__.py:419-429",
+            "backend/app/cart/service.py:126-154",
+            "backend/app/cart/service.py:232-315",
+            "web/assets/app.js:343-358",
+            "backend/tests/agent/test_agent.py:139-186",
+            "backend/tests/integration/test_full_flow.py:55-80"
+          ]
+        },
+        {
+          "requirement": "Количество не превышает остаток, учитывает единицу и шаг продажи.",
+          "status": "met",
+          "explanation": "Сервер проверяет pcs, положительный целочисленный шаг, кратность, eligible и свежий stock; во время commit заново учитывает уже лежащее в корзине количество. Конкурентный тест подтверждает защиту от race condition.",
+          "evidence": [
+            "backend/app/cart/service.py:156-187",
+            "backend/app/cart/service.py:275-315",
+            "backend/tests/cart/test_cart_service.py:100-212",
+            "backend/tests/cart/test_cart_concurrency.py:77-127"
+          ]
+        },
+        {
+          "requirement": "После добавления дать прямую ссылку на актуальное состояние корзины.",
+          "status": "met",
+          "explanation": "ConfirmResult содержит Cart с cart_url; ссылка строится после commit, view читает актуальные cart_items, токен имеет TTL и read-only режим. E2E тест открыл ссылку без Authorization и проверил товар, количество и total.",
+          "evidence": [
+            "backend/app/contracts.py:202-221",
+            "backend/app/cart/service.py:104-124",
+            "backend/app/cart/service.py:338-349",
+            "backend/tests/integration/test_full_flow.py:80-108"
+          ]
+        },
+        {
+          "requirement": "Не выдумывать цену/наличие и не делать заказ без подтверждения.",
+          "status": "met",
+          "explanation": "Системная инструкция агента запрещает выдумывание, серверные DTO передают источник/режим, а CartService не доверяет тексту модели и использует серверный snapshot. Внешний LLM не был доступен, поэтому результат LLM не объявлен проверенным, но защитный путь подтверждён source и тестами.",
+          "evidence": [
+            "backend/app/agent/__init__.py:362-373",
+            "backend/app/cart/service.py:244-315",
+            "backend/tests/agent/test_agent.py:154-186",
+            "backend/tests/integration/test_full_flow.py:169-206"
+          ]
+        },
+        {
+          "requirement": "Поддержать фото и файлы Excel/Word/PDF/JPEG как вход.",
+          "status": "missing",
+          "explanation": "ChatRequest принимает только текстовое message и два идентификатора; в web/index.html нет file input, multipart endpoint, загрузки или извлечения содержимого. Это подтверждённое отсутствие реализации, а не непроверенность.",
+          "evidence": [
+            "backend/app/contracts.py:224-234",
+            "backend/app/api/chat.py:13-22",
+            "web/index.html:35-60",
+            "rg-проверка attachment/upload/multipart/file/pdf/xlsx/docx/jpeg в backend, web, README.md"
+          ]
+        },
+        {
+          "requirement": "Подключение к тестовому EKT API и работа с ассортиментом live.",
+          "status": "partial",
+          "explanation": "LiveProvider корректно формирует Basic Auth и вызывает /api/products/detail?id=..., что подтверждено MockTransport-тестами. Однако предоставленный /api/products?page=... не используется, initialize live не импортирует ассортимент, а отдельный importer требует вручную перечислить product id; реальный EKT ответ без credentials не проверен.",
+          "evidence": [
+            "C:\\Users\\user\\Desktop\\hackalem-review\\cases\\10\\case-data\\ИИ-ассистент для чата на сайте ekt.kz ДАННЫЕ.docx.md:1-9",
+            "backend/app/catalog/live.py:17-50",
+            "backend/app/catalog/service.py:68-84",
+            "backend/scripts/import_catalog.py:19-39",
+            "backend/tests/catalog/test_live.py:37-180"
+          ]
+        },
+        {
+          "requirement": "Не хранить платёжные данные и защищать сессию/корзину.",
+          "status": "met",
+          "explanation": "Контракты корзины не содержат платёжных реквизитов, bearer token хранится в памяти фронтенда, serializе_for_model блокирует session_token/cart_url, view token хранится как hash, а API корзины требует session bearer.",
+          "evidence": [
+            "backend/app/contracts.py:202-243",
+            "backend/app/dependencies.py:17-37",
+            "backend/app/agent/__init__.py:347-360",
+            "backend/app/cart/service.py:104-124",
+            "backend/tests/api/test_http.py:21-48",
+            "backend/tests/integration/test_full_flow.py:82-108"
+          ]
+        }
+      ],
+      "testData": {
+        "provided": [
+          "cases/10/case-data/HackAlem AI_ ИИ-ассистент для чата на сайте ekt.kz.md",
+          "cases/10/case-data/ИИ-ассистент для чата на сайте ekt.kz ДАННЫЕ.docx.md"
+        ],
+        "used": [
+          "cases/10/case-data/HackAlem AI_ ИИ-ассистент для чата на сайте ekt.kz.md",
+          "cases/10/case-data/ИИ-ассистент для чата на сайте ekt.kz ДАННЫЕ.docx.md",
+          "backend/data/catalog/fixture.json",
+          "backend/data/conditions/fixture/payment.json",
+          "backend/data/conditions/fixture/delivery.json",
+          "backend/data/conditions/fixture/minimum_order.json",
+          "backend/tests/catalog/test_live.py",
+          "backend/tests/integration/test_full_flow.py"
+        ],
+        "checks": [
+          {
+            "input": "Основной case brief: product/stock/certificate/analog/conditions/cart, explicit confirmation и ссылка корзины.",
+            "method": "Сверка с исходным case-файлом и запуск fixture unit/domain/integration тестов.",
+            "result": "Код содержит отдельные Product, StockResult, AnalogResult, CertificateResult, ConditionsResult, PendingAction и Cart; в полном наборе 45 тестов прошли, отдельный full_flow дал 4 passed.",
+            "conclusion": "Основной текстовый и корзинный MVP покрыт; attachment-путь не найден."
+          },
+          {
+            "input": "DEMO-001: существующий товар с характеристиками, сертификатом и остатком 5; запрос на 2 штуки.",
+            "method": "Использован backend/data/catalog/fixture.json через lifecycle приложения; full_flow подал prepare_cart_action с demo-001/demo-warehouse/2.",
+            "result": "PendingAction создан с quantity_to_add=2; после confirm Cart содержит одну позицию quantity=2 и total=2400.00; повторный confirm не изменяет количество.",
+            "conclusion": "Сценарий существующего товара и подтверждённой корзины пройден."
+          },
+          {
+            "input": "DEMO-002: нулевой остаток и DEMO-003 как кандидат с остатком 10.",
+            "method": "Каталоговые тесты вызвали get_snapshot/find_analogs по fixture-данным и проверили обязательные характеристики.",
+            "result": "DEMO-002 сохранён как quantity=0; DEMO-003 принят при совпадении poles=1, rated_current_a=16, trip_curve=C и breaking_capacity_ka=6, eligible=True и quantity=10.",
+            "conclusion": "Нулевой остаток и объяснимый аналог подтверждены на synthetic dataset."
+          },
+          {
+            "input": "Условия delivery/payment/minimum_order и DEMO-CERT-001.",
+            "method": "Интеграционный тест прочитал fixture conditions через ConditionsService и запросил /demo-certificates/DEMO-CERT-001.html.",
+            "result": "delivery/payment возвращают known synthetic-текст; certificate endpoint отвечает 200 и содержит идентификатор/пометку демонстрационного документа.",
+            "conclusion": "Условия и сертификат локального демо проверены; это не доказательство production-условий EKT."
+          },
+          {
+            "input": "Документ с тестовым API: /api/products и /api/products/detail?id=... с Basic Auth.",
+            "method": "Сопоставлены endpoint/авторизация документа с LiveProvider и test_live.py; реальный секрет не использовался.",
+            "result": "LiveProvider вызывает только /api/products/detail, передаёт httpx.BasicAuth при заданных credentials, нормализует detail и сохраняет provenance; MockTransport-тесты прошли в составе 45 тестов. Список /api/products?page=... в коде не вызывается.",
+            "conclusion": "Detail-интеграция статически и через transport mock подтверждена, реальный EKT и полное наполнение списка не подтверждены."
+          }
+        ],
+        "limitations": [
+          "Внешние credentials намеренно не предоставлялись, поэтому тестовые URL EKT и OpenAI не вызывались с реальной авторизацией.",
+          "Synthetic fixture и mock transport подтверждают локальную обработку форматов, но не доказывают текущую доступность, схему и полноту production API.",
+          "Визуальная проверка страницы запрещена инструкцией; HTML/JS проверены статически и через HTTP-ответы без браузера."
+        ]
+      },
+      "runtime": {
+        "status": "partial",
+        "build": "Сборка зависимостей в изолированном Python 3.12 окружении завершилась успешно; полный набор проекта: 45 passed, 1 предупреждение deprecation.",
+        "start": "FastAPI стартовал в CATALOG_MODE=fixture; GET /health вернул 200 и {status: ok, catalog_mode: fixture}. GET / вернул 200 и HTML приложения.",
+        "scenario": "Fixture-доменный сценарий подтверждён 4 passed: сессия, склад, pending action на 2 DEMO-001, confirm, повторное подтверждение, read-only cart view, условия и сертификат. Обычный chat-flow с реальным OpenAI заблокирован отсутствующим внешним ключом и получил ожидаемый 503 LLM_UNAVAILABLE.",
+        "environment": "Python 3.12, pinned FastAPI/Pydantic/httpx/OpenAI/uvicorn и pytest dependencies из backend/requirements*.txt; fixture-режим; секреты и credentials не передавались.",
+        "summary": "Приложение реально разворачивается и основной локальный пользовательский результат воспроизводится через fake Responses API и fixture. Статус partial отражает только непроверенный внешний LLM/live путь; это не ошибка запуска проекта и не штраф за отсутствие ключа.",
+        "checks": [
+          {
+            "command": "python -m pytest tests -q",
+            "result": "45 passed, 1 warning in 12.84s; полный stdout сохранён в captures/20261002T121106661974-test.stdout.log.",
+            "id": "BUILD-45",
+            "stage": "build",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Все доступные unit/domain/API/integration тесты проекта проходят в чистом окружении без внешних ключей."
+          },
+          {
+            "command": "python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 1 --no-access-log",
+            "result": "Процесс стартовал; GET /health -> HTTP 200, status=ok, catalog_mode=fixture. GET / -> HTTP 200, HTML 8079 bytes.",
+            "id": "START-HTTP",
+            "stage": "start",
+            "status": "pass",
+            "cause": "none",
+            "expected": "FastAPI поднимается на штатном порту приложения и отдаёт health/root без OpenAI ключа."
+          },
+          {
+            "command": "GET /health; POST /api/v1/sessions; GET /api/v1/warehouses; GET /api/v1/cart; GET /",
+            "result": "Health 200; session 201 с bearer token длиной 43; warehouses 200 с demo-warehouse eligible=true; cart 200 с items=[] total=0 data_mode=fixture и cart_url; root 200.",
+            "id": "HTTP-FIXTURE",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Сессия, доступный склад, пустая корзина и основная страница доступны через HTTP без UI-автоматизации."
+          },
+          {
+            "command": "POST /api/v1/chat с bearer; POST /api/v1/chat без bearer",
+            "result": "Авторизованный обычный запрос без OPENAI_API_KEY -> HTTP 503 с кодом LLM_UNAVAILABLE; тот же запрос без bearer -> HTTP 401. Это соответствует заявленному честному поведению без ключа.",
+            "id": "HTTP-AUTH-NOKEY",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Неавторизованный запрос отклоняется, а отсутствие LLM credentials даёт явную сервисную ошибку, не выдуманный ответ."
+          },
+          {
+            "command": "python -m pytest tests/integration/test_full_flow.py -q",
+            "result": "4 passed in 3.53s; stdout сохранён в captures/20261002T121535893344-scenario.stdout.log. Проверены pending action, confirm, idempotency, cart view, conditions/certificate и no-key branch.",
+            "id": "SCENARIO-FIXTURE",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Сквозной fixture-сценарий заказа и вспомогательных ответов воспроизводится из репозитория."
+          },
+          {
+            "command": "POST /api/v1/chat с обычным вопросом в окружении без OPENAI_API_KEY",
+            "result": "Реальный внешний LLM не вызывается; приложение возвращает HTTP 503 LLM_UNAVAILABLE. Синтетический fake Responses API используется только в SCENARIO-FIXTURE-тесте.",
+            "id": "SCENARIO-EXTERNAL",
+            "stage": "scenario",
+            "status": "blocked",
+            "cause": "external_service",
+            "expected": "Для полноценного live chat нужен настроенный OpenAI credential и доступ к провайдеру; при его отсутствии приложение не должно подменять ответ mock-данными."
+          }
+        ],
+        "limitations": [
+          "OpenAI API key и EKT API credentials не предоставлялись, поэтому реальные внешние вызовы не проводились.",
+          "Полный runtime-сценарий проверен в fixture; live-каталог оценён по коду и MockTransport-тестам.",
+          "Визуальная и браузерная проверка не выполнялась по обязательному правилу пользовательской визуальной верификации."
+        ]
+      },
+      "liveDemo": {
+        "status": "none",
+        "url": null,
+        "notes": "Публичная live-ссылка в репозитории не предоставлена и отдельно не требовалась. Локальная воспроизводимость подтверждена HTTP и pytest; визуальный интерфейс не проверялся браузером. Наличие URL не использовалось как причина снижения баллов."
+      },
+      "fiveHourContext": "Для пятичасового хакатона объём реализации высокий и уместный: команда закрыла не только чат-мок, но и строгие контракты, fixture/live-разделение, нормализацию источника, условия, сертификат, pending action, повторную проверку свежего остатка, транзакционность и конкурентность. Оценка не требует production-полноты, полноразмерного каталога или выключаемой внешней интеграции. Снятия оставлены только за требования, которые уже видны в данном MVP: отсутствие файловых входов, неполное автозаполнение live-каталога и неточный статический статус режима.",
+      "strengths": [
+        "45/45 проектных тестов и 4/4 отдельного integration flow проходят в изолированном Python 3.12 окружении.",
+        "Корзина разделена на prepare/confirm, повторное подтверждение идемпотентно, а commit повторно проверяет цену, шаг, склад и остаток.",
+        "Аналоги объясняются совпавшими техническими характеристиками, а synthetic/unknown/zero значения не маскируются под подтверждённые данные.",
+        "Live adapter использует Basic Auth, сохраняет leading zeros и различает нулевой и неизвестный остаток; сырой источник и provenance сохраняются.",
+        "Сессионный bearer и read-only cart token не передаются модели; ссылка корзины экранирует содержимое и имеет защитные заголовки."
+      ],
+      "gaps": [
+        "Входные вложения из задания не реализованы: нет multipart/file-контракта, загрузки или извлечения данных из фото, Excel, Word, PDF и JPEG (D-ATTACHMENTS).",
+        "Live-режим не использует предоставленный список /api/products?page=... и не наполняет ассортимент при startup; карточки надо импортировать вручную по product id (D-LIVE-CATALOG).",
+        "Шапка web/index.html безусловно пишет «Live-каталог подключён», хотя README и .env.example запускают CATALOG_MODE=fixture (D-UI-LIVE-LABEL)."
+      ],
+      "futureAdvice": [
+        {
+          "principle": "Сначала закрывать входной контракт, который меняет ценность сценария.",
+          "why": "D-ATTACHMENTS показывает конкретный разрыв: текстовый чат и корзина работают, но спецификация/фото из обязательного входа не может попасть в тот же контекст.",
+          "how": "В следующем кейсе выделить один безопасный attachment endpoint, ограничить MIME/размер, сохранять только временный идентификатор, извлекать артикулы/количества в отдельную DTO и подавать в тот же validated tool flow. Не добавлять свободный текст файла в системный prompt.",
+          "findingIds": [
+            "D-ATTACHMENTS"
+          ],
+          "successCheck": "Тест multipart для JPEG и одного табличного документа создаёт структурированный запрос, а без явного подтверждения Cart остаётся неизменной; неподдержанный MIME получает явную 4xx ошибку.",
+          "timeboxMinutes": 45
+        },
+        {
+          "principle": "Сначала доказывать полноту источника, затем строить рекомендации поверх него.",
+          "why": "D-LIVE-CATALOG: detail-адаптер и ручной importer рабочие, но runtime не использует /api/products для начального ассортимента, поэтому масштаб каталога определяется ручным списком ID.",
+          "how": "Для другого хакатона первым шагом описать пагинацию list endpoint, ограничение объёма и upsert-политику; затем добавить один smoke-тест списка и один тест, что search после startup видит импортированную карточку без ручной команды.",
+          "findingIds": [
+            "D-LIVE-CATALOG"
+          ],
+          "successCheck": "В live-профиле startup или явная sync-команда получает страницы /api/products, сохраняет provenance, а GET/search по импортированному артикулу работает до отдельного ручного detail-вызова.",
+          "timeboxMinutes": 60
+        },
+        {
+          "principle": "Статус демо должен быть вычисляемым из конфигурации и источника.",
+          "why": "D-UI-LIVE-LABEL: разметка сообщает live независимо от CATALOG_MODE, тогда как фактический HTTP health показывает fixture.",
+          "how": "Передавать catalog_mode/source_kind из health или bootstrap payload и рендерить отдельные fixture/live/unknown состояния; в README держать один скриноподобный текстовый сценарий для каждого режима.",
+          "findingIds": [
+            "D-UI-LIVE-LABEL"
+          ],
+          "successCheck": "При CATALOG_MODE=fixture UI явно показывает synthetic/учебный режим, при live — live только после успешного источника; автоматический HTTP-тест проверяет оба payload.",
+          "timeboxMinutes": 25
+        }
+      ],
+      "uncertainties": [
+        "Фактический production JSON EKT и доступность указанных endpoint не проверялись: credentials намеренно не предоставлялись; вывод о live основан на адаптере и MockTransport-тестах.",
+        "Обычный LLM-ответ и качество tool selection конкретной OpenAI-моделью не наблюдались без OPENAI_API_KEY; fake Responses API подтверждает только оркестрацию и доменные границы.",
+        "Визуальная адаптивность desktop/mobile, читаемость шрифтов и интерактивное поведение UI не проверялись браузером согласно инструкции пользователя; статическая разметка и JS изучены.",
+        "Заявленная задержка ответа в единицы секунд не измерялась; локальные тесты подтверждают корректность, но не performance SLO."
+      ],
+      "reviewPolicyVersion": 2,
+      "assessmentStatus": "ready",
+      "findings": [
+        {
+          "id": "S-TESTS",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Полный проектный набор тестов проходит.",
+          "expected": "Unit/domain/API/integration проверки должны завершаться без падений.",
+          "actual": "45 passed, 1 warning; отдельный integration file — 4 passed.",
+          "evidence": [
+            "captures/20261002T121106661974-test.stdout.log",
+            "captures/20261002T121535893344-scenario.stdout.log"
+          ],
+          "checkIds": [
+            "BUILD-45",
+            "SCENARIO-FIXTURE"
+          ]
+        },
+        {
+          "id": "S-E2E-CART",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Основной fixture-сценарий от сессии до read-only корзины воспроизводится.",
+          "expected": "Pending action не меняет корзину до подтверждения; confirm добавляет заявленное количество и возвращает актуальную ссылку.",
+          "actual": "Тест подтвердил 2 DEMO-001, total 2400.00, повторное подтверждение already_applied и HTTP view 200.",
+          "evidence": [
+            "backend/tests/integration/test_full_flow.py:23-108",
+            "captures/20261002T121535893344-scenario.stdout.log"
+          ],
+          "checkIds": [
+            "SCENARIO-FIXTURE"
+          ]
+        },
+        {
+          "id": "S-SAFETY",
+          "kind": "strength",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "LLM не имеет прямой операции изменения корзины, а сервер повторно валидирует товар и остаток.",
+          "expected": "Изменение корзины возможно только через explicit confirmation и server-side checks.",
+          "actual": "В registry есть prepare_cart_action, confirm вынесен в CartService; commit использует свежий snapshot и SQLite transaction.",
+          "evidence": [
+            "backend/app/agent/__init__.py:220-229",
+            "backend/app/cart/service.py:126-154",
+            "backend/app/cart/service.py:232-315"
+          ],
+          "checkIds": [
+            "BUILD-45",
+            "SCENARIO-FIXTURE"
+          ]
+        },
+        {
+          "id": "S-ANALOG",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Подбор аналога учитывает технические параметры, склад и остаток, а не только название.",
+          "expected": "Нулевой исходный товар должен получить доступного кандидата с объяснением совпадений и ограничений.",
+          "actual": "Тесты принимают DEMO-003 для DEMO-002 по четырём обязательным характеристикам и positive eligible stock.",
+          "evidence": [
+            "backend/app/catalog/service.py:217-255",
+            "backend/tests/catalog/test_catalog.py:42-52",
+            "backend/data/catalog/fixture.json:41-97"
+          ],
+          "checkIds": [
+            "BUILD-45"
+          ]
+        },
+        {
+          "id": "S-LIVE-NORMALIZATION",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Detail live adapter нормализует Basic Auth, decimal values, stores/offers и неизвестные остатки консервативно.",
+          "expected": "Внешние данные должны быть привязаны к case endpoint без тихого округления или превращения unknown в zero.",
+          "actual": "test_live.py подтверждает Basic Auth, один detail request, leading zeros, quantity=0, quantity=null и SOURCE_UNAVAILABLE.",
+          "evidence": [
+            "backend/app/catalog/live.py:17-50",
+            "backend/app/catalog/normalize.py:33-46",
+            "backend/tests/catalog/test_live.py:37-180"
+          ],
+          "checkIds": [
+            "BUILD-45"
+          ]
+        },
+        {
+          "id": "D-ATTACHMENTS",
+          "kind": "defect",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Обязательный вход фото и Excel/Word/PDF/JPEG не реализован.",
+          "expected": "Пользователь может передать вложение в чат, а система извлекает из него данные для консультации.",
+          "actual": "ChatRequest содержит только message/warehouse_id/confirmation_action_id; web UI содержит только text input; attachment/upload/multipart/file handler отсутствуют.",
+          "evidence": [
+            "backend/app/contracts.py:224-234",
+            "backend/app/api/chat.py:13-22",
+            "web/index.html:35-60",
+            "rg-проверка по backend/web/README.md"
+          ],
+          "checkIds": [
+            "BUILD-45"
+          ]
+        },
+        {
+          "id": "D-LIVE-CATALOG",
+          "kind": "defect",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Live-режим не использует список /api/products для наполнения каталога и требует ручного импорта отдельных ID.",
+          "expected": "После подключения предоставленного API ассортимент должен быть обнаруживаемым через каталог без ручного перечисления всех карточек.",
+          "actual": "LiveProvider реализует только /api/products/detail; initialize live лишь создаёт client/provider; importer требует --product-id и ограничивает batch двадцатью ID.",
+          "evidence": [
+            "backend/app/catalog/live.py:29-50",
+            "backend/app/catalog/service.py:68-84",
+            "backend/scripts/import_catalog.py:19-39",
+            "README.md:233-245",
+            "docs/catalog.md:45-58"
+          ],
+          "checkIds": [
+            "BUILD-45"
+          ]
+        },
+        {
+          "id": "D-UI-LIVE-LABEL",
+          "kind": "defect",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Статический статус шапки утверждает, что live-каталог подключён, независимо от режима.",
+          "expected": "UI должен показывать фактический fixture/live/unknown режим из runtime-конфигурации.",
+          "actual": "web/index.html:25 содержит фиксированный «Live-каталог подключён», тогда как backend/.env.example задаёт CATALOG_MODE=fixture и HTTP health вернул catalog_mode=fixture.",
+          "evidence": [
+            "web/index.html:21-31",
+            "backend/.env.example:1-11",
+            "backend/app/config.py:38-55",
+            "check START-HTTP"
+          ],
+          "checkIds": [
+            "START-HTTP",
+            "HTTP-FIXTURE"
+          ]
+        },
+        {
+          "id": "L-EXTERNAL-CREDENTIALS",
+          "kind": "limitation",
+          "verification": "unverified",
+          "responsibility": "external_service",
+          "claim": "Реальный OpenAI/EKT внешний путь не был исполнен в review environment.",
+          "expected": "При выданных credentials можно проверить реальную модель и текущую доступность EKT API.",
+          "actual": "Credentials не предоставлялись; приложение честно вернуло LLM_UNAVAILABLE, live оценён статически и MockTransport-тестами.",
+          "evidence": [
+            "check HTTP-AUTH-NOKEY",
+            "check SCENARIO-EXTERNAL",
+            "backend/tests/catalog/test_live.py:37-180"
+          ],
+          "checkIds": [
+            "HTTP-AUTH-NOKEY",
+            "SCENARIO-EXTERNAL",
+            "BUILD-45"
+          ]
+        },
+        {
+          "id": "L-VISUAL-REVIEW",
+          "kind": "limitation",
+          "verification": "unverified",
+          "responsibility": "review_environment",
+          "claim": "Визуальная и браузерная проверка UI не выполнялась.",
+          "expected": "Desktop/mobile layout и интерактивность должны быть оценены визуально.",
+          "actual": "Проверены только статические HTML/JS/CSS и HTTP root; браузерная автоматизация запрещена инструкцией.",
+          "evidence": [
+            "web/index.html:1-60",
+            "web/assets/app.js:1-475",
+            "check HTTP-FIXTURE"
+          ],
+          "checkIds": [
+            "HTTP-FIXTURE"
+          ]
+        }
+      ],
+      "gapFindingIds": [
+        "D-ATTACHMENTS",
+        "D-LIVE-CATALOG",
+        "D-UI-LIVE-LABEL"
+      ]
+    }
+  ],
+  "score": 87.0,
+  "status": "complete",
+  "expectedJudges": 1
+}

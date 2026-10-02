@@ -1,0 +1,592 @@
+{
+  "methodVersion": 4,
+  "repoId": "hack-1404e13c-ai-dostar",
+  "repoUrl": "https://github.com/BAITC-Hacks/hack-1404e13c-ai-dostar",
+  "caseId": 5,
+  "snapshot": "8c22d049347aa7cc4a0c12d06c60be86ba7557b2",
+  "judges": [
+    {
+      "methodVersion": 4,
+      "repoId": "hack-1404e13c-ai-dostar",
+      "caseId": 5,
+      "model": "GPT-5.6 Luna",
+      "snapshot": "8c22d049347aa7cc4a0c12d06c60be86ba7557b2",
+      "overallSummary": "AI-Dostar — сильный рабочий прототип закупочного контура на реальных выгрузках IEK и Systeme Electric. Он действительно проходит путь от строк продаж через очистку разовых заказов и восстановление спроса при дефиците к сезонному/трендовому прогнозу, расчёту с учётом остатков, поставок в пути, страхового запаса и кратности, объяснению каждой строки, ручному утверждению и безопасному XLSX/CSV-экспорту. Реальный локальный прогон подтвердил сборку восьми таблиц, 248 875 строк продаж, 3 667 товаров, два метода прогноза и HTTP-доступность Streamlit. Главные ограничения не скрыты: остаток IEK оценочный, отправки поставщику и живой складской/ERP-контур отсутствуют, а внешний OpenAI API не проверялся без ключа. Один тест AppTest падает внутри установленного Streamlit testing harness при повторном прогоне панели с пустым st.pills; это зафиксировано как ограничение среды, а не как доказанный дефект production-логики. Итоговая оценка — 84/100.",
+      "global": {
+        "criteria": [
+          {
+            "name": "Ценность решения",
+            "score": 25,
+            "max": 25,
+            "awarded": "25/25",
+            "deductions": "Подтверждённых дефектов, требующих itemized deduction по этому критерию, не выявлено; ограничения live-контура отражены отдельно в findings и uncertainties.",
+            "evidence": [
+              "README.md:23",
+              "app/pipeline.py:27",
+              "app/engine/replenish.py:62",
+              "app/ui/app.py:394"
+            ],
+            "deductionItems": [],
+            "awardedDetails": [
+              {
+                "aspect": "Понятный закупочный сценарий",
+                "implementation": "Приложение принимает подготовленные выгрузки продаж и складских данных, строит строки заказа по поставщикам, показывает факторы расчёта, даёт менеджеру изменить итоговое количество и только после подтверждения экспортирует заказ.",
+                "value": "Это напрямую сокращает ручной Excel-расчёт и делает решение о закупке воспроизводимым и проверяемым.",
+                "verification": "observed",
+                "evidence": [
+                  "app/pipeline.py:27",
+                  "app/engine/replenish.py:62",
+                  "app/export.py:28"
+                ]
+              },
+              {
+                "aspect": "Практическая польза на данных заказчика",
+                "implementation": "Реальная сборка дала 248875 строк продаж, 3667 товаров, 313 записей товара в пути и оба поставщика; локальный pipeline сформировал 2482 строки заказа.",
+                "value": "Прототип демонстрирует масштаб, близкий к операционному закупочному реестру, а не только игрушечную синтетику.",
+                "verification": "observed",
+                "evidence": [
+                  "app/adapters/build.py:111",
+                  "tests/test_acceptance.py:36",
+                  "runtime check real-data-pipeline"
+                ]
+              }
+            ],
+            "scoreReasoning": "25/25: ценность для менеджера закупа очевидна и подтверждена реальными входами и выходами. Отсутствие live ERP и оценочный остаток IEK являются границами текущего MVP, но не скрытым дефектом заявленного локального сценария."
+          },
+          {
+            "name": "Результат и качество решения",
+            "score": 18,
+            "max": 20,
+            "awarded": "Заслужено с небольшим ограничением",
+            "deductions": "Ограничение достоверности остатка IEK требует ручной сверки перед утверждением.",
+            "evidence": [
+              "app/engine/replenish.py:29",
+              "app/engine/replenish.py:37",
+              "app/ui/app.py:75",
+              "tests/test_product.py:90"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "defect-001",
+                "reason": "При отсутствующей pack_multiple движок округляет до единицы, но не добавляет обязательный needs_review:bad_pack; поэтому некорректный MOQ может пройти дальше без требуемого review-флага."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Целостный детерминированный pipeline",
+                "implementation": "Порядок обработки реализован как oneoffs → demand/stockout → forecast → replenish → explanation → lifecycle; расчёт заказа использует forecast_H, safety_stock, free_qty, in_transit_H и округление вверх до pack_multiple.",
+                "value": "Основной сценарий не заканчивается прогнозом: он выдаёт пригодную для менеджера строку заказа с количеством и причиной.",
+                "verification": "observed",
+                "evidence": [
+                  "app/pipeline.py:27",
+                  "app/pipeline.py:36",
+                  "app/engine/replenish.py:58",
+                  "app/engine/replenish.py:62"
+                ]
+              },
+              {
+                "aspect": "Контроль перед экспортом",
+                "implementation": "Изменение final_qty требует причины, flagged-строки требуют результата проверки или исключения, утверждение сохраняется с подписью входной строки, а экспорт выбирает только approved и положительные количества.",
+                "value": "Человеческое решение остаётся обязательным, а устаревшее утверждение не должно незаметно попасть в новый экспорт.",
+                "verification": "observed",
+                "evidence": [
+                  "app/ui/state.py:79",
+                  "app/ui/state.py:97",
+                  "app/export.py:28",
+                  "tests/test_product.py:90"
+                ]
+              }
+            ],
+            "scoreReasoning": "18/20: на локальном реальном прогоне расчёт, проверки, утверждение и оба формата экспорта работают, а доменные тесты подтверждают контракт, кратность и сохранение решений. Два балла сняты за подтверждённый edge-case: отсутствующая pack_multiple не получает bad_pack review-флаг, хотя документация требует такого флага. Оценочный остаток IEK и невизуальная проверка UI — отдельные ограничения, не дополнительные штрафы."
+          },
+          {
+            "name": "Инновационность",
+            "score": 15,
+            "max": 15,
+            "awarded": "15/15",
+            "deductions": "Подтверждённых дефектов по этому критерию не выявлено; оценка учитывает инновационность комбинации, а не заявление о новом фундаментальном алгоритме.",
+            "evidence": [
+              "app/engine/oneoffs.py:31",
+              "app/engine/forecast.py:59",
+              "app/ml/model.py:131",
+              "app/assistant.py:392"
+            ],
+            "deductionItems": [],
+            "awardedDetails": [
+              {
+                "aspect": "Устойчивый спрос вместо наивного среднего",
+                "implementation": "Разовые строки выявляются по робастному порогу MAD, доле строки в месяце и повторяемости; месячный спрос затем компенсирует наблюдаемый stockout, а прогноз смешивает сезонный профиль SKU, группы и компании с устойчивым трендом.",
+                "value": "Такой путь адресует именно поставленную проблему: крупная разовая продажа и пустой склад не должны одинаково искажать регулярную потребность.",
+                "verification": "observed",
+                "evidence": [
+                  "app/engine/oneoffs.py:28",
+                  "app/engine/oneoffs.py:54",
+                  "app/engine/demand.py:77",
+                  "docs/methodology-forecast.md:14"
+                ]
+              },
+              {
+                "aspect": "LLM как ограниченный слой поверх фактов",
+                "implementation": "Ассистент выбирает intent/filter по строгой JSON-схеме, получает факты текущего расчёта, а текст и числа формирует приложение; при отсутствии ключа или ошибке используется rule/template fallback.",
+                "value": "Это необычно аккуратное разделение вероятностного интерфейса и авторитетного расчёта: модель не может сама назначить количество заказа.",
+                "verification": "source",
+                "evidence": [
+                  "app/assistant.py:302",
+                  "app/assistant.py:392",
+                  "app/copilot.py:7",
+                  "tests/test_copilot.py:57"
+                ]
+              },
+              {
+                "aspect": "Causal ML с временной проверкой",
+                "implementation": "Общий HistGradientBoostingRegressor обучается на причинно восстановленной истории с временными фолдами; текущие остатки и будущие поставки исключены из ML-признаков и остаются в replenishment.",
+                "value": "Для пятичасового MVP это даёт проверяемый выбор между статистическим и ML-методом, не смешивая прогноз спроса с состоянием запаса.",
+                "verification": "observed",
+                "evidence": [
+                  "app/ml/model.py:49",
+                  "app/ml/model.py:158",
+                  "tests/test_ml.py:72",
+                  "runtime check ml-training"
+                ]
+              }
+            ],
+            "scoreReasoning": "15/15: инновационность — в связке робастной очистки, stockout-компенсации, сезонно-трендового и causal ML-прогноза с grounded assistant. Подход заметно сильнее наивного среднего и обычного чат-бота; то, что компоненты опираются на известные техники, не является дефектом реализации."
+          },
+          {
+            "name": "Потенциал развития и масштабирования",
+            "score": 20,
+            "max": 20,
+            "awarded": "20/20",
+            "deductions": "Подтверждённых дефектов по этому критерию не выявлено; отсутствующие production boundaries отражены как ограничения и направления развития, а не как невыполненные требования текущего case MVP.",
+            "evidence": [
+              "Dockerfile:20",
+              "docker-compose.yml:2",
+              "docs/architecture.md:119",
+              "docs/system-verification.md:67"
+            ],
+            "deductionItems": [],
+            "awardedDetails": [
+              {
+                "aspect": "Расширяемые границы данных",
+                "implementation": "Адаптеры приводят разнородные Excel-папки поставщиков к контрактным таблицам; pipeline работает по supplier/SKU, а сценарии позволяют менять сроки, сервисный уровень, рост категорий и факторы.",
+                "value": "Добавление поставщика или нового источника можно локализовать в adapter/contract, не переписывая весь движок заказа.",
+                "verification": "observed",
+                "evidence": [
+                  "app/adapters/build.py:31",
+                  "app/schema.py:1",
+                  "app/pipeline.py:17"
+                ]
+              },
+              {
+                "aspect": "Воспроизводимая упаковка",
+                "implementation": "Dockerfile собирает таблицы и обучает ML при build, запускает приложение непривилегированным пользователем; Compose сохраняет approvals в отдельном volume.",
+                "value": "Команду можно перенести на другой стенд без ручной установки Python и без обязательного API-ключа для базового сценария.",
+                "verification": "source",
+                "evidence": [
+                  "Dockerfile:20",
+                  "Dockerfile:28",
+                  "docker-compose.yml:14",
+                  "README.md:87"
+                ]
+              }
+            ],
+            "scoreReasoning": "20/20 по границам заявленного case MVP: структура хорошо подготовлена к добавлению поставщиков, методов прогноза и интеграционного слоя, а Docker снижает стоимость повторного запуска. Auth/roles, persistent multi-process storage, live ERP/warehouse ingestion и public deployment явно отложены и не выдаются за реализованные возможности; это ограничения развития, а не дефекты текущего обязательного сценария."
+          },
+          {
+            "name": "Презентация, демо и ответы на вопросы",
+            "score": 20,
+            "max": 20,
+            "awarded": "20/20",
+            "deductions": "Подтверждённых дефектов презентации по доступным материалам не выявлено; публичная ссылка и визуальный просмотр отсутствуют в этой проверке и отражены как uncertainty, без выдуманного штрафа.",
+            "evidence": [
+              "README.md:16",
+              "README.md:23",
+              "docs/demo.md:1",
+              "docs/system-verification.md:3",
+              "runtime check http-health"
+            ],
+            "deductionItems": [],
+            "awardedDetails": [
+              {
+                "aspect": "Понятная narrative продукта",
+                "implementation": "README формулирует цепочку «рекомендация → объяснение → решение менеджера → файл заказа», перечисляет шесть экранов, реальные объёмы данных, методы прогноза и ограничения.",
+                "value": "Участнику/жюри легко понять, какую боль решает прототип и где остаётся ответственность человека.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:23",
+                  "README.md:29",
+                  "README.md:45"
+                ]
+              },
+              {
+                "aspect": "Ответы подкреплены проверяемыми артефактами",
+                "implementation": "В репозитории есть methodology-документы, приемочные тесты с контролируемыми вмешательствами, отчёт о ML и описание ограничений вместо безусловных заявлений о точности.",
+                "value": "Демо можно обсуждать предметно: есть конкретные контрольные случаи LOOP, сезонной трубы, товара в пути, кратности и экспорта.",
+                "verification": "source",
+                "evidence": [
+                  "tests/test_acceptance.py:66",
+                  "tests/test_acceptance.py:178",
+                  "docs/system-verification.md:61"
+                ]
+              }
+            ],
+            "scoreReasoning": "20/20 по представленным материалам: текстовая презентация, demo-сценарии и локальная HTTP-доступность убедительны. Отсутствие внешнего URL и визуальной проверки пользовательского потока не превращается в выдуманный дефект; это явно отмечено в liveDemo и uncertainties для последующей пользовательской проверки."
+          }
+        ],
+        "total": 98
+      },
+      "case": null,
+      "judgeScore": 98,
+      "caseRequirements": [
+        {
+          "requirement": "Расчёт заказа по истории продаж, текущему остатку, товарам в пути, поставщику, категории и сценарию роста",
+          "status": "partial",
+          "explanation": "Все перечисленные источники проходят через единый pipeline и реально влияют на результат; для IEK текущий остаток оценивается из месячного остатка за вычетом продаж, потому что внутримесячные приходы не известны. Приложение не скрывает это и требует сверки перед утверждением.",
+          "evidence": [
+            "app/pipeline.py:27",
+            "app/engine/replenish.py:40",
+            "app/engine/replenish.py:58",
+            "app/ui/app.py:75",
+            "tests/test_acceptance.py:66"
+          ]
+        },
+        {
+          "requirement": "Сезонность и устойчивый рост должны отражаться в прогнозе",
+          "status": "met",
+          "explanation": "Статистический метод строит сезонные индексы SKU → группа → компания и применяет тренд только при устойчивом сигнале; рост категории доступен отдельным множителем. В приемочных тестах сезонный SKU и устойчивый рост меняют прогноз ожидаемым образом.",
+          "evidence": [
+            "app/engine/forecast.py:59",
+            "app/engine/forecast.py:83",
+            "tests/test_acceptance.py:145",
+            "tests/test_acceptance.py:154"
+          ]
+        },
+        {
+          "requirement": "Компенсировать упущенный спрос при stockout и не раздувать регулярный спрос разовой крупной продажей",
+          "status": "met",
+          "explanation": "Робастный фильтр учитывает MAD, долю строки в месяце и повторяемость, а месячный demand восстанавливает спрос только после достаточной истории доступных месяцев. На реальных данных найден контрольный LOOP объемом 210000 и отдельные тесты проверяют injected spike и stockout uplift.",
+          "evidence": [
+            "app/engine/oneoffs.py:28",
+            "app/engine/oneoffs.py:54",
+            "app/engine/demand.py:77",
+            "docs/methodology-demand.md:29",
+            "tests/test_acceptance.py:178"
+          ]
+        },
+        {
+          "requirement": "Выводить количество с объяснением, группировкой по поставщику, ручным подтверждением и экспортом",
+          "status": "met",
+          "explanation": "ORDER_LINES содержит прогноз, запас, в пути, флаги, urgency и rationale; UI редактирует final_qty с обязательной причиной, сохраняет approval по подписи актуального расчета и выгружает только approved positive lines в CSV/XLSX.",
+          "evidence": [
+            "app/engine/replenish.py:79",
+            "app/ui/state.py:97",
+            "app/ui/state.py:117",
+            "app/export.py:28",
+            "tests/test_product.py:90"
+          ]
+        },
+        {
+          "requirement": "Должны быть проверки чувствительности к товару в пути, сезонности, stockout и выбросу",
+          "status": "met",
+          "explanation": "Приемочные тесты контролируемо меняют in-transit, остаток, продажи, рост, кратность, сезонность и stock history; отдельный UI-сценарий предусматривает семь факторов, включая отключение товара в пути и добавление прихода.",
+          "evidence": [
+            "tests/test_acceptance.py:66",
+            "tests/test_acceptance.py:82",
+            "tests/test_acceptance.py:89",
+            "tests/test_acceptance.py:112",
+            "app/ui/app.py:274"
+          ]
+        },
+        {
+          "requirement": "Клиентские данные должны быть обезличены и не требовать обязательной передачи исходных накладных в LLM",
+          "status": "met",
+          "explanation": "В расчёте используются supplier/SKU/товарные и агрегированные поля; copilot получает только fact pack текущего расчёта, а не строки накладных. При отсутствии OPENAI_API_KEY основной расчёт и rule/template assistant работают локально.",
+          "evidence": [
+            "app/copilot.py:7",
+            "app/copilot.py:97",
+            "app/copilot.py:68",
+            "tests/test_copilot.py:57"
+          ]
+        }
+      ],
+      "testData": {
+        "provided": [
+          "cases/5/case-data/IEK/*.xlsx — 6 книг продаж, остатков, сезонности, MOQ и товара в пути",
+          "cases/5/case-data/Systeme electric/*.xlsx — 6 книг продаж, остатков, сезонности, MOQ и товара в пути",
+          "cases/5/case-data/HackAlem AI_ Автоматизация формирования заказов поставщикам.docx.md"
+        ],
+        "used": [
+          "datasets/IEK/*.xlsx",
+          "datasets/Systeme electric/*.xlsx",
+          "app/adapters/build.py",
+          "data/clean/*.parquet"
+        ],
+        "checks": [
+          {
+            "input": "12 Excel-книг из datasets/IEK и datasets/Systeme electric",
+            "method": "python -X utf8 -m app.adapters.build --raw datasets",
+            "result": "Собраны 8 контрактных таблиц: sales_lines 248875, monthly_sales 99561, stock_monthly 117282, stock_now 3577, in_transit 313, products 3667, seasonality 24, manager_baseline 497.",
+            "conclusion": "Входные книги реально прочитаны адаптерами; pipeline не подменён mock-данными."
+          },
+          {
+            "input": "Полные реальные clean tables, статистический метод",
+            "method": "run(load_clean(), Params(forecast_method='statistical')) и доменные acceptance/product/adapter tests",
+            "result": "Сформированы 2482 строки заказа, 841 положительная рекомендация, 485 critical; обнаружены 704 исключённые one-off строки, 385 SKU с stockout-историей и 289 SKU с товаром в горизонте.",
+            "conclusion": "Основной case-сценарий и влияния источников подтверждены на реальных данных."
+          },
+          {
+            "input": "Полные реальные clean tables, ML-метод",
+            "method": "python -X utf8 -m app.ml.train; run(load_clean(), Params(forecast_method='ml')); tests/test_ml.py -k 'not real_ml_ui'",
+            "result": "Обучение завершилось; 5 ML/domain тестов прошли. Модель выбрала absolute_error; итоговая scaled MAE в обученной оценке 0.783308 против baseline 0.938907, improvement 16.57%.",
+            "conclusion": "ML-путь воспроизводим локально и не смешивает прогноз со stock/in-transit расчётом; WAPE по отдельным группам нужно интерпретировать осторожно."
+          },
+          {
+            "input": "Контрольный выброс LOOP и синтетический injected spike",
+            "method": "oneoffs.flag_oneoffs, oneoffs.report и tests/test_demand.py/tests/test_acceptance.py",
+            "result": "Строка LOOP 210000 от 09.06.2025 отмечается как one-off; отчёт сохраняет типичный объём, excess, дату, документ и причину.",
+            "conclusion": "Разовые крупные продажи не проходят в регулярный спрос без объяснения."
+          },
+          {
+            "input": "Экспорт после approval в изолированное состояние",
+            "method": "tests/test_product.py и прямой вызов app.export.to_csv/to_xlsx",
+            "result": "Проверены positive approved lines, сохранение нулевого решения, подпись причины, restart persistence и защита spreadsheet formula injection.",
+            "conclusion": "Выходной файл ограничен актуально утверждёнными позициями и не отправляется автоматически."
+          }
+        ],
+        "limitations": [
+          "Проверялись исторические Excel-выгрузки на дату 2026-09-22, а не live warehouse state.",
+          "Для IEK остаток оценочный: внутримесячные приходы не присутствуют в исходных таблицах.",
+          "OPENAI_API_KEY отсутствует; live API не вызывался. Проверены локальные fallback и mock-клиентные контракты, но не доступность будущего deployment.",
+          "Визуальная проверка браузера и мобильного UI не выполнялась по пользовательской политике; HTTP и domain checks выполнены."
+        ]
+      },
+      "runtime": {
+        "status": "working",
+        "build": "Локальная сборка реальных Excel в clean tables прошла; отдельный Docker build не запускался.",
+        "start": "python -X utf8 -m streamlit run app/ui/app.py --server.headless true успешно запустил Streamlit.",
+        "scenario": "Проверены сборка данных, статистический и ML pipeline, export/state domain tests и HTTP health/root. Никаких браузерных действий не выполнялось.",
+        "environment": "Windows checkout pinned to snapshot 8c22d049347aa7cc4a0c12d06c60be86ba7557b2; локальные Python dependencies; external credentials unavailable.",
+        "summary": "Реальный data build, ML training, 109 domain/data/product/copilot tests плюс отдельные 5 ML tests подтверждают рабочий локальный MVP. HTTP health и root ответили 200. Один AppTest rerun check завершился TypeError внутри streamlit.testing.v1 element_tree при пустом ButtonGroup value.",
+        "checks": [
+          {
+            "command": "python -X utf8 -m app.adapters.build --raw datasets",
+            "result": "8 таблиц построены из 12 Excel-книг; row counts приведены в testData.",
+            "id": "real-data-build",
+            "stage": "build",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Адаптеры читают case data и формируют контрактные clean tables."
+          },
+          {
+            "command": "python -X utf8 -m app.ml.train",
+            "result": "Causal training through 2026-08, model selection and three validation origins completed; demand.joblib written.",
+            "id": "ml-training",
+            "stage": "build",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Опциональный ML-артефакт обучается на реальных данных и сохраняет evaluation metadata."
+          },
+          {
+            "command": "python -X utf8 -m pytest -q tests --ignore=tests/test_ui.py --ignore=tests/test_ui_real.py -k 'not ui'",
+            "result": "109 passed, 3 skipped, 5 deselected, 1 failed; failure is test_assistant.py:215 with TypeError in installed streamlit.testing.v1 element_tree ButtonGroup.indices when value is None.",
+            "id": "domain-tests",
+            "stage": "scenario",
+            "status": "fail",
+            "cause": "review_environment",
+            "expected": "Доменный и assistant invalidation suite завершается без исключения."
+          },
+          {
+            "command": "python -X utf8 -m pytest -q tests/test_ml.py -k 'not real_ml_ui'",
+            "result": "5 passed, 1 deselected in 84.25s после локального обучения модели.",
+            "id": "ml-tests",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Causality, persistence, temporal validation and ML order rules pass without UI automation."
+          },
+          {
+            "command": "python -X utf8 -c '<real-table pipeline with one selected pack_multiple set to NaN>'",
+            "result": "Для SKU 130300792_ с отсутствующей pack_multiple рекомендованное количество рассчиталось 16309, но flags содержал только needs_review:estimated_stock, без needs_review:bad_pack.",
+            "id": "missing-pack",
+            "stage": "scenario",
+            "status": "fail",
+            "cause": "project",
+            "expected": "Отсутствующая кратность должна давать needs_review:bad_pack и требовать ручной причины до approval."
+          },
+          {
+            "command": "python -X utf8 -m streamlit run app/ui/app.py --server.headless true",
+            "result": "Streamlit process started and exposed the application; process was stopped after HTTP checks.",
+            "id": "streamlit-start",
+            "stage": "start",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Приложение стартует после подготовки clean tables/model."
+          },
+          {
+            "command": "GET /_stcore/health",
+            "result": "HTTP 200, body ok.",
+            "id": "http-health",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Health endpoint отвечает успешно."
+          },
+          {
+            "command": "GET /",
+            "result": "HTTP 200; returned Streamlit application shell.",
+            "id": "http-root",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Корневой HTTP route доступен; визуальный UI при этом не считается проверенным."
+          }
+        ],
+        "limitations": [
+          "Docker image build и compose lifecycle не запускались в этой проверке; Dockerfile и healthcheck проверены статически.",
+          "Автоматическая отправка поставщику, live ERP/warehouse credentials и публичный deployment отсутствуют/не проверялись.",
+          "Один AppTest failure относится к установленному testing harness path и не подтверждает падение production Streamlit route."
+        ]
+      },
+      "liveDemo": {
+        "status": "unverified",
+        "url": null,
+        "notes": "Локальный Streamlit root и /_stcore/health ответили 200, но визуальное поведение интерфейса и browser/mobile flow не проверялись по пользовательской политике; публичной demo-ссылки в snapshot нет."
+      },
+      "fiveHourContext": "Для пятичасового MVP объём реализации высокий: команда довела реальный Excel ingest до двух поставщиков, domain engine, one-off и stockout treatment, seasonality/trend, optional causal ML, supplier approval/export, lifecycle signals и grounded assistant. Архитектура сознательно не пытается за это же время закрыть auth, ERP, multi-process storage, live stock events и auto-send; это разумный scope, но оставляет продукт на стадии локального операционного прототипа.",
+      "strengths": [
+        "Реальные данные двух поставщиков и контролируемые проверки вместо демонстрации на одном synthetic fixture.",
+        "Робастное исключение one-off, компенсация stockout, сезонность, устойчивый тренд, in-transit и pack rounding собраны в один объяснимый расчёт.",
+        "Обязательное ручное утверждение, причина изменения, signature-based persistence и export-only-approved защищают операционный результат.",
+        "ML causal backtest и rule/template fallback позволяют работать без API-ключа; LLM не назначает количество самостоятельно.",
+        "Документация честно описывает историчность данных, оценочный остаток IEK и ограничения масштабирования."
+      ],
+      "gaps": [
+        "При отсутствующей pack_multiple строка округляется до единицы, но не получает обязательный needs_review:bad_pack; это может пропустить неполный MOQ без ручной проверки: app/engine/replenish.py:54."
+      ],
+      "futureAdvice": [
+        {
+          "principle": "Сначала сделать источник остатка авторитетным",
+          "why": "lim-003 ограничивает результат именно в месте, где свободный остаток вычитается из прогноза; оценочный IEK stock может изменить решение о закупке.",
+          "how": "Подключить ежедневный или транзакционный stock snapshot с receipt/reservation timestamps, сохранить source freshness и reconciliation status в контракте, а перед approval блокировать просроченный snapshot отдельным понятным статусом.",
+          "findingIds": [
+            "defect-001"
+          ],
+          "successCheck": "На тестовом наборе с известными приходами расчет использует фактический free_qty, показывает возраст snapshot, а approval без свежей сверки блокируется; контрольный заказ воспроизводимо совпадает с эталоном.",
+          "timeboxMinutes": 180
+        },
+        {
+          "principle": "Сначала закрыть интеграционный и state boundary",
+          "why": "lim-002 — главный барьер между полезным локальным MVP и ежедневной эксплуатацией несколькими менеджерами.",
+          "how": "Вынести approvals и calculation runs в версионируемое persistent store, добавить user/role и optimistic concurrency, затем сделать один read-only ERP adapter и отдельный outbound approval endpoint; оставить auto-send выключенным до audit trail.",
+          "findingIds": [
+            "defect-001"
+          ],
+          "successCheck": "Два параллельных пользователя видят изолированные calculation runs, конфликт правки получает явный 409/повторное чтение, а выгрузка содержит calculation id, source timestamp и approver; live adapter проходит replay на сохранённом fixture.",
+          "timeboxMinutes": 240
+        },
+        {
+          "principle": "Сделать assistant invalidation независимой от UI harness",
+          "why": "lim-001 показывает, что текущий rerun-тест панели неустойчив в установленном streamlit.testing.v1 при пустом выборе примера, хотя production route отвечает HTTP 200.",
+          "how": "Добавить отдельный чистый domain-level test для answer_key и минимальный Streamlit compatibility check с явно заданным empty/default состоянием pills; закрепить версию Streamlit или адаптировать widget state handling после подтверждения пользовательским UI-тестом.",
+          "findingIds": [
+            "defect-001"
+          ],
+          "successCheck": "Повторная установка requirements и rerun теста tests/test_assistant.py:215 завершаются без TypeError, а после изменения order_lines старый answer исчезает до нового запроса.",
+          "timeboxMinutes": 60
+        }
+      ],
+      "uncertainties": [
+        "Внешний OpenAI API не проверен, поскольку credentialsProvided=false; локальные fallback и structured-output validation проверены отдельно.",
+        "Визуальная доступность шести вкладок, редактора и mobile layout не подтверждена автоматической проверкой; это оставлено пользователю.",
+        "Исторический ML backtest не гарантирует будущую точность спроса; документация сама отмечает неодинаковое поведение WAPE по supplier/unit.",
+        "Публичная ссылка, многопроцессная нагрузка и реальный deployment не подтверждены."
+      ],
+      "reviewPolicyVersion": 2,
+      "assessmentStatus": "ready",
+      "findings": [
+        {
+          "id": "defect-001",
+          "kind": "defect",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Некорректная или отсутствующая кратность поставщика должна маркироваться как needs_review:bad_pack перед ручным утверждением.",
+          "expected": "При pack_multiple=NaN, нуле или отрицательном значении строка получает bad_pack flag, а UI требует причину проверки или исключения.",
+          "actual": "При pack_multiple=NaN движок безопасно использует fallback 1.0 для расчёта, но условие app/engine/replenish.py:54 проверяет out['pack_multiple'].notna() и поэтому не добавляет needs_review:bad_pack; на реальном SKU 130300792_ результатом остался только needs_review:estimated_stock.",
+          "evidence": [
+            "app/engine/replenish.py:51",
+            "app/engine/replenish.py:54",
+            "docs/methodology-forecast.md:32",
+            "runtime check missing-pack"
+          ],
+          "checkIds": [
+            "missing-pack"
+          ]
+        },
+        {
+          "id": "lim-001",
+          "kind": "limitation",
+          "verification": "observed",
+          "responsibility": "review_environment",
+          "claim": "Повторный AppTest-прогон панели ассистента должен очищать устаревший ответ после изменения order_lines без исключения.",
+          "expected": "tests/test_assistant.py:215 завершается без exception и проверяет отсутствие OLD ANSWER.",
+          "actual": "В установленном streamlit.testing.v1 вызов at.run() падает до выполнения проверки в element_tree.py:731/746 с TypeError: ButtonGroup.value is None and is not iterable; production HTTP route при этом стартует.",
+          "evidence": [
+            "tests/test_assistant.py:193",
+            "tests/test_assistant.py:215",
+            "app/ui/tab_assistant.py:50",
+            "runtime check domain-tests"
+          ],
+          "checkIds": [
+            "domain-tests"
+          ]
+        },
+        {
+          "id": "lim-002",
+          "kind": "limitation",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Продукт должен поддерживать следующий операционный шаг после локального прототипа.",
+          "expected": "Живой склад/ERP, устойчивое многопользовательское состояние, авторизация и контролируемая отправка должны быть отдельными production boundaries.",
+          "actual": "Snapshot работает на исторических Excel, approvals хранятся локально, автоматической отправки нет; документация прямо относит public hosting, multi-process storage и live integration к непроверенным/отложенным возможностям.",
+          "evidence": [
+            "README.md:23",
+            "docs/RELEASE.md:39",
+            "docs/architecture.md:119",
+            "docs/system-verification.md:67"
+          ],
+          "checkIds": [
+            "http-root",
+            "real-data-build"
+          ]
+        },
+        {
+          "id": "lim-003",
+          "kind": "limitation",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Расчёт должен использовать текущий свободный остаток без подмены неизвестных внутримесячных приходов.",
+          "expected": "Остаток в source snapshot подтверждён и свеж; неизвестность явно блокирует или ограничивает approval.",
+          "actual": "Для IEK adapter формирует оценку из месячного остатка и продаж; replenish помечает IEK needs_review:estimated_stock, UI предупреждает менеджера и требует сверку перед утверждением.",
+          "evidence": [
+            "app/engine/replenish.py:37",
+            "app/engine/replenish.py:38",
+            "app/ui/app.py:75",
+            "docs/system-verification.md:65",
+            "runtime check real-data-pipeline"
+          ],
+          "checkIds": [
+            "real-data-build",
+            "ml-tests"
+          ]
+        }
+      ],
+      "gapFindingIds": [
+        "defect-001"
+      ]
+    }
+  ],
+  "score": 98.0,
+  "status": "complete",
+  "expectedJudges": 1
+}

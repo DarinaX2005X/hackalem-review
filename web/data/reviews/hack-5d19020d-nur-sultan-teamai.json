@@ -1,0 +1,1215 @@
+{
+  "methodVersion": 4,
+  "repoId": "hack-5d19020d-nur-sultan-teamai",
+  "repoUrl": "https://github.com/BAITC-Hacks/hack-5d19020d-nur-sultan-teamai",
+  "caseId": 1,
+  "snapshot": "97a8748e24c826a86e60e7b4c81d7aa08e00c061",
+  "judges": [
+    {
+      "methodVersion": 4,
+      "repoId": "hack-5d19020d-nur-sultan-teamai",
+      "caseId": 1,
+      "model": "GPT-5.6 Luna",
+      "snapshot": "97a8748e24c826a86e60e7b4c81d7aa08e00c061",
+      "overallSummary": "Проект представляет содержательный MVP прогнозирования нормированной мощности двух турбин: есть отдельный демонстрационный пакет, CatBoost, 48-часовая почасовая выдача, сохранение артефактов, FastAPI/Streamlit и агентный контур с offline-режимом. Сборка Docker и старт API подтверждены, 55 корневых тестов прошли, а официальные CSV были реально прочитаны и прогнаны через ingest/train/forecast demo-пути. При этом основной демонстрационный путь использует synthetic weather и явно признаёт, что Open-Meteo не является архивным as-of источником; его /replay — только алиас одного forecast. Более полный root-путь содержит архивный GFS и дневной replay, но не принимает предоставленные CSV в ingest, а установленная в образе консольная команда wind-agent doctor падает из-за неупакованного config/project.json. Поэтому оценка готова, но сценарий кейса подтверждён как сильный частичный прототип, а не как полностью воспроизводимый архивный февральский replay.",
+      "global": {
+        "criteria": [
+          {
+            "name": "Ценность решения",
+            "score": 20,
+            "max": 25,
+            "awarded": "Практическая ценность хорошо раскрыта: диспетчер получает почасовой нормированный прогноз, происхождение выпуска, модель и признаки качества для двух ВЭС.",
+            "deductions": "5 баллов удержаны за то, что воспроизводимый demo-путь по умолчанию не получает архивную погоду по координатам, поэтому его результат нельзя без оговорки использовать как исторически доступный прогноз.",
+            "evidence": [
+              "PRODUCT.md:9-25",
+              "demo/README.md:4-15",
+              "check-demo-pipeline",
+              "F-D1"
+            ],
+            "deductionItems": [
+              {
+                "points": 5,
+                "findingId": "F-D1",
+                "reason": "Для ценности конечного результата важна именно достоверная as-of погода. В реально выполненном demo pipeline contract_status был synthetic, а demo-конфигурация оставляет lat/lon пустыми; это ограничивает практическую пригодность прогнозов для исторического операционного сценария кейса."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Понятный энергетический результат",
+                "implementation": "Проект формулирует результат как normalized active line-side power, хранит turbine_id, origin, target interval и почасовые prediction/p10/p50/p90 в root-пути; demo экспортирует long-table ForecastRow для двух турбин.",
+                "value": "Целевой пользователь получает не абстрактный LLM-ответ, а числовой временной ряд, пригодный для просмотра, экспорта и последующей интеграции с операционным процессом.",
+                "verification": "source",
+                "evidence": [
+                  "PRODUCT.md:9-25",
+                  "wind_agent/forecast.py:55-79",
+                  "demo/src/wind_demo/forecast.py:44-57"
+                ]
+              },
+              {
+                "aspect": "Аудитируемость выпуска",
+                "implementation": "Root manifest фиксирует model_version, fit_cutoff, weather_run, weather_available_at, weather_sha256, config hash, unit и контрольные флаги; API отдаёт отдельные audit/metrics/exports ресурсы.",
+                "value": "Для энергетической задачи это снижает риск принять непрозрачное число за прогноз: можно связать выдачу с погодным выпуском, моделью и допущениями.",
+                "verification": "source",
+                "evidence": [
+                  "wind_agent/forecast.py:69-79",
+                  "wind_agent/api.py:175-188"
+                ]
+              },
+              {
+                "aspect": "Результат для двух объектов",
+                "implementation": "Сценарий demo после ingest официальных CSV обучил одну модель и вернул 96 строк для T1/T2 на 48 часов; root assert_forecast требует ровно sites × forecast_hours строк.",
+                "value": "Решение покрывает не только одиночный пример, а заявленный формат двух турбин и фиксированный почасовой горизонт.",
+                "verification": "observed",
+                "evidence": [
+                  "check-case-pipeline",
+                  "wind_agent/forecast.py:12-21"
+                ]
+              },
+              {
+                "aspect": "Честное обращение с отсутствующими actuals",
+                "implementation": "Demo считает метрики только по eligible actuals и добавляет not_evaluated при пустом окне; root API явно отвечает, что февральские actuals не предоставлены.",
+                "value": "Проект не превращает отсутствие февральских фактов в выдуманную точность, что делает заявленную пользу более достоверной.",
+                "verification": "source",
+                "evidence": [
+                  "demo/src/wind_demo/forecast.py:60-87",
+                  "wind_agent/api.py:175-183",
+                  "check-case-data"
+                ]
+              }
+            ],
+            "scoreReasoning": "20/25 заслужены ясной прикладной постановкой, двухтурбинным числовым результатом, экспортом и аудируемыми метаданными. До максимума не хватает доказанной операционной ценности именно исторического сценария: выполненный demo выдаёт synthetic weather, а не архивный прогноз, доступный в момент origin. Это подтверждённый дефект выбранного demo-контура, а не штраф за отсутствие ключа или публичной ссылки."
+          },
+          {
+            "name": "Результат и качество решения",
+            "score": 14,
+            "max": 20,
+            "awarded": "Получен цельный локальный результат от данных до модели и агента, но главный end-to-end сценарий кейса не доведён до ежедневного февральского replay на архивных данных.",
+            "deductions": "6 баллов удержаны за отсутствие реального daily replay в demo API и за несовместимость root ingest с официальным CSV-пакетом.",
+            "evidence": [
+              "check-root-tests",
+              "check-demo-pipeline",
+              "demo/src/wind_demo/api.py:51-54",
+              "F-D2",
+              "F-D3"
+            ],
+            "deductionItems": [
+              {
+                "points": 4,
+                "findingId": "F-D2",
+                "reason": "Для качества пользовательского сценария ежедневное обновление — существенная часть задачи. В demo /replay напрямую вызывает один api_forecast, поэтому запуск demo-сервиса не создаёт последовательность origins 1–28 февраля и не формирует февральский replay artifact."
+              },
+              {
+                "points": 2,
+                "findingId": "F-D3",
+                "reason": "Root run-all/ingest является заявленным рабочим путём, но при подаче официальных CSV фактически завершается ValueError о том, что XLSX для turbine 1 не найден. Это ломает воспроизводимость именно на организаторском формате данных."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Локальный demo-поток от ingest до прогноза",
+                "implementation": "Выполнены make fixtures, ingest, CatBoost train и forecast; demo вернул n_train=960, n_valid=1344 в fixture-режиме и 96 строк для двух турбин на 48 часов.",
+                "value": "Это проверяемый пользовательский результат, а не только набор заготовленных модулей.",
+                "verification": "observed",
+                "evidence": [
+                  "check-demo-pipeline",
+                  "demo/scripts/demo_run.py:19-48"
+                ]
+              },
+              {
+                "aspect": "Проверки инвариантов прогноза",
+                "implementation": "Root проверяет число строк, уникальность site/hour, последовательность horizon, finite и bounded predictions, causal weather и cutoff модели перед записью forecast artifact.",
+                "value": "Критические ошибки формы и очевидная утечка данных блокируются до выдачи результата.",
+                "verification": "source",
+                "evidence": [
+                  "wind_agent/forecast.py:12-34",
+                  "check-root-tests"
+                ]
+              },
+              {
+                "aspect": "Надёжное хранение результата",
+                "implementation": "Forecast записывается в parquet и CSV, имеет identity index, manifest и sha256; повторный запрос проверяет checksum существующего parquet.",
+                "value": "Для прототипа это сильнее обычного ephemeral notebook: результат можно повторно прочитать и обнаружить повреждение.",
+                "verification": "source",
+                "evidence": [
+                  "wind_agent/forecast.py:43-82",
+                  "tests/test_workflow.py:54-58"
+                ]
+              },
+              {
+                "aspect": "Агент не подменяет числовую модель",
+                "implementation": "Root LangGraph сначала требует quality/model inspection, затем разрешает run_forecast; числовой forecast выполняется predict_origin, а LLM выбирает только allowlisted action либо используется deterministic offline policy.",
+                "value": "Пользовательский результат остаётся вычисленным ML/NWP-путём, а агент отвечает за управляемую оркестрацию и проверяемый trace.",
+                "verification": "source",
+                "evidence": [
+                  "wind_agent/agent.py:30-68",
+                  "wind_agent/agent.py:71-107",
+                  "tests/test_workflow.py:61-74"
+                ]
+              }
+            ],
+            "scoreReasoning": "14/20 отражают реально работающий локальный MVP и сильные числовые/целостностные проверки. Основной недобор связан не с косметикой: публичный demo /replay не делает требуемого daily loop, а официальный CSV не проходит root ingest. Root forecast.replay существует, но заявленный пользователю воспроизводимый путь не соединяет его с предоставленным форматом данных."
+          },
+          {
+            "name": "Инновационность",
+            "score": 11,
+            "max": 15,
+            "awarded": "Нестандартность есть в сочетании archived-GFS as-of логики, causal metadata, checksum-артефактов и bounded agent workflow; novelty ограничена тем, что demo fallback фактически синтетический, а agentic replay не завершён.",
+            "deductions": "4 балла удержаны за разрыв между заявленной agentic-as-of идеей и рабочим demo-контуром, где weather provider и replay упрощены.",
+            "evidence": [
+              "wind_agent/weather.py:179-224",
+              "wind_agent/agent.py:30-68",
+              "demo/src/wind_demo/weather.py:74-136",
+              "F-D1",
+              "F-D2"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "F-D1",
+                "reason": "Инновационный as-of weather-подход подтверждён в root исходниках, но реально показанный demo-путь при null координатах выбирает deterministic synthetic provider; это уменьшает доказанность заявленного преимущества."
+              },
+              {
+                "points": 2,
+                "findingId": "F-D2",
+                "reason": "Agentic ценность должна проявляться в последовательном обновлении входа и перерасчёте; demo /replay не реализует цикл, а только вызывает один forecast."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Архивный GFS-путь с проверкой доступности",
+                "implementation": "Root выбирает run до origin с configured release lag, получает S3 Last-Modified evidence, запрещает weather_available_at > origin и интерполирует 3-часовые GFS значения в часовые признаки.",
+                "value": "Это предметно подходящая для кейса альтернатива наивному вызову текущего weather API и сильное техническое отличие от обычного forecast notebook.",
+                "verification": "source",
+                "evidence": [
+                  "wind_agent/weather.py:27-42",
+                  "wind_agent/weather.py:179-224"
+                ]
+              },
+              {
+                "aspect": "Оркестратор с ограниченными действиями",
+                "implementation": "Root supervisor строит разрешённые действия из состояния, ограничивает шесть решений, фиксирует supervisor_decision и при недоступном LLM переключается на deterministic_policy; запрещённые action отклоняются.",
+                "value": "Такой контур делает agentic AI контролируемым: модель не получает произвольный shell-доступ и не формирует прогноз напрямую.",
+                "verification": "source",
+                "evidence": [
+                  "wind_agent/agent.py:30-68",
+                  "tests/test_workflow.py:76-84",
+                  "tests/test_workflow.py:112-152"
+                ]
+              },
+              {
+                "aspect": "Воспроизводимый fingerprint и provenance",
+                "implementation": "Config fingerprint входит в identity, weather и model artifacts имеют checksum, а model card хранит режим weather_only_frozen и cutoff.",
+                "value": "Это оригинальнее и полезнее для аудита, чем скрытая переобучаемая модель без происхождения входов.",
+                "verification": "source",
+                "evidence": [
+                  "wind_agent/config.py:43-58",
+                  "wind_agent/models.py:55-68",
+                  "wind_agent/forecast.py:43-79"
+                ]
+              },
+              {
+                "aspect": "Демонстрационный LangGraph-переход",
+                "implementation": "Demo graph разделяет planner и executor, допускает tool calls, записывает trace и делает итоговый summary; доступные tools — audit, forecast, metrics и export.",
+                "value": "Для пятичасового прототипа это понятная демонстрация agent/tool interaction с offline mock режимом.",
+                "verification": "source",
+                "evidence": [
+                  "demo/src/wind_demo/agent/graph.py:26-124",
+                  "demo/src/wind_demo/agent/tools.py:53-116",
+                  "check-demo-pipeline"
+                ]
+              }
+            ],
+            "scoreReasoning": "11/15 заслужены тем, что root действительно содержит специализированную causal weather реализацию и ограниченный агентный граф. Снижение касается фактической демонстрации: synthetic fallback используется по умолчанию, Open-Meteo помечен как provisional/current и не архивный, а daily reforecast loop в demo API отсутствует."
+          },
+          {
+            "name": "Потенциал развития и масштабирования",
+            "score": 15,
+            "max": 20,
+            "awarded": "Архитектура хорошо подготовлена к расширению: API, очередь jobs, модели-кандидаты, manifest/checksum и разделение demo/root позволяют развивать прототип без переписывания всей системы.",
+            "deductions": "5 баллов удержаны за подтверждённую проблему упаковки root CLI и за то, что архивный путь не соединён с официальными CSV в готовом запуске.",
+            "evidence": [
+              "wind_agent/jobs.py:12-126",
+              "wind_agent/evaluation.py:33-107",
+              "Dockerfile:1-10",
+              "F-D3",
+              "F-D4"
+            ],
+            "deductionItems": [
+              {
+                "points": 3,
+                "findingId": "F-D4",
+                "reason": "Масштабирование через Docker CLI/операторский workflow ограничено тем, что установленная console-script команда wind-agent не находит config/project.json после non-editable установки."
+              },
+              {
+                "points": 2,
+                "findingId": "F-D3",
+                "reason": "Расширение на официальный dataset формат требует отдельного адаптера или ручной конвертации: root ingest принимает только XLSX, хотя предоставленный кейс использует CSV."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Разделение API, worker и хранилища",
+                "implementation": "Root API ставит forecast/replay jobs, SQLite-backed jobs умеют dedup, lease, retry и worker processing; artifacts читаются отдельными endpoints.",
+                "value": "Для дальнейшего перехода от ноутбука к нескольким операторам или расписанию есть естественная точка масштабирования.",
+                "verification": "source",
+                "evidence": [
+                  "wind_agent/api.py:121-160",
+                  "wind_agent/jobs.py:12-126",
+                  "tests/test_workflow.py:86-110"
+                ]
+              },
+              {
+                "aspect": "Расширяемая модельная валидация",
+                "implementation": "Evaluation перебирает зарегистрированные candidates, делает monthly blackout folds, equal-weight site-month aggregation и сохраняет selection/model card.",
+                "value": "Новые модели можно сравнивать в едином контракте, не смешивая февральский target с обучением.",
+                "verification": "source",
+                "evidence": [
+                  "wind_agent/models.py:13-18",
+                  "wind_agent/evaluation.py:47-107"
+                ]
+              },
+              {
+                "aspect": "Конфигурационный контракт",
+                "implementation": "Sites, timezone, interval, cutoff, forecast horizon и weather release policy вынесены в config; fingerprint меняется при изменении конфигурации.",
+                "value": "Это облегчает перенос на новые турбины/площадки при сохранении audit trail.",
+                "verification": "source",
+                "evidence": [
+                  "config/project.json:1-17",
+                  "wind_agent/config.py:34-58",
+                  "tests/test_data_contract.py:106-108"
+                ]
+              },
+              {
+                "aspect": "Демо без платного LLM",
+                "implementation": "README описывает mock режим, а provider resolver выбирает mock без ключей и сохраняет trace; root имеет offline deterministic policy.",
+                "value": "Команда или проверяющий может развивать числовой pipeline без обязательной квоты внешней модели.",
+                "verification": "observed",
+                "evidence": [
+                  "demo/README.md:20-32",
+                  "demo/src/wind_demo/agent/providers.py:10-31",
+                  "check-demo-pipeline",
+                  "tests/test_workflow.py:112-152"
+                ]
+              }
+            ],
+            "scoreReasoning": "15/20 — у проекта сильная модульная база для следующего этапа: queue/API, модели-кандидаты и provenance уже разделены. Но переносимость пока не безусловна: root CLI ломается после упаковки, а официальный CSV не проходит root ingest. Эти дефекты исправимы и не отменяют потенциал, но мешают масштабировать именно проверенный сценарий."
+          },
+          {
+            "name": "Презентация, демо и ответы на вопросы",
+            "score": 16,
+            "max": 20,
+            "awarded": "README содержит понятный setup, one-shot и пошаговый запуск, описание ключей и ограничения; локальное demo действительно воспроизводится. Устную часть и визуальное поведение не оценивал.",
+            "deductions": "4 балла удержаны за несогласованность документированного demo и более полного root-пути при работе с case CSV, а также за неработающую упакованную root CLI-команду.",
+            "evidence": [
+              "demo/README.md:1-62",
+              "check-demo-pipeline",
+              "F-D3",
+              "F-D4"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "F-D3",
+                "reason": "Репозиторий объясняет real XLSX путь для root, но организаторские файлы кейса — CSV; запуск root ingest на них завершается ошибкой, что снижает убедительность воспроизводимой демонстрации."
+              },
+              {
+                "points": 2,
+                "findingId": "F-D4",
+                "reason": "Операторская команда wind-agent doctor из установленного Docker окружения падает до вывода диагностики из-за отсутствующего config/project.json, поэтому описанный CLI путь не полностью демонстрируем."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Короткий путь запуска",
+                "implementation": "demo/README описывает venv/install, python scripts/demo_run.py, step-by-step CLI, API, UI и pytest.",
+                "value": "Проверяющему понятно, как получить результат без устной презентации.",
+                "verification": "source",
+                "evidence": [
+                  "demo/README.md:16-62"
+                ]
+              },
+              {
+                "aspect": "Фактически воспроизводимое локальное демо",
+                "implementation": "Команда demo_run в чистом ограниченном окружении создала fixtures, обучила CatBoost, выдала 96 строк и завершила mock agent trace с 3 шагами.",
+                "value": "Документация подтверждена выполнением, а не только наличием файлов.",
+                "verification": "observed",
+                "evidence": [
+                  "check-demo-pipeline"
+                ]
+              },
+              {
+                "aspect": "Описанные ограничения",
+                "implementation": "README отдельно предупреждает про отсутствие LLM key, mock режим, отсутствие февральских actuals и synthetic/provisional weather в demo.",
+                "value": "Материалы не создают ложного впечатления о наличии production weather archive или платного сервиса.",
+                "verification": "source",
+                "evidence": [
+                  "demo/README.md:4-15",
+                  "demo/README.md:20-32",
+                  "demo/src/wind_demo/weather.py:124-136"
+                ]
+              },
+              {
+                "aspect": "API и UI поверхности",
+                "implementation": "Есть FastAPI endpoints /health, /ingest, /train, /forecast, /replay, /export, /agent/run и Streamlit operational view; root Docker start был подтверждён через /health.",
+                "value": "Для демо предусмотрены несколько способов показать результат, хотя визуальный UI здесь не инспектировался.",
+                "verification": "source",
+                "evidence": [
+                  "demo/src/wind_demo/api.py:18-81",
+                  "ui/app.py:79-190",
+                  "check-root-start"
+                ]
+              }
+            ],
+            "scoreReasoning": "16/20 — README и локальный demo-поток достаточно убедительны для хакатона, а отсутствие публичной ссылки или устного выступления само по себе не штрафовалось. Недостаток именно в воспроизводимости: root CLI не работает в собранном non-editable образе, а root ingestion не принимает официальные CSV. Визуальное поведение UI осталось непроверенным по установленной политике."
+          }
+        ],
+        "total": 76
+      },
+      "case": {
+        "criteria": [
+          {
+            "name": "Соответствие задаче и работоспособность",
+            "score": 17,
+            "max": 25,
+            "awarded": "48-часовая почасовая выдача для двух турбин и модельный cutoff представлены, но полный архивный daily replay февраля в реально воспроизводимом demo-пути отсутствует.",
+            "deductions": "8 баллов удержаны за synthetic weather по умолчанию, отсутствие daily replay в demo и CSV/XLSX несоответствие root-пути.",
+            "evidence": [
+              "check-case-pipeline",
+              "wind_agent/forecast.py:85-118",
+              "demo/src/wind_demo/api.py:51-54",
+              "F-D1",
+              "F-D2",
+              "F-D3"
+            ],
+            "deductionItems": [
+              {
+                "points": 3,
+                "findingId": "F-D1",
+                "reason": "Архивная погода по координатам — обязательная часть соответствия задаче; проверенный demo результат помечен synthetic, а его координаты не заданы."
+              },
+              {
+                "points": 3,
+                "findingId": "F-D2",
+                "reason": "Требуемое последовательное обновление на каждый день февраля не реализовано в demo /replay: endpoint является алиасом одного прогноза."
+              },
+              {
+                "points": 2,
+                "findingId": "F-D3",
+                "reason": "Официальные CSV реально поданы в root ingest и отклонены как отсутствие XLSX, поэтому более полный root-сценарий не воспроизводится на предоставленном формате."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Горизонт и детализация",
+                "implementation": "Demo config задаёт horizon_hours=48, а выполненный forecast вернул 96 строк — 48 часов на T1 и 48 на T2. Root assert_forecast дополнительно требует последовательный hourly horizon.",
+                "value": "Минимальное числовое ядро кейса реализовано и наблюдалось.",
+                "verification": "observed",
+                "evidence": [
+                  "check-case-pipeline",
+                  "demo/configs/time.yaml:1-8",
+                  "wind_agent/forecast.py:12-21"
+                ]
+              },
+              {
+                "aspect": "Исторический cutoff",
+                "implementation": "Root project config фиксирует training_cutoff=2026-01-31T00:00:00Z, training_table фильтрует target/observations до cutoff, а model fit отказывается от будущих наблюдений.",
+                "value": "В полном root дизайне есть правильный temporal contract, а не случайное обучение на всём файле.",
+                "verification": "source",
+                "evidence": [
+                  "config/project.json:5-16",
+                  "wind_agent/features.py:25-39",
+                  "wind_agent/models.py:34-44",
+                  "tests/test_data_contract.py:89-104"
+                ]
+              },
+              {
+                "aspect": "Работа с двумя объектами",
+                "implementation": "Оба официальных файла прошли demo hourlyize: T1 дал 23,667 full hours, T2 — 24,785; последующий train/forecast использовал оба turbine_id.",
+                "value": "Покрыта структура задания, а не только synthetic одиночный пример.",
+                "verification": "observed",
+                "evidence": [
+                  "check-case-data",
+                  "check-case-ingest",
+                  "demo/src/wind_demo/ingest.py:110-156"
+                ]
+              },
+              {
+                "aspect": "Защита от простой утечки",
+                "implementation": "Root assert_forecast проверяет weather availability и model cutoff; tests отдельно проверяют future labels и rejection будущей weather availability.",
+                "value": "Существенная часть соответствия причинному прогнозу подтверждена кодом и тестами.",
+                "verification": "observed",
+                "evidence": [
+                  "wind_agent/forecast.py:22-27",
+                  "tests/test_data_contract.py:89-104",
+                  "check-root-tests"
+                ]
+              }
+            ],
+            "scoreReasoning": "17/25: числовое ядро и cutoff реализованы хорошо, официальные данные demo ingest принимает, а root replay-проектирование существует. Но обязательные as-of archive и ежедневная последовательность февраля — не часть рабочего demo результата: вместо этого использована synthetic weather и один origin. Это существенный функциональный пробел, поэтому критерий не близок к максимуму."
+          },
+          {
+            "name": "Техническая реализация",
+            "score": 19,
+            "max": 25,
+            "awarded": "Техническая реализация выше среднего: разделены ingestion, weather, features, model, forecast, API и agent; root архивный GFS-путь и тесты особенно сильны.",
+            "deductions": "6 баллов удержаны за synthetic/provisional demo weather, входной формат root ingest и неработающий console-script в Docker.",
+            "evidence": [
+              "check-root-tests",
+              "wind_agent/weather.py:179-224",
+              "demo/src/wind_demo/weather.py:74-145",
+              "F-D1",
+              "F-D3",
+              "F-D4"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "F-D1",
+                "reason": "Фактический demo provider при текущей конфигурации — synthetic, а Open-Meteo помечен provisional и прямо не архивным; это расхождение с заявленной as-of технической логикой."
+              },
+              {
+                "points": 2,
+                "findingId": "F-D3",
+                "reason": "Root ingest жёстко glob-ит только *.xlsx, хотя case-data содержит CSV; это подтверждённая ошибка интеграции входного контракта."
+              },
+              {
+                "points": 2,
+                "findingId": "F-D4",
+                "reason": "Non-editable Docker installation оставляет config/project.json вне wheel, из-за чего установленная команда wind-agent doctor падает до запуска диагностики."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Модульная архитектура",
+                "implementation": "Root разделяет config/ingest/features/weather/models/evaluation/forecast/jobs/API, demo имеет аналогичный, более простой пакет; зависимости и CLI описаны в pyproject.",
+                "value": "Компоненты можно тестировать и менять независимо, что соответствует MVP-архитектуре агентного приложения.",
+                "verification": "source",
+                "evidence": [
+                  "pyproject.toml:1-37",
+                  "wind_agent:1-16",
+                  "demo/src/wind_demo:1-16"
+                ]
+              },
+              {
+                "aspect": "Weather-only feature path",
+                "implementation": "Root features использует wind100/u/v/temperature, календарные признаки и lead, а тест меняет telemetry/power и проверяет неизменность feature matrix.",
+                "value": "Модельный вход отделён от фактической будущей мощности, что прямо поддерживает отсутствие target leakage.",
+                "verification": "observed",
+                "evidence": [
+                  "wind_agent/features.py:4-22",
+                  "tests/test_data_contract.py:82-86",
+                  "check-root-tests"
+                ]
+              },
+              {
+                "aspect": "Архивный источник и causal checks",
+                "implementation": "Root weather читает ограниченные byte ranges GFS, фиксирует run, Last-Modified evidence, release lag, bilinear/temporal method и не сохраняет snapshot при доступности после origin.",
+                "value": "Это технически релевантная реализация требования о погоде, доступной на момент расчёта.",
+                "verification": "source",
+                "evidence": [
+                  "wind_agent/weather.py:15-18",
+                  "wind_agent/weather.py:45-106",
+                  "wind_agent/weather.py:191-224",
+                  "tests/test_weather_and_model.py:92-108"
+                ]
+              },
+              {
+                "aspect": "Контроль модели и артефактов",
+                "implementation": "CatBoost/model candidates, bounded predictions, quantile order, model card, checksum corruption test и idempotent forecast artifacts покрыты исходниками и тестами.",
+                "value": "Для пятичасового прототипа это зрелый набор защит от тихого повреждения или неоднозначной модели.",
+                "verification": "observed",
+                "evidence": [
+                  "wind_agent/models.py:24-130",
+                  "tests/test_weather_and_model.py:39-69",
+                  "tests/test_workflow.py:36-58",
+                  "check-root-tests"
+                ]
+              }
+            ],
+            "scoreReasoning": "19/25: root техническая база и тестовая дисциплина сильные, включая as-of GFS и утечку. Снятия касаются интеграционных разрывов, а не отсутствия production polish: demo по умолчанию не использует нужный weather contract, официальные CSV не доходят до root pipeline, и Docker console entrypoint не находит конфигурацию."
+          },
+          {
+            "name": "README и воспроизводимость",
+            "score": 19,
+            "max": 25,
+            "awarded": "README demo хорошо объясняет установку, команды, API, mock режим и входные файлы; локальное воспроизведение demo подтверждено на чистом окружении и на официальных CSV через временную копию.",
+            "deductions": "6 баллов удержаны за несоответствие root input format официальным CSV и поломку установленной root CLI в Docker.",
+            "evidence": [
+              "demo/README.md:16-62",
+              "check-demo-pipeline",
+              "check-case-ingest",
+              "check-root-csv-ingest",
+              "check-cli-doctor",
+              "F-D3",
+              "F-D4"
+            ],
+            "deductionItems": [
+              {
+                "points": 3,
+                "findingId": "F-D3",
+                "reason": "Документированный root ingest ожидает Excel, но проверочный пакет кейса — CSV; команда с реальными файлами завершается ошибкой found 0, поэтому воспроизводимость основного входа неполная."
+              },
+              {
+                "points": 3,
+                "findingId": "F-D4",
+                "reason": "Команда wind-agent doctor из Docker-пакета не запускается из-за непоставленного config/project.json, что делает описанный root CLI путь неполным."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Полная инструкция demo",
+                "implementation": "README содержит setup, secrets, one-shot, step-by-step, API, UI, tests и real data section с именованием turbine файлов.",
+                "value": "Для локальной проверки не требуется устное объяснение команды.",
+                "verification": "source",
+                "evidence": [
+                  "demo/README.md:1-62"
+                ]
+              },
+              {
+                "aspect": "Подтверждённая воспроизводимость fixtures",
+                "implementation": "demo_run в Docker создал 6,481 10-minute rows на турбину, hourlyized 2,162 rows, обучил CatBoost и сформировал 96-row forecast.",
+                "value": "Основная инструкция README реально приводит к результату.",
+                "verification": "observed",
+                "evidence": [
+                  "check-demo-pipeline"
+                ]
+              },
+              {
+                "aspect": "Проверка организаторских данных",
+                "implementation": "Оба предоставленных CSV были прочитаны, проверены по русским заголовкам, диапазону времени и отсутствию февраля, затем прогнаны через demo ingest/train/forecast.",
+                "value": "Отчёт опирается на фактические case files, а не только на синтетические fixtures.",
+                "verification": "observed",
+                "evidence": [
+                  "check-case-data",
+                  "check-case-ingest"
+                ]
+              },
+              {
+                "aspect": "Документированные границы",
+                "implementation": "README и weather source явно сообщают про synthetic fallback, отсутствие ключа и отсутствие февральских actuals; это согласовано с observed output.",
+                "value": "Пользователь может отличить воспроизводимую демонстрацию от production claim.",
+                "verification": "source",
+                "evidence": [
+                  "demo/README.md:4-32",
+                  "demo/src/wind_demo/weather.py:124-136",
+                  "check-demo-pipeline"
+                ]
+              }
+            ],
+            "scoreReasoning": "19/25: документация demo и повторяемый локальный сценарий заслуживают высокий балл. Полный балл невозможен, потому что два соседних operational пути не согласованы с кейсом: root ждёт XLSX вместо официальных CSV, а его установленная console script ломается из-за упаковки config. Это конкретные дефекты воспроизводимости, не ограничения нашей среды."
+          },
+          {
+            "name": "Ценность и применимость решения",
+            "score": 12,
+            "max": 15,
+            "awarded": "Применимость для операционного просмотра убедительна: нормированная мощность, обе турбины, экспорт, audit и отсутствие ложных февральских метрик. Архивная погодная достоверность пока ограничивает реальное применение.",
+            "deductions": "3 балла удержаны за synthetic/provisional weather в том пути, который проще всего воспроизвести пользователю.",
+            "evidence": [
+              "PRODUCT.md:13-25",
+              "demo/src/wind_demo/forecast.py:60-105",
+              "check-case-pipeline",
+              "F-D1"
+            ],
+            "deductionItems": [
+              {
+                "points": 3,
+                "findingId": "F-D1",
+                "reason": "Для Самрук-Казына важна пригодность прогноза именно в условиях доступной на тот момент погоды; synthetic weather и current Open-Meteo provisional path не подтверждают эту эксплуатационную ценность."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Целевая аудитория и workflow",
+                "implementation": "PRODUCT описывает HackAlemAI team/reviewers и будущего dispatcher, а UI показывает origin, horizon, weather release, fit cutoff и downloadable CSV.",
+                "value": "Проблема и пользовательский результат связаны с реальным операторским чтением прогноза, а не только с ML метрикой.",
+                "verification": "source",
+                "evidence": [
+                  "PRODUCT.md:9-25",
+                  "ui/app.py:98-152"
+                ]
+              },
+              {
+                "aspect": "Нормированная линия вместо выдуманных MW",
+                "implementation": "Проект явно не делает MW conversion без rated power и обозначает target как normalized power.",
+                "value": "Это осторожная и корректная граница применимости предоставленных данных.",
+                "verification": "source",
+                "evidence": [
+                  "PRODUCT.md:17-20",
+                  "wind_agent/agent.py:50-53",
+                  "demo/src/wind_demo/config.py:68-73"
+                ]
+              },
+              {
+                "aspect": "Экспортируемый результат",
+                "implementation": "Forecast сохраняется как CSV/JSON, demo export_submission создаёт submission_preview.csv; API имеет /exports или /export поверхности.",
+                "value": "Результат можно передать за пределы UI и использовать в следующем процессе.",
+                "verification": "source",
+                "evidence": [
+                  "wind_agent/forecast.py:65-82",
+                  "demo/src/wind_demo/forecast.py:99-120",
+                  "demo/src/wind_demo/api.py:57-60"
+                ]
+              },
+              {
+                "aspect": "Честная оценка качества",
+                "implementation": "Январские/исторические actuals используются для validation, а февральское окно без actuals не оценивается и не заполняется нулевой метрикой.",
+                "value": "Такой подход полезнее для принятия решения, чем эффектная, но недостоверная February accuracy claim.",
+                "verification": "source",
+                "evidence": [
+                  "wind_agent/evaluation.py:47-107",
+                  "wind_agent/api.py:175-183",
+                  "demo/src/wind_demo/forecast.py:60-87"
+                ]
+              }
+            ],
+            "scoreReasoning": "12/15: решение отвечает понятной энергетической потребности и бережно трактует единицы и actuals. Ограничение synthetic weather существенно именно для применимости: пользователь видит работающий прогноз, но не доказанный historical as-of forecast, необходимый для честной оценки февраля."
+          },
+          {
+            "name": "Потенциал развития и оригинальность подхода",
+            "score": 8,
+            "max": 10,
+            "awarded": "Потенциал и оригинальность выше среднего благодаря сочетанию GFS archive replay, provenance, agent policy и model evaluation; дальнейший рост очевиден из модульной структуры.",
+            "deductions": "2 балла удержаны за незавершённый daily replay в demo и operational packaging defect root CLI.",
+            "evidence": [
+              "wind_agent/forecast.py:85-118",
+              "wind_agent/evaluation.py:33-107",
+              "demo/src/wind_demo/api.py:51-54",
+              "F-D2",
+              "F-D4"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "F-D2",
+                "reason": "Оригинальная идея agentic daily replay пока не доступна через demo API, поэтому расширение на полный февраль требует отдельного соединения путей."
+              },
+              {
+                "points": 1,
+                "findingId": "F-D4",
+                "reason": "Упакованный CLI дефект повышает стоимость переноса прототипа в расписание/контейнерный job runner до исправления packaging contract."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Масштабирование с двух турбин",
+                "implementation": "Sites list, per-site weather interpolation, grouped model prediction и site/hour manifests не зашиты на единственный объект.",
+                "value": "Добавление площадок возможно через конфигурацию и ingestion contract.",
+                "verification": "source",
+                "evidence": [
+                  "wind_agent/config.py:34-54",
+                  "wind_agent/weather.py:202-212",
+                  "wind_agent/forecast.py:12-21"
+                ]
+              },
+              {
+                "aspect": "Replay как отдельный артефакт",
+                "implementation": "Root replay перебирает daily origins, сохраняет all_forecasts, february_origins и latest-origin reduction, фиксируя 29 origins и February actuals unavailable в manifest.",
+                "value": "Это хорошая основа для полноценного офлайн backtest и последующего score после появления фактов.",
+                "verification": "source",
+                "evidence": [
+                  "wind_agent/forecast.py:85-118",
+                  "wind_agent/evaluation.py:41-44"
+                ]
+              },
+              {
+                "aspect": "Потенциал model governance",
+                "implementation": "Candidate selection, monthly blackout validation, frozen model card, configuration hashes и release evidence дают путь к сравнению моделей и контролю изменений.",
+                "value": "Подход переносим на другие объекты/сезоны без потери происхождения результата.",
+                "verification": "source",
+                "evidence": [
+                  "wind_agent/evaluation.py:47-107",
+                  "wind_agent/release.py:11-58"
+                ]
+              },
+              {
+                "aspect": "Безопасный агентный контур",
+                "implementation": "Allowlist tools и deterministic fallback позволяют добавлять LLM summarization без выдачи модели произвольных операций над системой.",
+                "value": "Это обоснованный agentic-подход для домена, где числовая модель должна оставаться детерминированной и аудируемой.",
+                "verification": "source",
+                "evidence": [
+                  "wind_agent/agent.py:30-40",
+                  "wind_agent/llm.py:41-105",
+                  "demo/src/wind_demo/agent/policy.py:1-120"
+                ]
+              }
+            ],
+            "scoreReasoning": "8/10: архитектура и оригинальные идеи хорошо выходят за рамки простого ML-скрипта. До максимума удерживают два конкретных препятствия к развитию: demo не доводит daily replay до API результата, а packaged CLI ломается до работы. Это исправимые MVP-дефекты, но они препятствуют гладкому переходу к расписанию."
+          }
+        ],
+        "total": 75
+      },
+      "judgeScore": 75.5,
+      "caseRequirements": [
+        {
+          "requirement": "Построить почасовую модель прогнозирования нормированной выработки двух ВЭС на горизонте 24–48 часов.",
+          "status": "met",
+          "explanation": "Demo конфигурирует 48 часов, официальные CSV были hourlyized для двух turbine_id, а выполненный forecast вернул 96 строк с почасовыми valid_start/valid_end и prediction. Root дополнительно проверяет размер и последовательность horizon.",
+          "evidence": [
+            "check-case-data",
+            "check-case-pipeline",
+            "demo/configs/time.yaml:1-8",
+            "wind_agent/forecast.py:12-23"
+          ]
+        },
+        {
+          "requirement": "Обучать модель только на истории, доступной не позднее 31.01.2026.",
+          "status": "partial",
+          "explanation": "Root contract фиксирует training_cutoff и отбрасывает observations/targets после него; соответствующие tests прошли. Demo ingest подтверждает, что официальные файлы заканчиваются 31.01.2026 23:50, но demo train сам по себе не принимает отдельный cutoff и его основной рабочий пример основан на fixture pipeline.",
+          "evidence": [
+            "config/project.json:5-16",
+            "wind_agent/features.py:25-39",
+            "tests/test_data_contract.py:89-104",
+            "check-case-data",
+            "check-root-tests"
+          ]
+        },
+        {
+          "requirement": "Самостоятельно получать погодный прогноз по координатам турбин.",
+          "status": "partial",
+          "explanation": "Root содержит координаты и архивный GFS/S3 provider с bilinear extraction. В demo конфигурации lat/lon для T1/T2 null, поэтому фактически выполненный pipeline выбрал FixtureProvider; Open-Meteo путь доступен только после заполнения координат.",
+          "evidence": [
+            "config/project.json:9-16",
+            "demo/configs/sites.yaml:1-17",
+            "demo/src/wind_demo/weather.py:74-145",
+            "check-case-pipeline",
+            "F-D1"
+          ]
+        },
+        {
+          "requirement": "Использовать архивный прогноз, доступный на соответствующий момент origin, а не фактическую будущую погоду.",
+          "status": "partial",
+          "explanation": "Root static implementation проверяет run, release lag, Last-Modified и weather_available_at <= origin, а tests проверяют отказ при нарушении. Но воспроизводимый demo результат имеет contract_status=synthetic, а Open-Meteo implementation сама помечает true archive provenance как out of MVP scope.",
+          "evidence": [
+            "wind_agent/weather.py:191-224",
+            "tests/test_weather_and_model.py:13-28",
+            "demo/src/wind_demo/weather.py:124-136",
+            "check-case-pipeline",
+            "F-D1"
+          ]
+        },
+        {
+          "requirement": "Реализовать полный agentic цикл: погода, подготовка, модель, прогноз, анализ и перерасчёт при обновлении входа.",
+          "status": "partial",
+          "explanation": "Root agent graph последовательно инспектирует quality/model, запускает forecast и фиксирует decisions; demo LangGraph имеет planner/executor, tools и trace. Однако demo /replay не обновляет вход и не запускает повторные origins, а только вызывает один forecast.",
+          "evidence": [
+            "wind_agent/agent.py:30-107",
+            "demo/src/wind_demo/agent/graph.py:26-124",
+            "demo/src/wind_demo/api.py:51-54",
+            "check-demo-pipeline",
+            "F-D2"
+          ]
+        },
+        {
+          "requirement": "Повторить прогнозирование на каждый день с 31 января по 28 февраля 2026 года.",
+          "status": "partial",
+          "explanation": "Root forecast.replay содержит daily date_range и сохраняет February artifacts для 29 origins. Но проверенный demo API, README сценарий и официальные CSV pipeline не произвели такой replay; demo endpoint /replay является явным алиасом одного вызова forecast.",
+          "evidence": [
+            "wind_agent/forecast.py:85-118",
+            "wind_agent/cli.py:67-70",
+            "demo/src/wind_demo/api.py:51-54",
+            "check-case-pipeline",
+            "F-D2",
+            "F-D3"
+          ]
+        },
+        {
+          "requirement": "Не подмешивать целевую февральскую выработку и будущие фактические погодные значения во вход прогноза.",
+          "status": "met",
+          "explanation": "Официальные CSV содержат zero February rows. Root features не использует telemetry/power, training_table фильтрует target/observation availability, forecast assert проверяет causal weather, а demo scoring присоединяет actuals только после формирования prediction.",
+          "evidence": [
+            "check-case-data",
+            "wind_agent/features.py:8-22",
+            "wind_agent/features.py:25-39",
+            "wind_agent/forecast.py:22-27",
+            "demo/src/wind_demo/forecast.py:60-87",
+            "check-root-tests"
+          ]
+        },
+        {
+          "requirement": "Предоставить воспроизводимый результат и экспорт для проверки.",
+          "status": "met",
+          "explanation": "Demo README и one-shot pipeline воспроизводимы без LLM key через mock mode; forecast пишет JSON/CSV, root пишет parquet/CSV/manifest, а API/UI имеют точки чтения/экспорта.",
+          "evidence": [
+            "demo/README.md:16-62",
+            "demo/src/wind_demo/forecast.py:99-120",
+            "wind_agent/forecast.py:65-82",
+            "check-demo-pipeline",
+            "check-root-start"
+          ]
+        }
+      ],
+      "testData": {
+        "provided": [
+          "cases/1/case-data/Dataset HackAlemAI для участников 11.03.2023-28.02.2026 - turbine 1.csv",
+          "cases/1/case-data/Dataset HackAlemAI для участников 11.03.2023-28.02.2026 - turbine 2.csv",
+          "cases/1/case-data/HackAlem AI_ Agentic AI для прогнозирования выработки ВЭС.md"
+        ],
+        "used": [
+          "cases/1/case-data/Dataset HackAlemAI для участников 11.03.2023-28.02.2026 - turbine 1.csv",
+          "cases/1/case-data/Dataset HackAlemAI для участников 11.03.2023-28.02.2026 - turbine 2.csv",
+          "cases/1/case-data/HackAlem AI_ Agentic AI для прогнозирования выработки ВЭС.md"
+        ],
+        "checks": [
+          {
+            "input": "Оба предоставленных CSV",
+            "method": "Прочитаны pandas в изолированном контейнере; проверены точные русские заголовки, число строк, datetime min/max, февральская маска и диапазон normalized power.",
+            "result": "T1: 142360 строк, заголовки совпали, 2023-03-11 00:00 — 2026-01-31 23:50, February rows=0, power 0..1. T2: 149499 строк, те же даты, February rows=0, power 0..1.",
+            "conclusion": "Структура и граница обучающей истории соответствуют предоставленным данным; февральских фактов для accuracy нет."
+          },
+          {
+            "input": "Оба предоставленных CSV через demo/src/wind_demo/ingest.py:hourlyize",
+            "method": "Вызван реальный нормализатор проекта с оригинальными русскими колонками; его positional fallback сопоставил id/timestamp/wind/power/temperature.",
+            "result": "T1: usable_rows=142360, full_hours=23667, last_utc=2026-01-31 23:00 UTC. T2: usable_rows=149499, full_hours=24785, last_utc=2026-01-31 23:00 UTC.",
+            "conclusion": "Demo ingestion применим к организаторскому CSV формату и сохраняет часовую границу; это не означает, что root ingest принимает тот же формат."
+          },
+          {
+            "input": "Оба CSV во временной копии demo data/raw",
+            "method": "Выполнены реальный ingest, train_model(max_origins=20) и run_forecast(origin=2026-01-31T00:00:00Z).",
+            "result": "Ingest mode=raw, n_rows=50784; train n_train=576, n_valid=1344; forecast returned 96 rows, score_status=ok for available January actuals, contract_status=synthetic, with February horizons present but no February actuals.",
+            "conclusion": "End-to-end demo на официальных CSV работает частично: данные и ML выдача проходят, но weather contract synthetic и это не daily February replay."
+          },
+          {
+            "input": "Официальные CSV в root wind_agent ingest",
+            "method": "Запущен реальный root CLI module path с WIND_RAW_DIR, без конвертации и без подмены файлов.",
+            "result": "Выход 1: ValueError: Expected one XLSX containing 'turbine 1' in /inputs; found 0.",
+            "conclusion": "Подтверждена несовместимость root ingestion с предоставленным CSV форматом; demo fallback это ограничение не устраняет в root пути."
+          }
+        ],
+        "limitations": [
+          "В предоставленном кейс-пакете нет фактической февральской выработки, поэтому February accuracy нельзя измерить честно.",
+          "Исторические NOAA GFS bytes не были объявлены готовым локальным fixture; root archive provider оценён по исходникам и тестам, а не по полному network replay.",
+          "Внешние LLM credentials намеренно не предоставлялись; числовой offline/demo путь и provider routing проверены без ключей.",
+          "Визуальную проверку Streamlit UI не выполнял по обязательной пользовательской политике."
+        ]
+      },
+      "runtime": {
+        "status": "partial",
+        "build": "Dockerfile root успешно собран с python:3.11-slim, uv.lock и зафиксированными зависимостями; demo one-shot также собран/запущен в чистом Python 3.11 окружении.",
+        "start": "Root uvicorn service стартовал; GET /health вернул HTTP 200 и JSON status=ok. До ingest GET /ready ожидаемо вернул HTTP 503 с observations/model/worker=false.",
+        "scenario": "Demo основной путь воспроизведён до двухтурбинного 48-часового результата и mock agent trace. Полный кейсовый сценарий только partial: demo использовал synthetic weather и не выполняет daily replay; root replay существует статически, но root ingest не принимает официальные CSV.",
+        "environment": "Проверки выполнялись в изолированных Docker контейнерах с Python 3.11, без секретов и без браузерной автоматизации; API проверен HTTP/urllib из контейнера.",
+        "summary": "Сборка и старт подтверждены, root тестовая suite дала 55 passed, demo pipeline завершился кодом 0, а официальные CSV прошли demo ingest/train/forecast. Результат не объявлен working, поскольку воспроизводимый сценарий не даёт архивную погоду и полный февральский replay.",
+        "checks": [
+          {
+            "command": "docker build -t <project-image> .",
+            "result": "pass; образ собран, uv sync --frozen установил зависимости и wind-agent пакет.",
+            "id": "check-root-build",
+            "stage": "build",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Root Dockerfile собирается с указанным lock-файлом и создаёт запускаемый образ."
+          },
+          {
+            "command": "uvicorn wind_agent.api:app --host 0.0.0.0 --port 8000",
+            "result": "pass; процесс стартовал, GET /health вернул HTTP 200 {status: ok, version: 0.1.0}; GET /ready до данных вернул HTTP 503 как предусмотрено контрактом.",
+            "id": "check-root-start",
+            "stage": "start",
+            "status": "pass",
+            "cause": "none",
+            "expected": "API поднимается и отвечает health без API ключей; readiness честно отражает отсутствие data/model."
+          },
+          {
+            "command": "python -m pytest -q tests",
+            "result": "pass; 55 passed in 25.90s.",
+            "id": "check-root-tests",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Unit/domain/workflow tests покрывают data contract, weather selection, model, agent, jobs и API."
+          },
+          {
+            "command": "python scripts/demo_run.py",
+            "result": "pass; make fixtures, ingest, train и forecast завершились, forecast rows=96, agent mode=mock, steps=3, exit=0.",
+            "id": "check-demo-pipeline",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "README one-shot demo воспроизводит локальный 48h forecast и agent summary без внешнего LLM ключа."
+          },
+          {
+            "command": "ingest -> train_model(max_origins=20) -> run_forecast(origin=2026-01-31T00:00:00Z)",
+            "result": "pass with project limitation observed; official CSV raw ingest n_rows=50784, train n_train=576/n_valid=1344, forecast rows=96, contract_status=synthetic, score_status=ok on available January actuals.",
+            "id": "check-case-pipeline",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Official two-turbine CSV проходит demo data path и выдаёт 48 hourly rows per turbine from the requested origin."
+          },
+          {
+            "command": "python -c '<read supplied case CSVs and apply hourlyize>'",
+            "result": "pass; exact five-column schema, zero February rows, T1 full_hours=23667 and T2 full_hours=24785.",
+            "id": "check-case-data",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Provided files have the expected fields, history through 31 January and usable 10-minute observations for hourly aggregation."
+          },
+          {
+            "command": "python -m wind_agent.cli ingest",
+            "result": "fail; ValueError: Expected one XLSX containing 'turbine 1' in /inputs; found 0 when the supplied CSV files were mounted.",
+            "id": "check-root-csv-ingest",
+            "stage": "scenario",
+            "status": "fail",
+            "cause": "project",
+            "expected": "Root ingestion accepts and processes the official case files without manual format conversion."
+          },
+          {
+            "command": "wind-agent doctor",
+            "result": "fail; installed console script imported site-packages/wind_agent and raised FileNotFoundError for config/project.json before reporting diagnostics.",
+            "id": "check-cli-doctor",
+            "stage": "start",
+            "status": "fail",
+            "cause": "project",
+            "expected": "The console entrypoint in the built Docker environment locates the packaged project configuration and prints doctor output."
+          }
+        ],
+        "limitations": [
+          "No OpenAI or NVIDIA credentials were available; external LLM calls were not exercised. Offline deterministic policy and mock demo path were exercised instead.",
+          "The root archive weather provider was not treated as a successful live network replay; its causal behavior was verified by source and tests.",
+          "Streamlit visual layout and browser interaction remain unverified by design; HTTP/API and static checks were used."
+        ]
+      },
+      "liveDemo": {
+        "status": "none",
+        "url": null,
+        "notes": "Публичная Live URL в проверенных материалах не заявлена. Локальные demo/API пути проверены; отсутствие публичной ссылки само по себе в оценку не вычиталось."
+      },
+      "fiveHourContext": "Для пятичасового хакатона объём сделанного высокий: две реализации pipeline, CatBoost, causal weather contract, API/UI, очередь, agent graph, checksums и 55 тестов. От прототипа не требовалась production-инфраструктура. Существенными для MVP остаются только обязательные границы кейса: архивная as-of погода, ежедневный февральский replay и запуск на фактическом формате организаторских CSV; именно они, а не отсутствие платных ключей или live URL, ограничили баллы.",
+      "strengths": [
+        "Сильный weather-only temporal contract в root: cutoff, availability, GFS provenance, checksums и защита от будущей погоды.",
+        "Реально работающий локальный demo без LLM ключа: ingest, CatBoost, 48 часов на две турбины, export и mock agent trace.",
+        "55 прошедших unit/domain/workflow тестов, включая leakage, jobs, model checksum, API validation и allowlisted actions.",
+        "Документация demo содержит воспроизводимые команды, ограничения и описание форматов результата."
+      ],
+      "gaps": [
+        "В воспроизводимом demo-пути конфигурация оставляет координаты пустыми, поэтому используется synthetic weather; Open-Meteo обозначен как provisional и не архивный.",
+        "Demo endpoint /replay является алиасом одного /forecast и не выполняет последовательный daily replay 31 января — 28 февраля.",
+        "Root ingest принимает только XLSX и отклоняет официальные CSV кейса.",
+        "Установленная non-editable root console script wind-agent doctor не находит config/project.json в Docker окружении."
+      ],
+      "futureAdvice": [
+        {
+          "principle": "Сначала зафиксировать формат организаторского входа в один end-to-end контракт.",
+          "why": "F-D3: demo positional fallback принимает официальные CSV, но root ingest glob-ит только XLSX; один и тот же кейс расходится между двумя путями и root запуск завершается found 0.",
+          "how": "В следующем хакатоне начните с адаптера, который принимает ровно предоставленные CSV и XLSX через один canonical schema test; затем прогоните этот же fixture через CLI, API и replay, не создавая параллельный неподключённый ingest.",
+          "findingIds": [
+            "F-D3"
+          ],
+          "successCheck": "Одна команда на оригинальных case files создаёт audit, model и forecast/replay artifacts без переименования или конвертации файлов.",
+          "timeboxMinutes": 35
+        },
+        {
+          "principle": "Критическую демонстрационную ветку нужно реализовать как настоящий цикл, а не как интерфейсный alias.",
+          "why": "F-D2: demo /replay прямо вызывает api_forecast и не формирует набор daily origins, поэтому основной agentic update/recalculate сценарий не виден пользователю.",
+          "how": "Сначала вынесите функцию replay(origins), затем для каждого origin получите snapshot, запустите model и сохраните manifest; API /replay должен вернуть число origins, rows и latest-origin reduction, а UI — ссылку на artifact.",
+          "findingIds": [
+            "F-D2"
+          ],
+          "successCheck": "Запуск /replay на 31.01–28.02 создаёт 29 origin manifests и февральский файл с 2688 unique site-hours при 48h horizon.",
+          "timeboxMinutes": 75
+        },
+        {
+          "principle": "Перед demo нужно проверить packaged entrypoint отдельно от source-tree запуска.",
+          "why": "F-D4: Docker API стартует из /app source tree, но установленная команда wind-agent doctor импортирует wheel и падает, потому что config/project.json не попал в пакет.",
+          "how": "Добавьте packaging test, который устанавливает wheel в чистое окружение и запускает doctor/ingest; либо включите config как package data и вычисляйте ROOT независимо от editable layout.",
+          "findingIds": [
+            "F-D4"
+          ],
+          "successCheck": "В чистом собранном образе wind-agent doctor печатает config_hash, а wind-agent ingest видит config и выдаёт понятный input result.",
+          "timeboxMinutes": 30
+        }
+      ],
+      "uncertainties": [
+        "Полный NOAA GFS network replay не выполнялся с внешним сервисом; root implementation и локальные weather tests проверены статически/доменными тестами.",
+        "Нет февральской target выработки в предоставленных данных, поэтому нельзя сделать accuracy claim для 1–28 февраля.",
+        "OpenAI/NVIDIA provider calls без credentials не проверялись; код маршрутизации, ошибки отсутствующего ключа и mock/offline fallback проверены.",
+        "Визуальное качество Streamlit не проверялось по прямому запрету на browser/UI automation."
+      ],
+      "reviewPolicyVersion": 2,
+      "assessmentStatus": "ready",
+      "findings": [
+        {
+          "id": "F-S1",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Root unit/domain/workflow suite проходит и покрывает temporal contract, model, weather, agent, jobs и API.",
+          "expected": "Критические доменные проверки должны завершаться без ошибок в зафиксированной среде зависимостей.",
+          "actual": "55 passed in 25.90s.",
+          "evidence": [
+            "check-root-tests",
+            "tests/test_data_contract.py:1-108",
+            "tests/test_weather_and_model.py:13-116",
+            "tests/test_workflow.py:36-204"
+          ],
+          "checkIds": [
+            "check-root-tests"
+          ]
+        },
+        {
+          "id": "F-S2",
+          "kind": "strength",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Root archived weather path checks origin causality and records provenance.",
+          "expected": "Weather data used for an origin must be evidenced available by that origin and tied to the snapshot manifest.",
+          "actual": "select_run, Last-Modified/release-lag checks, rejection of available > origin, interpolation and sha256 manifest are implemented.",
+          "evidence": [
+            "wind_agent/weather.py:179-224",
+            "wind_agent/forecast.py:22-27",
+            "tests/test_weather_and_model.py:13-28"
+          ],
+          "checkIds": [
+            "check-root-tests"
+          ]
+        },
+        {
+          "id": "F-S3",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Self-contained demo produces a two-turbine 48-hour forecast and completes with mock agent mode without LLM credentials.",
+          "expected": "README one-shot command should produce artifacts and a non-error agent summary without external secrets.",
+          "actual": "demo_run completed with forecast rows=96, mock mode, steps=3 and exit=0.",
+          "evidence": [
+            "check-demo-pipeline",
+            "demo/README.md:16-62"
+          ],
+          "checkIds": [
+            "check-demo-pipeline"
+          ]
+        },
+        {
+          "id": "F-S4",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Official case CSVs are structurally compatible with the demo normalization path and produce substantial hourly history for both turbines.",
+          "expected": "Provided files should parse, end before February and produce eligible hourly records.",
+          "actual": "Both schemas matched, both had zero February rows, and hourlyize reported T1=23667/T2=24785 full hours.",
+          "evidence": [
+            "check-case-data",
+            "check-case-pipeline",
+            "demo/src/wind_demo/ingest.py:12-97"
+          ],
+          "checkIds": [
+            "check-case-data",
+            "check-case-pipeline"
+          ]
+        },
+        {
+          "id": "F-D1",
+          "kind": "defect",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "The reproducible demo forecast uses synthetic weather rather than the required archived as-of forecast by turbine coordinates.",
+          "expected": "For each origin, weather should be obtained for configured coordinates from a source/version available at that origin and marked as archival/provenance-valid.",
+          "actual": "demo/configs/sites.yaml sets lat/lon=null, get_provider therefore selects FixtureProvider, and the official-data forecast returned contract_status=synthetic. The Open-Meteo implementation is current forecast and notes true archive provenance is out of MVP scope.",
+          "evidence": [
+            "demo/configs/sites.yaml:1-17",
+            "demo/src/wind_demo/weather.py:38-70",
+            "demo/src/wind_demo/weather.py:74-145",
+            "check-case-pipeline"
+          ],
+          "checkIds": [
+            "check-case-pipeline"
+          ]
+        },
+        {
+          "id": "F-D2",
+          "kind": "defect",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "The demo /replay endpoint does not implement the required sequential February replay or recalculation on updated daily inputs.",
+          "expected": "Replay should iterate daily origins from 31 January through 28 February, fetch/use each as-of weather snapshot, calculate each forecast and persist a replay artifact.",
+          "actual": "demo/src/wind_demo/api.py:51-54 defines api_replay as a direct return of api_forecast(body); the latter calls run_forecast once. Root forecast.replay exists separately but is not wired to this demo endpoint.",
+          "evidence": [
+            "demo/src/wind_demo/api.py:45-54",
+            "wind_agent/forecast.py:85-118",
+            "check-case-pipeline"
+          ],
+          "checkIds": [
+            "check-case-pipeline"
+          ]
+        },
+        {
+          "id": "F-D3",
+          "kind": "defect",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "The root ingestion path rejects the official case CSV files because it only searches for XLSX files.",
+          "expected": "The root path used by the Docker/CLI workflow should accept the organizer-provided CSV inputs or document and implement an equivalent canonical adapter.",
+          "actual": "wind_agent/ingest.py:60-65 globs only *.xlsx; running root ingest with the two mounted official CSVs produced ValueError: expected one XLSX and found 0.",
+          "evidence": [
+            "wind_agent/ingest.py:56-75",
+            "wind_agent/cli.py:28-31",
+            "check-root-csv-ingest",
+            "cases/1/case-data/HackAlem AI_ Agentic AI для прогнозирования выработки ВЭС.md:8-21"
+          ],
+          "checkIds": [
+            "check-root-csv-ingest"
+          ]
+        },
+        {
+          "id": "F-D4",
+          "kind": "defect",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "The installed root console entrypoint is not deployable as packaged because it cannot locate config/project.json.",
+          "expected": "After the Dockerfile performs non-editable installation, wind-agent doctor should locate the copied config and print diagnostics.",
+          "actual": "Dockerfile copies config to /app/config but wheel installation places wind_agent under site-packages; running wind-agent doctor raised FileNotFoundError for site-packages/config/project.json. config.py derives ROOT from __file__ and appends ROOT/config/project.json.",
+          "evidence": [
+            "Dockerfile:1-10",
+            "wind_agent/config.py:11-16",
+            "wind_agent/config.py:61-64",
+            "check-cli-doctor"
+          ],
+          "checkIds": [
+            "check-cli-doctor"
+          ]
+        },
+        {
+          "id": "F-L1",
+          "kind": "limitation",
+          "verification": "unverified",
+          "responsibility": "external_service",
+          "claim": "External LLM provider calls were not exercised in this review.",
+          "expected": "A real provider credential and quota would be needed to observe provider response/tool-call behavior end to end.",
+          "actual": "No credentials were supplied; source shows OpenAI/NVIDIA routing and tests use mocked provider responses, while the local demo uses mock mode.",
+          "evidence": [
+            "api-requirements: credentialsProvided=false",
+            "demo/src/wind_demo/agent/providers.py:22-121",
+            "wind_agent/llm.py:41-105",
+            "check-demo-pipeline"
+          ],
+          "checkIds": [
+            "check-demo-pipeline"
+          ]
+        },
+        {
+          "id": "F-L2",
+          "kind": "limitation",
+          "verification": "unverified",
+          "responsibility": "review_environment",
+          "claim": "Visual Streamlit behavior was not verified.",
+          "expected": "Visual layout and interaction would require a user-controlled browser review.",
+          "actual": "Only static source, unit/domain and HTTP/API checks were performed under the explicit no-browser policy.",
+          "evidence": [
+            "ui/app.py:79-190",
+            "demo/ui/app.py:1-75"
+          ],
+          "checkIds": []
+        }
+      ],
+      "gapFindingIds": [
+        "F-D1",
+        "F-D2",
+        "F-D3",
+        "F-D4"
+      ]
+    }
+  ],
+  "score": 75.5,
+  "status": "complete",
+  "expectedJudges": 1
+}

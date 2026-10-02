@@ -1,0 +1,1184 @@
+{
+  "methodVersion": 4,
+  "repoId": "hack-938e08c5-birkaliito",
+  "repoUrl": "https://github.com/BAITC-Hacks/hack-938e08c5-birkaliito",
+  "caseId": 1,
+  "snapshot": "f78df28599f0c96d622b61344be74ee0e286465e",
+  "judges": [
+    {
+      "methodVersion": 4,
+      "repoId": "hack-938e08c5-birkaliito",
+      "caseId": 1,
+      "model": "GPT-5.6 Luna",
+      "snapshot": "f78df28599f0c96d622b61344be74ee0e286465e",
+      "overallSummary": "AURA содержит хорошо продуманное ML-ядро для почасового прогноза нормализованной мощности: причинная привязка архивной погоды, отсечки доступности, временное разбиение, история SCADA без подмешивания будущих значений, интервалы неопределённости и replay покрыты кодом и тестами. В поддерживаемом контейнере все 43 ML-теста прошли, а предоставленные CSV корректно агрегируются в почасовые ряды до 31 января 2026 года. Однако заявленный пользовательский путь из репозитория не является воспроизводимым: frontend-образ не собирается, ML-сервис стартует, но /readyz возвращает 503 из-за отсутствующих в checkout моделей и архива погоды, а HTTP-маршрут реального сервиса использует заранее загруженный архив и не вызывает самостоятельное ежедневное получение обновлённого архива. Поэтому работа оценивается как сильный исследовательский и компонентный MVP с частично собранным runtime, а не как готовый сквозной демо-сценарий.",
+      "global": {
+        "criteria": [
+          {
+            "name": "Ценность решения",
+            "score": 21,
+            "max": 25,
+            "awarded": "Решение адресует конкретную операционную задачу балансировки выработки ВЭС и связывает прогноз с понятной аудиторией: оператором энергосистемы и владельцем станции.",
+            "deductions": "Снижено за отсутствие готового реального пользовательского результата из чистого checkout и за то, что ежедневное обновление архивной погоды реализовано только в отдельном CLI-агенте, а не в основном HTTP-сценарии.",
+            "evidence": [
+              "README.md:6-20",
+              "ml/README.md:73-142",
+              "F-MISSING-RUNTIME",
+              "F-HTTP-NO-REFRESH"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "F-MISSING-RUNTIME",
+                "reason": "Без сохранённой модели и архива погоды оператор не получает прогноз при описанном запуске Compose; ценность хорошо объяснена, но не предъявляется как работающий сквозной результат."
+              },
+              {
+                "points": 2,
+                "findingId": "F-HTTP-NO-REFRESH",
+                "reason": "Основной HTTP-путь не выполняет требуемое ежедневное получение новой архивной погоды, поэтому операционная ценность agentic-автоматизации в поставленном сценарии ограничена отдельным CLI."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Понятная энергетическая задача",
+                "implementation": "README связывает почасовой прогноз на 24–48 часов с балансировкой нагрузки, планированием продаж электроэнергии и снижением небалансов; целевая величина явно определена как нормализованная активная мощность двух турбин.",
+                "value": "Это релевантная и легко проверяемая польза для оператора ВЭС, а не абстрактная демонстрация модели.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:6-20",
+                  "ml/README.md:73-80"
+                ]
+              },
+              {
+                "aspect": "Полезные ограничения результата",
+                "implementation": "Документация прямо сообщает, что мощность нормализована, номиналы не подтверждены, поэтому MW/MWh не выдумываются; февральские фактические значения и точные run ID погоды также объявлены недоступными.",
+                "value": "Такая честность снижает риск использовать экспериментальную метрику как коммерческую гарантию и делает результат пригоднее для предметного обсуждения с владельцем данных.",
+                "verification": "source",
+                "evidence": [
+                  "ml/README.md:75-80",
+                  "ml/reports/model_report.md:20-25",
+                  "ml/reports/metrics.json:158-165"
+                ]
+              },
+              {
+                "aspect": "Результат для двух турбин",
+                "implementation": "Код строит отдельные прогнозы по turbine_id и агрегирует ферму; при наличии подтверждённых номиналов умеет вычислять MW и MWh, но при null в config оставляет только нормализованную шкалу.",
+                "value": "Подход соответствует постановке про две ВЭС и не маскирует отсутствие физической калибровки под готовый коммерческий показатель.",
+                "verification": "source",
+                "evidence": [
+                  "ml/wind_forecast/forecast.py:12-47",
+                  "ml/config.json:8-10"
+                ]
+              },
+              {
+                "aspect": "Практическая проверка качества",
+                "implementation": "Сохранённый отчёт сравнивает XGBoost со средним, сезонным и persistence-baseline: на январе 2026 MAE 0.2488 против 0.2995 и 0.3448 соответственно; отдельно приведены показатели для горизонтов 1–24 и 25–48 часов.",
+                "value": "Команда показывает измеренный эффект относительно простых альтернатив и одновременно признаёт существенную ошибку, что даёт аудитории основу для решения о пилоте.",
+                "verification": "source",
+                "evidence": [
+                  "ml/reports/metrics.json:42-99",
+                  "ml/reports/model_report.md:1-25"
+                ]
+              }
+            ],
+            "scoreReasoning": "Высокая оценка отражает правильно выбранную проблему, связь с операционным применением и честную интерпретацию нормализованного результата. До максимума не хватает именно доказанного рабочего пути для оператора: чистый Compose не доставляет модель/архив, а реальный HTTP-сервис не обновляет архив сам. Это заметные ограничения ценности демонстрации, но они не отменяют полезность построенного ML-прототипа и анализа качества."
+          },
+          {
+            "name": "Результат и качество решения",
+            "score": 12,
+            "max": 20,
+            "awarded": "Компоненты прогноза, replay, интервалы и API-контракт реализованы, но основной реальный пользовательский сценарий не доходит до результата в поставленном checkout.",
+            "deductions": "Снижено за незапускаемый frontend, неготовый ML runtime и разрыв между standalone agent и HTTP-путём.",
+            "evidence": [
+              "ml/tests: 43 passed in supported container",
+              "F-FRONTEND-BUILD",
+              "F-MISSING-RUNTIME",
+              "F-HTTP-NO-REFRESH"
+            ],
+            "deductionItems": [
+              {
+                "points": 4,
+                "findingId": "F-FRONTEND-BUILD",
+                "reason": "Документированный Compose-сценарий требует frontend, но его образ падает на сборке с `no Go files in /app`; пользователь не может получить описанный dashboard."
+              },
+              {
+                "points": 3,
+                "findingId": "F-MISSING-RUNTIME",
+                "reason": "ML-процесс запускается, однако реальный /readyz отвечает 503 из-за отсутствующих model.joblib и weather archive; прогнозный результат не создаётся."
+              },
+              {
+                "points": 1,
+                "findingId": "F-HTTP-NO-REFRESH",
+                "reason": "Даже при наличии артефактов HTTP bridge читает self.weather при инициализации, а _run_forecast вызывает только forecast; повторное получение актуального архивного входа не показано в основном сценарии."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Причинное forecast-ядро",
+                "implementation": "forecast_table выбирает day 2 для часов 1–24 и day 3 для 25–48, проверяет доступность каждого погодного значения до issuance и запрещает model/calibration cutoff после момента выпуска.",
+                "value": "Основной результат защищён от наиболее опасной для прогноза ошибки — использования будущей информации.",
+                "verification": "source",
+                "evidence": [
+                  "ml/wind_forecast/features.py:16-60",
+                  "ml/wind_forecast/forecast.py:12-31"
+                ]
+              },
+              {
+                "aspect": "Сценарий повторного прогноза",
+                "implementation": "replay проходит каждый день февраля, формирует 48-часовой расчёт, отбирает первые 24 часа и проверяет ровно 28×24×2 строк без дубликатов; agent.py считает хеш модели, погоды, истории и параметров и обновляет только изменившийся вход.",
+                "value": "Это содержательная реализация требуемого time-travel/replay поведения, а не один статический CSV.",
+                "verification": "source",
+                "evidence": [
+                  "ml/wind_forecast/forecast.py:70-92",
+                  "ml/wind_forecast/agent.py:19-42",
+                  "ml/tests/test_forecast.py:74-87",
+                  "ml/tests/test_forecast.py:113-135"
+                ]
+              },
+              {
+                "aspect": "Проверенная локальная корректность",
+                "implementation": "Запуск `python -m pytest -q` в образе Python 3.12 с зависимостями из requirements-tested завершился 43 passed; тесты покрывают weather leakage, future targets, incomplete history, serialization, replay, idempotent agent update и bounds.",
+                "value": "Это сильное доказательство целостности ML-компонентов при заявленной версии среды, хотя оно не заменяет недоступный сквозной runtime.",
+                "verification": "observed",
+                "evidence": [
+                  "runtime-ml-tests",
+                  "ml/tests/test_forecast.py:24-135",
+                  "ml/tests/test_history.py:17-105"
+                ]
+              },
+              {
+                "aspect": "Контрактный Go API",
+                "implementation": "Go backend имеет отдельные domain/application/adapter/transport слои, маршруты health/ready, forecast, jobs, replay, weather, explanation и SSE; mock smoke flow вернул queued → completed и 48 точек для 24-часового запроса двух турбин.",
+                "value": "API-обвязка уже даёт воспроизводимый асинхронный пользовательский контракт, пусть фактически проверенный smoke-flow использует fixture mode.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/internal/transport/http/router.go:30-57",
+                  "runtime-go-tests",
+                  "runtime-mock-scenario",
+                  "backend/README.md:20-30"
+                ]
+              }
+            ],
+            "scoreReasoning": "ML-ядро и backend contract выглядят цельно и проходят свои доступные проверки, поэтому нулевая или низкая оценка была бы несправедливой. Но пользовательский результат в реальном режиме не воспроизведён: frontend не строится, ML не готов без непоставленных артефактов, а mock нельзя считать заменой реальному прогнозу. Для пятичасового MVP это существенный, а не косметический разрыв между кодом компонентов и продуктовым сценарием."
+          },
+          {
+            "name": "Инновационность",
+            "score": 12,
+            "max": 15,
+            "awarded": "Нестандартность решения проявляется в time-travel weather availability, гибриде погоды и свежей истории SCADA, empirical intervals и явной state-machine-логике обновления.",
+            "deductions": "Снижено за то, что наиболее важная agentic-функция обновления входа не подключена к HTTP-сценарию; сама ML-модель остаётся обычным XGBoost-регрессором.",
+            "evidence": [
+              "ml/wind_forecast/agent.py:1-42",
+              "ml/wind_forecast/weather.py:1-95",
+              "ml/wind_forecast/model.py:43-77",
+              "F-HTTP-NO-REFRESH"
+            ],
+            "deductionItems": [
+              {
+                "points": 3,
+                "findingId": "F-HTTP-NO-REFRESH",
+                "reason": "Заявленная agentic-отличительная черта видна в CLI-коде, но не в реальном backend API: deployed path использует уже загруженный архив и не инициирует fetch/update при новом запуске."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Time-travel weather",
+                "implementation": "weather.py запрашивает previous_day2 и previous_day3, сохраняет source_reference_time_upper_bound и available_at_upper_bound, а features.assert_available отклоняет данные, доступные после issuance.",
+                "value": "Это уместная для задачи нестандартная защита от hindsight bias; команда не подменяет исторический прогноз фактической будущей погодой.",
+                "verification": "source",
+                "evidence": [
+                  "ml/wind_forecast/weather.py:18-95",
+                  "ml/wind_forecast/features.py:16-23",
+                  "ml/tests/test_forecast.py:24-50"
+                ]
+              },
+              {
+                "aspect": "Гибрид с наблюдаемой историей",
+                "implementation": "history_features строит лаги и окна только после завершения часа, ограничивает возраст и coverage, а predict_details смешивает weather и history models с проверяемым весом и weather-only fallback.",
+                "value": "Это более содержательный подход, чем однофакторная регрессия по ветру, и он учитывает оперативные измерения станции без leakage.",
+                "verification": "source",
+                "evidence": [
+                  "ml/wind_forecast/history.py:9-74",
+                  "ml/wind_forecast/model.py:43-77",
+                  "ml/tests/test_history.py:17-105"
+                ]
+              },
+              {
+                "aspect": "Агент как контролируемая state machine",
+                "implementation": "agent.py записывает этапы fetch_weather/check_availability_and_predict/analyze, вычисляет input_sha256 и возвращает unchanged при повторе без изменения модели, погоды, истории или горизонта.",
+                "value": "Прозрачная детерминированная оркестрация хорошо подходит для аудируемого энергетического MVP и лучше объясняет причины перерасчёта, чем скрытая эвристика.",
+                "verification": "source",
+                "evidence": [
+                  "ml/wind_forecast/agent.py:1-42",
+                  "ml/tests/test_forecast.py:113-135"
+                ]
+              },
+              {
+                "aspect": "Интервалы вместо одной точки",
+                "implementation": "Модель калибрует 10–90% residual bands отдельно по turbine и forecast day, ограничивает границы 0…1 и возвращает lower_80/upper_80 вместе с prediction.",
+                "value": "Для диспетчерского применения диапазон неопределённости информативнее голой точки; документация корректно называет его эмпирическим ориентиром, а не гарантией.",
+                "verification": "source",
+                "evidence": [
+                  "ml/wind_forecast/model.py:34-40",
+                  "ml/wind_forecast/model.py:69-77",
+                  "ml/reports/model_report.md:20-25"
+                ]
+              }
+            ],
+            "scoreReasoning": "Подход заметно сильнее стандартного «обучили XGBoost и показали MAE»: есть причинные временные ограничения, operational history, uncertainty и контроль обновлений. Ограничение балла связано не с отсутствием LLM, которое не является обязательным само по себе, а с тем, что инновационный цикл не доведён до основного HTTP deployment path."
+          },
+          {
+            "name": "Потенциал развития и масштабирования",
+            "score": 16,
+            "max": 20,
+            "awarded": "Слоистый Go/Python контракт, bounded queues, replay, пагинация/SSE и явные ограничения дают хороший каркас для следующего этапа.",
+            "deductions": "Снижено за отсутствие поставляемого artifact bundle и за неработающий frontend-образ, которые блокируют перенос каркаса в воспроизводимую демонстрацию.",
+            "evidence": [
+              "backend/docs/ARCHITECTURE.md:18-35",
+              "backend/internal/app/config.go:120-160",
+              "F-FRONTEND-BUILD",
+              "F-MISSING-RUNTIME"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "F-FRONTEND-BUILD",
+                "reason": "Сейчас масштабирование до пользовательского dashboard останавливается на базовой сборке frontend; отсутствует исполняемый слой, который должен потреблять API."
+              },
+              {
+                "points": 2,
+                "findingId": "F-MISSING-RUNTIME",
+                "reason": "Без зафиксированного способа доставки model/weather artifacts другой оператор не может воспроизвести runtime на новой машине или в CI."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Разделение ответственности",
+                "implementation": "Domain не знает HTTP/env, application работает через ports, adapters разделены на mock и agenthttp, а app.New централизует wiring и lifecycle.",
+                "value": "Такой каркас позволяет менять ML provider, persistence или transport без переписывания бизнес-правил прогноза.",
+                "verification": "source",
+                "evidence": [
+                  "backend/docs/ARCHITECTURE.md:18-25",
+                  "backend/internal/app/app.go:49-92"
+                ]
+              },
+              {
+                "aspect": "Ограниченные ресурсы и асинхронность",
+                "implementation": "Config задаёт workers, queue capacity, max jobs/events/streams, body/response limits и timeouts; backend использует bounded event pages и cancellable SSE polling.",
+                "value": "Для следующего прототипа это снижает риск неограниченного роста очереди и делает эксплуатационный контракт явным.",
+                "verification": "source",
+                "evidence": [
+                  "backend/internal/app/config.go:15-23",
+                  "backend/internal/app/config.go:120-135",
+                  "backend/docs/ARCHITECTURE.md:27-33"
+                ]
+              },
+              {
+                "aspect": "Replay и перенос на новые станции",
+                "implementation": "ML CLI отделяет prepare, fetch-weather, train, improve, forecast, replay и agent; public validation на Kelmarsh хранит provenance, hash модели и ограничения spatial transfer.",
+                "value": "Наличие отдельных команд и provenance-отчёта создаёт естественный путь к новым турбинам и внешней валидации, не скрывая, что transfer не гарантирует качество.",
+                "verification": "source",
+                "evidence": [
+                  "ml/wind_forecast/cli.py:13-94",
+                  "ml/reports/public_validation/metrics.json:1-80"
+                ]
+              },
+              {
+                "aspect": "Документированный следующий шаг",
+                "implementation": "backend docs явно описывают необходимость durable registry, idempotent acceptance, immutable manifests и restartable checkpoints для production Python.",
+                "value": "Команда понимает границу пятичасового MVP и сформулировала архитектурный маршрут развития, а не выдаёт in-memory mock за production.",
+                "verification": "source",
+                "evidence": [
+                  "backend/docs/ARCHITECTURE.md:31-35",
+                  "backend/README.md:44-50"
+                ]
+              }
+            ],
+            "scoreReasoning": "Потенциал высокий благодаря чистому контракту, bounded runtime и отделённым ML-командам. Потеря баллов относится к упаковке и operational handoff: масштабируемый каркас нельзя показать в новой среде без ручного получения артефактов, а frontend отсутствует как собираемый компонент."
+          },
+          {
+            "name": "Презентация, демо и ответы на вопросы",
+            "score": 14,
+            "max": 20,
+            "awarded": "Вместо устного выступления оценены README, отчёты и возможность воспроизведения из репозитория; документация подробно объясняет данные, горизонты, метрики, режимы и ограничения.",
+            "deductions": "Снижено за противоречие между простой инструкцией `docker compose up --build -d` и фактической невозможностью собрать frontend и привести ML в ready-состояние из checkout.",
+            "evidence": [
+              "README.md:35-55",
+              "ml/README.md:144-196",
+              "backend/README.md:5-16",
+              "F-FRONTEND-BUILD",
+              "F-MISSING-RUNTIME"
+            ],
+            "deductionItems": [
+              {
+                "points": 3,
+                "findingId": "F-FRONTEND-BUILD",
+                "reason": "Участник получает ясную инструкцию, но демонстрация останавливается на детерминированной ошибке Dockerfile frontend; это напрямую уменьшает воспроизводимость демо."
+              },
+              {
+                "points": 3,
+                "findingId": "F-MISSING-RUNTIME",
+                "reason": "Документация упоминает подготовленные модели и локальные архивы, но корневой Compose-путь не создаёт и не доставляет их; README не даёт одной воспроизводимой последовательности от checkout до real result."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Ориентация по продукту",
+                "implementation": "Корневой README последовательно описывает название, проблему, agentic cycle, архитектуру трёх компонентов, технологии, запуск и шаги проверки.",
+                "value": "Читатель быстро понимает, что должно происходить с выбором даты, погодой, SCADA и выдачей 24–48 часов.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:1-33",
+                  "README.md:35-55"
+                ]
+              },
+              {
+                "aspect": "Техническая прозрачность метрик",
+                "implementation": "ml README и reports разделяют MAE/RMSE/R², hit rate, baseline, horizon, отсутствие февральских фактов и тот факт, что январь не является новым blind test.",
+                "value": "Такой материал позволяет задавать содержательные вопросы о качестве, не выдавая красивую цифру 56.6% за 80% production accuracy.",
+                "verification": "source",
+                "evidence": [
+                  "ml/README.md:11-18",
+                  "ml/README.md:134-142",
+                  "ml/reports/accuracy/report.md:1-25"
+                ]
+              },
+              {
+                "aspect": "Документация входных данных",
+                "implementation": "README задаёт SCADA и weather CSV formats, timezone rules, allowed ranges, optional actual_power/issued_at, пропуски и четыре режима интерфейса.",
+                "value": "Это полезный handoff для проверки данных и объясняет, какие значения являются входом прогноза, а какие — только фактом для оценки.",
+                "verification": "source",
+                "evidence": [
+                  "ml/README.md:121-142",
+                  "ml/README.md:173-196"
+                ]
+              },
+              {
+                "aspect": "Проверяемость без визуального утверждения",
+                "implementation": "Скрипты и unit/domain tests дают текстовые проверки leakage, replay и API; отдельно зафиксировано, что визуальная часть здесь не инспектировалась.",
+                "value": "Документированные статические и HTTP-доказательства сохраняют полезность отчёта, не приписывая команде непроверенное визуальное поведение.",
+                "verification": "observed",
+                "evidence": [
+                  "runtime-ml-tests",
+                  "runtime-mock-scenario",
+                  "L-VISUAL-UNVERIFIED"
+                ]
+              }
+            ],
+            "scoreReasoning": "README заметно лучше минимального hackathon handoff: он содержит архитектуру, формулы, режимы, метрики и ограничения. Но для демо важна не только объяснимость, а возможность повторить шаги. Фактические build/readiness failures удерживают оценку в средней зоне даже при сильном текстовом сопровождении."
+          }
+        ],
+        "total": 75
+      },
+      "case": {
+        "criteria": [
+          {
+            "name": "Соответствие задаче и работоспособность",
+            "score": 15,
+            "max": 25,
+            "awarded": "Основные алгоритмические требования и защита от leakage реализованы, но целостный real-mode сценарий из двух ВЭС до результата не доведён.",
+            "deductions": "Снижено за отсутствие runtime artifacts и за отсутствие обновления архивной погоды в основном HTTP пути.",
+            "evidence": [
+              "ml/wind_forecast/features.py:16-60",
+              "ml/wind_forecast/forecast.py:70-92",
+              "F-MISSING-RUNTIME",
+              "F-HTTP-NO-REFRESH"
+            ],
+            "deductionItems": [
+              {
+                "points": 5,
+                "findingId": "F-MISSING-RUNTIME",
+                "reason": "Требуется работоспособный прогноз двух ВЭС на 24–48 часов, но `/readyz` реального ML-сервиса возвращает 503 и артефактный путь не выдаёт прогноз в чистом checkout."
+              },
+              {
+                "points": 5,
+                "findingId": "F-HTTP-NO-REFRESH",
+                "reason": "Требование получать архивный прогноз для каждого дня и обновлять расчёт при обновлении входа выполнено в отдельном agent.py, но backend API использует архив, загруженный только при старте, поэтому заявленный основной сценарий соответствует задаче лишь частично."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "24–48 часов и две турбины",
+                "implementation": "forecast_table формирует допустимый horizon 24 или 48, cross-join с двумя turbine IDs и выбирает offset day 2/day 3 по часам; replay проверяет полный февральский submission.",
+                "value": "Структура выдачи непосредственно соответствует формату кейса и не сводит две ВЭС к одной усреднённой цели.",
+                "verification": "source",
+                "evidence": [
+                  "ml/wind_forecast/features.py:43-60",
+                  "ml/wind_forecast/forecast.py:70-92",
+                  "ml/tests/test_forecast.py:24-31",
+                  "ml/tests/test_forecast.py:74-87"
+                ]
+              },
+              {
+                "aspect": "Обучение до доступного срока",
+                "implementation": "train отсекает table до февраля 2026, разделяет train/validation/calibration/test хронологически, а production bundle сохраняет training_max_valid_time; отчёт показывает cutoff 31 января 2026 17:00 UTC.",
+                "value": "Код явно выражает causal boundary и не использует февральские факты в обучении.",
+                "verification": "source",
+                "evidence": [
+                  "ml/wind_forecast/model.py:97-133",
+                  "ml/wind_forecast/model.py:134-180",
+                  "ml/reports/metrics.json:1-20"
+                ]
+              },
+              {
+                "aspect": "Проверка отсутствия утечки",
+                "implementation": "Тесты специально портят available_at, удаляют погодный час, меняют target power и добавляют future history; ожидаемые ошибки или неизменность признаков подтверждены в supported container.",
+                "value": "Для центрального требования кейса есть не только декларация README, но и автоматические регрессии.",
+                "verification": "observed",
+                "evidence": [
+                  "runtime-ml-tests",
+                  "ml/tests/test_forecast.py:34-58",
+                  "ml/tests/test_history.py:17-37"
+                ]
+              },
+              {
+                "aspect": "Корректная обработка исходных SCADA",
+                "implementation": "load_turbine принимает 10-минутную сетку, усредняет только часы с min_samples, не синтезирует пропуски и сохраняет quality profile.",
+                "value": "Это делает заявленную почасовую цель воспроизводимой и не превращает неполный будущий факт в ложный target.",
+                "verification": "observed",
+                "evidence": [
+                  "ml/wind_forecast/data.py:35-74",
+                  "runtime-case-csv",
+                  "ml/tests/test_data.py:12-42"
+                ]
+              }
+            ],
+            "scoreReasoning": "По коду и supported tests значительная часть case logic выполнена: causal weather, history freshness, horizons, replay и данные реализованы аккуратно. Основной балл ограничивает не качество отдельных функций, а то, что real-mode compose не становится готовым прогнозом и daily refresh не подключён к тому интерфейсу, который должен демонстрировать решение."
+          },
+          {
+            "name": "Техническая реализация",
+            "score": 19,
+            "max": 25,
+            "awarded": "Техническая реализация сильная для пятиичасового прототипа: ML-код модульный, Go API разделён по слоям, контракты валидируются, а тесты проверяют причинность и состояния.",
+            "deductions": "Снижено за незапускаемый frontend и за то, что agentic refresh не проходит через реальный HTTP deployment path.",
+            "evidence": [
+              "backend/docs/ARCHITECTURE.md:18-35",
+              "runtime-go-tests",
+              "runtime-ml-tests",
+              "F-FRONTEND-BUILD",
+              "F-HTTP-NO-REFRESH"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "F-FRONTEND-BUILD",
+                "reason": "Сборка frontend технически несовместима с содержимым design/: Dockerfile ожидает Go source, но в checkout есть только Dockerfile; microservice topology поэтому не собирается."
+              },
+              {
+                "points": 4,
+                "findingId": "F-HTTP-NO-REFRESH",
+                "reason": "Внешний bridge хранит weather archive в памяти и `_run_forecast` вызывает `forecast` напрямую; отсутствует вызов `fetch_archive` или эквивалентный update в реальном API-потоке, что нарушает заявленную agentic orchestration именно на integration layer."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "ML feature discipline",
+                "implementation": "make_features ограничен погодными, календарными и производными физическими proxy-признаками; power не входит в feature frame, а history path добавляет только завершённые наблюдения.",
+                "value": "Это технически корректное разделение входов и targets, особенно важное для временного прогноза.",
+                "verification": "source",
+                "evidence": [
+                  "ml/wind_forecast/features.py:26-40",
+                  "ml/wind_forecast/features.py:63-91",
+                  "ml/tests/test_forecast.py:53-58"
+                ]
+              },
+              {
+                "aspect": "Model selection and calibration",
+                "implementation": "XGBoost parameters выбираются на временной validation block, calibration отделена от test, production refit имеет отдельный cutoff, а empirical intervals строятся по residual quantiles.",
+                "value": "Подход существенно аккуратнее случайного train/test split и позволяет объяснить происхождение прогнозной полосы.",
+                "verification": "source",
+                "evidence": [
+                  "ml/wind_forecast/model.py:97-180",
+                  "ml/reports/improved/comparison.md:1-25"
+                ]
+              },
+              {
+                "aspect": "Go application boundary",
+                "implementation": "app.New wires domain ports to mock or agenthttp, transport handlers do not own repositories, adapter validates JSON schema/statuses and rejects fixture data in real mode.",
+                "value": "Это показывает зрелую архитектурную мысль и облегчает замену mock на Python provider.",
+                "verification": "source",
+                "evidence": [
+                  "backend/internal/app/app.go:49-92",
+                  "backend/internal/adapters/agenthttp/client.go:83-147",
+                  "backend/docs/ARCHITECTURE.md:19-25"
+                ]
+              },
+              {
+                "aspect": "Automated safeguards",
+                "implementation": "Supported Docker test run passes 43 tests; Go test passes all packages; tests include unavailable weather, duplicate data, future history, idempotent recomputation, replay cardinality and interval bounds.",
+                "value": "Для короткого MVP это хорошая концентрация проверок на domain risks, а не только на счастливом HTTP ответе.",
+                "verification": "observed",
+                "evidence": [
+                  "runtime-ml-tests",
+                  "runtime-go-tests",
+                  "ml/tests/test_forecast.py:24-135",
+                  "ml/tests/test_history.py:17-105"
+                ]
+              }
+            ],
+            "scoreReasoning": "Технический балл высокий благодаря исходникам и тестам, но не максимальный: frontend Dockerfile — объективная ошибка сборки, а реальная интеграция не реализует весь agentic цикл. Это именно проектные дефекты, а не штраф за отсутствие внешнего API ключа."
+          },
+          {
+            "name": "README и воспроизводимость",
+            "score": 11,
+            "max": 25,
+            "awarded": "Документация подробная и хорошо объясняет устройство, формат данных, метрики, ограничения и команды ML-пайплайна, но воспроизводимость чистого checkout недостаточна.",
+            "deductions": "Снижено за поломанный frontend build и за отсутствие входных runtime artifacts при documented Compose start.",
+            "evidence": [
+              "README.md:35-55",
+              "ml/README.md:144-196",
+              "backend/README.md:5-16",
+              "F-FRONTEND-BUILD",
+              "F-MISSING-RUNTIME"
+            ],
+            "deductionItems": [
+              {
+                "points": 7,
+                "findingId": "F-FRONTEND-BUILD",
+                "reason": "Пользовательская инструкция обещает frontend на localhost:4173, но Dockerfile не может собрать содержимое design; этот дефект делает основной documented start непроходимым."
+              },
+              {
+                "points": 7,
+                "findingId": "F-MISSING-RUNTIME",
+                "reason": "Модели, processed hourly и weather archive отсутствуют в tracked checkout, а ML Dockerfile копирует только код и config; README не даёт автоматического prepare/fetch/train шага, совместимого с Compose startup."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Объяснение ML pipeline",
+                "implementation": "ml/README описывает 10-minute aggregation, weather fields, history lags, blend, intervals, metrics and four UI modes; CLI перечисляет prepare/fetch-weather/train/improve/forecast/replay/agent.",
+                "value": "Разработчик может понять назначение каждого этапа и выбрать отдельную команду для воспроизведения эксперимента.",
+                "verification": "source",
+                "evidence": [
+                  "ml/README.md:73-142",
+                  "ml/wind_forecast/cli.py:13-94"
+                ]
+              },
+              {
+                "aspect": "Честный отчёт об accuracy",
+                "implementation": "Reports фиксируют January MAE/RMSE/R², baseline, horizon split, interval coverage, внешний Kelmarsh transfer и ограничения spatial transfer; 80% target explicitly marked unmet.",
+                "value": "Документация не скрывает, что улучшение hit-rate может сопровождаться худшим MAE/RMSE, что повышает доверие к описанию.",
+                "verification": "source",
+                "evidence": [
+                  "ml/README.md:11-18",
+                  "ml/reports/accuracy/report.md:1-25",
+                  "ml/reports/public_validation/metrics.json:1-80"
+                ]
+              },
+              {
+                "aspect": "API handoff",
+                "implementation": "backend README перечисляет routes, status behavior, idempotency, SSE, fixture/real distinction and environment variables; architecture docs explain future durable responsibilities.",
+                "value": "Backend handoff пригоден для продолжения работы другой командой и ясно отделяет mock от real integration.",
+                "verification": "source",
+                "evidence": [
+                  "backend/README.md:18-50",
+                  "backend/docs/PYTHON_INTEGRATION.md:1-80"
+                ]
+              },
+              {
+                "aspect": "Фактическая reproducibility boundary",
+                "implementation": "В ходе проверки Go image и ML image собираются, но frontend build fails; ML image starts and logs missing `/app/artifacts/improved/model.joblib`; `/readyz` returns 503.",
+                "value": "Это конкретно показывает, где README расходится с запускаемым checkout, поэтому оценка воспроизводимости основана не на предположении.",
+                "verification": "observed",
+                "evidence": [
+                  "runtime-frontend-build",
+                  "runtime-ml-ready",
+                  "runtime-backend-real-ready",
+                  "design/Dockerfile:1-12",
+                  "ml/wind_forecast/backend_api.py:63-110"
+                ]
+              }
+            ],
+            "scoreReasoning": "Содержательно README выше среднего и хорошо подходит для объяснения модели. Однако этот критерий включает возможность воспроизвести решение, а не только написать инструкции. Чистый checkout не содержит артефактов, ML readiness не проходит, а frontend Dockerfile падает до запуска, поэтому больше половины баллов удержать нельзя."
+          },
+          {
+            "name": "Ценность и применимость решения",
+            "score": 13,
+            "max": 15,
+            "awarded": "Для оператора ВЭС полезны почасовой горизонт, нормализованная шкала, baseline-сравнение, история SCADA и предупреждения о качестве; ограничения применимости описаны явно.",
+            "deductions": "Снижено за недоставленный runtime result и отсутствие автоматического обновления погодного входа в real API.",
+            "evidence": [
+              "ml/README.md:73-142",
+              "ml/reports/model_report.md:1-25",
+              "F-MISSING-RUNTIME",
+              "F-HTTP-NO-REFRESH"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "F-MISSING-RUNTIME",
+                "reason": "Практическая применимость не подтверждается результатом на чистой среде: реальный ML endpoint не готов без непоставленных артефактов."
+              },
+              {
+                "points": 1,
+                "findingId": "F-HTTP-NO-REFRESH",
+                "reason": "Без refresh в основном API пользователь рискует получить прогноз на заранее загруженном архиве, а не ежедневный расчёт по доступному на дату выпуска входу."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Ориентация на оператора",
+                "implementation": "UI/API форматирует каждый час, выдаёт prediction, intervals, actual и absolute_error, а backend поддерживает result/export/weather/explanation.",
+                "value": "Такой output ближе к проверке диспетчером, чем только offline notebook metric.",
+                "verification": "source",
+                "evidence": [
+                  "ml/wind_forecast/ui.py:228-249",
+                  "backend/internal/transport/http/router.go:38-44"
+                ]
+              },
+              {
+                "aspect": "Использование локальной истории",
+                "implementation": "Свежая завершённая SCADA history улучшает/дополняет погодную модель, но при stale или sparse history система откатывается к weather-only и добавляет warning.",
+                "value": "Это практичный компромисс для станции с неполными телеметрическими данными и снижает риск молча использовать устаревший факт.",
+                "verification": "source",
+                "evidence": [
+                  "ml/wind_forecast/history.py:35-64",
+                  "ml/wind_forecast/model.py:55-77",
+                  "ml/wind_forecast/ui.py:226-227"
+                ]
+              },
+              {
+                "aspect": "Честная физическая применимость",
+                "implementation": "Rated power в config оставлена null, интерфейс показывает normalized_power, а README объясняет, какие данные нужны для перевода в MW/MWh.",
+                "value": "Для энергетического пользователя это правильнее, чем неподтверждённые абсолютные единицы.",
+                "verification": "source",
+                "evidence": [
+                  "ml/config.json:2-10",
+                  "ml/README.md:75-80",
+                  "backend/internal/app/config.go:26-27"
+                ]
+              },
+              {
+                "aspect": "Сравнение с базовыми решениями",
+                "implementation": "Январский отчёт содержит MAE/RMSE/R² по XGBoost, mean, seasonal и persistence, а также разрез по турбине и горизонту.",
+                "value": "Пользователь может увидеть, даёт ли модель практическое преимущество над простым operational baseline.",
+                "verification": "source",
+                "evidence": [
+                  "ml/reports/metrics.json:42-99",
+                  "ml/reports/model_report.md:1-25"
+                ]
+              }
+            ],
+            "scoreReasoning": "Подход хорошо соответствует практической проблеме и показывает полезные operational signals, поэтому почти полный балл заслужен. Два балла удержаны за то, что применимость не предъявлена в real runtime и refresh semantics не закрыты в HTTP deployment; это ограничивает готовность к непосредственному использованию, но не обесценивает саму постановку и model output design."
+          },
+          {
+            "name": "Потенциал развития и оригинальность подхода",
+            "score": 8,
+            "max": 10,
+            "awarded": "Есть оригинальная комбинация causal archived-weather replay, history fallback, empirical intervals, idempotent agent state и провайдеро-независимого Go contract.",
+            "deductions": "Снижено за незапускаемый UI слой и за разрыв между оригинальным agent.py и реальным HTTP deployment.",
+            "evidence": [
+              "ml/wind_forecast/agent.py:19-42",
+              "backend/docs/ARCHITECTURE.md:18-35",
+              "F-FRONTEND-BUILD",
+              "F-HTTP-NO-REFRESH"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "F-FRONTEND-BUILD",
+                "reason": "Отсутствие собираемого frontend уменьшает готовность расширять решение до полноценного operator product."
+              },
+              {
+                "points": 1,
+                "findingId": "F-HTTP-NO-REFRESH",
+                "reason": "Не подключённый к HTTP refresh оставляет наиболее оригинальную часть как локальный путь, который не масштабируется вместе с публичным API."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Оригинальная причинная схема",
+                "implementation": "Архивные previous-runs значения выбираются по offset и проверяются по upper bound доступности; модель не получает фактическую будущую погоду.",
+                "value": "Это сильный доменный акцент для соревнования, где легко получить искусственно завышенную accuracy через hindsight.",
+                "verification": "source",
+                "evidence": [
+                  "ml/wind_forecast/weather.py:1-6",
+                  "ml/wind_forecast/features.py:16-23"
+                ]
+              },
+              {
+                "aspect": "Расширяемая agent state",
+                "implementation": "Hash-based change detection позволяет повторять только расчёт при изменении input, а сохранённые events и analysis дают основу для audit trail.",
+                "value": "Механизм естественно расширяется до scheduler, checkpoints и уведомлений без смены формата результата.",
+                "verification": "source",
+                "evidence": [
+                  "ml/wind_forecast/agent.py:26-42",
+                  "ml/wind_forecast/forecast.py:50-67"
+                ]
+              },
+              {
+                "aspect": "Переносимость и проверка на внешней станции",
+                "implementation": "public_validation оценивает готовую модель на Kelmarsh без дообучения, сохраняет hashes/provenance и прямо отмечает различия станции, типа турбины и нормализации.",
+                "value": "Это хороший задел для будущего domain adaptation и неограниченного одним датасетом развития.",
+                "verification": "source",
+                "evidence": [
+                  "ml/reports/public_validation/metrics.json:1-80",
+                  "ml/README.md:54-62"
+                ]
+              },
+              {
+                "aspect": "Границы развития сформулированы",
+                "implementation": "Architecture docs перечисляют durable registry, append-only events, immutable manifests, cancellation flags и restartable checkpoints как следующий production слой.",
+                "value": "Команда отделяет пятиичасовой MVP от production требований и оставляет понятный путь масштабирования.",
+                "verification": "source",
+                "evidence": [
+                  "backend/docs/ARCHITECTURE.md:31-35"
+                ]
+              }
+            ],
+            "scoreReasoning": "Оригинальность и потенциал заметны в доменной причинности и audit-oriented orchestration. До максимума не хватает только доведения этих идей до единого исполняемого HTTP/UI пути; это подтверждённые интеграционные пробелы, а не требование лишней production-функциональности."
+          }
+        ],
+        "total": 66
+      },
+      "judgeScore": 70.5,
+      "caseRequirements": [
+        {
+          "requirement": "Почасовой прогноз двух ВЭС на горизонте 24–48 часов",
+          "status": "partial",
+          "explanation": "Код и тесты формируют 24/48 часов для обеих турбин и проверяют 28-дневный replay, но real HTTP runtime в checkout не готов из-за отсутствующих артефактов.",
+          "evidence": [
+            "ml/wind_forecast/features.py:43-60",
+            "ml/wind_forecast/forecast.py:70-92",
+            "runtime-ml-ready"
+          ]
+        },
+        {
+          "requirement": "Обучение только на истории, доступной до 31.01.2026",
+          "status": "met",
+          "explanation": "train ограничивает таблицу до февраля, хранит cutoff в bundle, а сохранённый report фиксирует production_training_max_valid_time 2026-01-31 17:00 UTC, соответствующий последнему завершённому часу перед выпуском.",
+          "evidence": [
+            "ml/wind_forecast/model.py:97-180",
+            "ml/reports/metrics.json:1-20"
+          ]
+        },
+        {
+          "requirement": "Для каждого дня февраля получать именно архивный прогноз погоды, доступный на момент расчёта",
+          "status": "partial",
+          "explanation": "Standalone fetch_archive/agent использует previous_day2/day3 и availability bounds, но backend_api загружает готовый archive при инициализации и в _run_forecast не выполняет новый fetch для каждой даты.",
+          "evidence": [
+            "ml/wind_forecast/weather.py:52-95",
+            "ml/wind_forecast/agent.py:19-35",
+            "ml/wind_forecast/backend_api.py:63-96",
+            "ml/wind_forecast/backend_api.py:323-336",
+            "F-HTTP-NO-REFRESH"
+          ]
+        },
+        {
+          "requirement": "Не смешивать фактическую будущую погоду и целевую выработку февраля во входы",
+          "status": "met",
+          "explanation": "features не содержит power, assert_available проверяет issued/available bounds, history отбрасывает наблюдения после issue, а тесты проверяют изменение будущих targets без изменения признаков.",
+          "evidence": [
+            "ml/wind_forecast/features.py:16-40",
+            "ml/wind_forecast/history.py:35-64",
+            "ml/tests/test_forecast.py:34-58",
+            "runtime-ml-tests"
+          ]
+        },
+        {
+          "requirement": "Agentic-цикл: получение погоды, подготовка, модель, прогноз, анализ и повторный расчёт при изменении входа",
+          "status": "partial",
+          "explanation": "agent.py реализует этапы, signature и unchanged/updated поведение; этот путь покрыт тестом. Однако он не подключён к backend HTTP bridge, который обслуживает заявленный Compose API.",
+          "evidence": [
+            "ml/wind_forecast/agent.py:19-42",
+            "ml/tests/test_forecast.py:113-135",
+            "ml/wind_forecast/backend_api.py:323-356",
+            "F-HTTP-NO-REFRESH"
+          ]
+        },
+        {
+          "requirement": "Корректно обработать два предоставленных CSV, временные столбцы и почасовую выдачу",
+          "status": "met",
+          "explanation": "Оба организаторских CSV были пропущены через load_turbine: каждый дал 25,393 hourly rows, покрытие до 2026-01-31 23:50 local, правильный turbine_id и 6 отброшенных некорректных строк.",
+          "evidence": [
+            "runtime-case-csv",
+            "ml/wind_forecast/data.py:35-74"
+          ]
+        },
+        {
+          "requirement": "Дать воспроизводимый локальный пользовательский результат",
+          "status": "missing",
+          "explanation": "Backend mock действительно проходит HTTP flow, но он помечен fixture. В real mode ML /readyz возвращает 503 из-за отсутствующих model/weather artifacts, а frontend Docker build завершается ошибкой.",
+          "evidence": [
+            "runtime-mock-scenario",
+            "runtime-ml-ready",
+            "runtime-frontend-build",
+            "backend/README.md:20-30",
+            "F-FRONTEND-BUILD",
+            "F-MISSING-RUNTIME"
+          ]
+        },
+        {
+          "requirement": "Показать измеренную проверку качества и границы применимости",
+          "status": "met",
+          "explanation": "В reports сохранены January backtest, baseline comparison, horizon/turbine breakdown, interval coverage, CV и external transfer; февральская точность не выдается за измеренную.",
+          "evidence": [
+            "ml/reports/metrics.json:42-165",
+            "ml/reports/accuracy/report.md:1-25",
+            "ml/reports/public_validation/metrics.json:1-80"
+          ]
+        }
+      ],
+      "testData": {
+        "provided": [
+          "cases/1/case-data/Dataset HackAlemAI для участников 11.03.2023-28.02.2026 - turbine 1.csv",
+          "cases/1/case-data/Dataset HackAlemAI для участников 11.03.2023-28.02.2026 - turbine 2.csv",
+          "cases/1/case-data/HackAlem AI_ Agentic AI для прогнозирования выработки ВЭС.md"
+        ],
+        "used": [
+          "cases/1/case-data/Dataset HackAlemAI для участников 11.03.2023-28.02.2026 - turbine 1.csv",
+          "cases/1/case-data/Dataset HackAlemAI для участников 11.03.2023-28.02.2026 - turbine 2.csv",
+          "ml/wind_forecast/data.py"
+        ],
+        "checks": [
+          {
+            "input": "Оба предоставленных SCADA CSV",
+            "method": "load_turbine(..., timezone='Asia/Almaty', min_samples=6) с реальными файлами кейса; проверены timestamp, 10-minute grid, numeric ranges, invalid rows и hourly resampling.",
+            "result": "Turbine 1: 142360 source rows, 6 invalid, 25393 hourly rows, 23666 complete hours, local range 2023-03-11 00:00…2026-01-31 23:50. Turbine 2: 149499 source rows, 6 invalid, 25393 hourly rows, 24784 complete hours, тот же временной диапазон. Обе серии имеют UTC last hour 2026-01-31 18:00.",
+            "conclusion": "Формат и граница обучения подходят для проверки до 31 января; пропуски не синтезируются, а power остаётся в диапазоне 0…1 после агрегации."
+          },
+          {
+            "input": "Требование кейса о февральском прогнозе",
+            "method": "Сопоставление максимальной даты двух предоставленных CSV с cutoff в config/reports и путём replay.",
+            "result": "В предоставленных SCADA нет фактов после 31 января 2026; код replay может сформировать февральские строки только при наличии weather archive и модели, а February accuracy не вычисляется.",
+            "conclusion": "Отсутствие февральского ground truth — ограничение тестового набора, не доказательство ошибки модели; оно явно отражено в reports."
+          },
+          {
+            "input": "Формат временных и погодных входов",
+            "method": "Проверка data.py, uploads.py, features.py и соответствующих unit tests; отдельно проверены guards на duplicate timestamps, future weather и future targets.",
+            "result": "Поддерживаются 10-minute SCADA observations, hourly resampling, exact-hour forecasts, availability upper bound и no-target-in-features; supported-container suite завершилась 43 passed.",
+            "conclusion": "Ключевая защита от temporal leakage подтверждена исходниками и автоматическими тестами."
+          }
+        ],
+        "limitations": [
+          "Предоставленный набор не содержит фактических значений февраля, поэтому февральскую accuracy нельзя измерить.",
+          "Для real forecast нужны weather archive и joblib artifacts, которых нет в checkout и которые не были подменены синтетикой.",
+          "Визуальная проверка dashboard не выполнялась согласно пользовательской политике; проверены статические файлы, сборка и HTTP/API уровни."
+        ]
+      },
+      "runtime": {
+        "status": "partial",
+        "build": "Go backend и ML image собираются; frontend image не собирается из-за отсутствия Go source в design/.",
+        "start": "ML и Go real-mode процессы стартуют, но ML не становится ready; отдельный Go mock стартует и завершает fixture forecast.",
+        "scenario": "Реальный forecast scenario не воспроизведён из-за отсутствующих artifacts/weather archive; mock HTTP scenario проверен отдельно и явно не считается real result.",
+        "environment": "Docker images использовали заявленные проектом Python 3.12 и Go 1.25.6; ML tests запускались в собранном образе с requirements-tested. Отдельный host run под Python 3.10 дал environment-only datetime-resolution failures и не использован для deductions.",
+        "summary": "Статическая и компонентная проверка сильная, но deployability частичная: frontend build fail, ML readiness fail, real API не может принять прогноз без model/weather artifacts. HTTP health backend проходит; fixture flow даёт 48 точек после 24-hour request.",
+        "checks": [
+          {
+            "command": "go test ./...",
+            "result": "Все перечисленные backend packages завершились без ошибок; тестовых файлов в пакетах нет.",
+            "id": "runtime-go-tests",
+            "stage": "build",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Go backend compiles and its package test command exits successfully."
+          },
+          {
+            "command": "python -m pytest -q",
+            "result": "В собранном Python 3.12 ML image: 43 passed in 8.42s.",
+            "id": "runtime-ml-tests",
+            "stage": "build",
+            "status": "pass",
+            "cause": "none",
+            "expected": "All repository ML unit/domain tests pass under the declared supported runtime and pinned tested dependencies."
+          },
+          {
+            "command": "go build -o aura .",
+            "result": "Frontend Docker build reached Dockerfile line 7 and failed with `go: warning: \"all\" matched no packages` and `no Go files in /app`; design/ contains only Dockerfile at this snapshot.",
+            "id": "runtime-frontend-build",
+            "stage": "build",
+            "status": "fail",
+            "cause": "project",
+            "expected": "The frontend image should build and provide the documented dashboard service."
+          },
+          {
+            "command": "python -m pip install --no-deps .",
+            "result": "ML Docker image built successfully with Python 3.12 and pinned requirements-tested; image entrypoint is available.",
+            "id": "runtime-ml-build",
+            "stage": "build",
+            "status": "pass",
+            "cause": "none",
+            "expected": "The ML service image should install the package and its declared runtime dependencies."
+          },
+          {
+            "command": "GET /healthz",
+            "result": "Real-mode Go container returned HTTP 200 with health status; fixture-mode HTTP flow also returned HTTP 200.",
+            "id": "runtime-backend-health",
+            "stage": "start",
+            "status": "pass",
+            "cause": "none",
+            "expected": "The backend process should start and answer its health endpoint."
+          },
+          {
+            "command": "GET /readyz",
+            "result": "ML process logged missing `/app/artifacts/improved/model.joblib`; readiness returned HTTP 503 with `DEPENDENCY_UNAVAILABLE: Missing or incompatible model, weather archive, or metadata`.",
+            "id": "runtime-ml-ready",
+            "stage": "start",
+            "status": "fail",
+            "cause": "project",
+            "expected": "The real ML service should become ready with the model and archive required by its default backend path."
+          },
+          {
+            "command": "GET /readyz",
+            "result": "With the Go backend pointed at the real ML container, backend health was 200 but readiness was HTTP 503 because the ML dependency was not ready.",
+            "id": "runtime-backend-real-ready",
+            "stage": "start",
+            "status": "fail",
+            "cause": "project",
+            "expected": "The real Compose path should report ready before accepting a forecast scenario."
+          },
+          {
+            "command": "POST /api/forecast-runs; GET /api/jobs/{id}; GET /api/forecast-runs/{id}/result",
+            "result": "Fixture-mode smoke test returned 202 queued, then completed; result contained 48 points for horizon_hours=24 and data_mode=fixture.",
+            "id": "runtime-mock-scenario",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "The backend asynchronous contract should create a job, complete it and expose the requested number of fixture points when mock mode is explicitly enabled."
+          },
+          {
+            "command": "load_turbine on both supplied SCADA CSV files",
+            "result": "Both files parsed and produced 25393 hourly rows with expected turbine IDs and data through 2026-01-31; see runtime-case-csv.",
+            "id": "runtime-case-csv",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "The project ingestion path should accept the provided case CSV structure and preserve the training-date boundary."
+          },
+          {
+            "command": "python -m pytest -q",
+            "result": "Host Python 3.10 run: 40 passed, 3 failed in history-model tests with pandas MergeError between datetime64[s, UTC] and datetime64[ns, UTC]. The project requires Python >=3.11; supported-container run passed 43/43.",
+            "id": "runtime-host-version",
+            "stage": "build",
+            "status": "blocked",
+            "cause": "review_environment",
+            "expected": "A host test run is only comparable when the runtime satisfies pyproject.toml requires-python >=3.11."
+          }
+        ],
+        "limitations": [
+          "The submitted snapshot does not contain ml/artifacts or ml/data weather/processed files, so the real ML service cannot reach ready without an additional preparation/artifact delivery step.",
+          "The design directory cannot build its documented frontend image; no visual behavior was inferred from this failure.",
+          "The mock scenario validates the API contract only and is not evidence that the real XGBoost forecast runs."
+        ]
+      },
+      "liveDemo": {
+        "status": "none",
+        "url": null,
+        "notes": "Публичная Live demo-ссылка в материалах не заявлена. Это отмечено только как статус demo; баллы снижены не за отсутствие URL, а за наблюдаемые build/readiness дефекты локального checkout."
+      },
+      "fiveHourContext": "Для пятиичасового хакатона объём ML-работы и доменная аккуратность сильные: есть временная валидация, causal archive, SCADA history, replay, reports и контрактный backend. Полный production persistence, точные weather run IDs, подтверждённые номиналы и реальная инфраструктура не требовались. При этом frontend Dockerfile, отсутствие runtime artifacts и неподключённый refresh находятся на критическом пути демонстрации и поэтому влияют на баллы даже для MVP.",
+      "strengths": [
+        "Причинная обработка архивной погоды с явными availability bounds и тестами на leakage.",
+        "Аккуратная ingestion-логика двух SCADA CSV без синтеза неполных часов; обе реальные case-файлы успешно обработаны.",
+        "Содержательная temporal ML evaluation: chronological splits, baselines, horizon breakdown, interval coverage и честные ограничения.",
+        "Хорошо разделённые Go domain/application/adapter/transport слои с bounded asynchronous API и отдельным real/mock режимом.",
+        "Прозрачный hash-based agent update и replay по дням февраля как сильная основа для audit-oriented orchestration."
+      ],
+      "gaps": [
+        "Frontend Dockerfile не собирается: design/ не содержит Go source, поэтому документированный dashboard service недоступен.",
+        "Чистый checkout не поставляет model.joblib, processed hourly и weather archive; ML стартует, но /readyz возвращает 503 и real forecast не создаётся.",
+        "Ежедневное получение обновлённого archived weather находится в standalone agent.py, но HTTP bridge загружает архив только при старте и не запускает refresh в основном real-mode сценарии."
+      ],
+      "futureAdvice": [
+        {
+          "principle": "Сначала зафиксируйте один сквозной happy path и его runtime artifacts.",
+          "why": "F-MISSING-RUNTIME показывает, что сильные ML-компоненты не превращаются в real result из чистого checkout: image стартует, но readiness 503 из-за отсутствующих model/weather files.",
+          "how": "Для следующего хакатона добавьте в Compose отдельный reproducible prepare step или небольшой versioned artifact bundle, затем проверьте в чистой среде: build → ready → POST forecast → completed result. Не подменяйте модель fixture-ответом в этом smoke test.",
+          "findingIds": [
+            "F-MISSING-RUNTIME"
+          ],
+          "successCheck": "С нуля команда получает HTTP 200 на readiness и completed real forecast с двумя турбинами, а provenance указывает на конкретные model/weather artifacts.",
+          "timeboxMinutes": 45
+        },
+        {
+          "principle": "Проверяйте собранность пользовательского слоя тем же command path, который читает README.",
+          "why": "F-FRONTEND-BUILD наблюдаем: `design/Dockerfile` запускает `go build`, хотя в design/ нет Go source, поэтому dashboard нельзя показать после documented Compose command.",
+          "how": "В другом проекте добавьте минимальный build smoke test в первую половину работы: собрать каждый service image из чистого checkout и выполнить его health endpoint; только после этого подключайте визуальные polish и дополнительные routes.",
+          "findingIds": [
+            "F-FRONTEND-BUILD"
+          ],
+          "successCheck": "Frontend image собирается, отвечает на health request и проксирует один реальный forecast result; команда может показать этот путь без ручного копирования файлов.",
+          "timeboxMinutes": 35
+        },
+        {
+          "principle": "Одинаковый agentic цикл должен существовать на границе API, а не только в локальном CLI.",
+          "why": "F-HTTP-NO-REFRESH: agent.py считает input signature и fetches archive, но backend_api `_run_forecast` использует уже загруженный self.weather и вызывает только forecast.",
+          "how": "В следующем кейсе вынесите fetch/prepare/predict/analyze/update в один сервисный use case, который вызывается и CLI, и HTTP; добавьте тест с изменённым weather input, где второй запуск обязан создать новый provenance/event и новый result.",
+          "findingIds": [
+            "F-HTTP-NO-REFRESH"
+          ],
+          "successCheck": "HTTP replay на двух датах создаёт отдельные weather provenance records, а изменение checksum входа вызывает updated event и перерасчёт без использования будущих фактов.",
+          "timeboxMinutes": 50
+        }
+      ],
+      "uncertainties": [
+        "Визуальное поведение dashboard, графика и проксирования не проверялось: пользователь прямо выполняет visual/browser verification, а автоматизация браузера запрещена.",
+        "Февральские фактические цели отсутствуют в предоставленных CSV, поэтому качество февраля остаётся непроверяемым; это не превращено в deduction.",
+        "Точные оперативные run IDs Open-Meteo Previous Runs недоступны по контракту источника; проект сам описывает использованный conservative availability bound.",
+        "Не проверялся внешний сетевой fetch погоды в рамках сценария, потому что submitted real runtime уже останавливается на отсутствии локальных model/weather artifacts; вывод о refresh сделан по полному исходному пути backend_api и agent.py."
+      ],
+      "reviewPolicyVersion": 2,
+      "assessmentStatus": "ready",
+      "findings": [
+        {
+          "id": "F-FRONTEND-BUILD",
+          "kind": "defect",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Документированный frontend service не собирается из snapshot.",
+          "expected": "design Dockerfile должен собрать исполняемый frontend и позволить Compose поднять dashboard.",
+          "actual": "Docker build на Dockerfile design завершился с `no Go files in /app`; design содержит Dockerfile, но нет Go source.",
+          "evidence": [
+            "design/Dockerfile:1-12",
+            "runtime-frontend-build",
+            "backend/compose.yaml:1-10"
+          ],
+          "checkIds": [
+            "runtime-frontend-build"
+          ]
+        },
+        {
+          "id": "F-MISSING-RUNTIME",
+          "kind": "defect",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Real ML service не готов из предоставленного checkout без ручной доставки артефактов.",
+          "expected": "После documented Compose/image startup ML service должен найти модель, weather archive и metadata и отвечать ready.",
+          "actual": "ML container стартует, но логирует отсутствие `/app/artifacts/improved/model.joblib`; /readyz возвращает 503 `Missing or incompatible model, weather archive, or metadata`. В checkout нет ml/artifacts и ml/data payload.",
+          "evidence": [
+            "ml/Dockerfile:1-12",
+            "ml/wind_forecast/backend_api.py:63-110",
+            "backend/compose.yaml:27-37",
+            "runtime-ml-ready",
+            "runtime-backend-real-ready"
+          ],
+          "checkIds": [
+            "runtime-ml-ready",
+            "runtime-backend-real-ready"
+          ]
+        },
+        {
+          "id": "F-HTTP-NO-REFRESH",
+          "kind": "defect",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Agentic weather refresh реализован в standalone agent, но не в реальном HTTP forecast path.",
+          "expected": "Каждый daily/replay forecast должен получить архивный прогноз, доступный на дату issuance, и перерасчитать результат при изменении входа.",
+          "actual": "agent.py вызывает fetch_archive и считает input hash, но BackendBridge читает weather archive один раз в __init__, а _run_forecast передаёт self.weather в forecast без fetch/update.",
+          "evidence": [
+            "ml/wind_forecast/agent.py:19-42",
+            "ml/wind_forecast/backend_api.py:63-96",
+            "ml/wind_forecast/backend_api.py:323-356",
+            "ml/wind_forecast/weather.py:52-95"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "S-ML-TESTS",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "ML unit/domain suite проходит в заявленном supported container runtime.",
+          "expected": "Temporal guards, model/replay behavior and history rules should pass under Python 3.12 dependencies.",
+          "actual": "43 tests passed in 8.42 seconds.",
+          "evidence": [
+            "runtime-ml-tests",
+            "ml/pyproject.toml:5-13",
+            "ml/tests/test_forecast.py:24-135"
+          ],
+          "checkIds": [
+            "runtime-ml-tests"
+          ]
+        },
+        {
+          "id": "S-CASE-INGESTION",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Код ingestion принимает реальные case CSV и сохраняет их временную структуру без заполнения пропусков.",
+          "expected": "Оба файла должны пройти проверку формата и дать hourly rows с правильной привязкой turbine ID.",
+          "actual": "Оба файла дали 25393 hourly rows, turbine IDs 1/2 и последние наблюдения до 31 января; неполные/invalid строки не стали targets.",
+          "evidence": [
+            "runtime-case-csv",
+            "ml/wind_forecast/data.py:35-74"
+          ],
+          "checkIds": [
+            "runtime-case-csv"
+          ]
+        },
+        {
+          "id": "S-BACKEND-CONTRACT",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Go API и fixture contract дают работающий асинхронный job flow.",
+          "expected": "Explicit mock mode should create a job, complete it and expose points through result endpoint.",
+          "actual": "HTTP smoke flow returned queued → completed and 48 points for horizon 24 and two turbines; data_mode remained fixture.",
+          "evidence": [
+            "runtime-backend-health",
+            "runtime-mock-scenario",
+            "backend/internal/transport/http/router.go:30-57"
+          ],
+          "checkIds": [
+            "runtime-backend-health",
+            "runtime-mock-scenario"
+          ]
+        },
+        {
+          "id": "S-EVALUATION-REPORTS",
+          "kind": "strength",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Сохранённые reports дают воспроизводимую картину качества и ограничений, а не только рекламную метрику.",
+          "expected": "Отчёт должен содержать temporal split, baselines, horizon metrics и explicit limitations.",
+          "actual": "metrics.json/report.md содержат January metrics, baseline comparison, per-turbine/horizon values, interval coverage, no-February-target limitation and external-transfer caveats.",
+          "evidence": [
+            "ml/reports/metrics.json:1-165",
+            "ml/reports/model_report.md:1-25",
+            "ml/reports/public_validation/metrics.json:1-80"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "L-VISUAL-UNVERIFIED",
+          "kind": "limitation",
+          "verification": "unverified",
+          "responsibility": "review_environment",
+          "claim": "Визуальный dashboard не был проверен этим ревью.",
+          "expected": "Визуальное поведение должно быть подтверждено отдельным пользовательским browser review.",
+          "actual": "Проверены исходники, сборка и HTTP/API; браузерная навигация, screenshot и visual assertions не выполнялись по заданной политике.",
+          "evidence": [
+            "ml/wind_forecast/ui.py:78-249",
+            "runtime-frontend-build"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "L-NO-FEBRUARY-GROUND-TRUTH",
+          "kind": "limitation",
+          "verification": "source",
+          "responsibility": "unknown",
+          "claim": "Предоставленный кейсом ground truth заканчивается до февраля, поэтому February accuracy не измеряется.",
+          "expected": "Для измерения February forecast нужны реальные February targets.",
+          "actual": "Оба предоставленных CSV заканчиваются 31 января 2026; reports прямо помечают February accuracy как неизвестную.",
+          "evidence": [
+            "runtime-case-csv",
+            "ml/reports/metrics.json:158-165",
+            "ml/reports/model_report.md:20-25"
+          ],
+          "checkIds": [
+            "runtime-case-csv"
+          ]
+        }
+      ],
+      "gapFindingIds": [
+        "F-FRONTEND-BUILD",
+        "F-MISSING-RUNTIME",
+        "F-HTTP-NO-REFRESH"
+      ]
+    }
+  ],
+  "score": 70.5,
+  "status": "complete",
+  "expectedJudges": 1
+}

@@ -1,0 +1,834 @@
+{
+  "methodVersion": 4,
+  "repoId": "hack-21ad5124-flawless",
+  "repoUrl": "https://github.com/BAITC-Hacks/hack-21ad5124-flawless",
+  "caseId": 10,
+  "snapshot": "6354ea2293f4f7e8c32b13ff5f53fbf07911e61b",
+  "judges": [
+    {
+      "methodVersion": 4,
+      "repoId": "hack-21ad5124-flawless",
+      "caseId": 10,
+      "model": "GPT-5.6 Luna",
+      "snapshot": "6354ea2293f4f7e8c32b13ff5f53fbf07911e61b",
+      "overallSummary": "Это цельный демонстрационный прототип ассистента для каталога электротоваров: он реально стартует, отвечает по локальной фикстуре, предлагает аналог для нулевого остатка, защищает корзину от неявной мутации и возвращает ссылку на корзину. Архитектура live-каталога, ленивых detail-запросов, guardrails, вложений и проверенных UI-действий проработана заметно глубже обычного хакатонного mock-up. Главный функциональный разрыв относительно задания — корзина хранится только в памяти ассистента, тогда как ссылка ведёт в реальную корзину ekt.kz и не получает добавленные позиции; README это честно раскрывает. Полный тестовый набор также не зелёный: 142 теста прошли, 5 тестов падают из-за рассинхронизации тестовых mock-контрактов и актуального API-ответа. Итоговая оценка: 84/100.",
+      "global": {
+        "criteria": [
+          {
+            "name": "Ценность решения",
+            "score": 22,
+            "max": 25,
+            "awarded": "Решение адресует конкретное узкое место ekt.kz: поиск товара, наличие, аналог и условия покупки переносятся из ручной переписки в один чат.",
+            "deductions": "3 балла сняты за то, что локальная корзина ассистента не синхронизируется с корзиной сайта, поэтому последняя транзакционная часть пользовательской ценности не доведена до реального заказа.",
+            "evidence": [
+              "README.md:5-30",
+              "README.md:267-271",
+              "agent.py:549-626",
+              "scenario-demo-1"
+            ],
+            "deductionItems": [
+              {
+                "points": 3,
+                "findingId": "F-CART-SYNC",
+                "reason": "Главная обещанная польза — сократить путь от консультации до покупки — ослабевает, потому что добавление происходит только в память процесса, а ссылка ведёт на отдельную корзину ekt.kz без передачи позиции."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Понятная аудитория и боль",
+                "implementation": "README описывает клиента интернет-магазина и закупщика, которым сейчас приходится писать менеджеру для характеристик, наличия, аналога и условий; интерфейс объединяет эти вопросы в одном чате.",
+                "value": "Проблема непосредственно связана с потерей времени клиента и менеджера, поэтому ценность понятна без дополнительных предположений.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:9-30",
+                  "cases/10/task.txt"
+                ]
+              },
+              {
+                "aspect": "Сокращение пути выбора",
+                "implementation": "Демо-агент распознаёт свободный запрос, ищет по названию/характеристикам, показывает цену и остаток, а затем предлагает действие; в HTTP-проверке запрос `Есть DEMO-LED-12?` вернул название, цену 1290.0 ₸, остаток 24 и кнопку добавления.",
+                "value": "Покупатель получает полезный результат за один диалог, а не только ссылку на поиск или сырые данные API.",
+                "verification": "observed",
+                "evidence": [
+                  "scenario-demo-1",
+                  "agent.py:1117-1291",
+                  "catalog.py:518-551"
+                ]
+              },
+              {
+                "aspect": "Помощь при отсутствии товара",
+                "implementation": "Для `DEMO-AV-25` с нулевым остатком demo-сценарий вернул доступный автомат 1P 16 А с ценой и остатком; live-каталог ранжирует аналоги по категории, наличию и совпадению характеристик.",
+                "value": "Это закрывает наиболее ценный для конверсии случай: клиент не останавливается на недоступной позиции.",
+                "verification": "observed",
+                "evidence": [
+                  "scenario-demo-1",
+                  "catalog.py:558-602",
+                  "tests/test_demo_catalog.py:32-53"
+                ]
+              },
+              {
+                "aspect": "Границы ценности названы честно",
+                "implementation": "README отдельно сообщает о демонстрационных условиях, in-memory состоянии и отсутствии синхронизации с реальной корзиной, не выдавая локальную фикстуру за production-интеграцию.",
+                "value": "Для хакатонного прототипа это делает обещание продукта проверяемым и снижает риск ложных ожиданий.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:263-273",
+                  "static/index.html:133"
+                ]
+              }
+            ],
+            "scoreReasoning": "22 балла заслужены за точное попадание в реальную задачу e-commerce и за воспроизведённый путь от вопроса к товарному результату, аналогу и локальной корзине. До максимума не хватает именно последнего бизнес-шага: позиция не попадает в корзину сайта, а значит оператор всё ещё может потребоваться для завершения покупки. Это существенный, но ясно ограниченный разрыв для пятичасового MVP."
+          },
+          {
+            "name": "Результат и качество решения",
+            "score": 16,
+            "max": 20,
+            "awarded": "Основной offline-сценарий работает по HTTP, а код содержит сильные проверки входов, каталога, подтверждения, остатков, повторов и вложений.",
+            "deductions": "4 балла сняты за отсутствие реальной синхронизации корзины и за незелёный полный набор тестов на зафиксированном snapshot.",
+            "evidence": [
+              "runtime-demo-1",
+              "runtime-scenario-1",
+              "captures/20261002T104611577831-docker-tests.stderr.log",
+              "agent.py:582-626",
+              "attachments.py:198-247"
+            ],
+            "deductionItems": [
+              {
+                "points": 2.5,
+                "findingId": "F-CART-SYNC",
+                "reason": "Ключевой пользовательский результат после подтверждения — актуальная корзина для оформления — остаётся локальным представлением и не меняет реальную корзину по ссылке."
+              },
+              {
+                "points": 1.5,
+                "findingId": "F-TEST-CONTRACT",
+                "reason": "Команда заявляет автоматизированные тесты, но `python -m unittest discover -s tests -v` в изолированном Python 3.12 окружении завершился с 5 падениями из 147; это снижает воспроизводимость и доверие к регрессионной проверке."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Рабочий HTTP-сценарий",
+                "implementation": "Uvicorn поднял FastAPI-приложение в DEMO_MODE; `/health` вернул `ok:true`, `catalog_source:demo`, 40 товаров, а `/api/demo-questions` вернул контрольный сценарий.",
+                "value": "Это подтверждает не только наличие функций в исходниках, но и связность запуска, lifespan, каталога и HTTP-слоя.",
+                "verification": "observed",
+                "evidence": [
+                  "runtime-start-1",
+                  "runtime-scenario-1"
+                ]
+              },
+              {
+                "aspect": "Безопасное подтверждение корзины",
+                "implementation": "`ShopTools.add_to_cart` сначала проверяет `purchase_confirmed`, валидирует целое количество, товар и точное соответствие последней команды, затем сравнивает `existing + qty` с остатком; повтор той же команды идемпотентен.",
+                "value": "Сценарий не меняет корзину по одному вопросу и не позволяет модели подменить артикул или количество.",
+                "verification": "source",
+                "evidence": [
+                  "agent.py:491-544",
+                  "agent.py:582-626",
+                  "tests/test_adversarial_cart.py:236-265"
+                ]
+              },
+              {
+                "aspect": "Глубокая проверка данных и вложений",
+                "implementation": "Каталог нормализует цену, остаток, склады, свойства и сертификаты; вложения проверяются по сигнатуре и MIME, ограничиваются тремя файлами/3 МБ, распакованным размером и макросами, а текст очищается от платёжных данных и prompt-injection.",
+                "value": "Для ассистента, который работает с товарными фактами и накладными, это существенно снижает риск выдуманных или опасных ответов.",
+                "verification": "source",
+                "evidence": [
+                  "catalog.py:113-156",
+                  "attachments.py:86-247",
+                  "tests/test_attachments.py:14-42",
+                  "tests/test_guardrails.py:20-147"
+                ]
+              },
+              {
+                "aspect": "Регрессионная проверка выявляет реальный остаточный риск",
+                "implementation": "Изолированный запуск полного набора дал 142 успешных теста и 5 падений: три mock callback получили новый `attachment_context`, один тест ожидал старый ответ без `attachments`, ещё один — отсутствие скрытой кнопки `demo-button`.",
+                "value": "Большая часть защит и live-контрактов проверена, но незакрытый рассинхрон тестов означает, что финальная поставка не имеет полностью зелёного контрольного сигнала.",
+                "verification": "observed",
+                "evidence": [
+                  "captures/20261002T104611577831-docker-tests.stderr.log",
+                  "tests/test_http_hardening.py:97-132",
+                  "tests/test_ui_actions.py:306-316",
+                  "tests/test_guided_selection.py:74-85"
+                ]
+              }
+            ],
+            "scoreReasoning": "16 баллов отражают реально работающий offline-продукт и unusually подробные защитные слои. Сценарий добавления и ограничение остатком наблюдались по HTTP, а 46 adversarial-cart, 4 attachment, 12 live-catalog и 4 demo-catalog теста прошли. Однако реальная корзина не подключена, а полный suite красный на пяти тестах; для критерия качества это удерживает оценку ниже верхнего диапазона."
+          },
+          {
+            "name": "Инновационность",
+            "score": 12,
+            "max": 15,
+            "awarded": "Новизна не в самом факте чат-бота, а в сочетании grounded tool-calling, серверного владения историей, защитных проверок корзины и проверенных UI-действий.",
+            "deductions": "3 балла сняты за отсутствие собственного сквозного механизма интеграции с корзиной магазина: наиболее очевидная транзакционная часть остаётся локальным прототипным состоянием.",
+            "evidence": [
+              "README.md:32-58",
+              "agent.py:966-1078",
+              "guardrails.py:394-430",
+              "ui_actions.py:151-258"
+            ],
+            "deductionItems": [
+              {
+                "points": 3,
+                "findingId": "F-CART-SYNC",
+                "reason": "Без передачи локальных изменений в ekt.kz отличие от обычного консультирующего чат-бота не превращается в законченное commerce-действие; инновационный workflow обрывается перед реальной корзиной."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Grounded function calling",
+                "implementation": "OpenAI получает только описанные серверные инструменты; каталог, корзина и session_id не передаются модели напрямую, а результаты инструментов записываются в traces и проходят `guard_model_reply`.",
+                "value": "Это более надёжный подход к товарному консультанту, чем свободная генерация цены и наличия.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:34-57",
+                  "agent.py:774-865",
+                  "agent.py:966-1078"
+                ]
+              },
+              {
+                "aspect": "Action layer как отдельный доверенный контур",
+                "implementation": "`build_actions` разрешает только allowlist действий, канонизирует SKU через каталог, вычисляет `max_qty` из проверенного остатка и отбрасывает непроверенные предложения модели.",
+                "value": "Пользователь получает удобные кнопки, но кнопка не становится обходом серверных ограничений.",
+                "verification": "source",
+                "evidence": [
+                  "ui_actions.py:1-34",
+                  "ui_actions.py:151-258",
+                  "tests/test_ui_actions.py:24-65"
+                ]
+              },
+              {
+                "aspect": "Защита от adversarial диалога",
+                "implementation": "Парсер отличает прямую команду от вопроса, отмены, расплывчатого согласия и конфликтующих количеств; сервер хранит свою историю и защищает её от поддельного клиентского префикса.",
+                "value": "Для коммерческого ассистента это нестандартно тщательное внимание к тому, что именно считается согласием на покупку.",
+                "verification": "source",
+                "evidence": [
+                  "agent.py:177-544",
+                  "main.py:243-265",
+                  "tests/test_adversarial_cart.py:98-235",
+                  "tests/test_http_hardening.py:134-160"
+                ]
+              },
+              {
+                "aspect": "Вложения как недоверенные данные",
+                "implementation": "DOCX/XLSX/PDF разбираются ограниченно и без постоянного хранения, изображение передаётся vision-модели только при ключе, а инструкции из файла удаляются до использования контекста.",
+                "value": "Это переносит prompt-injection и privacy-защиту в multimodal сценарий, а не оставляет её только для текста чата.",
+                "verification": "source",
+                "evidence": [
+                  "attachments.py:72-198",
+                  "attachments.py:256-286",
+                  "README.md:30-31"
+                ]
+              }
+            ],
+            "scoreReasoning": "12 баллов заслужены за инженерно продуманную комбинацию grounding, tool boundaries, adversarial-проверок и attachment pipeline. Это сильнее типичного хакатонного чат-интерфейса, но базовые ингредиенты — LLM, каталог и локальная корзина — знакомы, а отсутствие сквозной интеграции с реальной корзиной ограничивает собственное преимущество решения."
+          },
+          {
+            "name": "Потенциал развития и масштабирования",
+            "score": 15,
+            "max": 20,
+            "awarded": "Код хорошо разделён на API, каталог, агента, guardrails, вложения и UI-действия; live API и модель можно заменить конфигурацией, а поиск/аналоги масштабируются ограниченными параллельными запросами.",
+            "deductions": "5 баллов сняты за in-memory историю и корзины, отсутствие реальной cart/order интеграции и демонстрационные условия покупки.",
+            "evidence": [
+              "README.md:72-90",
+              "README.md:249-273",
+              "catalog.py:283-316",
+              "main.py:138-155",
+              "logic/purchase_conditions.txt:1-22"
+            ],
+            "deductionItems": [
+              {
+                "points": 1.5,
+                "findingId": "F-CART-SYNC",
+                "reason": "Масштабирование на реальный e-commerce требует API или другого согласованного механизма передачи корзины; сейчас ссылка на сайт не связана с локальным session_id."
+              },
+              {
+                "points": 3.5,
+                "findingId": "F-MEMORY-STATE",
+                "reason": "История, корзины и attachment context создаются в памяти процесса и удаляются при перезапуске, поэтому multi-instance deployment, восстановление сессии и durable checkout пока не обеспечены."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Разделяемая архитектура",
+                "implementation": "README и фактические импорты разделяют FastAPI-контракт, live/demo Catalog, ShopTools, guardrails, attachments и UI actions; конфигурация модели и каталогов задаётся переменными окружения.",
+                "value": "Такую структуру можно развивать отдельными потоками — подключить storage, другой provider или новые действия без переписывания всего UI.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:72-90",
+                  "main.py:17-35",
+                  "agent.py:546-770"
+                ]
+              },
+              {
+                "aspect": "Пагинация и ленивые детали",
+                "implementation": "Live-каталог получает первую страницу, определяет число страниц, ограничивает страницы и detail-запросы, использует до шести worker-потоков, кэширует попытки деталей и проверяет совпадение id.",
+                "value": "Для большого каталога это практичнее, чем загружать все карточки и детали синхронно на каждый запрос.",
+                "verification": "source",
+                "evidence": [
+                  "catalog.py:238-429",
+                  "catalog.py:438-516",
+                  "captures/20261002T104452274051-focused-tests-3.stderr.log"
+                ]
+              },
+              {
+                "aspect": "Расширяемый набор пользовательских действий",
+                "implementation": "Типы add/show/compare/delivery/payment/change/remove/clear централизованы в `ChatAction`, локализуются на русском, казахском и английском и проходят проверку against catalog/cart snapshot.",
+                "value": "Это создаёт понятную точку расширения для сопутствующих товаров, эскалации менеджеру и новых commerce-сценариев.",
+                "verification": "source",
+                "evidence": [
+                  "ui_actions.py:10-92",
+                  "ui_actions.py:151-258",
+                  "static/app.js:202-237"
+                ]
+              },
+              {
+                "aspect": "Осознанные границы production",
+                "implementation": "README прямо перечисляет отсутствие авторизации, оплаты в чате, persistence и синхронизации корзины, а render-конфигурация оставляет запуск приложения простым.",
+                "value": "Наличие явного списка следующих интеграционных шагов делает roadmap реалистичным, даже хотя эти шаги ещё не выполнены.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:263-273",
+                  "render.yaml:1-24"
+                ]
+              }
+            ],
+            "scoreReasoning": "15 баллов отражают хороший фундамент для продолжения: разделение модулей, live API, лимиты, lazy loading и расширяемые actions уже есть. Максимум недостижим из-за процесса хранения состояния и отсутствия cart/order backend. Для прототипа это ожидаемая граница, но именно она определяет работу следующего этапа масштабирования."
+          },
+          {
+            "name": "Презентация, демо и ответы на вопросы",
+            "score": 19,
+            "max": 20,
+            "awarded": "README подробно объясняет проблему, архитектуру, запуск, offline demo, основной сценарий, ограничения и проверяемые security cases; локальное HTTP-демо воспроизводимо.",
+            "deductions": "1 балл снят за то, что заявленный полный test command не завершается успешно на snapshot из-за пяти несогласованных тестов.",
+            "evidence": [
+              "README.md:1-30",
+              "README.md:92-244",
+              "README.md:263-286",
+              "runtime-scenario-1",
+              "captures/20261002T104611577831-docker-tests.stderr.log"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "F-TEST-CONTRACT",
+                "reason": "Пользователь может следовать README и получить красный итог полного `unittest` запуска; это ослабляет воспроизводимость демонстрации, хотя сам demo HTTP-сценарий прошёл."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "README как сценарий показа",
+                "implementation": "Документ даёт команды установки, demo mode без внешних аккаунтов, маршруты, пример JSON, пять шагов основного сценария и отдельные security checks.",
+                "value": "Жюри может восстановить ожидаемый путь из репозитория без устного пояснения.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:92-244"
+                ]
+              },
+              {
+                "aspect": "Архитектура объяснена связно",
+                "implementation": "Mermaid-граф связывает UI, FastAPI, guardrails, OpenAI, tools, catalog и cart; дерево проекта соответствует основным модулям.",
+                "value": "Описание не ограничено маркетинговым текстом и помогает понять, где проверять каждый результат.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:32-90"
+                ]
+              },
+              {
+                "aspect": "Ограничения не спрятаны",
+                "implementation": "README отдельно сообщает о demo purchase conditions, in-memory состоянии, отсутствии sync с ekt.kz, необходимости ключей и том, что public demo может отличаться от commit.",
+                "value": "Это повышает достоверность защиты проекта и позволяет не путать прототип с готовым checkout.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:249-286",
+                  "static/index.html:133"
+                ]
+              },
+              {
+                "aspect": "Репозиторное демо воспроизведено",
+                "implementation": "Без браузера, через HTTP/CLI, проверены health, demo questions, вопрос о товаре, отсутствие мутации до подтверждения, добавление 2 шт, просмотр корзины, аналог и условия.",
+                "value": "Устной презентации в материалах не было, но локальный результат достаточно конкретен для воспроизводимого разбора.",
+                "verification": "observed",
+                "evidence": [
+                  "runtime-start-1",
+                  "runtime-scenario-1",
+                  "captures/20261002T104340680561-http-scenario.stdout.log"
+                ]
+              }
+            ],
+            "scoreReasoning": "19 баллов заслужены за unusually полное README и воспроизведённый CLI/HTTP-показ. Устная часть и визуальная проверка в этом разборе отсутствовали по условиям, поэтому они не штрафуются. Один балл связан только с тем, что формально рекомендуемый полный test command завершается с пятью падениями."
+          }
+        ],
+        "total": 84
+      },
+      "case": null,
+      "judgeScore": 84,
+      "caseRequirements": [
+        {
+          "requirement": "Консультация по существующему товару: название, характеристики, цена, наличие/остаток и сертификаты из каталога.",
+          "status": "partial",
+          "explanation": "В demo и коде есть нормализация, detail lookup, характеристики, цена, склады и сертификаты; HTTP-проверка подтвердила название, цену и остаток. Реальный ekt API не вызывался без предоставленных credentials, поэтому live-факты не подтверждены.",
+          "evidence": [
+            "catalog.py:113-156",
+            "agent.py:553-570",
+            "agent.py:1220-1240",
+            "runtime-scenario-1"
+          ]
+        },
+        {
+          "requirement": "При нулевом остатке предложить релевантный аналог с объяснимой основой.",
+          "status": "met",
+          "explanation": "Demo-проверка `DEMO-AV-25` вернула доступный автомат 1P 16 А с ценой и остатком; источник выбора — та же категория, наличие и совпадение характеристик.",
+          "evidence": [
+            "runtime-scenario-1",
+            "catalog.py:558-602",
+            "tests/test_demo_catalog.py:32-53"
+          ]
+        },
+        {
+          "requirement": "Отвечать об оплате, доставке и минимальной партии.",
+          "status": "partial",
+          "explanation": "Ассистент вызывает `get_purchase_conditions`, и HTTP-проверка получила содержательный ответ по оплате, доставке, партии и возврату. Файл явно помечен как демонстрационный и не является официальными условиями ekt.kz.",
+          "evidence": [
+            "agent.py:567-570",
+            "logic/purchase_conditions.txt:1-22",
+            "runtime-scenario-1"
+          ]
+        },
+        {
+          "requirement": "Добавлять товар только после явного подтверждения клиента.",
+          "status": "met",
+          "explanation": "Без подтверждения первый запрос оставил `cart:[]`; после явной команды `Да, добавь 2 шт DEMO-LED-12` ответ вернул добавление 2 шт. Код дополнительно требует, чтобы модельный article/qty совпадали с последней командой клиента.",
+          "evidence": [
+            "runtime-scenario-1",
+            "agent.py:491-544",
+            "agent.py:582-626",
+            "tests/test_adversarial_cart.py:98-235"
+          ]
+        },
+        {
+          "requirement": "Не превышать доступный остаток, корректно обрабатывать неизвестный остаток и повтор запроса.",
+          "status": "met",
+          "explanation": "`add_to_cart` запрещает unknown stock, сравнивает итоговое количество с stock и применяет idempotency key для повторов; отдельные adversarial-тесты покрывают лимит, конфликт количества и конкурентный повтор.",
+          "evidence": [
+            "agent.py:594-623",
+            "tests/test_adversarial_cart.py:236-265",
+            "captures/20261002T104452210049-focused-tests.stderr.log"
+          ]
+        },
+        {
+          "requirement": "Вернуть прямую ссылку на актуальное состояние корзины после добавления.",
+          "status": "partial",
+          "explanation": "Ответ действительно содержит `cart`, количество и `https://ekt.kz/cart`, но локальная корзина ассистента не синхронизируется с корзиной сайта; ссылка не гарантирует, что добавленная позиция там присутствует.",
+          "evidence": [
+            "agent.py:17",
+            "agent.py:549-626",
+            "README.md:267",
+            "static/index.html:133",
+            "runtime-scenario-1"
+          ]
+        },
+        {
+          "requirement": "Принимать фото и Excel/Word/PDF/JPEG-вложения через пользовательский сценарий.",
+          "status": "partial",
+          "explanation": "API обрабатывает JPEG/PNG/WebP, PDF, DOCX и XLSX с лимитами, MIME/signature-проверкой и извлечением текста; распознавание изображения требует OpenAI key, а legacy DOC/XLS отклоняются. Доступность полного vision/live пути не подтверждена внешним ключом.",
+          "evidence": [
+            "attachments.py:38-247",
+            "attachments.py:256-286",
+            "tests/test_attachments.py:14-42",
+            "README.md:275-277"
+          ]
+        },
+        {
+          "requirement": "Не выдумывать цену, наличие и характеристики; блокировать prompt injection и платёжные данные.",
+          "status": "met",
+          "explanation": "Ответы модели проверяются по traces, article/price/stock связываются с одним товаром, инструкции из вложений очищаются, а платёжные данные блокируются до вызова агента. Unit и HTTP hardening тесты это покрывают.",
+          "evidence": [
+            "guardrails.py:130-229",
+            "guardrails.py:267-394",
+            "main.py:458-471",
+            "attachments.py:72-84",
+            "tests/test_guardrails.py:20-147",
+            "tests/test_http_hardening.py:44-58"
+          ]
+        },
+        {
+          "requirement": "Не оформлять заказ без подтверждения и не хранить платёжные данные.",
+          "status": "met",
+          "explanation": "В проекте нет checkout/payment tool; payment data распознаются и заменяются безопасным ответом до передачи в модель, а cart edit gates требуют явных команд.",
+          "evidence": [
+            "main.py:458-471",
+            "agent.py:464-485",
+            "agent.py:706-770",
+            "README.md:270"
+          ]
+        },
+        {
+          "requirement": "Поддержать рабочую конфигурацию с каталогом ekt.kz через `/api/products` и `/api/products/detail`.",
+          "status": "partial",
+          "explanation": "Код реализует Basic Auth, пагинацию, ограниченные параллельные запросы и lazy detail lookup по указанным endpoint; live-подключение не запускалось, так как credentials намеренно не предоставлены.",
+          "evidence": [
+            "catalog.py:20-31",
+            "catalog.py:214-236",
+            "catalog.py:315-455",
+            "cases/10/case-data/ИИ-ассистент для чата на сайте ekt.kz ДАННЫЕ.docx.md",
+            "live-blocked-1"
+          ]
+        }
+      ],
+      "testData": {
+        "provided": [
+          "cases/10/case-data/HackAlem AI_ ИИ-ассистент для чата на сайте ekt.kz.md",
+          "cases/10/case-data/ИИ-ассистент для чата на сайте ekt.kz ДАННЫЕ.docx.md"
+        ],
+        "used": [
+          "cases/10/case-data/HackAlem AI_ ИИ-ассистент для чата на сайте ekt.kz.md",
+          "cases/10/case-data/ИИ-ассистент для чата на сайте ekt.kz ДАННЫЕ.docx.md",
+          "catalog_demo.json",
+          "logic/purchase_conditions.txt",
+          "tests/test_adversarial_cart.py",
+          "tests/test_attachments.py",
+          "tests/test_live_catalog.py"
+        ],
+        "checks": [
+          {
+            "input": "Требования кейса: каталог, характеристики, сертификаты, остаток, аналог, условия, подтверждённая корзина и вложения.",
+            "method": "Сопоставил требования из задания с исходниками `catalog.py`, `agent.py`, `attachments.py`, `main.py` и `guardrails.py`.",
+            "result": "Для каждого существенного пункта найден конкретный путь данных или ограничение; статусы приведены в `caseRequirements`.",
+            "conclusion": "Кейс покрыт по функциям, но синхронизация реальной корзины остаётся частичной."
+          },
+          {
+            "input": "Данные документа кейса с endpoint `/api/products`, `/api/products/detail` и Basic Auth.",
+            "method": "Проверил live loader и тестовый контракт без использования credentials: URL, auth, pagination, detail id, retries и unknown-stock поведение.",
+            "result": "`Catalog` использует оба endpoint, Basic Auth и параметры page/per_page/id; 12 live-catalog contract tests прошли.",
+            "conclusion": "Интеграционный путь статически подтверждён, реальный внешний ответ не запускался из-за отсутствия ключей."
+          },
+          {
+            "input": "Локальная фикстура `catalog_demo.json`: доступный товар, нулевой остаток/аналог, conditions и корзина.",
+            "method": "Запустил приложение по HTTP в DEMO_MODE и отправил GET `/health`, GET `/api/demo-questions` и POST `/api/chat` для товара, подтверждения, корзины, аналога и условий.",
+            "result": "health: 200/ok/40 товаров; до подтверждения cart пуст; после `Да, добавь 2 шт DEMO-LED-12` cart содержит qty=2 и cart_link; `DEMO-AV-25` получил аналог; conditions вернули текст.",
+            "conclusion": "Основной локальный сценарий воспроизведён; cart link подтверждён как поле ответа, но не как синхронизация с сайтом."
+          },
+          {
+            "input": "Файловые вложения и текст из вложения.",
+            "method": "Применил attachment unit tests и просмотрел content-signature, MIME, zip-bomb, macro, redaction и parser paths в `attachments.py`; отдельного бинарного датасета вложений в case-data нет.",
+            "result": "4 attachment tests прошли; JPEG/PDF/DOCX/XLSX API paths и ошибки видны в исходниках.",
+            "conclusion": "Без внешнего vision key подтверждена безопасная обработка и подготовка контекста, но не фактическое распознавание фото моделью."
+          },
+          {
+            "input": "Полный regression suite проекта.",
+            "method": "Запустил `python -m unittest discover -s tests -v` в изолированном Python 3.12 контейнере.",
+            "result": "147 тестов: 142 pass, 5 fail. Падения: mock callback не принимает `attachment_context` в backend/http-hardening tests; UI test ждёт старый response без `attachments`; guided-selection test ждёт отсутствие скрытого `demo-button`.",
+            "conclusion": "Большая часть проверки зелёная, но snapshot не имеет полностью зелёного suite; это учтено одним finding и небольшим снижением качества/демо."
+          }
+        ],
+        "limitations": [
+          "Внешние credentials для OpenAI и EKT API не предоставлялись и не использовались; live catalog и vision вызов не подменялись mock-ответом во время HTTP-сценария.",
+          "В case-data нет бинарных Excel/Word/PDF/JPEG файлов; attachment capability проверена по исходникам и проектным unit tests.",
+          "Визуальная проверка интерфейса не выполнялась; описанные UI-состояния подтверждены HTML/JS и API, а не просмотром браузера."
+        ]
+      },
+      "runtime": {
+        "status": "partial",
+        "build": "Статическая компиляция основных Python-модулей прошла; зависимости из requirements.txt установились в изолированном Python 3.12 окружении.",
+        "start": "Приложение реально стартовало под Uvicorn в DEMO_MODE=1; `/health` вернул HTTP 200.",
+        "scenario": "Основной offline-сценарий воспроизведён по HTTP. Полный live-сценарий ограничен отсутствием внешних ключей, а не ошибкой старта проекта.",
+        "environment": "Python 3.12 slim container для недоверенного кода; проектная команда запуска — `uvicorn main:app --host 0.0.0.0 --port $PORT`; внешний OpenAI/EKT доступ не задан.",
+        "summary": "Демо работает, но статус partial выбран потому, что production-путь с live EKT API и OpenAI не был исполнен без намеренно не предоставленных credentials. Это ограничение проверки, а не автоматический штраф.",
+        "checks": [
+          {
+            "command": "python -m compileall -q agent.py attachments.py catalog.py guardrails.py main.py ui_actions.py",
+            "result": "Код возврата 0, ошибок компиляции нет.",
+            "id": "build-compile-1",
+            "stage": "build",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Основные Python-модули компилируются без синтаксических ошибок."
+          },
+          {
+            "command": "uvicorn main:app --host 0.0.0.0 --port $PORT",
+            "result": "В DEMO_MODE=1 сервер поднялся; GET `/health` вернул 200 и `ok:true`, `catalog_source:demo`, `products:40`.",
+            "id": "runtime-start-1",
+            "stage": "start",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Приложение стартует и публикует health endpoint."
+          },
+          {
+            "command": "GET /health; GET /api/demo-questions",
+            "result": "Оба ответа HTTP 200. Health сообщил demo catalog из 40 товаров; demo questions вернул 5 вопросов контрольного сценария.",
+            "id": "runtime-scenario-1",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Приложение отдаёт каталоговый статус и воспроизводимый demo script."
+          },
+          {
+            "command": "POST /api/chat",
+            "result": "`Есть DEMO-LED-12?` оставил cart пустым; `Да, добавь 2 шт DEMO-LED-12` вернул qty=2 и cart_link; `Покажи корзину` вернул тот же qty; запрос по `DEMO-AV-25` вернул аналог; вопрос об условиях вернул демонстрационные условия.",
+            "id": "runtime-scenario-2",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Товарный ответ, аналог, условия и подтверждённое добавление работают связно."
+          },
+          {
+            "command": "python -m unittest discover -s tests -v",
+            "result": "В изолированном окружении 147 тестов: 142 pass, 5 fail. Причины зафиксированы в F-TEST-CONTRACT; это не падение старта или основного HTTP demo.",
+            "id": "runtime-tests-1",
+            "stage": "scenario",
+            "status": "fail",
+            "cause": "project",
+            "expected": "Полный заявленный тестовый набор завершается без ошибок."
+          },
+          {
+            "command": "Catalog live load with EKT_API_USER/EKT_API_PASSWORD and OPENAI_API_KEY",
+            "result": "Не запускался: credentials намеренно не предоставлены. Проектный код проверен статически и live API contract tests используют контролируемые fake sessions только для unit/domain проверки.",
+            "id": "live-blocked-1",
+            "stage": "scenario",
+            "status": "blocked",
+            "cause": "review_environment",
+            "expected": "Подтвердить реальные ответы EKT API и OpenAI на внешнем полном сценарии."
+          }
+        ],
+        "limitations": [
+          "Live EKT API и OpenAI не вызывались без credentials; это ограничивает наблюдение внешнего пути, но не делает assessment incomplete.",
+          "Содержимое реальной корзины ekt.kz не проверялось: код сам сообщает, что локальная панель с ней не синхронизирована.",
+          "Визуальное поведение интерфейса не проверялось, поскольку визуальную проверку выполняет пользователь."
+        ]
+      },
+      "liveDemo": {
+        "status": "claimed",
+        "url": "https://ekt-ai-assistant-demo.vercel.app",
+        "notes": "Ссылка и `/health` заявлены в README как ранее опубликованная demo-версия. В этом разборе внешний deployment не подтверждался; отсутствие подтверждения ссылки не использовано как штраф. Локальное HTTP demo из snapshot подтверждено отдельно."
+      },
+      "fiveHourContext": "Для пятичасового хакатона это сильный и целостный prototype с большим объёмом защитной инженерии: offline fallback, live catalog loader, adversarial cart rules, attachments и reproducible README. Оценка не требует production-платежей или полноценной авторизации, но реальная cart synchronization является частью самого кейса, поэтому отмечена как существенная граница, а не как функция вне задания.",
+      "strengths": [
+        "Связный offline HTTP-сценарий подтверждён: каталог → товарный ответ → аналог → условия → явное добавление → состояние корзины.",
+        "Сильный safety-контур: явное подтверждение, точная привязка article/quantity к последней команде, лимит остатка, idempotency и защита платёжных данных.",
+        "Live catalog path и tests продуманнее типичного mock-up: Basic Auth, pagination, lazy details, retries, id validation и unknown-stock semantics.",
+        "Вложения обрабатываются как недоверенные данные с проверкой сигнатур, лимитов, макросов, redaction и ограниченным извлечением текста.",
+        "README содержит архитектуру, команды, demo script, ограничения и конкретные security checks, поэтому локальное воспроизведение понятно."
+      ],
+      "gaps": [
+        "Корзина ассистента хранится только в памяти и не синхронизируется с реальной корзиной ekt.kz; ссылка на сайт поэтому не гарантирует актуальное состояние позиции. [F-CART-SYNC]",
+        "История, корзины и attachment context не персистируются и не разделяются между экземплярами процесса. [F-MEMORY-STATE]",
+        "Полный тестовый набор snapshot не зелёный: 5 из 147 тестов падают из-за рассинхронизации mock/API-контрактов и устаревшего UI-ожидания. [F-TEST-CONTRACT]"
+      ],
+      "futureAdvice": [
+        {
+          "principle": "Сквозной commerce-сценарий должен иметь единый источник истины для cart state.",
+          "why": "F-CART-SYNC показывает, что локальное добавление и ссылка на ekt.kz расходятся: пользователь видит 2 шт в ответе ассистента, но код не отправляет эту позицию в корзину сайта.",
+          "how": "В следующем кейсе заранее зафиксировать cart contract: API добавления/удаления, session binding, повтор запроса и read-after-write. Если API недоступен, явно показывать локальную корзину как demo вместо ссылки на production checkout.",
+          "findingIds": [
+            "F-CART-SYNC"
+          ],
+          "successCheck": "После подтверждения GET/проверка корзины сайта или тестового cart adapter возвращает тот же SKU и quantity, а повтор команды не удваивает позицию.",
+          "timeboxMinutes": 60
+        },
+        {
+          "principle": "Session-bound состояние нужно вынести за пределы процесса до масштабирования.",
+          "why": "F-MEMORY-STATE подтверждён README и инициализацией `app.state`: restart очищает history/cart, а несколько экземпляров не имеют общего состояния.",
+          "how": "Для другого хакатона определить минимальный storage adapter с TTL, session ownership и atomic cart update; сначала заменить только ShopTools carts/history, сохранив текущие guardrails.",
+          "findingIds": [
+            "F-MEMORY-STATE"
+          ],
+          "successCheck": "После перезапуска или запроса к другому экземпляру история и cart сохраняются, а параллельное добавление не превышает stock.",
+          "timeboxMinutes": 45
+        },
+        {
+          "principle": "Тестовый контракт должен обновляться вместе с публичным API ответа.",
+          "why": "F-TEST-CONTRACT: production-вызов `run_openai_agent` уже принимает `attachment_context`/`image_urls` и ChatResponse уже содержит `attachments`, но пять тестовых ожиданий остались от прежней формы.",
+          "how": "В другом проекте после изменения сигнатуры сделать один contract-test для mock callback и один snapshot/assertion для response schema; затем прогнать полный suite перед демо.",
+          "findingIds": [
+            "F-TEST-CONTRACT"
+          ],
+          "successCheck": "Команда `python -m unittest discover -s tests -v` завершается `OK`, а тесты явно проверяют attachment fields и актуальную agent signature.",
+          "timeboxMinutes": 25
+        }
+      ],
+      "uncertainties": [
+        "Не подтверждены реальные payloads, доступность и права EKT API на момент ревью: credentials намеренно не предоставлены.",
+        "Не подтверждён фактический ответ OpenAI tool-calling/vision в live режиме; статический путь вход → provider → guardrails → response изучен.",
+        "Визуальная доступность desktop/mobile UI не проверялась браузером или скриншотами по установленной политике.",
+        "Условия покупки в проекте демонстрационные; нельзя считать их официальной политикой ekt.kz без отдельного источника."
+      ],
+      "reviewPolicyVersion": 2,
+      "assessmentStatus": "ready",
+      "findings": [
+        {
+          "id": "F-CART-SYNC",
+          "kind": "defect",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "После подтверждения товар добавляется только в локальную in-memory корзину ассистента, а ссылка фиксированно ведёт на корзину ekt.kz.",
+          "expected": "Ссылка после добавления должна вести на актуальную корзину с той же позицией или проект должен иметь явный cart adapter, связывающий session с сайтом.",
+          "actual": "`ShopTools.carts` хранит позиции по session_id в памяти; `CART_LINK` равен `https://ekt.kz/cart`; README и UI отдельно признают отсутствие синхронизации.",
+          "evidence": [
+            "agent.py:17",
+            "agent.py:549-626",
+            "README.md:267",
+            "static/index.html:133"
+          ],
+          "checkIds": [
+            "runtime-scenario-2"
+          ]
+        },
+        {
+          "id": "F-MEMORY-STATE",
+          "kind": "defect",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "История диалога, корзины и attachment context живут только в памяти процесса.",
+          "expected": "Для масштабируемого web deployment session state должен быть durable/shared или ограничение должно исключать multi-instance/session recovery.",
+          "actual": "Lifespan создаёт `app.state.histories`, `app.state.attachment_contexts` и `ShopTools` заново при запуске; README сообщает, что состояние сбрасывается после restart.",
+          "evidence": [
+            "main.py:138-155",
+            "main.py:423-443",
+            "README.md:268"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "F-TEST-CONTRACT",
+          "kind": "defect",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Полный тестовый suite snapshot не проходит.",
+          "expected": "`python -m unittest discover -s tests -v` должен завершаться без падений.",
+          "actual": "Изолированный запуск сообщил 147 тестов, 142 pass и 5 fail: callbacks в backend/http-hardening не принимают новые `attachment_context`/`image_urls`, UI assertion ждёт response без `attachments`, guided-selection assertion ждёт отсутствие скрытого `demo-button`.",
+          "evidence": [
+            "captures/20261002T104611577831-docker-tests.stderr.log",
+            "agent.py:966-975",
+            "main.py:130-135",
+            "tests/test_http_hardening.py:100-125",
+            "tests/test_ui_actions.py:306-316",
+            "tests/test_guided_selection.py:74-85"
+          ],
+          "checkIds": [
+            "runtime-tests-1"
+          ]
+        },
+        {
+          "id": "S-DEMO-HTTP",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Основной demo-сценарий реально работает по HTTP.",
+          "expected": "Сервер должен стартовать и связать catalog, chat, analog, conditions и cart flows.",
+          "actual": "Health/questions вернули 200; до подтверждения cart пуст, после explicit add qty=2; analog и conditions ответили.",
+          "evidence": [
+            "captures/20261002T104340680561-http-scenario.stdout.log"
+          ],
+          "checkIds": [
+            "runtime-start-1",
+            "runtime-scenario-1",
+            "runtime-scenario-2"
+          ]
+        },
+        {
+          "id": "S-CART-GUARDS",
+          "kind": "strength",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Корзина защищена явным подтверждением, точным SKU/quantity binding, stock limit и idempotent replay.",
+          "expected": "Нельзя менять cart по вопросу, подмене model arguments или количеству выше остатка.",
+          "actual": "Проверки реализованы в `purchase_confirmed`, `cart_intent_matches` и `ShopTools.add_to_cart`; adversarial suite прошёл 46 тестов.",
+          "evidence": [
+            "agent.py:491-626",
+            "tests/test_adversarial_cart.py:98-315",
+            "captures/20261002T104452210049-focused-tests.stderr.log"
+          ],
+          "checkIds": [
+            "runtime-scenario-2"
+          ]
+        },
+        {
+          "id": "S-LIVE-CATALOG",
+          "kind": "strength",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Live catalog loader корректно задаёт Basic Auth, пагинацию, detail lookup, retries и нормализацию unknown stock.",
+          "expected": "Внешний каталог должен загружаться ограниченно и не превращать неизвестный остаток в доступный.",
+          "actual": "Реализованы `/api/products`, `/api/products/detail`, page bounds, id check, lazy detail и stock normalization; 12 live contract tests прошли.",
+          "evidence": [
+            "catalog.py:20-31",
+            "catalog.py:214-236",
+            "catalog.py:315-516",
+            "captures/20261002T104452274051-focused-tests-3.stderr.log"
+          ],
+          "checkIds": [
+            "live-blocked-1"
+          ]
+        },
+        {
+          "id": "S-ATTACHMENTS",
+          "kind": "strength",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Attachment pipeline ограничивает размер и типы, очищает чувствительные данные и извлекает DOCX/XLSX/PDF без постоянного хранения.",
+          "expected": "Недоверенное вложение не должно выполнять команды или бесконтрольно расходовать ресурсы.",
+          "actual": "Есть signature/MIME проверки, macro/zip-bomb guards, redaction, parser timeout и 3-file/3MB limits; 4 attachment tests прошли.",
+          "evidence": [
+            "attachments.py:72-247",
+            "attachments.py:289-367",
+            "captures/20261002T104452246055-focused-tests-2.stderr.log"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "L-LIVE-CREDENTIALS",
+          "kind": "limitation",
+          "verification": "observed",
+          "responsibility": "review_environment",
+          "claim": "Реальный live provider path не был вызван.",
+          "expected": "Для внешнего smoke test нужны предоставленные EKT/OpenAI credentials и доступный сервис.",
+          "actual": "Credentials намеренно не предоставлены; проверка ограничена исходниками и локальными fake-session/unit contract tests.",
+          "evidence": [
+            "README.md:156-191",
+            "catalog.py:214-236"
+          ],
+          "checkIds": [
+            "live-blocked-1"
+          ]
+        },
+        {
+          "id": "L-VISUAL-REVIEW",
+          "kind": "limitation",
+          "verification": "unverified",
+          "responsibility": "review_environment",
+          "claim": "Визуальное desktop/mobile поведение не подтверждено в этом ревью.",
+          "expected": "Визуальные состояния должна проверить отдельная пользовательская проверка.",
+          "actual": "Проверены только статические HTML/JS и HTTP/API; browser/CUA/screenshot inspection не выполнялась.",
+          "evidence": [
+            "static/index.html:1-145",
+            "static/app.js:202-237"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "L-DEMO-CONDITIONS",
+          "kind": "limitation",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Условия оплаты и доставки представлены как демонстрационный текст.",
+          "expected": "Перед production ответы должны основываться на официальных актуальных условиях ekt.kz.",
+          "actual": "`logic/purchase_conditions.txt` содержит явную пометку о demo и требует замены перед production; локальный ответ это не скрывает.",
+          "evidence": [
+            "logic/purchase_conditions.txt:1-22",
+            "README.md:270"
+          ],
+          "checkIds": [
+            "runtime-scenario-2"
+          ]
+        }
+      ],
+      "gapFindingIds": [
+        "F-CART-SYNC",
+        "F-MEMORY-STATE",
+        "F-TEST-CONTRACT"
+      ]
+    }
+  ],
+  "score": 84.0,
+  "status": "complete",
+  "expectedJudges": 1
+}

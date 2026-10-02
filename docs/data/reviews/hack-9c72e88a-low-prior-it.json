@@ -1,0 +1,1144 @@
+{
+  "methodVersion": 4,
+  "repoId": "hack-9c72e88a-low-prior-it",
+  "repoUrl": "https://github.com/BAITC-Hacks/hack-9c72e88a-low-prior-it",
+  "caseId": 1,
+  "snapshot": "29998a5a60dd59bf8a0a7edbb4383714e8e7d996",
+  "judges": [
+    {
+      "methodVersion": 4,
+      "repoId": "hack-9c72e88a-low-prior-it",
+      "caseId": 1,
+      "model": "GPT-5.6 Luna",
+      "snapshot": "29998a5a60dd59bf8a0a7edbb4383714e8e7d996",
+      "overallSummary": "Проект представляет хорошо структурированный прототип прогнозирования мощности двух ветротурбин: FastAPI, React-дашборд, детерминированный ForecastAgent, temporal/provenance guards, модели SCADA/погоды, refresh по отпечатку входов и read-only аналитики. Offline/demo-сценарий воспроизведён полностью: API стартует, 48-часовой прогноз и 29-дневный replay проходят HTTP smoke, backend/frontend тесты и сборки успешны. Главный незакрытый пункт кейса — строгая историческая доступность архивного прогноза: импортируемые weather snapshots намеренно остаются unverified, а README прямо называет available_at предположением. Кроме того, заявленная команда npm run reproduce, результаты results/ и команда smoke_demo.py --archive отсутствуют или не соответствуют исходнику. Итоговая оценка судьи — 80/100 как среднее 82/100 по общим критериям и 78/100 по критериям кейса.",
+      "global": {
+        "criteria": [
+          {
+            "name": "Ценность решения",
+            "score": 21,
+            "max": 25,
+            "awarded": "Решение адресует понятную операционную задачу ВЭС: заранее видеть почасовую мощность двух турбин и происхождение входов.",
+            "deductions": "4 балла сняты за то, что практическая ценность именно для строгого оперативного исторического сценария не доказана: погодный архив в проекте остаётся unverified.",
+            "evidence": [
+              "README.md:3-23",
+              "agent/wind_agent/weather.py:52-74",
+              "F-PROVENANCE"
+            ],
+            "deductionItems": [
+              {
+                "points": 4,
+                "findingId": "F-PROVENANCE",
+                "reason": "Без подтверждённого времени публикации архивного прогноза нельзя утверждать, что февральские прогнозы отражают доступную оператору информацию; это уменьшает доказанную прикладную ценность, хотя safety guard корректно блокирует такой режим."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Операторская задача",
+                "implementation": "README описывает почасовой горизонт 24–48 часов для двух турбин, а API-контракт ограничивает horizon_hours значениями 24 или 48 и возвращает ForecastPoint с lead_hours.",
+                "value": "Пользовательский результат непосредственно связан с планированием выработки, а не с абстрактной демонстрацией ML.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:3",
+                  "contracts/wind_contracts/models.py:215-233"
+                ]
+              },
+              {
+                "aspect": "Прозрачность результата",
+                "implementation": "ForecastResult сохраняет snapshots, input_fingerprint, warnings и анализ; CSV-экспорт включает issue, valid time, lead, model и weather provenance.",
+                "value": "Оператор может сопоставить прогноз с входной погодой и понять статус DEMO/PROVISIONAL, что делает пользу проверяемой.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/wind_backend/routes.py:166-224",
+                  "R-HTTP-SMOKE"
+                ]
+              },
+              {
+                "aspect": "Польза для двух активов",
+                "implementation": "Турбины берутся из конфигурации, assets/turbines возвращают обе записи, а smoke-сценарий строит 48 часов для каждого актива.",
+                "value": "Минимальный сценарий кейса представлен как единая ферма, а не как один искусственный ряд.",
+                "verification": "observed",
+                "evidence": [
+                  "config/turbines.example.json",
+                  "R-HTTP-SMOKE"
+                ]
+              },
+              {
+                "aspect": "Честная граница применимости",
+                "implementation": "README и evidence помечают подготовку provisional и не выдают hindcast за доказанный operational archive; ArchiveWeatherProvider требует verified snapshot.",
+                "value": "Такое ограничение защищает оператора от ложной уверенности и повышает доверие к тем результатам, которые всё-таки публикуются.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:21-23",
+                  "backend/wind_backend/evidence.py:253-270",
+                  "agent/wind_agent/weather.py:62-74"
+                ]
+              }
+            ],
+            "scoreReasoning": "21 балл заслужены за прямое соответствие реальной задаче, два актива, почасовой пользовательский результат и сильную прозрачность. До максимума не хватает не общей идеи, а доказанного operational weather lineage: сам проект признаёт, что available_at построен на предположении, а verified snapshots в replay не появляются. Для пятичасового MVP это существенная, но локализованная граница."
+          },
+          {
+            "name": "Результат и качество решения",
+            "score": 17,
+            "max": 20,
+            "awarded": "Демо-сценарий целостный и реально работает через API: forecast, analysis, refresh, evidence и replay/export.",
+            "deductions": "3 балла сняты за отсутствие воспроизводимого пути к заявленному обученному/архивному результату из чистого checkout.",
+            "evidence": [
+              "R-BACKEND-ALL",
+              "R-FRONTEND-BUILD",
+              "R-FRONTEND-TESTS",
+              "R-HTTP-SMOKE",
+              "F-PROVENANCE",
+              "F-REPRO"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "F-PROVENANCE",
+                "reason": "Рабочий HTTP результат в проверке — demo weather; строгий archive forecast не может пройти существующий guard без подтверждённого snapshot."
+              },
+              {
+                "points": 1,
+                "findingId": "F-REPRO",
+                "reason": "README обещает одну команду, которая обучает/регистрирует модели и генерирует февральские артефакты, но этой команды нет в package.json, поэтому заявленный основной артефакт нельзя получить описанным способом."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Полный demo flow",
+                "implementation": "POST /forecasts создаёт job, WindService запускает ForecastAgent, результат содержит точки, snapshots, warnings и deterministic analysis; smoke проверяет 48 часов на каждую турбину и unchanged refresh.",
+                "value": "Это не только компилируемый код: есть законченный пользовательский сценарий от запроса до экспортируемого результата.",
+                "verification": "observed",
+                "evidence": [
+                  "R-HTTP-SMOKE",
+                  "backend/wind_backend/service.py:53-89",
+                  "agent/wind_agent/orchestrator.py:21-154"
+                ]
+              },
+              {
+                "aspect": "Replay и экспорт",
+                "implementation": "Backtest создаёт 29 ежедневных issue times, сохраняет child forecast IDs, возвращает unscored metrics без actuals и экспортирует отфильтрованные строки.",
+                "value": "Команда реализовала временной сценарий, близкий к кейсу, и не подменяет отсутствие February actuals выдуманными метриками.",
+                "verification": "observed",
+                "evidence": [
+                  "R-HTTP-SMOKE",
+                  "backend/wind_backend/routes.py:227-258",
+                  "backend/wind_backend/service.py:267-390"
+                ]
+              },
+              {
+                "aspect": "Надёжность edge cases",
+                "implementation": "Тесты покрывают retry, future publication, неполное покрытие, неправильную турбину, duplicate hours, immutable refresh и ошибки провайдера.",
+                "value": "Для MVP это заметно снижает риск тихой выдачи некорректного прогноза.",
+                "verification": "observed",
+                "evidence": [
+                  "R-BACKEND-FOCUSED",
+                  "tests/test_weather_adapter.py",
+                  "tests/test_worker.py"
+                ]
+              },
+              {
+                "aspect": "Frontend delivery",
+                "implementation": "TypeScript проходит typecheck, Vite собирает production bundle, flow tests проверяют навигацию, forecast handoff, replay controls и export.",
+                "value": "Пользовательский слой имеет проверяемый контракт с API, а не только backend demo.",
+                "verification": "observed",
+                "evidence": [
+                  "R-FRONTEND-BUILD",
+                  "R-FRONTEND-TESTS",
+                  "frontend/tests/flow/dashboard.test.tsx",
+                  "frontend/tests/flow/navigation.test.tsx"
+                ]
+              }
+            ],
+            "scoreReasoning": "17/20 отражают реально воспроизведённый demo/API продукт и широкое покрытие тестами. Потеря ограничена тем, что наиболее содержательная заявка README — CatBoost weather-SCADA плюс февральский verified replay — не воспроизводится из текущего checkout одной документированной командой и требует отсутствующего доказанного weather lineage."
+          },
+          {
+            "name": "Инновационность",
+            "score": 13,
+            "max": 15,
+            "awarded": "Нестандартная часть решения — agentic orchestration с жёсткими численными и временными границами, а LLM оставлен read-only советником.",
+            "deductions": "2 балла сняты за то, что инновационная погодная часть не доведена до доказанного operational archive.",
+            "evidence": [
+              "agent/wind_agent/orchestrator.py:21-154",
+              "agent/wind_agent/openai.py:48-162",
+              "agent/wind_agent/nvidia.py:46-155",
+              "F-PROVENANCE"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "F-PROVENANCE",
+                "reason": "Weather reconstruction/hindcast с предположенным available_at не подтверждает заявленное отличие от обычного offline ML для исторического replay."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Детерминированный agentic цикл",
+                "implementation": "ForecastAgent последовательно валидирует cutoff, получает weather snapshot, проверяет turbine/coverage/availability, запускает predictor, анализирует точки и возвращает события.",
+                "value": "Agentic-поведение выражено в исполнимом оркестраторе, а не только в маркетинговом названии.",
+                "verification": "source",
+                "evidence": [
+                  "agent/wind_agent/orchestrator.py:21-154"
+                ]
+              },
+              {
+                "aspect": "LLM за безопасной границей",
+                "implementation": "OpenAI и NVIDIA получают только две read-only tools, ограниченный цикл вызовов и не имеют пути изменения численных forecast points; без ключа остаётся deterministic analysis.",
+                "value": "Это осмысленное применение AI: LLM объясняет результат, но не может обойти temporal/provenance guards.",
+                "verification": "source",
+                "evidence": [
+                  "agent/wind_agent/analysis.py:1-150",
+                  "agent/wind_agent/openai.py:60-162",
+                  "agent/wind_agent/nvidia.py:56-155",
+                  "R-CLOUD-CONFIG"
+                ]
+              },
+              {
+                "aspect": "Refresh по содержанию входа",
+                "implementation": "Fingerprint включает погодное содержание, provenance, request и model metadata; refresh создаёт новый immutable run только при изменении входа.",
+                "value": "Повторный расчёт реагирует на реальные изменения данных, а не на время запроса и не перезаписывает прошлый результат.",
+                "verification": "observed",
+                "evidence": [
+                  "agent/wind_agent/orchestrator.py:92-112",
+                  "tests/test_worker.py",
+                  "R-BACKEND-FOCUSED"
+                ]
+              },
+              {
+                "aspect": "Консервативный provenance contract",
+                "implementation": "Verified snapshot требует non-demo source, available_at и evidence; unverified downloads не продвигаются автоматически.",
+                "value": "Такой подход оригинальнее и безопаснее типичного fallback на фактическую погоду, потому что явно запрещает подмену неизвестного входа.",
+                "verification": "source",
+                "evidence": [
+                  "contracts/wind_contracts/models.py:177-206",
+                  "scripts/import_weather_archive.py:36-53"
+                ]
+              }
+            ],
+            "scoreReasoning": "13/15 заслужены архитектурным разделением agent, predictor, provider и read-only analyst, а также fingerprint/refresh semantics. До максимума не хватает доказанной operational availability: без неё погодная инновация остаётся хорошо оформленной, но provisional реконструкцией."
+          },
+          {
+            "name": "Потенциал развития и масштабирования",
+            "score": 16,
+            "max": 20,
+            "awarded": "Модульные контракты и API дают хороший путь от двух демо-турбин к нескольким активам, моделям и провайдерам.",
+            "deductions": "4 балла сняты за неполный delivery path: воспроизведение артефактов и verified archive audit оставлены за пределами checkout.",
+            "evidence": [
+              "contracts/wind_contracts/models.py:215-327",
+              "backend/wind_backend/service.py:67-179",
+              "README.md:72-96",
+              "F-REPRO",
+              "F-PROVENANCE"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "F-REPRO",
+                "reason": "Отсутствующие reproduce.py/results и dead links усложняют перенос решения в следующую среду и проверку новых экспериментов."
+              },
+              {
+                "points": 2,
+                "findingId": "F-PROVENANCE",
+                "reason": "Масштабирование на реальные площадки требует подтверждённого archive ingestion/audit; текущий код intentionally останавливается на unverified candidate."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Контрактная расширяемость",
+                "implementation": "ForecastRequest, WeatherSnapshot, Predictor/WeatherProvider protocols и ModelInfo отделяют API от конкретной модели/провайдера.",
+                "value": "Можно добавлять новые модели и weather sources без переписывания UI и orchestration boundary.",
+                "verification": "source",
+                "evidence": [
+                  "agent/wind_agent/interfaces.py:1-35",
+                  "contracts/wind_contracts/models.py:160-327"
+                ]
+              },
+              {
+                "aspect": "Несколько типов моделей",
+                "implementation": "WindService выбирает demo, binned curve, persistence, weather ridge и CatBoost по algorithm metadata; обучение создаёт новый model ID.",
+                "value": "Есть реалистичный путь сравнивать baseline и production candidate, сохраняя provenance модели.",
+                "verification": "source",
+                "evidence": [
+                  "backend/wind_backend/service.py:67-89",
+                  "backend/wind_backend/service.py:96-179",
+                  "backend/wind_backend/catboost_model.py:1-220"
+                ]
+              },
+              {
+                "aspect": "Расширение на energy assets",
+                "implementation": "Frontend explorer и /assets работают через energy_type, site/country metadata и explicit forecast_supported mapping.",
+                "value": "Архитектура подготовлена к каталогу активов, а не зашита только под одну страницу турбины.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/wind_backend/routes.py:57-80",
+                  "frontend/src/explore/catalog.ts",
+                  "frontend/tests/explore.test.mjs"
+                ]
+              },
+              {
+                "aspect": "Дальнейший audit явно сформулирован",
+                "implementation": "docs/data-and-replay.md и docs/agent.md перечисляют raw payload/checksum, publication record, hub-height correction, scheduler и verified ingestion как следующие шаги.",
+                "value": "Команда корректно видит границу MVP и формулирует конкретный путь к более широкому использованию.",
+                "verification": "source",
+                "evidence": [
+                  "docs/data-and-replay.md:134-152",
+                  "docs/agent.md:43-53"
+                ]
+              }
+            ],
+            "scoreReasoning": "16/20 — сильный потенциал за protocols, model registry, API и каталог активов. Снижение связано с воспроизводимостью и data governance, которые особенно важны при масштабировании: текущий checkout не содержит заявленного reproduction entrypoint/results и не закрывает verified archive audit."
+          },
+          {
+            "name": "Презентация, демо и ответы на вопросы",
+            "score": 15,
+            "max": 20,
+            "awarded": "Устного выступления не было; по README и репозиторию решение объяснено достаточно подробно, а локальное demo проверяемо.",
+            "deductions": "5 баллов сняты за несоответствия между README и checkout: отсутствующий reproduce entrypoint/artifacts и несуществующий флаг --archive.",
+            "evidence": [
+              "README.md:25-70",
+              "README.md:88-98",
+              "R-HTTP-SMOKE",
+              "F-REPRO",
+              "F-ARCHIVE-SMOKE"
+            ],
+            "deductionItems": [
+              {
+                "points": 3,
+                "findingId": "F-REPRO",
+                "reason": "Ключевая инструкция npm run reproduce не запускается, а результаты и несколько README-ссылок отсутствуют, поэтому заявленное демо нельзя показать по описанному главному пути из чистого checkout."
+              },
+              {
+                "points": 2,
+                "findingId": "F-ARCHIVE-SMOKE",
+                "reason": "Вторая команда HTTP-проверки README использует --archive, которого нет в argparse smoke_demo.py; это создаёт прямое препятствие для демонстрации archive-сценария."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Архитектурное объяснение",
+                "implementation": "README содержит flowchart UI→API→Agent→Weather/ML→Audit→DB, таблицу каталогов и список API routes.",
+                "value": "Новый проверяющий понимает границы компонентов и может найти реализацию.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:72-124"
+                ]
+              },
+              {
+                "aspect": "Инструкции локального demo",
+                "implementation": "README и docs/demo.md описывают зависимости, команды dev, выбор актива, horizon, model/source, evidence и replay.",
+                "value": "Участник может подготовить осмысленный показ без устных пояснений о каждом endpoint.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:35-57",
+                  "docs/demo.md:1-11"
+                ]
+              },
+              {
+                "aspect": "Репродуцируемая фактическая проверка",
+                "implementation": "Проверены заявленные API assertions smoke: health, evidence export, 48-hour forecast, analysis, refresh, 29 daily replay и CSV.",
+                "value": "Демо имеет наблюдаемое содержимое и не опирается только на README claims.",
+                "verification": "observed",
+                "evidence": [
+                  "R-HTTP-SMOKE"
+                ]
+              },
+              {
+                "aspect": "Ограничения описаны честно",
+                "implementation": "README явно говорит о provisional preparation, отсутствии February actual score и необходимости подтвердить operational archives.",
+                "value": "Презентационная коммуникация не маскирует неопределённость как accuracy claim.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:21-23",
+                  "README.md:46-70"
+                ]
+              }
+            ],
+            "scoreReasoning": "15/20: документация богата и локальный demo действительно работает, но проверяемость презентационного пути заметно страдает от stale instructions. Это не штраф за отсутствие public URL или устного выступления; снижены только подтверждённые несоответствия между README и файлами checkout."
+          }
+        ],
+        "total": 82
+      },
+      "case": {
+        "criteria": [
+          {
+            "name": "Соответствие задаче и работоспособность",
+            "score": 17,
+            "max": 25,
+            "awarded": "Основной сценарий 24–48-часового прогноза и refresh работает в demo, а temporal/provenance guards соответствуют ограничениям кейса; строгий verified historical replay реализован только как защищённый интерфейс, но не обеспечен входными доказательствами.",
+            "deductions": "8 баллов сняты за неподтверждённую историческую доступность погодных выпусков.",
+            "evidence": [
+              "case brief",
+              "R-HTTP-SMOKE",
+              "R-CASE-DATA",
+              "agent/wind_agent/orchestrator.py:31-83",
+              "F-PROVENANCE"
+            ],
+            "deductionItems": [
+              {
+                "points": 8,
+                "findingId": "F-PROVENANCE",
+                "reason": "Требование кейса — использовать для каждого февральского issue именно прогноз, доступный в тот момент. В проекте bundled imports создают verification=unverified без available_at, а README признаёт hindcast/10-hour assumption; ArchiveWeatherProvider поэтому закономерно не выдаёт такой snapshot."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Горизонт и два актива",
+                "implementation": "ForecastRequest разрешает только 24/48 часов, target_hours строит каждый будущий час, а demo smoke получил 48 точек на каждую из двух турбин.",
+                "value": "Минимальный пользовательский прогноз кейса реализован и наблюдён end-to-end.",
+                "verification": "observed",
+                "evidence": [
+                  "contracts/wind_contracts/models.py:215-233",
+                  "agent/wind_agent/weather.py:15-16",
+                  "R-HTTP-SMOKE"
+                ]
+              },
+              {
+                "aspect": "Временные ограничения",
+                "implementation": "Agent проверяет model cutoff against issue, weather run_init/available_at against issue и полное покрытие target hours; future publication и incomplete snapshot имеют regression tests.",
+                "value": "Код не смешивает будущую фактическую погоду с доступным на issue входом.",
+                "verification": "observed",
+                "evidence": [
+                  "agent/wind_agent/orchestrator.py:31-83",
+                  "tests/test_weather_adapter.py",
+                  "R-BACKEND-FOCUSED"
+                ]
+              },
+              {
+                "aspect": "Пересчёт при изменении входа",
+                "implementation": "POST refresh сравнивает fingerprint и создаёт новый run при изменённом weather snapshot, сохраняя старый результат.",
+                "value": "Это соответствует agentic requirement обновления входа без переписывания исторического выпуска.",
+                "verification": "observed",
+                "evidence": [
+                  "tests/test_worker.py",
+                  "R-HTTP-SMOKE",
+                  "backend/wind_backend/routes.py:158-163"
+                ]
+              },
+              {
+                "aspect": "Проверка организаторских данных",
+                "implementation": "Оба предоставленных CSV были пропущены через prepare_dataset с явной UTC+06/start semantics; получены полные hourly observations до cutoff и без future rows.",
+                "value": "Проверена именно структура кейсовых данных, а не только synthetic fixture.",
+                "verification": "observed",
+                "evidence": [
+                  "R-CASE-DATA",
+                  "agent/wind_agent/source_data.py",
+                  "scripts/prepare_dataset.py:39-75"
+                ]
+              }
+            ],
+            "scoreReasoning": "17/25: время, horizon, две турбины, no-leakage guards и refresh работают. Снижение существенно, потому что availability-at-issue — центральное условие кейса, а supplied/imported weather не имеет подтверждённой operational publication record. Это не ограничение нашей среды: проект сам маркирует snapshots unverified и блокирует archive mode."
+          },
+          {
+            "name": "Техническая реализация",
+            "score": 22,
+            "max": 25,
+            "awarded": "Техническая реализация зрелая для MVP: явные contracts, provider/predictor boundaries, SQLite service, CatBoost/persistence/baseline paths, agent events, error handling и защищённый optional LLM путь.",
+            "deductions": "3 балла сняты за незавершённую operational weather integration, а не за отсутствие ключей.",
+            "evidence": [
+              "R-BACKEND-ALL",
+              "R-FRONTEND-BUILD",
+              "backend/wind_backend/service.py:67-179",
+              "agent/wind_agent/weather.py:77-155",
+              "F-PROVENANCE"
+            ],
+            "deductionItems": [
+              {
+                "points": 3,
+                "findingId": "F-PROVENANCE",
+                "reason": "Single Runs download возвращает unverified candidate и не устанавливает publication time; bundled import делает то же самое. Технический путь verified historical archive остаётся ручным/внешним и не доведён до кейсового replay."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Разделение ответственности",
+                "implementation": "agent/wind_agent импортирует shared contracts, backend injects WeatherProvider и Predictor в ForecastAgent, а routes не содержат ML-формул.",
+                "value": "Компоненты можно независимо тестировать и заменять; boundary хорошо соответствует задаче agentic AI.",
+                "verification": "source",
+                "evidence": [
+                  "agent/wind_agent/interfaces.py:1-35",
+                  "backend/wind_backend/service.py:67-89",
+                  "agent/wind_agent/orchestrator.py:21-30"
+                ]
+              },
+              {
+                "aspect": "Temporal и leakage controls",
+                "implementation": "Feature/history selection фильтрует valid_time и available_at, training contract проверяет target cutoff, weather adapter проверяет complete target coverage и publication timing.",
+                "value": "Самая рискованная для forecasting часть — утечка будущего — оформлена как executable validation, а не как комментарий.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/wind_backend/features.py:78-185",
+                  "backend/wind_backend/ml.py:41-136",
+                  "tests/test_leakage.py",
+                  "R-BACKEND-ALL"
+                ]
+              },
+              {
+                "aspect": "API и жизненный цикл job",
+                "implementation": "Routes поддерживают queued/running/succeeded/failed, BackgroundTasks, structured ApiError, snapshots, forecasts, refresh, backtests и CSV.",
+                "value": "Технический прототип имеет usable service boundary и экспорт, достаточные для локального demo.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/wind_backend/routes.py:31-258",
+                  "backend/wind_backend/main.py:31-73",
+                  "R-HTTP-SMOKE"
+                ]
+              },
+              {
+                "aspect": "Тестовая дисциплина",
+                "implementation": "195 Python tests, ruff, frontend typecheck/build и 35 frontend tests прошли; отдельные tests проверяют agent worker and weather provenance.",
+                "value": "Ширина проверок подтверждает согласованность компонентов и снижает риск случайного happy path.",
+                "verification": "observed",
+                "evidence": [
+                  "R-BACKEND-ALL",
+                  "R-FRONTEND-BUILD",
+                  "R-FRONTEND-TESTS"
+                ]
+              }
+            ],
+            "scoreReasoning": "22/25: архитектура и контроль времени заметно выше минимального хакатонного уровня, а все локальные проверки зелёные. Удержаны 3 балла только за core integration gap: внешний provider получает данные, но не может доказать историческую публикацию, и проект сознательно оставляет их unverified."
+          },
+          {
+            "name": "README и воспроизводимость",
+            "score": 19,
+            "max": 25,
+            "awarded": "README подробно описывает архитектуру, API, ограничения, команды установки и ручной walkthrough; локальный demo и тесты воспроизводимы.",
+            "deductions": "6 баллов сняты за реальные рассогласования README с checkout и за недоступный описанный archive smoke command.",
+            "evidence": [
+              "README.md:25-70",
+              "README.md:88-98",
+              "R-HTTP-SMOKE",
+              "R-FRONTEND-BUILD",
+              "F-REPRO",
+              "F-ARCHIVE-SMOKE"
+            ],
+            "deductionItems": [
+              {
+                "points": 4,
+                "findingId": "F-REPRO",
+                "reason": "scripts/reproduce.py, results/february-2026/forecast.csv, results/february-2026/manifest.json и несколько linked docs отсутствуют; npm run reproduce завершается Missing script. Это ломает заявленный clean-clone путь к основному артефакту."
+              },
+              {
+                "points": 2,
+                "findingId": "F-ARCHIVE-SMOKE",
+                "reason": "README:50-57 instructs smoke_demo.py --archive, но scripts/smoke_demo.py принимает только --api; команда падает до проверки приложения."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Понятная карта системы",
+                "implementation": "README связывает frontend, backend, agent, contracts, generated OpenAPI и основные API routes; docs/demo.md даёт ручные шаги UI.",
+                "value": "Репозиторий можно изучать по слоям, а не восстанавливать архитектуру только чтением исходников.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:72-124",
+                  "docs/demo.md:1-11"
+                ]
+              },
+              {
+                "aspect": "Воспроизводимость dependency/build",
+                "implementation": "uv.lock, package-lock.json, pyproject.toml и frontend package scripts фиксируют Python/Node зависимости; clean container runs passed backend/frontend checks.",
+                "value": "Базовую сборку и тестовый контур можно воспроизвести без ключей.",
+                "verification": "observed",
+                "evidence": [
+                  "pyproject.toml:5-27",
+                  "package.json:1-21",
+                  "R-BACKEND-ALL",
+                  "R-FRONTEND-BUILD"
+                ]
+              },
+              {
+                "aspect": "Документированные ограничения",
+                "implementation": "README предупреждает о hindcast, provisional status, отсутствии February actual metrics и необходимости отдельной проверки публикации.",
+                "value": "Документация не выдаёт synthetic/demo output за измеренную accuracy.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:21-23",
+                  "README.md:46-70"
+                ]
+              },
+              {
+                "aspect": "Проверяемый API walkthrough",
+                "implementation": "Smoke script содержит конкретные assertions по evidence, forecast points, analysis, refresh, replay count и CSV rows; он успешно выполнен.",
+                "value": "Документация подкреплена исполнимым regression path для demo-сценария.",
+                "verification": "observed",
+                "evidence": [
+                  "scripts/smoke_demo.py:39-85",
+                  "R-HTTP-SMOKE"
+                ]
+              }
+            ],
+            "scoreReasoning": "19/25: содержание README сильное, а локальная часть действительно проверена. Но 6 баллов удержаны из-за не косметической опечатки, а отсутствующих файлов/команды и сломанной archive-команды, которые прямо препятствуют обещанному воспроизведению основного результата."
+          },
+          {
+            "name": "Ценность и применимость решения",
+            "score": 12,
+            "max": 15,
+            "awarded": "Для операционной команды ценны почасовой прогноз, provenance, предупреждения, анализ пиков/скачков, replay и CSV/API интеграция.",
+            "deductions": "3 балла сняты за отсутствие доказанного исторического weather input, без которого нельзя оценить применимость февральских прогнозов к реальному диспетчерскому процессу.",
+            "evidence": [
+              "README.md:3-23",
+              "agent/wind_agent/analysis.py",
+              "backend/wind_backend/routes.py:166-224",
+              "F-PROVENANCE"
+            ],
+            "deductionItems": [
+              {
+                "points": 3,
+                "findingId": "F-PROVENANCE",
+                "reason": "Продукт показывает полезный demo output, но не предоставляет доказательства, что архивные погодные входы были доступны оператору в соответствующие моменты; это ограничивает применение результата для backtest/operations."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Операционный формат",
+                "implementation": "Результат выдаётся по каждому valid hour/turbine с model ID, lead и weather snapshot ID и может быть экспортирован CSV.",
+                "value": "Такой формат пригоден для downstream planning и аудита, а не только для графика в UI.",
+                "verification": "source",
+                "evidence": [
+                  "backend/wind_backend/routes.py:166-224",
+                  "contracts/wind_contracts/models.py:229-275"
+                ]
+              },
+              {
+                "aspect": "Объяснимость",
+                "implementation": "Deterministic analysis вычисляет mean/peak, largest adjacent-hour changes и flat forecast, optional LLM получает quality/summary tools.",
+                "value": "Оператору дают контекст к числам, при этом LLM не подменяет forecast.",
+                "verification": "source",
+                "evidence": [
+                  "agent/wind_agent/analysis.py:1-150",
+                  "agent/wind_agent/orchestrator.py:92-154"
+                ]
+              },
+              {
+                "aspect": "Безопасность решения",
+                "implementation": "Warnings отмечают DEMO/PROVISIONAL, hub-height mismatch и SCADA-only model; archive mode запрещает demo fallback.",
+                "value": "В энергетическом сценарии лучше явно сообщить границу знания, чем выдать убедительный, но неподтверждённый прогноз.",
+                "verification": "observed",
+                "evidence": [
+                  "agent/wind_agent/orchestrator.py:96-118",
+                  "R-HTTP-SMOKE",
+                  "tests/test_weather_adapter.py"
+                ]
+              },
+              {
+                "aspect": "Практичный replay без выдуманных метрик",
+                "implementation": "Backtest без actuals возвращает scored_points=0 и empty metrics, но сохраняет unscored forecast/export.",
+                "value": "Пользователь видит покрытие и может позднее добавить факты, не получая ложную accuracy.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/wind_backend/service.py:267-390",
+                  "R-HTTP-SMOKE"
+                ]
+              }
+            ],
+            "scoreReasoning": "12/15: операционная форма результата и честные предупреждения сильны. Снижение касается только переносимости demo в реальную оценку — без verified archive нельзя доказать, что полезный интерфейс работает на допустимых для кейса входах."
+          },
+          {
+            "name": "Потенциал развития и оригинальность подхода",
+            "score": 8,
+            "max": 10,
+            "awarded": "Оригинальность agent/provenance/fingerprint комбинации и потенциал расширения на активы, модели и провайдеры хорошо оформлены.",
+            "deductions": "2 балла сняты за незавершённый delivery path и отсутствие доказанного archive audit.",
+            "evidence": [
+              "agent/wind_agent/orchestrator.py:21-154",
+              "README.md:72-96",
+              "docs/agent.md:43-53",
+              "F-REPRO",
+              "F-PROVENANCE"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "F-PROVENANCE",
+                "reason": "Для масштабирования на новые площадки сначала требуется повторяемая проверка происхождения и доступности каждого weather run; текущий candidate flow оставляет это ручным."
+              },
+              {
+                "points": 1,
+                "findingId": "F-REPRO",
+                "reason": "Отсутствующий one-command reproduction и результаты мешают передаче подхода другой команде или на новую площадку."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Нестандартная защита от агентских ошибок",
+                "implementation": "Agent сам проверяет output coverage/bounds, retry policy и provenance независимо от adapter; cloud analyst ограничен read-only tools.",
+                "value": "Подход масштабируется безопаснее, чем свободный LLM pipeline, который может изменить численный результат.",
+                "verification": "source",
+                "evidence": [
+                  "agent/wind_agent/orchestrator.py:31-154",
+                  "agent/wind_agent/openai.py:99-161"
+                ]
+              },
+              {
+                "aspect": "Путь к новым активам",
+                "implementation": "Asset catalog, explicit turbine mapping, energy_type/site/country metadata и tests не изобретают координаты для unlocated assets.",
+                "value": "Есть оригинальная база для fleet-level продукта, сохраняя корректность геоданных.",
+                "verification": "observed",
+                "evidence": [
+                  "frontend/src/explore/catalog.ts",
+                  "frontend/tests/explore.test.mjs",
+                  "backend/wind_backend/routes.py:57-80"
+                ]
+              },
+              {
+                "aspect": "Модельный evolution path",
+                "implementation": "ModelInfo и service predictor factory поддерживают demo, baselines, ridge и CatBoost; train создаёт новый ID, а replay использует фиксированную модель.",
+                "value": "Исследовательские эксперименты не смешиваются с уже опубликованным прогнозом.",
+                "verification": "source",
+                "evidence": [
+                  "backend/wind_backend/service.py:67-179",
+                  "contracts/wind_contracts/models.py:160-168"
+                ]
+              },
+              {
+                "aspect": "Конкретный roadmap",
+                "implementation": "Документы перечисляют raw payload/checksum, verified ingestion, scheduler, hub-height correction и archive audit.",
+                "value": "Потенциал развития привязан к наблюдаемым ограничениям текущей реализации, а не к общим обещаниям.",
+                "verification": "source",
+                "evidence": [
+                  "docs/agent.md:43-53",
+                  "docs/data-and-replay.md:134-152"
+                ]
+              }
+            ],
+            "scoreReasoning": "8/10: для пятичасового MVP сочетание agentic orchestration и строгой provenance semantics оригинально и расширяемо. Два балла удержаны за конкретные недостающие элементы передачи/аудита, а не за отсутствие production-функций вне кейса."
+          }
+        ],
+        "total": 78
+      },
+      "judgeScore": 80,
+      "caseRequirements": [
+        {
+          "requirement": "Почасовой прогноз для двух ВЭС на горизонте 24–48 часов",
+          "status": "met",
+          "explanation": "Контракт ограничивает horizon 24/48, ForecastAgent строит каждый час, а HTTP smoke получил 48 часов для обеих настроенных турбин и экспорт.",
+          "evidence": [
+            "contracts/wind_contracts/models.py:215-233",
+            "agent/wind_agent/weather.py:15-16",
+            "R-HTTP-SMOKE"
+          ]
+        },
+        {
+          "requirement": "Обучение только на истории до 31.01.2026 и запрет будущих фактов в признаках",
+          "status": "partial",
+          "explanation": "Temporal guards и model cutoff проверены тестами. Организаторские CSV подготовлены до 2026-01-31 18:00 UTC, без строк после cutoff. Однако clean-clone путь к фактическому weather-SCADA training artifact не воспроизводится из-за отсутствующего reproduce entrypoint.",
+          "evidence": [
+            "backend/wind_backend/features.py:78-185",
+            "backend/wind_backend/ml.py:41-136",
+            "R-CASE-DATA",
+            "F-REPRO"
+          ]
+        },
+        {
+          "requirement": "Для каждого февральского дня получать архивный прогноз, доступный на момент issue",
+          "status": "partial",
+          "explanation": "ArchiveWeatherProvider строго фильтрует run_init/available_at/verified/coverage и не подмешивает demo. Но bundled archive импортируется как unverified без publication timestamp, а README признаёт hindcast и предположенный latency; строгая availability-at-issue не доказана.",
+          "evidence": [
+            "agent/wind_agent/weather.py:52-74",
+            "scripts/import_weather_archive.py:36-53",
+            "README.md:21-23",
+            "docs/data-and-replay.md:134-144",
+            "F-PROVENANCE"
+          ]
+        },
+        {
+          "requirement": "Agentic цикл: погода, подготовка, модель, прогноз, анализ и повторный расчёт при обновлении входа",
+          "status": "met",
+          "explanation": "Оркестратор имеет validate/weather/predict/analyse/complete stages, retry, deterministic analysis и refresh по изменению input fingerprint; соответствующие unit/API tests прошли.",
+          "evidence": [
+            "agent/wind_agent/orchestrator.py:31-154",
+            "tests/test_worker.py",
+            "R-BACKEND-FOCUSED",
+            "R-HTTP-SMOKE"
+          ]
+        },
+        {
+          "requirement": "Не подмешивать фактическую будущую погоду или февральскую целевую выработку в прогноз",
+          "status": "met",
+          "explanation": "SCADA features фильтруются по valid_time и available_at, archive provider требует verified forecast snapshot, а backtest без actuals сообщает zero scored points и не строит метрики.",
+          "evidence": [
+            "backend/wind_backend/features.py:78-185",
+            "agent/wind_agent/weather.py:56-74",
+            "backend/wind_backend/service.py:310-390",
+            "tests/test_leakage.py",
+            "R-BACKEND-ALL"
+          ]
+        },
+        {
+          "requirement": "Проверить предоставленные CSV, временные колонки и почасовую подготовку",
+          "status": "met",
+          "explanation": "Оба организаторских CSV открыты и пропущены через project scripts/prepare_dataset.py с явными UTC+06:00/start параметрами. Получены 48 452 полных часа; последняя строка подготовки 2026-01-31 18:00 UTC, future_rows_after_cutoff=0, power_out_of_range=0.",
+          "evidence": [
+            "scripts/prepare_dataset.py:39-75",
+            "agent/wind_agent/source_data.py",
+            "R-CASE-DATA"
+          ]
+        },
+        {
+          "requirement": "Воспроизводимый локальный сценарий и понятная проверка результата",
+          "status": "partial",
+          "explanation": "Backend/frontend builds, tests и demo HTTP сценарий воспроизводимы. Но заявленная команда npm run reproduce отсутствует, results/february-2026 не входит в checkout, а README-команда smoke_demo.py --archive не поддерживается.",
+          "evidence": [
+            "README.md:25-70",
+            "package.json:6-17",
+            "scripts/smoke_demo.py:11-14",
+            "R-REPRO",
+            "R-ARCHIVE-SMOKE",
+            "F-REPRO",
+            "F-ARCHIVE-SMOKE"
+          ]
+        }
+      ],
+      "testData": {
+        "provided": [
+          "cases/1/case-data/Dataset HackAlemAI для участников 11.03.2023-28.02.2026 - turbine 1.csv",
+          "cases/1/case-data/Dataset HackAlemAI для участников 11.03.2023-28.02.2026 - turbine 2.csv",
+          "cases/1/case-data/HackAlem AI_ Agentic AI для прогнозирования выработки ВЭС.md"
+        ],
+        "used": [
+          "Оба CSV: чтение заголовков и крайних строк, затем project scripts/prepare_dataset.py с фиксированной UTC+06:00/start интерпретацией.",
+          "Описание кейса: сверка требований 24–48 часов, cutoff 31.01.2026, февральского replay и запрета leakage.",
+          "Полученный observations.csv внутри изолированного runtime: не публиковался в отчёте и не смешивался с февральскими targets."
+        ],
+        "checks": [
+          {
+            "input": "Два native-header CSV организаторов, 142360 и 149499 строк соответственно.",
+            "method": "python scripts/prepare_dataset.py с --timezone Etc/GMT-6, --timestamp-position start, --latency-minutes 0, --provisional и явным filename-pattern.",
+            "result": "Оба файла приняты; turbine-1: 23667 complete hours/96 incomplete, turbine-2: 24785 complete hours/219 incomplete; power range 0..1.",
+            "conclusion": "Импортная схема проекта понимает фактический формат кейса и не заполняет пропуски нулём."
+          },
+          {
+            "input": "Сгенерированный observations.csv после почасовой агрегации.",
+            "method": "Проверка полей, количества по turbine_id, min/max valid_time, cutoff и диапазона power_normalized.",
+            "result": "48452 rows; 23667/24785 по турбинам; min 2023-03-10T19:00:00Z; max 2026-01-31T18:00:00Z; future_rows_after_cutoff=0; power_out_of_range=0.",
+            "conclusion": "Временная граница и базовая целостность test data подтверждены; февральские actual targets в этот подготовленный вход не попали."
+          },
+          {
+            "input": "Тесты temporal/weather/worker и полный backend suite.",
+            "method": "pytest в изолированном Python 3.12 runtime.",
+            "result": "Фокус: 38 passed; полный suite: 195 passed, 17 warnings; ruff check: All checks passed.",
+            "conclusion": "Domain/leakage/provenance guards работают на проектных и синтетических fixture."
+          },
+          {
+            "input": "Demo request с двумя turbine IDs, issue 2026-01-31T00:00Z, horizon 48.",
+            "method": "Реальный запущенный FastAPI и scripts/smoke_demo.py.",
+            "result": "health, 48-hour forecast, evidence export, analysis, unchanged refresh, 29 daily demo forecasts и 2686 CSV rows прошли.",
+            "conclusion": "Пользовательский demo path работоспособен; это не является доказательством February forecast accuracy."
+          }
+        ],
+        "limitations": [
+          "Предоставленные CSV применены к подготовке SCADA, но не использовались как февральские фактические targets.",
+          "Подготовленный вход намеренно provisional по latency; project docs также указывают, что operational publication evidence для weather archive не подтверждено.",
+          "Визуальная проверка dashboard не выполнялась по заданной политике; frontend flow tests — статическая/unit-like проверка, не визуальное наблюдение."
+        ]
+      },
+      "runtime": {
+        "status": "partial",
+        "build": "Python backend suite and ruff passed; frontend typecheck and Vite production build passed. Vite emitted only a large-chunk warning for the globe bundle.",
+        "start": "FastAPI started successfully with application startup complete and served /health.",
+        "scenario": "Demo/API scenario fully reproduced. Strict archive scenario was not promoted because the project has no verified historical snapshots; this is reported as a project limitation/defect, not as a missing reviewer key.",
+        "environment": "Изолированные контейнеры: Python 3.12.15 with project dependencies; Node 22.23.3 for npm checks; no API credentials supplied; no browser or visual automation used.",
+        "summary": "Локальная работоспособность подтверждена для deterministic/demo path и frontend build/test path; case-specific verified historical replay remains partial.",
+        "checks": [
+          {
+            "command": "python -m pytest tests/test_api.py tests/test_leakage.py tests/test_weather_adapter.py tests/test_worker.py",
+            "result": "38 passed, 1 warning. Covers API demo flow, refresh immutability, publication cutoff, incomplete archive, retries and worker cycle.",
+            "id": "R-BACKEND-FOCUSED",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Focused domain/API/agent checks pass with no future-data acceptance."
+          },
+          {
+            "command": "python -m pytest",
+            "result": "195 passed, 17 warnings in 15.49s.",
+            "id": "R-BACKEND-ALL",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Full project Python regression suite passes."
+          },
+          {
+            "command": "ruff check .",
+            "result": "All checks passed.",
+            "id": "R-RUFF",
+            "stage": "build",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Python lint succeeds without project errors."
+          },
+          {
+            "command": "npm run typecheck",
+            "result": "tsc --noEmit completed successfully.",
+            "id": "R-FRONTEND-TYPECHECK",
+            "stage": "build",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Frontend TypeScript has no type errors."
+          },
+          {
+            "command": "npm run build",
+            "result": "Vite built 487 modules successfully; only a >500 kB chunk warning was emitted.",
+            "id": "R-FRONTEND-BUILD",
+            "stage": "build",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Production frontend bundle is generated successfully."
+          },
+          {
+            "command": "npm run test --workspace frontend",
+            "result": "Node tests: 19 passed; Vitest: 4 files and 16 tests passed.",
+            "id": "R-FRONTEND-TESTS",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Frontend unit and flow test suites pass."
+          },
+          {
+            "command": "uvicorn wind_backend.main:app",
+            "result": "Application startup complete; Uvicorn served the API successfully in the isolated runtime.",
+            "id": "R-API-START",
+            "stage": "start",
+            "status": "pass",
+            "cause": "none",
+            "expected": "FastAPI application imports, initializes settings/repository and starts serving."
+          },
+          {
+            "command": "GET /health; python scripts/smoke_demo.py --api <API_URL>",
+            "result": "PASS: health, 2 turbines, 48-hour forecast, unchanged-input refresh; PASS: recorded model evidence, JSON download, per-turbine analysis; PASS: 29 daily demo forecasts and 2686 February issue/target pairs in CSV export.",
+            "id": "R-HTTP-SMOKE",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Running service returns ok health and completes the documented deterministic demo/replay flow."
+          },
+          {
+            "command": "python scripts/prepare_dataset.py --input-dir <case-data> --filename-pattern 'Dataset HackAlemAI ... turbine {number}.csv' --output <prepared-dir> --timezone Etc/GMT-6 --timestamp-position start --latency-minutes 0 --provisional",
+            "result": "Both organizer CSVs accepted; 48452 complete hourly observations; max valid_time 2026-01-31T18:00:00Z; zero rows after cutoff and zero power values outside [0,1].",
+            "id": "R-CASE-DATA",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Project preparation accepts the supplied case format and preserves cutoff/leakage constraints."
+          },
+          {
+            "command": "python scripts/smoke_demo.py --archive",
+            "result": "Exit 1 before application checks: usage reports only [-h] [--api], then unrecognized arguments: --archive.",
+            "id": "R-ARCHIVE-SMOKE",
+            "stage": "scenario",
+            "status": "fail",
+            "cause": "project",
+            "expected": "The README's second smoke command should run an archive-specific HTTP verification."
+          },
+          {
+            "command": "npm run reproduce -- --no-register",
+            "result": "Exit 1: npm error Missing script: reproduce.",
+            "id": "R-REPRO",
+            "stage": "scenario",
+            "status": "fail",
+            "cause": "project",
+            "expected": "README's one-command reproduction should generate/register the documented training and February artifacts."
+          },
+          {
+            "command": "python scripts/check_openai.py; python scripts/check_nvidia.py",
+            "result": "Both report enabled=false and configured=false; no provider calls were made. Deterministic numerical/demo path remained available.",
+            "id": "R-CLOUD-CONFIG",
+            "stage": "start",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Optional integrations fail closed/configure explicitly without blocking the no-key numerical workflow."
+          }
+        ],
+        "limitations": [
+          "Строгий archive forecast не запускался как успешный сценарий, потому что проектные snapshots unverified; это не подменялось mock-ответом.",
+          "Live OpenAI/NVIDIA calls не выполнялись: credentials намеренно не предоставлены; adapters и error/config paths оценены по исходникам и local config checks.",
+          "Визуальное поведение React UI не проверялось автоматически по обязательной пользовательской политике; frontend build и flow tests не объявляются визуальным доказательством.",
+          "Live public demo URL отсутствует и не учитывался как deduction."
+        ]
+      },
+      "liveDemo": {
+        "status": "none",
+        "url": null,
+        "notes": "Публичная live demo-ссылка в материалах не подтверждена. Локальный API/demo сценарий проверен отдельно; отсутствие URL не снижало балл."
+      },
+      "fiveHourContext": "Для пятичасового хакатона объём реализованного MVP высокий: рабочие API/UI boundaries, agent orchestration, model/provider contracts, replay, provenance, refresh semantics и широкие regression tests. Оценка не требует production scheduler, real credentials или публичного deployment. Существенными остаются только требования самого кейса: verified historical forecast availability и согласованный clean-clone reproduction path; они важнее функций вне кейса и поэтому отражены в deductions.",
+      "strengths": [
+        "Полный deterministic demo/API сценарий реально проходит от forecast до analysis, refresh, replay и CSV export.",
+        "Temporal, availability, coverage и provenance guards реализованы в коде и покрыты тестами; future weather не превращается в допустимый archive input.",
+        "Архитектура с WeatherProvider/Predictor protocols, model registry и shared contracts хорошо отделяет domain logic от API/UI.",
+        "Optional OpenAI/NVIDIA agents имеют bounded read-only tool loop и не могут менять численный прогноз.",
+        "Предоставленные организаторские CSV обработаны проектным подготовщиком с сохранением cutoff и явной временной семантикой."
+      ],
+      "gaps": [
+        "Строгая историческая доступность погодных прогнозов для февральского replay не доказана: архивные candidates unverified, без publication evidence/available_at.",
+        "Заявленный one-command reproduction и опубликованные results отсутствуют в checkout; npm run reproduce не существует, а README ссылается на отсутствующие артефакты/документы.",
+        "README рекомендует smoke_demo.py --archive, но текущий скрипт не поддерживает этот аргумент и завершается до HTTP-проверки."
+      ],
+      "futureAdvice": [
+        {
+          "principle": "Сначала зафиксировать lineage внешнего временного ряда, затем обучать и replay-ить.",
+          "why": "F-PROVENANCE: код корректно блокирует unverified snapshots, но основной case result остаётся provisional, потому что import_weather_archive.py пишет verification=unverified и не сохраняет publication evidence.",
+          "how": "В другом хакатоне добавьте для каждого run raw payload/checksum, requested coordinates/model, источник публикации и confirmed available_at; импортируйте snapshot только после проверки, затем прогоните один issue и 24/48-hour coverage audit.",
+          "findingIds": [
+            "F-PROVENANCE"
+          ],
+          "successCheck": "Для каждого февральского issue есть verified snapshot с nonempty evidence, available_at <= issue, полным покрытием всех целей и успешный archive forecast без demo fallback.",
+          "timeboxMinutes": 60
+        },
+        {
+          "principle": "Проверяйте README-команды как acceptance tests в чистом checkout.",
+          "why": "F-REPRO и F-ARCHIVE-SMOKE: главная команда reproduce отсутствует, results/docs links отсутствуют, а рекомендованный --archive не распознаётся smoke script.",
+          "how": "В другом хакатоне вынесите весь walkthrough в один CI smoke: clean install, generation command, health, demo, archive branch и existence/hash checks for exported artifacts; запускайте его до сдачи.",
+          "findingIds": [
+            "F-REPRO",
+            "F-ARCHIVE-SMOKE"
+          ],
+          "successCheck": "Команды из README выполняются без ручного редактирования, а ожидаемые CSV/manifest и archive HTTP assertions появляются в новом checkout.",
+          "timeboxMinutes": 30
+        }
+      ],
+      "uncertainties": [
+        "Визуальная компоновка и фактическое отображение React dashboard не проверялись автоматически; пользователь выполняет эту часть проверки.",
+        "Live OpenAI/NVIDIA responses не наблюдались без credentials; отсутствие ключей является ограничением проверки, не дефектом проекта.",
+        "Февральская accuracy не оценивалась: проект и smoke корректно не выдумывают actuals, а строгий weather archive lineage остаётся provisional."
+      ],
+      "reviewPolicyVersion": 2,
+      "assessmentStatus": "ready",
+      "findings": [
+        {
+          "id": "F-PROVENANCE",
+          "kind": "defect",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Строгий requirement historical forecast available-at-issue не подтверждён реализацией и данными проекта.",
+          "expected": "Каждый февральский issue должен использовать исходный архивный forecast, который был доступен к issue time, с verified publication evidence и полным hourly coverage.",
+          "actual": "scripts/import_weather_archive.py создаёт open-meteo-single-run snapshots с verification=unverified и без available_at; download_single_run также возвращает unverified candidate. ArchiveWeatherProvider отклоняет их, а README называет Open-Meteo hindcast и run_init+10h предположением.",
+          "evidence": [
+            "scripts/import_weather_archive.py:1-53",
+            "agent/wind_agent/weather.py:77-155",
+            "agent/wind_agent/weather.py:52-74",
+            "README.md:21-23",
+            "docs/data-and-replay.md:134-144"
+          ],
+          "checkIds": [
+            "R-BACKEND-FOCUSED",
+            "R-HTTP-SMOKE"
+          ]
+        },
+        {
+          "id": "F-REPRO",
+          "kind": "defect",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Главный documented clean-clone reproduction path и заявленные generated artifacts отсутствуют в checkout.",
+          "expected": "npm run reproduce -- --no-register должен существовать и генерировать описанные results/february-2026 artifacts; README links должны разрешаться в файлы snapshot.",
+          "actual": "package.json не содержит reproduce script; команда завершилась npm error Missing script: reproduce. scripts/reproduce.py, results/february-2026/forecast.csv, results/february-2026/manifest.json, docs/weather-archive.md и docs/team-plan.md отсутствуют.",
+          "evidence": [
+            "package.json:6-17",
+            "README.md:25-33",
+            "README.md:61-68",
+            "README.md:88-98",
+            "R-REPRO"
+          ],
+          "checkIds": [
+            "R-REPRO"
+          ]
+        },
+        {
+          "id": "F-ARCHIVE-SMOKE",
+          "kind": "defect",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Вторая команда HTTP smoke, указанная README для archive replay, не соответствует CLI скрипта.",
+          "expected": "uv run python scripts/smoke_demo.py --archive должна распознавать archive режим и выполнить его проверки либо README должен не предлагать этот аргумент.",
+          "actual": "scripts/smoke_demo.py регистрирует только --api; запуск с --archive завершается exit 1 с unrecognized arguments до обращения к API.",
+          "evidence": [
+            "README.md:50-57",
+            "scripts/smoke_demo.py:11-16",
+            "R-ARCHIVE-SMOKE"
+          ],
+          "checkIds": [
+            "R-ARCHIVE-SMOKE"
+          ]
+        },
+        {
+          "id": "S-PIPELINE",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Основной deterministic/demo pipeline реально запускается и выдаёт проверяемый пользовательский результат.",
+          "expected": "Health, forecast, analysis, refresh, replay и export должны завершаться согласованно.",
+          "actual": "HTTP smoke прошёл: две турбины, 48 часов, evidence export, analysis, unchanged refresh, 29 daily forecasts и 2686 CSV rows.",
+          "evidence": [
+            "R-HTTP-SMOKE",
+            "backend/wind_backend/routes.py:141-224"
+          ],
+          "checkIds": [
+            "R-HTTP-SMOKE"
+          ]
+        },
+        {
+          "id": "S-TEMPORAL",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Temporal/leakage/provenance guards имеют широкое regression coverage.",
+          "expected": "Будущая публикация, неполный snapshot, wrong turbine, duplicate hours и retry errors должны быть отвергнуты.",
+          "actual": "Focused suite дал 38 passed, full Python suite 195 passed; соответствующие tests проверяют перечисленные случаи.",
+          "evidence": [
+            "tests/test_leakage.py",
+            "tests/test_weather_adapter.py",
+            "tests/test_worker.py",
+            "R-BACKEND-FOCUSED",
+            "R-BACKEND-ALL"
+          ],
+          "checkIds": [
+            "R-BACKEND-FOCUSED",
+            "R-BACKEND-ALL"
+          ]
+        },
+        {
+          "id": "S-CASE-DATA",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Проектный SCADA preparation применён к реальным организаторским CSV и сохранил корректную временную границу.",
+          "expected": "Native headers должны импортироваться через явную семантику времени; часы после cutoff не должны попадать в подготовленный train input.",
+          "actual": "Получено 48452 hourly rows, max 2026-01-31T18:00:00Z, future_rows_after_cutoff=0 и power_out_of_range=0.",
+          "evidence": [
+            "scripts/prepare_dataset.py:39-75",
+            "R-CASE-DATA"
+          ],
+          "checkIds": [
+            "R-CASE-DATA"
+          ]
+        },
+        {
+          "id": "L-VISUAL",
+          "kind": "limitation",
+          "verification": "unverified",
+          "responsibility": "review_environment",
+          "claim": "Визуальный вид dashboard и фактическая browser navigation не оценивались автоматизированно.",
+          "expected": "Визуальное поведение должен проверить пользователь.",
+          "actual": "Проверены только build, typecheck и frontend flow/unit tests; browser/CUA/Playwright/Selenium не использовались по политике.",
+          "evidence": [
+            "R-FRONTEND-BUILD",
+            "R-FRONTEND-TESTS"
+          ],
+          "checkIds": [
+            "R-FRONTEND-BUILD",
+            "R-FRONTEND-TESTS"
+          ]
+        }
+      ],
+      "gapFindingIds": [
+        "F-PROVENANCE",
+        "F-REPRO",
+        "F-ARCHIVE-SMOKE"
+      ]
+    }
+  ],
+  "score": 80.0,
+  "status": "complete",
+  "expectedJudges": 1
+}

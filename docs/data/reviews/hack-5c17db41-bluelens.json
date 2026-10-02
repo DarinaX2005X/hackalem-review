@@ -1,0 +1,938 @@
+{
+  "methodVersion": 4,
+  "repoId": "hack-5c17db41-bluelens",
+  "repoUrl": "https://github.com/BAITC-Hacks/hack-5c17db41-bluelens",
+  "caseId": 10,
+  "snapshot": "6f51031f937aec530c09d0318f786c9c70d24eb6",
+  "judges": [
+    {
+      "methodVersion": 4,
+      "repoId": "hack-5c17db41-bluelens",
+      "caseId": 10,
+      "model": "GPT-5.6 Luna",
+      "snapshot": "6f51031f937aec530c09d0318f786c9c70d24eb6",
+      "overallSummary": "Рабочий локальный MVP с воспроизведённым основным сценарием: поиск товара, цена и остаток, остаток по городу, характеристики, объяснимые аналоги, двухшаговое подтверждение корзины и ограничение количества остатком. Backend и frontend собираются, backend-тесты проходят, HTTP-проверки дают ожидаемые ответы. Решение честно показывает отсутствие данных об условиях покупки, сертификатах и неизвестных остатках, но остаётся демонстрационным: реальная корзина и оформление не подключены, автоматическое предложение аналога при нулевом остатке не реализовано, а opt-in синхронизация с API теряет поле series и тем самым ломает поиск аналогов после импорта. Дополнительно обнаружена ошибка воспроизводимости Docker Compose: README предлагает копировать .env.example из каталога приложения, но файл находится уровнем выше.",
+      "global": {
+        "criteria": [
+          {
+            "name": "Ценность решения",
+            "score": 22.5,
+            "max": 25,
+            "awarded": "Высокая ценность для клиента ekt.kz подтверждена целостным локальным сценарием консультации и покупки без выдумывания данных.",
+            "deductions": "Снято 2,5 балла за неполное покрытие сценария нулевого остатка и за отсутствие защищённой серверной привязки корзины, которые ограничивают практическую ценность за пределами демо.",
+            "evidence": [
+              "Hackalemai-main/README.md:1-15",
+              "Hackalemai-main/backend/app/main.py:295-342",
+              "captures/20261002T113205256672-test.stdout.log",
+              "captures/20261002T113549927669-http-cart-sequence-3.stdout.log"
+            ],
+            "deductionItems": [
+              {
+                "points": 1.5,
+                "findingId": "F6-zero-stock-auto-analog",
+                "reason": "Для запроса товара с нулевым остатком ценность должна включать своевременное предложение релевантной замены; в local_chat ветка остатка отвечает о наличии, а аналоги запускаются только отдельным явным запросом пользователя."
+              },
+              {
+                "points": 1,
+                "findingId": "F7-session-auth",
+                "reason": "Корзина доступна по переданному клиентом session_id без серверной проверки владения, поэтому требование защиты пользовательской корзины ограничивает ценность решения для реального сайта."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Понятная бизнес-проблема и целевая аудитория",
+                "implementation": "README связывает ассистента с конкретным узким местом ekt.kz: клиенту не нужно писать менеджеру ради артикула, характеристик, наличия или аналога. В интерфейсе это выражено единым чатом, быстрыми запросами и карточками товара; аудитория — частный покупатель или закупщик.",
+                "value": "Решение адресует ежедневные повторяющиеся вопросы интернет-магазина и сокращает путь от поиска к осознанному добавлению в корзину. Польза сформулирована не абстрактно, а через конкретный сценарий клиента и разгрузку менеджеров.",
+                "verification": "source",
+                "evidence": [
+                  "cases/10/case-data/HackAlem AI_ ИИ-ассистент для чата на сайте ekt.kz.md:11-16",
+                  "Hackalemai-main/README.md:123-134"
+                ]
+              },
+              {
+                "aspect": "Фактическая консультация по каталогу",
+                "implementation": "Локальный каталог содержит 40 позиций, поиск поддерживает артикул, имя и бренд, а карточка возвращает цену, характеристики и честное состояние stock. Для 027228 из detail-данных возвращаются цена 64920, общий остаток 23 и город Алматы 5.",
+                "value": "Клиент получает проверяемый ответ по существующему товару вместо общего чат-бота без источника истины. Это прямо сокращает время выбора и снижает риск ошибочного обещания наличия.",
+                "verification": "observed",
+                "evidence": [
+                  "Hackalemai-main/backend/app/main.py:44-50",
+                  "Hackalemai-main/backend/app/main.py:115-156",
+                  "captures/20261002T113309977926-http-search.stdout.log",
+                  "captures/20261002T113319849746-http-stock-city-2.stdout.log"
+                ]
+              },
+              {
+                "aspect": "Безопасное действие в корзине",
+                "implementation": "Сначала запрос количества сохраняется как pending и не меняет cart_items. После явного подтверждения add_to_cart повторно получает товар, проверяет остаток и уже добавленное в этой сессии количество внутри транзакции BEGIN IMMEDIATE; превышение отклоняется.",
+                "value": "Такой барьер особенно ценен для e-commerce: консультация не превращается в несанкционированный заказ, а итоговое количество не превышает доступное в локальном каталоге.",
+                "verification": "observed",
+                "evidence": [
+                  "Hackalemai-main/backend/app/main.py:250-271",
+                  "Hackalemai-main/backend/app/main.py:295-342",
+                  "Hackalemai-main/backend/tests/test_assistant.py:50-70",
+                  "captures/20261002T113549927669-http-cart-sequence-3.stdout.log"
+                ]
+              },
+              {
+                "aspect": "Честные границы данных",
+                "implementation": "get_purchase_conditions возвращает available=false и сообщает, что в загруженных материалах нет оплаты, доставки и минимальной партии. Для сертификата local_chat сообщает об отсутствии ссылки или файла, а для неизвестного stock запрещает подтверждать количество.",
+                "value": "Это сохраняет доверие: система не подменяет отсутствие данных выдуманной ценой, наличием или условиями. Ограничение снижает полноту MVP, но делает ответы пригодными для безопасного демо.",
+                "verification": "observed",
+                "evidence": [
+                  "Hackalemai-main/backend/app/main.py:207-210",
+                  "Hackalemai-main/backend/app/main.py:329-330",
+                  "Hackalemai-main/backend/app/main.py:406-410",
+                  "Hackalemai-main/backend/tests/test_assistant.py:160-168"
+                ]
+              }
+            ],
+            "scoreReasoning": "22,5 балла оправданы тем, что основная польза кейса реально достигается на локальной выборке и подтверждена тестами и HTTP-сценарием: клиент находит товар, видит фактические данные, получает сравнение аналогов и управляет корзиной с подтверждением. До максимума не хватает автоматического перехода от нулевого остатка к аналогу и безопасной серверной модели владения корзиной; оба ограничения влияют на ценность уже за пределами одиночной демонстрационной сессии."
+          },
+          {
+            "name": "Результат и качество решения",
+            "score": 17,
+            "max": 20,
+            "awarded": "Целостный демо-сценарий воспроизведён от HTTP health до подтверждённого добавления и проверки остатка; качество ограничено демонстрационным хранилищем, неполным zero-stock потоком и ошибкой Compose-настройки.",
+            "deductions": "Снято 3 балла за отсутствие автоматического zero-stock аналогового перехода, незащищённый session_id и неработающий из documented directory docker compose bootstrap.",
+            "evidence": [
+              "captures/20261002T113205256672-test.stdout.log",
+              "captures/20261002T113247538552-http-health.stdout.log",
+              "captures/20261002T113549927669-http-cart-sequence-3.stdout.log",
+              "captures/20261002T113628527584-compose-config.stderr.log"
+            ],
+            "deductionItems": [
+              {
+                "points": 1.5,
+                "findingId": "F6-zero-stock-auto-analog",
+                "reason": "Основной пользовательский результат при нулевом остатке не завершает требуемый сценарий сам: код сообщает об остатке, но не добавляет объяснимое предложение аналога без следующего явного запроса."
+              },
+              {
+                "points": 1,
+                "findingId": "F7-session-auth",
+                "reason": "Качество корзины как пользовательского результата снижено тем, что API читает и изменяет корзину по произвольному session_id, принятому от клиента."
+              },
+              {
+                "points": 0.5,
+                "findingId": "F8-compose-env",
+                "reason": "Заявленный Docker Compose путь не воспроизводится из каталога Hackalemai-main: docker compose config завершается ошибкой отсутствующего .env, хотя README описывает этот каталог как рабочий."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Backend-путь от запроса до результата",
+                "implementation": "FastAPI загружает каталог один раз, хранит состояние диалога в SQLite и маршрутизирует cart-операции через отдельную детерминированную state machine. local_chat различает поиск, характеристики, городскую доступность, аналоги, условия и количество.",
+                "value": "Сценарий не является набором несвязанных экранов: последующие реплики используют selected_id, last_product_ids и pending, поэтому пользователь может идти от поиска к характеристикам и корзине в одной сессии.",
+                "verification": "observed",
+                "evidence": [
+                  "Hackalemai-main/backend/app/main.py:225-247",
+                  "Hackalemai-main/backend/app/main.py:295-433",
+                  "Hackalemai-main/backend/tests/test_assistant.py:116-132"
+                ]
+              },
+              {
+                "aspect": "Подтверждённый пользовательский сценарий",
+                "implementation": "В HTTP-проверке после запроса 027228 сначала получена пустая корзина, после фразы о трёх штуках — предложение подтверждения без изменения, после Да, добавь — одна позиция quantity=3 и total=194760, после запроса 100 штук — предложение максимум 20 без изменения финальной корзины.",
+                "value": "Это проверяет не только HTTP 200, но и наблюдаемое состояние до и после действия, включая отрицательный путь превышения остатка.",
+                "verification": "observed",
+                "evidence": [
+                  "captures/20261002T113549927669-http-cart-sequence-3.stdout.log",
+                  "Hackalemai-main/backend/tests/test_assistant.py:50-65",
+                  "Hackalemai-main/frontend/app/page.tsx:106-120"
+                ]
+              },
+              {
+                "aspect": "Frontend и ссылка на актуальную корзину",
+                "implementation": "Next.js production image успешно собрана; страницы / и /cart отвечают по HTTP. После ответа с фразой «Готово, добавил» page.tsx показывает inline-ссылку href=/cart, а cart page заново запрашивает /api/cart для session_id.",
+                "value": "Пользовательский результат имеет отдельную страницу актуального состава, а не только текстовое подтверждение в чате. Это соответствует требованию передать клиента к корзине после добавления.",
+                "verification": "observed",
+                "evidence": [
+                  "Hackalemai-main/frontend/app/page.tsx:106-120",
+                  "Hackalemai-main/frontend/app/page.tsx:136-140",
+                  "Hackalemai-main/frontend/app/cart/page.tsx:12-16",
+                  "captures/20261002T113714331285-http-frontend-root.stdout.log",
+                  "captures/20261002T113714360289-http-frontend-cart.stdout.log"
+                ]
+              },
+              {
+                "aspect": "Работа с вложениями",
+                "implementation": "Backend принимает PDF, DOCX, XLSX, PNG и JPG; текст извлекается через pypdf, zip/XML для DOCX и openpyxl для XLSX, а изображения без OpenAI key получают честное сообщение о недоступном распознавании. Извлечённый текст очищается от шаблонов password/api_key/secret.",
+                "value": "Это покрывает форматы из кейса и сохраняет полезный текстовый fallback без раскрытия секретов. Полный image OCR остаётся внешней интеграцией, а не скрытой заглушкой.",
+                "verification": "source",
+                "evidence": [
+                  "Hackalemai-main/backend/app/main.py:582-627",
+                  "Hackalemai-main/backend/tests/test_assistant.py:134-158",
+                  "Hackalemai-main/backend/requirements.txt:1-7"
+                ]
+              }
+            ],
+            "scoreReasoning": "17 баллов отражают подтверждённый working runtime и связность основного MVP. Снижение не связано с отсутствием внешнего ключа: локальный сценарий специально работает без него. Снижение связано с реальными границами реализации — zero-stock не ведёт к аналогу автоматически, session_id не является механизмом владения, а заявленный compose-запуск ломается до старта из-за расположения .env.example."
+          },
+          {
+            "name": "Инновационность",
+            "score": 12,
+            "max": 15,
+            "awarded": "Собственное преимущество есть в сочетании LLM tool calling с детерминированным локальным контуром корзины и объяснимым сравнением аналогов; при этом общий подход остаётся знакомым каталожным ассистентом.",
+            "deductions": "Снято 3 балла за ограниченность нестандартности и подтверждённую деградацию аналогов после opt-in API-синхронизации.",
+            "evidence": [
+              "Hackalemai-main/backend/app/main.py:436-495",
+              "Hackalemai-main/backend/app/system_prompt.txt:1-9",
+              "Hackalemai-main/backend/app/main.py:177-204",
+              "Hackalemai-main/scripts/sync_catalog.py:76-84"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "F5-sync-drops-series",
+                "reason": "Нестандартная функция объяснимых аналогов не сохраняет работоспособность в заявленном API-расширении: sync_catalog.py записывает series=None для каждого импортированного товара, а analogs() требует непустую серию."
+              },
+              {
+                "points": 1,
+                "findingId": "F6-zero-stock-auto-analog",
+                "reason": "Преимущество ассистента как проактивного консультанта не реализовано для нулевого остатка: аналогический поиск доступен только после отдельной фразы пользователя."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Безопасный гибрид LLM и deterministic guard",
+                "implementation": "При наличии ключа OpenAI получает инструменты поиска, товара, остатка, аналогов, условий и корзины, но add_to_cart дополнительно требует yes_intent, pending и точного совпадения товара и количества. Без ключа предусмотрен локальный сценарный обработчик.",
+                "value": "Это более продуманный подход, чем безусловно доверить изменение корзины модели: свободный диалог сохраняется, а критичная мутация остаётся проверяемой бизнес-логикой.",
+                "verification": "source",
+                "evidence": [
+                  "Hackalemai-main/backend/app/main.py:436-495",
+                  "Hackalemai-main/backend/app/main.py:558-579",
+                  "Hackalemai-main/backend/app/system_prompt.txt:5-8"
+                ]
+              },
+              {
+                "aspect": "Объяснимые аналоги по признакам",
+                "implementation": "analogs() ограничивает кандидатов той же серией и тем же числом полюсов, после чего compare_analog() отдельно формирует matching и differences по полюсам, току и отключающей способности. Ответ явно говорит, что нужно сверить требования по току.",
+                "value": "Пользователь получает не только список похожих карточек, но и основание сравнения — например, совпадение 3 полюсов и 18 кА при отличии 160А/250А.",
+                "verification": "observed",
+                "evidence": [
+                  "Hackalemai-main/backend/app/main.py:177-204",
+                  "Hackalemai-main/backend/app/main.py:344-364",
+                  "captures/20261002T113310028180-http-analogs.stdout.log"
+                ]
+              },
+              {
+                "aspect": "Антигаллюцинационная политика",
+                "implementation": "System prompt запрещает выдумывать цену, stock, характеристики, сертификаты и условия, а функции get_purchase_conditions и city_stock возвращают неизвестность вместо заполнения пробелов. В upload перед возвратом текста скрываются credential-подобные значения.",
+                "value": "Для коммерческого консультанта такая консервативность является самостоятельным качественным отличием: система предпочитает отказ от ответа недостоверной рекомендации.",
+                "verification": "source",
+                "evidence": [
+                  "Hackalemai-main/backend/app/system_prompt.txt:1-9",
+                  "Hackalemai-main/backend/app/main.py:163-174",
+                  "Hackalemai-main/backend/app/main.py:207-210",
+                  "Hackalemai-main/backend/app/main.py:620-627"
+                ]
+              },
+              {
+                "aspect": "Предел новизны",
+                "implementation": "Ядро всё ещё состоит из стандартного поиска по каталогу, SQLite-сессии, OpenAI function calling и обычной корзины. Инновационная часть — именно их безопасная связка и explainable comparison, а не новый алгоритм рекомендаций.",
+                "value": "Оценка признаёт практическое преимущество прототипа, но не приписывает ему научную или рыночную новизну, которой в материалах нет.",
+                "verification": "source",
+                "evidence": [
+                  "Hackalemai-main/README.md:5-15",
+                  "Hackalemai-main/backend/app/main.py:115-204",
+                  "Hackalemai-main/frontend/app/page.tsx:24-46"
+                ]
+              }
+            ],
+            "scoreReasoning": "12 баллов заслужены за архитектурное решение, в котором свободный LLM-диалог не получает прямого контроля над корзиной, а аналоги сопровождаются различиями в характеристиках. До максимума удерживают от типового каталожного ассистента отсутствие автоматической zero-stock рекомендации и то, что предусмотренный API-синк обнуляет series и выключает основной explainable analog механизм после импорта."
+          },
+          {
+            "name": "Потенциал развития и масштабирования",
+            "score": 14,
+            "max": 20,
+            "awarded": "Архитектура имеет понятные точки расширения — API sync, tool calling, upload и отдельный frontend/backend — но масштабирование ограничено локальным SQLite, клиентским session_id, отсутствием резервирования и дефектом нормализации API.",
+            "deductions": "Снято 6 баллов за потерю series при синхронизации, отсутствие контроля владения сессией, отсутствие общего резервирования остатка и неработоспособный Compose bootstrap из каталога приложения.",
+            "evidence": [
+              "Hackalemai-main/scripts/sync_catalog.py:30-88",
+              "Hackalemai-main/backend/app/main.py:56-101",
+              "Hackalemai-main/frontend/lib/session.ts:1-11",
+              "Hackalemai-main/README.md:136-142"
+            ],
+            "deductionItems": [
+              {
+                "points": 3,
+                "findingId": "F5-sync-drops-series",
+                "reason": "Расширение от demo catalog к реальному API формирует catalog.json с series=None, поэтому масштабирование каталога одновременно ломает один из ключевых сценариев рекомендаций."
+              },
+              {
+                "points": 2.5,
+                "findingId": "F7-session-auth",
+                "reason": "Клиентский localStorage UUID и открытый session_id не дают полноценной идентификации пользователя или защиты чужой корзины; это одновременно ограничивает многопользовательскую безопасность и масштабирование конкурентных посетителей."
+              },
+              {
+                "points": 0.5,
+                "findingId": "F8-compose-env",
+                "reason": "Неработающий compose config повышает стоимость переноса прототипа на другую машину и мешает воспроизводимому развёртыванию заявленного контейнерного варианта."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Разделение frontend/backend и контейнеризация",
+                "implementation": "Backend имеет отдельный Dockerfile и FastAPI API, frontend собирается многостадийным Next.js Dockerfile, docker-compose описывает два сервиса и отдельный volume для данных SQLite.",
+                "value": "Такую границу относительно легко заменить на PostgreSQL, вынести frontend на CDN и масштабировать backend независимо. Для пятичасового MVP это хорошая основа переноса.",
+                "verification": "observed",
+                "evidence": [
+                  "Hackalemai-main/backend/Dockerfile:1-8",
+                  "Hackalemai-main/frontend/Dockerfile:1-17",
+                  "Hackalemai-main/docker-compose.yml:1-21",
+                  "captures/20261002T112948250388-build-backend-2.stderr.log",
+                  "captures/20261002T112948267387-build-frontend-2.stderr.log"
+                ]
+              },
+              {
+                "aspect": "Расширение каталога через Basic Auth sync",
+                "implementation": "scripts/sync_catalog.py читает переменные окружения, проходит страницы /products, запрашивает /products/detail?id=..., использует timeout и три попытки, а backend после этого читает сохранённый каталог.",
+                "value": "Команда предусмотрела путь от синтетической выборки к API партнёра и не смешала сетевой запрос с каждым сообщением чата. Это создаёт понятную точку интеграции для следующего этапа.",
+                "verification": "source",
+                "evidence": [
+                  "cases/10/case-data/ИИ-ассистент для чата на сайте ekt.kz ДАННЫЕ.docx.md:6-9",
+                  "Hackalemai-main/scripts/sync_catalog.py:30-70",
+                  "Hackalemai-main/README.md:96-104"
+                ]
+              },
+              {
+                "aspect": "Точки роста продукта",
+                "implementation": "README явно перечисляет переход к защищённой cookie или аккаунту, rate limiting, аудит, HTTPS, CORS, ротацию секретов и подключение реальной корзины. Код уже отделяет cart_actions и session state.",
+                "value": "План развития привязан к конкретной архитектуре, а не к общему обещанию «добавить AI»: понятны следующие инженерные шаги для реального e-commerce.",
+                "verification": "source",
+                "evidence": [
+                  "Hackalemai-main/README.md:136-142",
+                  "Hackalemai-main/backend/app/main.py:68-85"
+                ]
+              },
+              {
+                "aspect": "Мобильная и desktop-адаптация как задел",
+                "implementation": "CSS содержит media queries для ширины 1050, 780 и 440 px, скрывает боковую панель возможностей на узком экране, перестраивает карточки и адаптирует корзину.",
+                "value": "Статический код показывает, что интерфейс проектировался не только для одного desktop viewport, что полезно для клиентского сайта. Визуальное качество намеренно не заявляется проверенным.",
+                "verification": "source",
+                "evidence": [
+                  "Hackalemai-main/frontend/app/globals.css:7-9",
+                  "Hackalemai-main/frontend/app/extras.css:1"
+                ]
+              }
+            ],
+            "scoreReasoning": "14 баллов соответствуют хорошему заделу: отдельные сервисы, Docker-сборки, opt-in API sync и расширяемые backend tools уже есть. Масштабирование нельзя считать готовым из-за подтверждённой потери series при sync, открытого клиентского session_id, отсутствия общего резервирования stock и сломанного compose bootstrap. README эти ограничения признаёт, что повышает качество инженерного плана, но не устраняет их в реализации."
+          },
+          {
+            "name": "Презентация, демо и ответы на вопросы",
+            "score": 17,
+            "max": 20,
+            "awarded": "README ясно описывает архитектуру, установку, проверки и последовательность демо; производственная сборка и HTTP-страницы подтверждены. Устной презентации и ответов не было, поэтому оценены только материалы репозитория и воспроизводимость.",
+            "deductions": "Снято 3 балла за конкретную ошибку в documented Docker Compose setup; отсутствие публичного URL и визуальной проверки баллы не уменьшает.",
+            "evidence": [
+              "Hackalemai-main/README.md:17-30",
+              "Hackalemai-main/README.md:39-70",
+              "Hackalemai-main/README.md:106-134",
+              "captures/20261002T113628527584-compose-config.stderr.log",
+              "captures/20261002T113714331285-http-frontend-root.stdout.log"
+            ],
+            "deductionItems": [
+              {
+                "points": 3,
+                "findingId": "F8-compose-env",
+                "reason": "Инструкция обещает Copy-Item .env.example .env и docker compose из каталога проекта, но при запуске docker compose config в Hackalemai-main Compose не находит .env; это непосредственно ухудшает воспроизводимость демо."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "README как сценарий показа",
+                "implementation": "README содержит структуру проекта, переменные окружения, отдельные команды backend/frontend, Docker-вариант, curl-примеры, список проверок и восемь шагов demo sequence от Найди Legrand до отказа от 100 штук.",
+                "value": "Жюри может понять, что именно демонстрировать и какие ответы ожидать, не восстанавливая архитектуру по исходникам с нуля.",
+                "verification": "source",
+                "evidence": [
+                  "Hackalemai-main/README.md:17-30",
+                  "Hackalemai-main/README.md:39-70",
+                  "Hackalemai-main/README.md:106-134"
+                ]
+              },
+              {
+                "aspect": "Воспроизводимая backend-проверка",
+                "implementation": "В репозитории есть 13 unittest-проверок: поиск, цена, город, аналоги, подтверждение, превышение, изоляция корзин, миграция, HTTP, вложения, условия и сертификат. В изолированной среде все 13 завершились OK.",
+                "value": "Это сильнее декларативного README: демо-критические инварианты зафиксированы тестами и могут быть повторены.",
+                "verification": "observed",
+                "evidence": [
+                  "Hackalemai-main/backend/tests/test_assistant.py:17-168",
+                  "captures/20261002T113205256672-test.stdout.log"
+                ]
+              },
+              {
+                "aspect": "Воспроизводимая сборка frontend",
+                "implementation": "npm run build в frontend Dockerfile завершает TypeScript-проверку, генерацию страниц / и /cart и production image; отдельный production container отвечает по обеим HTTP-страницам.",
+                "value": "Результат можно показать из репозитория даже без live URL и без устного выступления, что соответствует правилам этой оценки.",
+                "verification": "observed",
+                "evidence": [
+                  "Hackalemai-main/frontend/package.json:4-9",
+                  "captures/20261002T112948267387-build-frontend-2.stderr.log",
+                  "captures/20261002T113704080820-start-frontend.stdout.log",
+                  "captures/20261002T113714331285-http-frontend-root.stdout.log",
+                  "captures/20261002T113714360289-http-frontend-cart.stdout.log"
+                ]
+              },
+              {
+                "aspect": "Чёткое описание ограничений",
+                "implementation": "README отдельно сообщает, что демо содержит 40 товаров и одну полную detail-запись, реальная корзина не подключена, условия и остатки неизвестны, а image OCR требует ключа.",
+                "value": "Ограничения не маскируются под production-ready поведение, поэтому ожидания от демонстрации корректны.",
+                "verification": "source",
+                "evidence": [
+                  "Hackalemai-main/README.md:136-142",
+                  "Hackalemai-main/backend/app/main.py:207-210",
+                  "Hackalemai-main/backend/app/main.py:606-614"
+                ]
+              }
+            ],
+            "scoreReasoning": "17 баллов отражают сильную документацию и фактически воспроизводимые build/start/API проверки. Я не снижал оценку за отсутствие live URL, визуального осмотра, публичных слайдов или устной презентации, поскольку это запрещено/не требовалось в данном формате. Снижение целиком относится к конкретной ошибке расположения .env.example, из-за которой описанный compose путь не проходит config-проверку из каталога приложения."
+          }
+        ],
+        "total": 82.5
+      },
+      "case": null,
+      "judgeScore": 82.5,
+      "caseRequirements": [
+        {
+          "requirement": "Отвечать по существующему товару: цена, характеристики, наличие и, если есть в каталоге, сертификат.",
+          "status": "partial",
+          "explanation": "Для 027228 подтверждены артикул, цена 64920, общий остаток 23, остаток Алматы 5 и характеристики; сертификатная ветка честно сообщает об отсутствии ссылки/файла, но в локальном каталоге certificate_url в этой записи отсутствует. Полноценный путь сертификата при непустом поле реализован source-level, но на предоставленной выборке не продемонстрирован.",
+          "evidence": [
+            "Hackalemai-main/backend/app/main.py:397-420",
+            "Hackalemai-main/backend/app/main.py:406-410",
+            "Hackalemai-main/data/catalog.json:1-20",
+            "captures/20261002T113309977926-http-search.stdout.log",
+            "captures/20261002T113319849746-http-stock-city-2.stdout.log",
+            "Hackalemai-main/backend/tests/test_assistant.py:160-168"
+          ]
+        },
+        {
+          "requirement": "При нулевом остатке предложить минимум один релевантный аналог с кратким обоснованием.",
+          "status": "partial",
+          "explanation": "Явный запрос «Покажи аналоги» работает для 027228 и возвращает четыре позиции той же серии с matching/differences. Но в demo catalog нет ни одной записи со stock=0, а local_chat автоматически не вызывает analogs() в ветке stock; при нулевом stock ответит о наличии, если пользователь отдельно не попросит аналог.",
+          "evidence": [
+            "Hackalemai-main/backend/app/main.py:177-204",
+            "Hackalemai-main/backend/app/main.py:344-364",
+            "Hackalemai-main/backend/app/main.py:411-420",
+            "captures/20261002T113310028180-http-analogs.stdout.log",
+            "Hackalemai-main/backend/tests/test_assistant.py:43-48"
+          ]
+        },
+        {
+          "requirement": "Отвечать об условиях оплаты, доставки и минимальной партии без выдумывания.",
+          "status": "partial",
+          "explanation": "Обработчик и API endpoint есть, но предоставленные материалы не содержат самих условий, поэтому приложение возвращает available=false и просит обратиться к менеджеру. Требование честности соблюдено, содержательный ответ из данных не может быть продемонстрирован на данном наборе.",
+          "evidence": [
+            "cases/10/case-data/HackAlem AI_ ИИ-ассистент для чата на сайте ekt.kz.md:16",
+            "Hackalemai-main/backend/app/main.py:207-210",
+            "captures/20261002T113310072655-http-conditions.stdout.log",
+            "Hackalemai-main/backend/tests/test_assistant.py:160-164"
+          ]
+        },
+        {
+          "requirement": "Изменять корзину только после явного подтверждения, с учётом количества и остатка.",
+          "status": "met",
+          "explanation": "До подтверждения cart пуст; после «Да, добавь» добавлены 3 из 23. Запрос 100 после добавления возвращает максимум 20 и не меняет quantity=3. Прямой endpoint также отклоняет unconfirmed запрос, неизвестный товар и превышение stock.",
+          "evidence": [
+            "Hackalemai-main/backend/app/main.py:250-271",
+            "Hackalemai-main/backend/app/main.py:302-342",
+            "Hackalemai-main/backend/tests/test_assistant.py:50-70",
+            "captures/20261002T113549927669-http-cart-sequence-3.stdout.log"
+          ]
+        },
+        {
+          "requirement": "После добавления дать прямую ссылку на актуальную корзину/оформление.",
+          "status": "met",
+          "explanation": "Backend возвращает подтверждение и cart, а frontend распознаёт успешное сообщение и рендерит ссылку href=/cart. Страница /cart запрашивает актуальную корзину через /api/cart. Оформление заказа явно обозначено как неподключённое, поэтому ссылка ведёт на корзину, как требует MVP.",
+          "evidence": [
+            "Hackalemai-main/backend/app/main.py:302-310",
+            "Hackalemai-main/frontend/app/page.tsx:136-140",
+            "Hackalemai-main/frontend/app/cart/page.tsx:12-16",
+            "captures/20261002T113714360289-http-frontend-cart.stdout.log"
+          ]
+        },
+        {
+          "requirement": "Принимать текст, фото и файлы Excel/Word/PDF/JPEG.",
+          "status": "partial",
+          "explanation": "Endpoint принимает PDF, DOCX, XLSX, PNG и JPG/JPEG; XLSX, PDF и image-without-key paths проверены проектным unittest, а DOCX parser есть в исходниках. Предоставленный организатором Word-документ представлен как .md-выгрузка, не как бинарный DOCX, поэтому реальная DOCX-подача из кейса отдельно не проверена.",
+          "evidence": [
+            "cases/10/case-data/HackAlem AI_ ИИ-ассистент для чата на сайте ekt.kz.md:14",
+            "Hackalemai-main/backend/app/main.py:589-615",
+            "Hackalemai-main/backend/tests/test_assistant.py:134-158",
+            "captures/20261002T113205256672-test.stdout.log"
+          ]
+        },
+        {
+          "requirement": "Не выдумывать данные, не хранить платёжные данные и явно обозначать неизвестность.",
+          "status": "met",
+          "explanation": "System prompt и deterministic handlers запрещают выдуманные цены, остатки, характеристики, сертификаты и условия; неизвестный stock блокирует cart. В модели SQLite нет платёжных полей, а upload redacts credential-like text перед возвратом extracted_text.",
+          "evidence": [
+            "Hackalemai-main/backend/app/system_prompt.txt:1-9",
+            "Hackalemai-main/backend/app/main.py:163-174",
+            "Hackalemai-main/backend/app/main.py:620-627",
+            "Hackalemai-main/backend/app/main.py:68-85"
+          ]
+        },
+        {
+          "requirement": "Сохранять контекст диалога и разделять корзины посетителей.",
+          "status": "partial",
+          "explanation": "SQLite хранит state_json и cart_items с ключом session_id; тесты подтверждают разделение shopper-one и shopper-two. Однако session_id приходит от клиента и не является аутентифицированным владением, что оставляет риск чтения/изменения корзины при знании чужого идентификатора.",
+          "evidence": [
+            "Hackalemai-main/backend/app/main.py:68-85",
+            "Hackalemai-main/backend/app/main.py:225-247",
+            "Hackalemai-main/frontend/lib/session.ts:1-11",
+            "Hackalemai-main/backend/tests/test_assistant.py:74-79"
+          ]
+        },
+        {
+          "requirement": "Иметь путь от demo-данных к API каталога партнёра.",
+          "status": "partial",
+          "explanation": "Opt-in sync использует Basic Auth, пагинацию /products и detail /products/detail?id=..., что соответствует предоставленному API-документу. Но импорт нормализует series как None, тогда как analogs() требует это поле; после API-синхронизации analog recommendation не сохраняет demo-поведение.",
+          "evidence": [
+            "cases/10/case-data/ИИ-ассистент для чата на сайте ekt.kz ДАННЫЕ.docx.md:2-9",
+            "Hackalemai-main/scripts/sync_catalog.py:44-88",
+            "Hackalemai-main/backend/app/main.py:177-194"
+          ]
+        },
+        {
+          "requirement": "Учитывать desktop и mobile интерфейс.",
+          "status": "unverified",
+          "explanation": "В CSS есть явные media queries и перестройка карточек/панелей для узких ширин, но визуальный осмотр запрещён пользовательскими правилами этой проверки. Баллы за это ограничение не сняты.",
+          "evidence": [
+            "Hackalemai-main/frontend/app/globals.css:7-9",
+            "Hackalemai-main/frontend/app/extras.css:1"
+          ]
+        }
+      ],
+      "testData": {
+        "provided": [
+          "cases/10/case-data/HackAlem AI_ ИИ-ассистент для чата на сайте ekt.kz.md",
+          "cases/10/case-data/ИИ-ассистент для чата на сайте ekt.kz ДАННЫЕ.docx.md"
+        ],
+        "used": [
+          "cases/10/case-data/HackAlem AI_ ИИ-ассистент для чата на сайте ekt.kz.md",
+          "cases/10/case-data/ИИ-ассистент для чата на сайте ekt.kz ДАННЫЕ.docx.md",
+          "Hackalemai-main/product_list.txt",
+          "Hackalemai-main/page_2_product.txt",
+          "Hackalemai-main/detail_inf.txt",
+          "Hackalemai-main/data/catalog.json",
+          "Hackalemai-main/backend/tests/test_assistant.py"
+        ],
+        "checks": [
+          {
+            "input": "Тестовые материалы кейса: существующий артикул 027228 и API-пути /api/products и /api/products/detail из документа доступа.",
+            "method": "Сопоставил поля исходной выгрузки и detail с локальным catalog.json; запросил GET /api/products/search?q=027228 и GET /api/products/027228/stock?city=Алматы.",
+            "result": "HTTP 200: товар article=027228, price=64920, stock=23; городской ответ known=true, quantity=5, city=Алматы.",
+            "conclusion": "Структура входных данных кейса применена; основной каталоговый ответ соответствует локальной detail-записи."
+          },
+          {
+            "input": "Требование аналога при отсутствии/нулевом остатке; локальная выборка содержит 39 неизвестных stock и не содержит stock=0.",
+            "method": "Проверил distribution stock в catalog.json и вызвал GET /api/products/027228/analogs; дополнительно проследил local_chat ветки stock и analogs по исходникам.",
+            "result": "HTTP 200 вернул 4 позиции DRX250 MT с matching/differences; автоматической zero-stock ветки и записи stock=0 в demo catalog нет.",
+            "conclusion": "Явно запрошенный explainable analog проверен, обязательный zero-stock сценарий остаётся частичным и отражён в F6."
+          },
+          {
+            "input": "Тестовый вопрос об условиях оплаты, доставки и минимальной партии.",
+            "method": "GET /api/purchase-conditions и POST /api/chat с вопросом об оплате и доставке; проверка против предоставленного brief, где конкретные условия не заданы.",
+            "result": "HTTP 200, available=false, payment/delivery/minimum_order=null; ответ сообщает об отсутствии данных и направляет к менеджеру.",
+            "conclusion": "Команда не выдумывает отсутствующие условия; содержательность ответа ограничена самим набором данных кейса."
+          },
+          {
+            "input": "Путь корзины: 027228, 3 штуки, явное подтверждение, затем запрос 100 штук.",
+            "method": "Проектный unittest и HTTP POST /api/chat в последовательности до/после подтверждения с GET /api/cart.",
+            "result": "До подтверждения items=[]; после подтверждения quantity=3, total=194760; запрос 100 возвращает доступные 20 и оставляет финальную quantity=3.",
+            "conclusion": "Основной safety-critical сценарий кейса реально воспроизведён."
+          },
+          {
+            "input": "Вложения XLSX с Артикул=027228, PDF из репозитория и минимальный PNG без ключа.",
+            "method": "Запустил backend.tests.test_assistant.test_xlsx_docx_and_image_upload; PDF и XLSX отправляются через TestClient, image path проверяется без OPENAI_API_KEY.",
+            "result": "Проверка прошла: XLSX сопоставлен с 027228, PDF извлёк более 100 символов, PNG принят с сообщением о необходимости ключа для OCR; условный binary DOCX в checkout отсутствует.",
+            "conclusion": "Поддержка форматов подтверждена для доступных входов, DOCX отмечен как source-level/непроверенный из-за формата предоставленного файла."
+          }
+        ],
+        "limitations": [
+          "API credentials намеренно не предоставлялись; внешний Basic Auth sync и реальное API партнёра не вызывались.",
+          "Предоставленный Word-документ доступен как .md-выгрузка, поэтому бинарный DOCX upload отдельно не запускался.",
+          "Визуальная проверка браузером запрещена пользовательскими правилами; frontend оценён сборкой и HTTP-ответами."
+        ]
+      },
+      "runtime": {
+        "status": "working",
+        "build": "Backend Docker image и frontend production image собраны успешно; frontend build завершил TypeScript-проверку и статическую генерацию / и /cart.",
+        "start": "Backend uvicorn стартовал и /api/health вернул 200; frontend npm run start стартовал и обе страницы ответили HTTP 200.",
+        "scenario": "Основной backend-сценарий найденного товара 027228, городской stock, аналоги, запрос количества, подтверждение и ограничение сверх остатка воспроизведён; без внешнего ключа сработал локальный deterministic path.",
+        "environment": "Проверка выполнена в изолированных Docker-контейнерах с Python 3.12 backend dependencies из requirements.txt и Node 20/Next 16.3.6 frontend image. OpenAI и Basic Auth credentials не передавались.",
+        "summary": "Приложение working для локального MVP. Отдельная compose config-проверка выявила project defect отсутствующего Hackalemai-main/.env, но это не помешало явному backend/frontend start с demo_mode=true.",
+        "checks": [
+          {
+            "command": "docker build -f backend/Dockerfile backend",
+            "result": "Код выхода 0; образ backend собран с fastapi 0.115.12, uvicorn 0.34.0, pypdf 5.4.0 и openpyxl 3.1.5.",
+            "id": "C1-backend-build",
+            "stage": "build",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Backend image собирается из pinned Dockerfile и requirements без ошибки."
+          },
+          {
+            "command": "docker build -f frontend/Dockerfile frontend",
+            "result": "Код выхода 0; Next.js 16.3.6 compiled successfully, TypeScript finished, routes / и /cart сгенерированы.",
+            "id": "C2-frontend-build",
+            "stage": "build",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Frontend production build завершается успешно и содержит заявленные маршруты."
+          },
+          {
+            "command": "python -m unittest backend.tests.test_assistant -v",
+            "result": "13 тестов выполнены за 3,111 секунды; итог OK. Проверены поиск, город, аналоги, cart confirmation, stock cap, session isolation, HTTP, upload, условия и сертификат.",
+            "id": "C3-backend-tests",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Все repository smoke/integration tests проходят в окружении, соответствующем requirements."
+          },
+          {
+            "command": "uvicorn backend.app.main:app --host 0.0.0.0 --port 8000",
+            "result": "GET /api/health вернул HTTP 200 и {ok:true,demo_mode:true,products:40,ai_enabled:false}.",
+            "id": "C4-backend-start",
+            "stage": "start",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Backend стартует без ключей и сообщает состояние локального demo catalog."
+          },
+          {
+            "command": "npm run start",
+            "result": "Frontend production server стартовал; GET / и GET /cart вернули HTTP 200 и HTML соответствующих страниц.",
+            "id": "C5-frontend-start",
+            "stage": "start",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Собранный frontend доступен на главной странице и странице корзины."
+          },
+          {
+            "command": "GET /api/products/search?q=027228",
+            "result": "HTTP 200; найден 027228 Legrand, price=64920, stock=23, properties poles=3/amperage=160/breaking_capacity=18.",
+            "id": "C6-product-search",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Существующий артикул возвращает данные каталога без выдуманных полей."
+          },
+          {
+            "command": "GET /api/products/027228/stock?city=Алматы",
+            "result": "HTTP 200; known=true, quantity=5, city=Алматы.",
+            "id": "C7-city-stock",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Остаток по указанному городу берётся из сохранённых stores."
+          },
+          {
+            "command": "GET /api/products/027228/analogs",
+            "result": "HTTP 200; возвращены 4 позиции той же серии с массивами matching и differences, например 160А против 250А.",
+            "id": "C8-analogs",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Аналог имеет объяснимое сходство и различия по известным характеристикам."
+          },
+          {
+            "command": "GET /api/purchase-conditions",
+            "result": "HTTP 200; available=false и null-поля, сообщение не выдумывает условия.",
+            "id": "C9-purchase-conditions",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "При отсутствии условий в данных backend отвечает явно и безопасно."
+          },
+          {
+            "command": "POST /api/chat followed by GET /api/cart",
+            "result": "Для 027228: предложение 3 без изменения; подтверждение даёт quantity=3 и total=194760; запрос 100 после этого предлагает доступные 20 и не меняет quantity=3.",
+            "id": "C10-cart-scenario",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Корзина изменяется только после явного подтверждения и никогда не превышает остаток."
+          },
+          {
+            "command": "docker compose config",
+            "result": "Код выхода 1: env file Hackalemai-main/.env not found. .env.example находится в checkout root, тогда как compose и README-путь приложения ожидают файл в Hackalemai-main.",
+            "id": "C11-compose-config",
+            "stage": "build",
+            "status": "fail",
+            "cause": "project",
+            "expected": "Документированный docker compose configuration path валиден из каталога Hackalemai-main после стандартного шага .env setup."
+          }
+        ],
+        "limitations": [
+          "Реальный OpenAI tool-calling и Basic Auth API sync не запускались без намеренно не предоставленных credentials; локальный сценарий без ключа запущен успешно.",
+          "Визуальное поведение, responsive layout и интерактивность в браузере не проверялись согласно пользовательскому запрету.",
+          "Содержимое реальной внешней корзины ekt.kz и резервирование общего складского остатка не подключены самим проектом."
+        ]
+      },
+      "liveDemo": {
+        "status": "none",
+        "url": null,
+        "notes": "В репозитории нет проверенной публичной live-ссылки. Это не снижало баллы: локальные production start и HTTP/API проверки выполнены, визуальный браузерный осмотр не проводился."
+      },
+      "fiveHourContext": "Для пятичасового хакатона это сильный объём MVP: команда собрала два сервиса, локальный каталог из материалов кейса, upload-пути, stateful chat, explainable analogs и защиту cart mutation, а также добавила smoke-тесты. Оценка не требует production checkout, реального резервирования, полноразмерного каталога или полного OpenAI runtime. Однако уже заявленные opt-in API sync и Compose setup должны сохранять основной demo-контракт; именно поэтому потеря series после sync и отсутствующий .env в documented directory остаются конкретными удерживающими факторами.",
+      "strengths": [
+        "Основной сценарий поиска, наличия, характеристик, аналогов и корзины воспроизведён HTTP-проверками и 13 repository tests.",
+        "Корзина защищена двухшаговым подтверждением, повторной проверкой остатка и транзакционным ограничением количества.",
+        "Ответы консервативны: неизвестные цены, остатки, сертификаты и условия не подменяются выдуманными значениями.",
+        "README содержит конкретную demo sequence, команды проверки и честное описание ограничений.",
+        "Аналоги объясняются через совпадающие и отличающиеся характеристики, а не выдаются непрозрачным списком."
+      ],
+      "gaps": [
+        "После sync_catalog.py все импортированные товары получают series=None, поэтому analogs() возвращает пусто для реального API-импорта.",
+        "При нулевом stock local_chat сообщает об отсутствии/остатке, но не предлагает аналог автоматически; аналог доступен только по отдельному запросу.",
+        "Корзина и состояние доступны по произвольному клиентскому session_id без проверки владения.",
+        "Из каталога Hackalemai-main docker compose config не проходит: обязательный .env отсутствует, а .env.example расположен уровнем выше."
+      ],
+      "futureAdvice": [
+        {
+          "principle": "Сохраняйте инварианты доменной модели при каждом import path.",
+          "why": "F5 показывает, что demo path и API sync используют разные схемы: demo извлекает series из имени, а sync записывает None, из-за чего после расширения источника исчезает analog feature.",
+          "how": "Для следующего хакатона задайте единую normalizer-функцию для upload/demo/API, добавьте series из detail или безопасное извлечение из name и прогоните один сценарий аналога на каждом источнике данных.",
+          "findingIds": [
+            "F5-sync-drops-series"
+          ],
+          "successCheck": "После генерации catalog.json из API-fixture товар с серией DRX250 MT возвращает минимум один аналог и непустые matching/differences тем же endpoint, что и demo catalog.",
+          "timeboxMinutes": 35
+        },
+        {
+          "principle": "Ключевой бизнес-триггер должен быть явным переходом state machine.",
+          "why": "F6 показывает, что analogs() существует, но ветка stock question не связывает нулевой остаток с предложением замены; пользователь должен сам догадаться попросить аналоги.",
+          "how": "Для другого MVP добавьте в сценарий stock==0 переход к ranked analogs с причиной выбора и отдельный тест: запрос существующего товара с нулём должен вернуть отказ от текущего товара плюс один кандидат.",
+          "findingIds": [
+            "F6-zero-stock-auto-analog"
+          ],
+          "successCheck": "На seeded product stock=0 один запрос о наличии возвращает минимум один аналог, его совпадающие/отличающиеся параметры и не предлагает добавить недоступный товар.",
+          "timeboxMinutes": 30
+        },
+        {
+          "principle": "Идентификатор UI-сессии не должен быть единственным контролем доступа.",
+          "why": "F7 подтверждён кодом: frontend хранит UUID в localStorage, а API принимает его напрямую; это разделяет обычные демо-корзины, но не защищает от подстановки известного идентификатора.",
+          "how": "В следующем проекте выдайте серверную signed cookie/session token, проверяйте ownership на GET и POST cart endpoints и добавьте негативный тест с чужим token.",
+          "findingIds": [
+            "F7-session-auth"
+          ],
+          "successCheck": "Запрос с session token посетителя B не читает и не меняет корзину посетителя A, а обычный подтверждённый flow одного посетителя по-прежнему проходит.",
+          "timeboxMinutes": 45
+        }
+      ],
+      "uncertainties": [
+        "Реальный контракт ekt.kz API после Basic Auth не проверялся: credentials намеренно не передавались. Статический вывод о F5 основан на полном пути sync_catalog.py -> catalog.json -> analogs().",
+        "DOCX upload source-level реализован, но бинарный файл в предоставленном case package отсутствует; условная ветка теста с *ДАННЫЕ.docx не выполнялась.",
+        "Визуальное качество, responsive behavior и фактическая работа кликов в браузере не проверены по явному запрету; build и HTTP HTML routes проверены.",
+        "Нет отдельной case scoring scale, поэтому case=null и judgeScore равен общей оценке 82.5."
+      ],
+      "reviewPolicyVersion": 2,
+      "assessmentStatus": "ready",
+      "findings": [
+        {
+          "id": "F1-confirmation-cart",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Основной cart flow не меняет корзину до явного подтверждения и ограничивает добавление доступным остатком.",
+          "expected": "Пользователь сначала получает предложение, после явного подтверждения добавляется не больше доступного количества.",
+          "actual": "В тестах и HTTP-сценарии до подтверждения items=[]; после подтверждения quantity=3; запрос 100 после этого предлагает только 20 и не меняет уже добавленные 3.",
+          "evidence": [
+            "Hackalemai-main/backend/app/main.py:250-271",
+            "Hackalemai-main/backend/app/main.py:302-342",
+            "captures/20261002T113205256672-test.stdout.log",
+            "captures/20261002T113549927669-http-cart-sequence-3.stdout.log"
+          ],
+          "checkIds": [
+            "C3-backend-tests",
+            "C10-cart-scenario"
+          ]
+        },
+        {
+          "id": "F2-catalog-truthfulness",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Демо отвечает по локальному каталогу и показывает конкретные цену, stock и city stock для 027228 без выдумывания отсутствующих значений.",
+          "expected": "Ответы по товару совпадают с загруженной записью и различают общий и городской остаток.",
+          "actual": "Поиск вернул 027228 с price=64920 и stock=23; city endpoint вернул Алматы quantity=5.",
+          "evidence": [
+            "Hackalemai-main/backend/app/main.py:115-174",
+            "captures/20261002T113309977926-http-search.stdout.log",
+            "captures/20261002T113319849746-http-stock-city-2.stdout.log"
+          ],
+          "checkIds": [
+            "C6-product-search",
+            "C7-city-stock"
+          ]
+        },
+        {
+          "id": "F3-explainable-analogs",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Аналогический endpoint возвращает объяснение сходства и различий по известным характеристикам.",
+          "expected": "Кандидаты релевантны серии/полюсам, а пользователю видны причины выбора.",
+          "actual": "Для 027228 возвращены 4 DRX250 MT candidates с matching/differences; пример сравнивает 160А и 250А при совпадающих 3 полюсах и 18 кА.",
+          "evidence": [
+            "Hackalemai-main/backend/app/main.py:177-204",
+            "captures/20261002T113310028180-http-analogs.stdout.log"
+          ],
+          "checkIds": [
+            "C8-analogs"
+          ]
+        },
+        {
+          "id": "F4-build-and-tests",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Оба production image собираются, backend tests проходят, а frontend имеет доступные / и /cart routes.",
+          "expected": "Репозиторий даёт воспроизводимый локальный результат до уровня build/start/API.",
+          "actual": "Backend build, frontend build и 13 тестов завершились успешно; frontend GET / и /cart вернули HTTP 200.",
+          "evidence": [
+            "captures/20261002T112948250388-build-backend-2.stderr.log",
+            "captures/20261002T112948267387-build-frontend-2.stderr.log",
+            "captures/20261002T113205256672-test.stdout.log",
+            "captures/20261002T113714331285-http-frontend-root.stdout.log",
+            "captures/20261002T113714360289-http-frontend-cart.stdout.log"
+          ],
+          "checkIds": [
+            "C1-backend-build",
+            "C2-frontend-build",
+            "C3-backend-tests",
+            "C5-frontend-start"
+          ]
+        },
+        {
+          "id": "F5-sync-drops-series",
+          "kind": "defect",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Opt-in API synchronization discards the series field for every normalized product, while analog matching requires a non-empty series.",
+          "expected": "После импорта из заявленных /products и /products/detail analogs() сохраняет ту же возможность поиска аналогов, что и demo catalog.",
+          "actual": "sync_catalog.py:84 записывает \"series\": None; analogs():179-181 немедленно возвращает [] при пустой серии, поэтому импортированный каталог теряет аналогический сценарий.",
+          "evidence": [
+            "Hackalemai-main/scripts/sync_catalog.py:67-85",
+            "Hackalemai-main/backend/app/main.py:177-194",
+            "Hackalemai-main/README.md:96-104"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "F6-zero-stock-auto-analog",
+          "kind": "defect",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "В local_chat нет перехода от известного нулевого остатка к автоматическому предложению аналога.",
+          "expected": "Запрос о товаре с stock=0 сообщает недоступность и сразу предлагает минимум один релевантный аналог с обоснованием.",
+          "actual": "Ветка stock/city на main.py:411-420 только формирует ответ о stock; вызов analogs находится в отдельной ветке is_analog на 344-364 и зависит от явного запроса пользователя. Demo catalog дополнительно не содержит stock=0.",
+          "evidence": [
+            "Hackalemai-main/backend/app/main.py:344-364",
+            "Hackalemai-main/backend/app/main.py:388-420",
+            "Hackalemai-main/data/catalog.json:1-1060",
+            "Hackalemai-main/README.md:136-140"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "F7-session-auth",
+          "kind": "defect",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Корзина и состояние доступны по клиентскому session_id без серверной проверки владения.",
+          "expected": "Посетитель может работать со своей корзиной, но не читать или менять корзину другого посетителя.",
+          "actual": "frontend создаёт UUID в localStorage, а GET /api/cart и POST /api/cart/add принимают переданный session_id; подписи, cookie ownership или авторизации нет.",
+          "evidence": [
+            "Hackalemai-main/frontend/lib/session.ts:1-11",
+            "Hackalemai-main/backend/app/main.py:213-223",
+            "Hackalemai-main/backend/app/main.py:543-555",
+            "Hackalemai-main/README.md:140"
+          ],
+          "checkIds": [
+            "C3-backend-tests"
+          ]
+        },
+        {
+          "id": "F8-compose-env",
+          "kind": "defect",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Documented Compose bootstrap cannot be configured from the application directory because .env.example is outside Hackalemai-main.",
+          "expected": "После README-шагов создания .env команда docker compose config из Hackalemai-main находит env_file и валидирует конфигурацию.",
+          "actual": "Hackalemai-main/docker-compose.yml:4 требует .env; README:43-47 копирует .env.example в текущем каталоге; в Hackalemai-main .env.example отсутствует, и docker compose config завершился exit code 1 с env file not found.",
+          "evidence": [
+            "Hackalemai-main/README.md:39-47",
+            "Hackalemai-main/docker-compose.yml:1-7",
+            ".env.example:1-8",
+            "captures/20261002T113628527584-compose-config.stderr.log"
+          ],
+          "checkIds": [
+            "C11-compose-config"
+          ]
+        },
+        {
+          "id": "F9-external-api-unverified",
+          "kind": "limitation",
+          "verification": "unverified",
+          "responsibility": "review_environment",
+          "claim": "Реальный внешний Basic Auth API и OpenAI tool-calling в этой проверке не запускались.",
+          "expected": "Внешний API и AI provider доступны с корректными credentials для end-to-end проверки.",
+          "actual": "Credentials не предоставлялись по политике ревью; локальный demo_mode и source path проверены, внешний сервис не подменялся mock-ответом.",
+          "evidence": [
+            "<api_requirements>: credentialsProvided=false",
+            "Hackalemai-main/scripts/sync_catalog.py:44-53",
+            "Hackalemai-main/backend/app/main.py:436-442"
+          ],
+          "checkIds": [
+            "C4-backend-start"
+          ]
+        },
+        {
+          "id": "F10-visual-unverified",
+          "kind": "limitation",
+          "verification": "unverified",
+          "responsibility": "review_environment",
+          "claim": "Визуальное поведение UI и фактические browser clicks не проверялись.",
+          "expected": "Browser/CUA inspection подтверждает visual layout и интерактивность.",
+          "actual": "Проверены только frontend build и HTTP HTML responses; browser automation и screenshots запрещены пользовательской инструкцией.",
+          "evidence": [
+            "Hackalemai-main/frontend/app/page.tsx:125-159",
+            "Hackalemai-main/frontend/app/globals.css:7-9",
+            "captures/20261002T113714331285-http-frontend-root.stdout.log"
+          ],
+          "checkIds": [
+            "C2-frontend-build",
+            "C5-frontend-start"
+          ]
+        },
+        {
+          "id": "F11-docx-unverified",
+          "kind": "limitation",
+          "verification": "unverified",
+          "responsibility": "review_environment",
+          "claim": "Binary DOCX path не получил отдельного входного теста из case package.",
+          "expected": "В наличии есть бинарный DOCX, который можно подать в /api/upload.",
+          "actual": "В case-data предоставлен .docx.md текстовый экспорт; исходник содержит DOCX parser и conditional test, но binary glob не нашёл файл.",
+          "evidence": [
+            "cases/10/case-data/ИИ-ассистент для чата на сайте ekt.kz ДАННЫЕ.docx.md:1-9",
+            "Hackalemai-main/backend/app/main.py:582-606",
+            "Hackalemai-main/backend/tests/test_assistant.py:144-149"
+          ],
+          "checkIds": [
+            "C3-backend-tests"
+          ]
+        }
+      ],
+      "gapFindingIds": [
+        "F5-sync-drops-series",
+        "F6-zero-stock-auto-analog",
+        "F7-session-auth",
+        "F8-compose-env"
+      ]
+    }
+  ],
+  "score": 82.5,
+  "status": "complete",
+  "expectedJudges": 1
+}

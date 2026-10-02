@@ -1,0 +1,801 @@
+{
+  "methodVersion": 4,
+  "repoId": "hack-eab7e034-104",
+  "repoUrl": "https://github.com/BAITC-Hacks/hack-eab7e034-104",
+  "caseId": 5,
+  "snapshot": "62cd58cfec2a17a7053c515ebbc94e04ddcabf4e",
+  "judges": [
+    {
+      "methodVersion": 4,
+      "repoId": "hack-eab7e034-104",
+      "caseId": 5,
+      "model": "GPT-5.6 Luna",
+      "snapshot": "62cd58cfec2a17a7053c515ebbc94e04ddcabf4e",
+      "overallSummary": "Сильный воспроизводимый MVP для менеджера закупа: детерминированное ядро действительно формирует 531 рекомендацию на локальном каталоге из 3 906 SKU, учитывает остаток, товар в пути, сезонность, сглаженный рост, MOQ, выбросы и stockout-сценарии, а интерфейс оставляет утверждение человеку. Сборка в изолированном Docker-окружении успешна, 26 тестов проходят, HTTP-сценарий и чувствительность к входным изменениям подтверждены. Оценку удерживают два конкретных ограничения реализации: отдельные предоставленные XLSX с агрегированной сезонностью не проходят через сборщик, а второй вызов OpenAI использует жёстко заданную модель вместо OPENAI_MODEL. Наличие client_id и истории stockout в исходном пакете не заявлено и поэтому отмечено как ограничение данных, а не как штраф за среду ревью.",
+      "global": {
+        "criteria": [
+          {
+            "name": "Ценность решения",
+            "score": 24,
+            "max": 25,
+            "awarded": "Решение непосредственно автоматизирует трудоёмкий и понятный процесс пополнения склада и выдаёт закупщику применимый список с количеством, риском и объяснением.",
+            "deductions": "1 балл снят за неполную интеграцию предоставленного сезонного источника: бизнес-ценность сезонного расчёта есть, но воспроизводимость полного входного набора не доведена до всех таблиц.",
+            "evidence": [
+              "README.md:3-13",
+              "README.md:52-66",
+              "runtime.scenario: scenario-001, scenario-002, scenario-003"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "DEF-SEASONALITY-SOURCE",
+                "reason": "Для ценности полного решения из предоставленных данных важно не терять отдельные сезонные таблицы; текущий сборщик их не читает, поэтому часть заявленного входного материала не влияет на результат напрямую."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Решена конкретная операционная боль",
+                "implementation": "README описывает замену редкого ручного сведения Excel на план пополнения по SKU, а API отдаёт расчёт с количеством, срочностью, доступным запасом и пояснением. На фактическом каталоге запрос по IEK сформировал 497 позиций и 23 092 единицы заказа.",
+                "value": "Для менеджера закупа ценность видна в сокращении ручной консолидации и в едином списке решений, который можно просмотреть по поставщику и отфильтровать.",
+                "verification": "observed",
+                "evidence": [
+                  "README.md:3-13",
+                  "check scenario-001: IEK, 497 позиций, 23 092 ед."
+                ]
+              },
+              {
+                "aspect": "Риск дефицита превращён в приоритет",
+                "implementation": "Ядро считает покрытие в днях и присваивает статусы Срочно, Высокий риск или Планово; в API-результате это сопровождается текущим остатком и товаром в пути.",
+                "value": "Закупщик получает порядок внимания, а не только необъяснимое число, что делает расчёт полезным в ежедневной работе.",
+                "verification": "observed",
+                "evidence": [
+                  "replenishment.py:352-359",
+                  "replenishment.py:376-410",
+                  "check scenario-001: 497 позиций, включая срочные и позиции высокого риска"
+                ]
+              },
+              {
+                "aspect": "Решение не маскирует границы данных",
+                "implementation": "Каталог передаёт data_limits в health и результат расчёта; README отдельно перечисляет отсутствие client_id, stockout-истории, цены, точных сроков поставки и корпоративного журнала утверждений.",
+                "value": "Такая прозрачность снижает риск воспринимать демо-оценку спроса как автоматическое коммерческое решение.",
+                "verification": "observed",
+                "evidence": [
+                  "scripts/build_demo_data.py:437-448",
+                  "README.md:325-341",
+                  "check start-001: /api/health returned data_limits"
+                ]
+              },
+              {
+                "aspect": "Пользователь получает объяснимый результат",
+                "implementation": "Каждая рекомендация содержит прогноз, буфер, остаток, inbound, MOQ, сезонный и ростовой коэффициенты, снятые выбросы и текстовое explanation; frontend показывает детальную карточку позиции.",
+                "value": "Проверка и ручная корректировка становятся предметными: менеджер видит, откуда взялось количество и что можно изменить.",
+                "verification": "source",
+                "evidence": [
+                  "replenishment.py:360-410",
+                  "frontend/app.js:213-248",
+                  "README.md:254-275"
+                ]
+              }
+            ],
+            "scoreReasoning": "24/25 заслужены за прямое соответствие проблеме закупок, полезный приоритет по риску и объяснимый список, подтверждённые фактическим HTTP-расчётом. Единственное удержание связано с DEF-SEASONALITY-SOURCE: отдельные сезонные XLSX реально присутствуют в пакете, но сборщик не включает их в каталог. Это ограничивает полноту ценности, хотя per-SKU сезонность из помесячных продаж продолжает работать."
+          },
+          {
+            "name": "Результат и качество решения",
+            "score": 17,
+            "max": 20,
+            "awarded": "Основной локальный сценарий целостен: сборка, запуск, API-расчёт, объяснение, сценарий, агент и тесты работают на подготовленном каталоге.",
+            "deductions": "3 балла сняты за два подтверждённых технических дефекта: неполное прохождение входных сезонных таблиц через сборщик и рассинхронизацию модели во втором вызове OpenAI.",
+            "evidence": [
+              "check build-001",
+              "check test-001: 26 tests OK",
+              "check start-001",
+              "check scenario-001",
+              "agent.py:549-580"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "DEF-SEASONALITY-SOURCE",
+                "reason": "Качество итогового сценария ниже максимума, потому что заявленный полный набор сезонных входов не воспроизводится сборщиком: в каталог попадает derived seasonality из sales, но отдельные seasonality XLSX не читаются."
+              },
+              {
+                "points": 1,
+                "findingId": "DEF-OPENAI-MODEL-DRIFT",
+                "reason": "При наличии ключа первый запрос использует OPENAI_MODEL, а второй запрос жёстко отправляется на gpt-5.6-terra; конфигурация, указанная участником, может поэтому дать отказ или непредсказуемый внешний сценарий."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Сборка и старт деплоя",
+                "implementation": "Dockerfile фиксирует Python 3.11-slim, устанавливает openpyxl и запускает app.py с PORT; образ собран без ошибок, а контейнер стартовал и вернул health status ok.",
+                "value": "Демо можно поднять воспроизводимо без ключа OpenAI и без отдельного frontend build pipeline.",
+                "verification": "observed",
+                "evidence": [
+                  "Dockerfile:1-7",
+                  "requirements.txt:1-5",
+                  "check build-001",
+                  "check start-001"
+                ]
+              },
+              {
+                "aspect": "Детерминированный расчёт отделён от LLM",
+                "implementation": "app.py передаёт сценарий в calculate_recommendations, а agent.py вызывает те же расчётные инструменты; AI выбирает инструмент и формулирует ответ, но не арифметику.",
+                "value": "Основной результат не зависит от доступности внешней модели, что особенно важно для пятичасового прототипа.",
+                "verification": "source",
+                "evidence": [
+                  "app.py:167-193",
+                  "agent.py:407-461",
+                  "README.md:76-83"
+                ]
+              },
+              {
+                "aspect": "Проверена бизнес-чувствительность",
+                "implementation": "Для одного реального SKU 130300791 базовый заказ 6 650, добавление 100 единиц inbound уменьшает его до 6 550, а 10 stockout-дней дают заказ 7 400 и stockout compensation 1 321.909.",
+                "value": "Это подтверждает, что ключевые входы не только отображаются в UI, но и меняют расчёт.",
+                "verification": "observed",
+                "evidence": [
+                  "check scenario-002",
+                  "check scenario-003",
+                  "replenishment.py:329-348"
+                ]
+              },
+              {
+                "aspect": "Тесты покрывают ядро и HTTP-контур",
+                "implementation": "Тестовый набор проверяет сезонность, рост, stockout, one-off, spike cap, inbound, MOQ, неполные данные, группировку, валидацию API и offline agent.",
+                "value": "26/26 успешных тестов дают существенное доказательство работоспособности заявленного локального MVP, а не только наличие файлов.",
+                "verification": "observed",
+                "evidence": [
+                  "tests/test_replenishment.py:48-137",
+                  "tests/test_app.py:16-94",
+                  "tests/test_agent.py:43-106",
+                  "check test-001"
+                ]
+              }
+            ],
+            "scoreReasoning": "17/20: основная цепочка реально работает и подтверждена 26 тестами и HTTP-проверками. До максимума не хватает полного воспроизведения всех подготовленных входов и согласованного внешнего OpenAI-контура. Эти дефекты не ломают offline demo, но ухудшают качество при восстановлении полного внешнего сценария и при пересборке каталога из пакета данных."
+          },
+          {
+            "name": "Инновационность",
+            "score": 13,
+            "max": 15,
+            "awarded": "Сильная сторона — объяснимое робастное прогнозирование с детерминированными инструментами и AI-слоем, а не передача арифметики свободному тексту модели.",
+            "deductions": "2 балла сняты за то, что отдельный сезонный источник не используется, хотя нестандартность подхода могла бы быть сильнее при явном согласовании всех сезонных расчётов.",
+            "evidence": [
+              "replenishment.py:90-167",
+              "replenishment.py:170-216",
+              "agent.py:540-590",
+              "check scenario-004"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "DEF-SEASONALITY-SOURCE",
+                "reason": "Инновационная часть убедительна как algorithmic per-SKU seasonality, но не полностью использует отдельные сезонные отчёты из кейса; это уменьшает доказанную оригинальность и обоснованность полного data pipeline."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Робастная обработка выбросов",
+                "implementation": "_clean_monthly_sales сначала удаляет помеченные one-off операции, затем ограничивает месячные пики медианным cap с сезонным сравнением; результат возвращает детализацию по месяцу и причине.",
+                "value": "Это заметно отличается от простого среднего и адресует центральную проблему кейса — разовая крупная продажа не должна раздувать регулярную потребность.",
+                "verification": "source",
+                "evidence": [
+                  "replenishment.py:100-143",
+                  "tests/test_replenishment.py:71-87",
+                  "check scenario-004: 7 012 anomaly adjustments"
+                ]
+              },
+              {
+                "aspect": "Прогноз сочетает несколько устойчивых сигналов",
+                "implementation": "forecast_demand использует взвешенное среднее, per-SKU сезонный коэффициент по сопоставимым месяцам, сглаженный шестимесячный growth factor и ограничение горизонта/множителя.",
+                "value": "Подход даёт объяснимую компромиссную модель, пригодную для MVP без непрозрачной ML-зависимости.",
+                "verification": "source",
+                "evidence": [
+                  "replenishment.py:53-87",
+                  "replenishment.py:192-215",
+                  "tests/test_replenishment.py:48-69"
+                ]
+              },
+              {
+                "aspect": "LLM ограничен ролью интерфейса к инструментам",
+                "implementation": "Responses API получает строгие function definitions, разрешён один tool call, а _execute_tool возвращает факты из расчётного ядра; без ключа используется тот же локальный tool path.",
+                "value": "Такой hybrid pattern даёт разговорное объяснение без риска, что модель сама придумает количество заказа.",
+                "verification": "source",
+                "evidence": [
+                  "agent.py:1-98",
+                  "agent.py:407-461",
+                  "agent.py:525-537",
+                  "tests/test_agent.py:90-106"
+                ]
+              },
+              {
+                "aspect": "Есть сценарное сравнение, а не только один прогноз",
+                "implementation": "compare_replenishment_scenarios строит два детерминированных плана, сопоставляет метрики и изменившиеся SKU; UI и agent передают baseline_scenario.",
+                "value": "Менеджер может оценить последствие роста спроса или смены горизонта до утверждения плана.",
+                "verification": "observed",
+                "evidence": [
+                  "agent.py:370-405",
+                  "tests/test_agent.py:70-82",
+                  "frontend/app.js:88-108"
+                ]
+              }
+            ],
+            "scoreReasoning": "13/15: робастное сглаживание, per-SKU seasonality, stockout-компенсация и tool-grounded agent образуют осмысленный нестандартный подход. DEF-SEASONALITY-SOURCE удерживает баллы: отдельные сезонные отчёты не встроены в ingest, поэтому инновационная идея не доведена до полного набора источников кейса."
+          },
+          {
+            "name": "Потенциал развития и масштабирования",
+            "score": 18,
+            "max": 20,
+            "awarded": "Архитектура уже разделена на ingest/catalog, расчётное ядро, HTTP API, vanilla frontend и опциональный agent; это хороший фундамент для расширения поставщиков и сценариев.",
+            "deductions": "2 балла сняты за дефект конфигурации внешней модели, который станет препятствием при переносе на другой deployment/model, хотя локальный deterministic path остаётся работоспособным.",
+            "evidence": [
+              "README.md:112-151",
+              "scripts/build_demo_data.py:396-450",
+              "railway.json:1-9",
+              "agent.py:549-580"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "DEF-OPENAI-MODEL-DRIFT",
+                "reason": "Для масштабирования внешней интеграции конфигурация должна быть единообразной; hardcoded gpt-5.6-terra во втором запросе нарушает заявленный параметр OPENAI_MODEL и усложняет переносимость."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Поставщик-агностичный каталог",
+                "implementation": "build_catalog объединяет продукты из Systeme Electric и IEK, сохраняет supplier, SKU, историю, stock, inbound, MOQ и источники; calculate_recommendations группирует итог по supplier.",
+                "value": "Добавление нового поставщика можно строить как отдельный extractor с тем же нормализованным контрактом продукта.",
+                "verification": "source",
+                "evidence": [
+                  "scripts/build_demo_data.py:125-145",
+                  "scripts/build_demo_data.py:396-450",
+                  "replenishment.py:414-440"
+                ]
+              },
+              {
+                "aspect": "Расширяемый HTTP-контракт",
+                "implementation": "app.py предоставляет health, products, recommendations и agent endpoints, валидирует размер/тип JSON, ограничивает сценарные параметры и не раскрывает пользовательский текст в access log.",
+                "value": "Контур пригоден для подключения другого UI, корпоративного API gateway или фонового job без переноса расчётной логики.",
+                "verification": "source",
+                "evidence": [
+                  "app.py:84-151",
+                  "app.py:153-195",
+                  "tests/test_app.py:41-87"
+                ]
+              },
+              {
+                "aspect": "Есть явные точки интеграции с корпоративным процессом",
+                "implementation": "Frontend позволяет редактировать quantity, фиксирует approval snapshot в localStorage и экспортирует CSV со статусом согласования; Railway-конфигурация задаёт healthcheck.",
+                "value": "Следующий шаг к корпоративному процессу понятен: заменить локальное хранение approval и согласовать импортный формат, не переписывая прогноз.",
+                "verification": "source",
+                "evidence": [
+                  "frontend/app.js:374-432",
+                  "README.md:325-340",
+                  "railway.json:4-8"
+                ]
+              },
+              {
+                "aspect": "Масштаб обработки уже проверен на реальном размере снимка",
+                "implementation": "Каталог содержит 3 906 SKU, расчёт all-supplier формирует 531 позиции, а HTTP health и test suite работают в Python 3.11 контейнере без внешнего ключа.",
+                "value": "Для MVP это показывает практическую применимость к тысячам SKU, а не только к игрушечному примеру.",
+                "verification": "observed",
+                "evidence": [
+                  "check start-001: products=3906",
+                  "check scenario-001: 531 all-supplier positions in agent result",
+                  "check test-001"
+                ]
+              }
+            ],
+            "scoreReasoning": "18/20: разделение слоёв, нормализованный каталог, API и экспорт дают понятную траекторию к новым поставщикам и корпоративным хранилищам. Два балла удержаны только за DEF-OPENAI-MODEL-DRIFT: в production-like переносе внешний двухшаговый agent может использовать несовместимую модель во втором запросе. Локальная масштабируемость и расширение расчётных сценариев при этом подтверждены."
+          },
+          {
+            "name": "Презентация, демо и ответы на вопросы",
+            "score": 20,
+            "max": 20,
+            "awarded": "В рамках этого ревью README и локально воспроизводимое демо ясно описывают проблему, алгоритм, запуск, ограничения и сценарий проверки; устная презентация и ответы не выдумывались.",
+            "deductions": "Снятий нет: отсутствие визуальной проверки и внешнего ключа является ограничением ревью, а не подтверждённым дефектом проекта.",
+            "evidence": [
+              "README.md:1-83",
+              "README.md:238-280",
+              "README.md:325-341",
+              "check build-001",
+              "check start-001",
+              "check test-001"
+            ],
+            "deductionItems": [],
+            "awardedDetails": [
+              {
+                "aspect": "README ведёт проверяющего по сценарию",
+                "implementation": "Документ содержит архитектуру, локальный запуск, Docker, endpoint-описание, рекомендуемые запросы и пошаговую проверку расчёта, изменения сценария, agent и источников.",
+                "value": "Результат можно показать из репозитория без устных пояснений и без необходимости угадывать входной формат.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:112-151",
+                  "README.md:238-280"
+                ]
+              },
+              {
+                "aspect": "Описан пользовательский поток до утверждения",
+                "implementation": "README последовательно ведёт от загрузки каталога и расчёта к фильтрации, деталям SKU, ручной корректировке, утверждению и CSV; интерфейс содержит те же элементы.",
+                "value": "Демо раскрывает не только формулу, но и конечный результат для закупщика.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:52-66",
+                  "frontend/index.html:45-56",
+                  "frontend/index.html:94-183"
+                ]
+              },
+              {
+                "aspect": "Демо воспроизводимо без платного сервиса",
+                "implementation": "При отсутствии OPENAI_API_KEY run_agent выбирает локальный demo-agent; основной recommendation API также не зависит от OpenAI.",
+                "value": "Проверяющий может получить содержательный результат в изолированном окружении и не ошибочно считать отсутствие ключа неработоспособностью приложения.",
+                "verification": "observed",
+                "evidence": [
+                  "agent.py:593-608",
+                  "check start-001: openai_enabled=false",
+                  "check scenario-004: mode=demo, review_sales_anomalies"
+                ]
+              },
+              {
+                "aspect": "Ограничения раскрыты прямо",
+                "implementation": "README и health перечисляют отсутствие client_id, stockout-истории, цены, SLA, 1С-интеграции и серверного approval-аудита; это согласуется с фактическим catalog data_limits.",
+                "value": "Такое описание делает демо убедительнее и не выдаёт прототип за автономную закупку.",
+                "verification": "observed",
+                "evidence": [
+                  "README.md:325-341",
+                  "scripts/build_demo_data.py:442-448",
+                  "check start-001"
+                ]
+              }
+            ],
+            "scoreReasoning": "20/20: в заданном формате оценки этот критерий покрывает ясность README и воспроизводимое демо, поскольку устной презентации не было. README подробен, кодовый сценарий локально запускается, а ограничения и ручное подтверждение явно описаны. Визуальное поведение не объявляется проверенным, но это не основание для снятия баллов по установленной политике."
+          }
+        ],
+        "total": 92
+      },
+      "case": null,
+      "judgeScore": 92,
+      "caseRequirements": [
+        {
+          "requirement": "Расчёт базовой потребности по артикулу с историей продаж, остатком, товаром в пути, MOQ и поставщиком",
+          "status": "partial",
+          "explanation": "Расчёт работает на известных полях и изменяется при inbound/stock, однако каталог содержит 981 неполный SKU; IEK не имеет категории, а сроки поставки и часть MOQ отсутствуют в исходных таблицах и честно заменяются ограничениями/допущениями.",
+          "evidence": [
+            "replenishment.py:314-348",
+            "scripts/build_demo_data.py:442-448",
+            "check start-001: catalog_products=3906",
+            "check scenario-002"
+          ]
+        },
+        {
+          "requirement": "Учёт сезонности и устойчивого роста спроса",
+          "status": "met",
+          "explanation": "Per-SKU прогноз строит сезонный коэффициент по сопоставимым месяцам и сглаженный growth factor по последним шести месяцам; unit-тесты подтверждают оба эффекта. Отдельные агрегированные сезонные XLSX не ingest-ятся, но функциональный сезонный сигнал из истории продаж присутствует.",
+          "evidence": [
+            "replenishment.py:60-87",
+            "replenishment.py:192-215",
+            "tests/test_replenishment.py:48-62",
+            "check scenario-001: explanation includes seasonality and growth"
+          ]
+        },
+        {
+          "requirement": "Компенсация упущенного спроса при stockout",
+          "status": "met",
+          "explanation": "CSV и сценарий принимают stockout-дни, backend валидирует календарные границы, а forecast добавляет оценённый lost demand к истории. На SKU 130300791 10 дней дали compensation 1 321.909 и увеличили заказ с 6 650 до 7 400.",
+          "evidence": [
+            "app.py:48-81",
+            "replenishment.py:146-167",
+            "tests/test_replenishment.py:64-69",
+            "check scenario-003"
+          ]
+        },
+        {
+          "requirement": "Выявление и исключение разовых крупных заказов, включая продажу одному клиенту",
+          "status": "partial",
+          "explanation": "Для доступных данных команда удаляет отмеченные операции и автоматически ограничивает месячные пики по SKU и номеру документа; HTTP agent показал 7 011 spike caps и 1 source adjustment. Однако client_id в исходных выгрузках нет, поэтому объединение нескольких документов одного клиента не доказано и не может быть выполнено из этого пакета.",
+          "evidence": [
+            "scripts/build_demo_data.py:339-394",
+            "replenishment.py:100-143",
+            "README.md:329-331",
+            "check scenario-004"
+          ]
+        },
+        {
+          "requirement": "Список заказов с количеством, кратким обоснованием и группировкой по поставщикам",
+          "status": "met",
+          "explanation": "Результат сортируется и агрегируется по IEK/Systeme Electric; каждая строка содержит прогноз, доступность, коэффициенты, MOQ, urgency и explanation. Frontend визуально группирует поставщиков и позволяет открыть деталь, а API это подтверждает статически и HTTP-результатом.",
+          "evidence": [
+            "replenishment.py:376-430",
+            "frontend/app.js:141-165",
+            "tests/test_replenishment.py:90-95",
+            "check scenario-001"
+          ]
+        },
+        {
+          "requirement": "Заказ не отправляется без ручного подтверждения ответственного сотрудника",
+          "status": "met",
+          "explanation": "В проекте нет отправки поставщику; экспорт до approval помечен как черновик, approvePlan фиксирует локальный snapshot, а CSV меняет статус на утверждённый только после клика менеджера.",
+          "evidence": [
+            "README.md:9-13",
+            "frontend/app.js:374-432",
+            "agent.py:454-456",
+            "tests/test_agent.py:84-88"
+          ]
+        },
+        {
+          "requirement": "Данные клиентов обезличены",
+          "status": "met",
+          "explanation": "В рабочий каталог и API не попадает client_id; проект явно сообщает, что исходник его не содержит, и не утверждает идентификацию клиента. Это соблюдает приватность предоставленного агрегированного набора, хотя ограничивает one-client анализ.",
+          "evidence": [
+            "scripts/build_demo_data.py:442-448",
+            "agent.py:439-443",
+            "README.md:329-330"
+          ]
+        },
+        {
+          "requirement": "Проверка чувствительности к товарам в пути, сезонности, stockout и выбросам",
+          "status": "met",
+          "explanation": "Чувствительность inbound, stockout и сезонности проверена unit/API тестами; выбросы проверены через реальный catalog agent и подтверждены подробными adjustment-строками. Отдельный сезонный workbook не используется сборщиком, что вынесено в gap, но per-SKU чувствительность присутствует.",
+          "evidence": [
+            "tests/test_replenishment.py:48-87",
+            "check scenario-002",
+            "check scenario-003",
+            "check scenario-004",
+            "replenishment.py:394-407"
+          ]
+        },
+        {
+          "requirement": "Экспорт результата в формат, пригодный для дальнейшей учётной загрузки",
+          "status": "unverified",
+          "explanation": "CSV экспорт с русскими заголовками, BOM, разделителем точка с запятой и статусом согласования реализован, но совместимость с конкретной конфигурацией импорта 1С в проекте не подтверждена и отдельного эталонного формата в материалах нет.",
+          "evidence": [
+            "frontend/app.js:410-432",
+            "README.md:336"
+          ]
+        }
+      ],
+      "testData": {
+        "provided": [
+          "cases/5/case-data/HackAlem AI_ Автоматизация формирования заказов поставщикам.docx.md",
+          "cases/5/case-data/IEK/MOQ  ИЭК.xlsx",
+          "cases/5/case-data/IEK/Динамика продаж_2025-2026.xlsx",
+          "cases/5/case-data/IEK/Ежемесячные остатки продукции за последние 2 года  ИЭК.xlsx",
+          "cases/5/case-data/IEK/Ежемесячные продажи в количественном выражении за последние 2 года.xlsx",
+          "cases/5/case-data/IEK/Путь ИЭК 22.09.2026.xlsx",
+          "cases/5/case-data/IEK/Сезонность ИЭК.xlsx",
+          "cases/5/case-data/Systeme electric/MOQ SystemElectric.xlsx",
+          "cases/5/case-data/Systeme electric/Динамика продаж_Syseme Electric_2025-2026.xlsx",
+          "cases/5/case-data/Systeme electric/Ежемесячные остатки SystemElectric 2024-2026.xlsx",
+          "cases/5/case-data/Systeme electric/Ежемесячные продажи в кол-м выражении SystemElectric 2024-2026.xlsx",
+          "cases/5/case-data/Systeme electric/Сезонность SystemElectric 2024-2026.xlsx",
+          "cases/5/case-data/Systeme electric/Товар в пути_SystemElectric на 22.09.2026.xlsx"
+        ],
+        "used": [
+          "cases/5/case-data/IEK/MOQ  ИЭК.xlsx",
+          "cases/5/case-data/IEK/Динамика продаж_2025-2026.xlsx",
+          "cases/5/case-data/IEK/Ежемесячные остатки продукции за последние 2 года  ИЭК.xlsx",
+          "cases/5/case-data/IEK/Ежемесячные продажи в количественном выражении за последние 2 года.xlsx",
+          "cases/5/case-data/IEK/Путь ИЭК 22.09.2026.xlsx",
+          "cases/5/case-data/IEK/Сезонность ИЭК.xlsx",
+          "cases/5/case-data/Systeme electric/MOQ SystemElectric.xlsx",
+          "cases/5/case-data/Systeme electric/Динамика продаж_Syseme Electric_2025-2026.xlsx",
+          "cases/5/case-data/Systeme electric/Ежемесячные остатки SystemElectric 2024-2026.xlsx",
+          "cases/5/case-data/Systeme electric/Ежемесячные продажи в кол-м выражении SystemElectric 2024-2026.xlsx",
+          "cases/5/case-data/Systeme electric/Сезонность SystemElectric 2024-2026.xlsx",
+          "cases/5/case-data/Systeme electric/Товар в пути_SystemElectric на 22.09.2026.xlsx"
+        ],
+        "checks": [
+          {
+            "input": "Все 12 XLSX из IEK и Systeme electric",
+            "method": "Открыты реальные workbook/sheet metadata через openpyxl; сверены листы, размеры и заголовки, затем сопоставлены с именами source_workbooks в demo_catalog.",
+            "result": "Подтверждены 12 файлов: IEK sales 2466x36, stock 2857x37, inbound 2642x9, MOQ 1939x5, seasonality 41x15; Systeme sales 557x38 на двух листах, stock 704x37, inbound 499x70 на двух листах, MOQ 557x5, seasonality 35x15, dynamics 77314/171605 строк.",
+            "conclusion": "Пакет данных структурно пригоден для заявленных основных extractors; отдельные seasonality workbooks имеют агрегированные строки и не входят в текущий source_files/build_catalog path."
+          },
+          {
+            "input": "Собранный data/demo_catalog.json.gz",
+            "method": "Загружен compressed catalog и сопоставлены его metadata, поставщики и counts с исходными workbook names.",
+            "result": "as_of=2026-09-22, products=3906; Systeme Electric=724, IEK=3182; health позже вернул те же значения.",
+            "conclusion": "Проект использует подготовленный снимок, собранный из двух поставщиков, а не пустой демонстрационный набор."
+          },
+          {
+            "input": "IEK, scenario supplier=IEK, horizon=30, multiplier=1",
+            "method": "POST /api/recommendations без изменения исходного каталога.",
+            "result": "497 recommendation positions, 23092 recommended units; первый SKU 130300791 имеет forecast 5763.57 м, stock 2, inbound 0, MOQ 50, recommended 6650.",
+            "conclusion": "Основной расчёт на реальном snapshot воспроизведён."
+          },
+          {
+            "input": "SKU 130300791 с inbound_delta=100",
+            "method": "Повторный POST /api/recommendations с тем же сценарием и добавлением 100 единиц товара в пути.",
+            "result": "Рекомендуемое количество изменилось с 6650 до 6550.",
+            "conclusion": "Чувствительность к inbound подтверждена наблюдением."
+          },
+          {
+            "input": "SKU 130300791 с stockout_days=10",
+            "method": "Повторный POST /api/recommendations с выбранным SKU и 10 днями stockout.",
+            "result": "recommended_qty=7400, stockout_compensation_units=1321.909.",
+            "conclusion": "Stockout-компенсация реально меняет план вверх."
+          },
+          {
+            "input": "Запрос agent: Какие выбросы алгоритм исключил?",
+            "method": "POST /api/agent без OPENAI_API_KEY, с UTF-8 JSON и supplier=all.",
+            "result": "mode=demo, intent=review_sales_anomalies; 7012 событий, 1 source adjustment, 7011 spike caps, 468504.1 снятых единиц; ответ явно сообщает отсутствие Client ID.",
+            "conclusion": "Offline agent проходит полный путь выбора инструмента, deterministic расчёта и фактического ответа."
+          }
+        ],
+        "limitations": [
+          "Исходные seasonal XLSX открыты и проверены по структуре, но текущий проект их не ingest-ит; per-SKU сезонность выводится из monthly_sales.",
+          "В исходных workbook нет client_id и полноценной истории stockout; one-client и ретроспективную проверку stockout нельзя подтвердить этими данными.",
+          "Внешний OpenAI API не запускался: тестовые credentials намеренно не предоставлены; это ограничение проверки, не основание для штрафа за offline demo.",
+          "Визуальная проверка браузера не выполнялась согласно заданной политике; HTML/JS проверены статически, API — по HTTP."
+        ]
+      },
+      "runtime": {
+        "status": "working",
+        "build": "Docker image built successfully from Dockerfile; pip installed openpyxl 3.1.5.",
+        "start": "Container started successfully and served /api/health with HTTP 200, status=ok, products=3906 and openai_enabled=false.",
+        "scenario": "The main recommendation path and sensitivity scenarios were reproduced over HTTP on the real compressed catalog; the offline agent also returned deterministic results.",
+        "environment": "Isolated Docker Python 3.11-slim environment with repository files and no API credentials. No browser or visual automation was used.",
+        "summary": "Основной сценарий работает без внешнего ключа; runtime classified working because build, start and user-facing calculation all passed.",
+        "checks": [
+          {
+            "command": "docker build -t <review-image> .",
+            "result": "exitCode=0; Docker image exported successfully and openpyxl 3.1.5 installed.",
+            "id": "build-001",
+            "stage": "build",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Проект собирается из Dockerfile с заявленными зависимостями."
+          },
+          {
+            "command": "python -m unittest discover -s tests -v",
+            "result": "exitCode=0; Ran 26 tests in 7.451s; OK.",
+            "id": "test-001",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Все repository unit/domain/API smoke tests проходят без ключа."
+          },
+          {
+            "command": "GET /api/health",
+            "result": "HTTP 200; status=ok; as_of_date=2026-09-22; products=3906; openai_enabled=false; sources and data_limits returned.",
+            "id": "start-001",
+            "stage": "start",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Сервис стартует и отдаёт health-check с размером каталога."
+          },
+          {
+            "command": "POST /api/recommendations",
+            "result": "HTTP 200; IEK horizon=30 returned 497 recommendation positions and 23092 recommended units; explanation included seasonality, growth, removed anomalies and MOQ.",
+            "id": "scenario-001",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Основной пользовательский расчёт выдаёт список заказов с объяснением."
+          },
+          {
+            "command": "POST /api/recommendations",
+            "result": "For SKU 130300791, baseline recommended_qty=6650; with inbound_delta=100 recommended_qty=6550.",
+            "id": "scenario-002",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Добавление товара в пути уменьшает заказ на сопоставимое количество."
+          },
+          {
+            "command": "POST /api/recommendations",
+            "result": "For SKU 130300791 and stockout_days=10, recommended_qty=7400 and stockout_compensation_units=1321.909.",
+            "id": "scenario-003",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Stockout correction increases demand/order relative to the raw-sales baseline."
+          },
+          {
+            "command": "POST /api/agent",
+            "result": "HTTP 200; mode=demo; intent=review_sales_anomalies; result reported 7012 anomaly events and explicit Client ID limitation.",
+            "id": "scenario-004",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Без ключа агент выбирает локальный инструмент и возвращает факты из расчётного ядра."
+          }
+        ],
+        "limitations": [
+          "OpenAI Responses API с реальным ключом не проверялся, поскольку credentials не предоставлены.",
+          "Визуальный браузерный сценарий не проверялся; статический HTML/JS и HTTP/API проверены.",
+          "Совместимость CSV с конкретной конфигурацией 1С и корпоративное серверное хранение approval не входят в доступный runtime-тест."
+        ]
+      },
+      "liveDemo": {
+        "status": "claimed",
+        "url": "https://stockpilot-ai-production-4f94.up.railway.app",
+        "notes": "URL заявлен в README, но внешняя live-ссылка не проверялась; локальный HTTP-сценарий подтверждён отдельно. Отсутствие внешнего подтверждения не использовано как штраф."
+      },
+      "fiveHourContext": "Для пятичасового хакатона это зрелый вертикальный прототип: есть подготовка исходных выгрузок, детерминированное ядро, HTTP API, интерфейсный путь до ручного утверждения, локальный AI-agent, Docker/Railway-конфигурация и тесты. Не требуются production-авторизация, 1С-интеграция или постоянное хранилище approval, но уже выявленные дефекты ingest и model configuration всё же учитываются как конкретные ограничения качества.",
+      "strengths": [
+        "Детерминированное расчётное ядро отделено от LLM и имеет объяснимый output.",
+        "На реальном snapshot из 3906 SKU проверены inbound, stockout, seasonality, growth, MOQ и outlier-сценарии.",
+        "Человеческое подтверждение обязательно до статуса утверждённого CSV; автоматической отправки заказа нет.",
+        "README и data_limits честно описывают отсутствие client_id, stockout history, SLA, цены и 1С-интеграции.",
+        "Все 26 repository tests проходят в собранном контейнере."
+      ],
+      "gaps": [
+        "Сборщик не читает отдельные предоставленные XLSX с агрегированной сезонностью; в source_workbooks они отсутствуют, а коэффициенты строятся только из monthly_sales.",
+        "Второй запрос Responses API жёстко использует gpt-5.6-terra и игнорирует OPENAI_MODEL, который используется первым запросом."
+      ],
+      "futureAdvice": [
+        {
+          "principle": "Единый контракт конфигурации на всём внешнем пути",
+          "why": "DEF-OPENAI-MODEL-DRIFT показывает, что первый и второй вызов одного Responses-сценария используют разные источники модели; при внешнем запуске это может ломать продолжение tool call.",
+          "how": "В другом хакатоне вынести выбранную модель в одну переменную конфигурации и передавать её в обе фазы; добавить тест, который перехватывает два тела запроса и сравнивает model.",
+          "findingIds": [
+            "DEF-OPENAI-MODEL-DRIFT"
+          ],
+          "successCheck": "Оба вызова получают одинаковое значение OPENAI_MODEL, а тест проходит с произвольным тестовым значением без обращения к API.",
+          "timeboxMinutes": 30
+        },
+        {
+          "principle": "Сверять полный data contract до упаковки демо",
+          "why": "DEF-SEASONALITY-SOURCE показывает расхождение между пакетированными сезонными таблицами и фактическим ingest: функциональный сигнал есть, но часть входа незаметно исключена.",
+          "how": "Для следующего кейса составить маленькую таблицу source kind → parser → catalog field и прогнать по одному реальному заголовку каждого workbook; либо явно документировать, почему агрегированный источник не применим к SKU-прогнозу.",
+          "findingIds": [
+            "DEF-SEASONALITY-SOURCE"
+          ],
+          "successCheck": "Каждый переданный workbook либо отражён в catalog.sources и влияет на поле, либо имеет проверяемое объяснение неприменимости и тест на это решение.",
+          "timeboxMinutes": 45
+        }
+      ],
+      "uncertainties": [
+        "Визуальное отображение, клики в браузере и фактическое скачивание CSV не проверялись по обязательной политике user-owned visual verification; основание оценки — source и HTTP/API.",
+        "Внешняя OpenAI ветка не запускалась без credentials; её путь прослежен по коду, а модельный рассинхрон отмечен как source defect.",
+        "Совместимость экспорта с конкретным импортом 1С неизвестна, потому что эталонный корпоративный формат в материалах не предоставлен.",
+        "История stockout и client_id отсутствуют в предоставленном пакете, поэтому one-client detection и retrospective stockout accuracy не могут быть подтверждены на этих данных."
+      ],
+      "reviewPolicyVersion": 2,
+      "assessmentStatus": "ready",
+      "findings": [
+        {
+          "id": "STR-DETERMINISTIC-CORE",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Основной расчётный сценарий воспроизводится на локальном каталоге без внешнего ключа и выдаёт объяснимые рекомендации.",
+          "expected": "Рекомендации должны формироваться на реальных данных, а не только быть заявлены в README.",
+          "actual": "HTTP IEK scenario returned 497 positions and 23092 units; 26 tests passed; explanations included forecast, stock, inbound, coefficients, anomalies and MOQ.",
+          "evidence": [
+            "check test-001",
+            "check start-001",
+            "check scenario-001",
+            "replenishment.py:290-440"
+          ],
+          "checkIds": [
+            "test-001",
+            "start-001",
+            "scenario-001"
+          ]
+        },
+        {
+          "id": "STR-SENSITIVITY",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Изменения товара в пути и stockout реально меняют рассчитанный заказ.",
+          "expected": "При неизменной истории увеличение inbound должно уменьшать, а компенсация stockout — увеличивать потребность.",
+          "actual": "SKU 130300791: 6650 baseline, 6550 after inbound_delta=100, 7400 with 10 stockout days and compensation 1321.909.",
+          "evidence": [
+            "check scenario-002",
+            "check scenario-003"
+          ],
+          "checkIds": [
+            "scenario-002",
+            "scenario-003"
+          ]
+        },
+        {
+          "id": "STR-HUMAN-APPROVAL",
+          "kind": "strength",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Экспорт отделён от ручного утверждения и не отправляет заказ поставщику автоматически.",
+          "expected": "До отправки/передачи должен быть явный шаг ответственного сотрудника.",
+          "actual": "Frontend stores approval snapshot only after approvePlan; draft/approved CSV statuses differ, and README states there is no automatic supplier send.",
+          "evidence": [
+            "frontend/app.js:374-432",
+            "README.md:9-13",
+            "agent.py:454-456"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "STR-OFFLINE-AGENT",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Offline agent uses deterministic tools and returns anomaly facts without OpenAI credentials.",
+          "expected": "Основной AI-assisted demo должен иметь доступный локальный путь при отсутствии API key.",
+          "actual": "POST /api/agent returned mode=demo, review_sales_anomalies, 7012 events and a client-data limitation.",
+          "evidence": [
+            "check scenario-004",
+            "agent.py:525-537",
+            "agent.py:593-608"
+          ],
+          "checkIds": [
+            "scenario-004"
+          ]
+        },
+        {
+          "id": "LIM-MISSING-CLIENT-ID",
+          "kind": "limitation",
+          "verification": "source",
+          "responsibility": "unknown",
+          "claim": "Пакет данных не содержит обезличенного client_id, поэтому проект не может надёжно определить крупную покупку одного клиента.",
+          "expected": "Для требования one-client outlier нужен стабильный обезличенный идентификатор клиента.",
+          "actual": "Исходные агрегаты и build metadata не имеют client_id; код работает на document/SKU/month и прямо сообщает невозможность связать документы.",
+          "evidence": [
+            "scripts/build_demo_data.py:339-394",
+            "scripts/build_demo_data.py:442-448",
+            "README.md:329-331",
+            "agent.py:439-443"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "LIM-MISSING-STOCKOUT-HISTORY",
+          "kind": "limitation",
+          "verification": "source",
+          "responsibility": "unknown",
+          "claim": "Исходный набор не содержит полноценной истории stockout.",
+          "expected": "Ретроспективная проверка lost demand требует stockout labels или истории отсутствия товара.",
+          "actual": "Проект принимает отдельный CSV/сценарий, но catalog data_limits сообщает отсутствие исходной истории.",
+          "evidence": [
+            "scripts/build_demo_data.py:442-445",
+            "README.md:306-316",
+            "app.py:48-81"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "DEF-SEASONALITY-SOURCE",
+          "kind": "defect",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Сборщик игнорирует два предоставленных XLSX с агрегированной сезонностью.",
+          "expected": "Предоставленные сезонные таблицы должны быть прочитаны и либо отражены в нормализованном каталоге, либо явно проверенно reconciled с per-SKU расчётом.",
+          "actual": "source_files распознаёт только moq, transactions, sales, monthly_stock, system_summary и iek_inbound; build_catalog сохраняет только эти source_workbooks, а replenishment.py считает сезонность исключительно из adjusted monthly_sales.",
+          "evidence": [
+            "scripts/build_demo_data.py:83-105",
+            "scripts/build_demo_data.py:396-430",
+            "replenishment.py:60-71",
+            "replenishment.py:200-205"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "DEF-OPENAI-MODEL-DRIFT",
+          "kind": "defect",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Второй запрос OpenAI Responses API использует жёстко заданную модель и игнорирует OPENAI_MODEL.",
+          "expected": "Обе фазы одного внешнего сценария должны использовать согласованную настроенную модель.",
+          "actual": "Первый запрос получает os.environ.get('OPENAI_MODEL', 'gpt-5.6-luna'), а второй отправляет model='gpt-5.6-terra'.",
+          "evidence": [
+            "agent.py:549-560",
+            "agent.py:575-580",
+            ".env.example:2-3",
+            "README.md:216-217"
+          ],
+          "checkIds": []
+        }
+      ],
+      "gapFindingIds": [
+        "DEF-SEASONALITY-SOURCE",
+        "DEF-OPENAI-MODEL-DRIFT"
+      ]
+    }
+  ],
+  "score": 92.0,
+  "status": "complete",
+  "expectedJudges": 1
+}

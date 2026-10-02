@@ -1,0 +1,924 @@
+{
+  "methodVersion": 4,
+  "repoId": "hack-d8ff09f7-ainalym",
+  "repoUrl": "https://github.com/BAITC-Hacks/hack-d8ff09f7-ainalym",
+  "caseId": 5,
+  "snapshot": "c65ac5b59f82cd2dd9707913f9e6981f83e1b4f2",
+  "judges": [
+    {
+      "methodVersion": 4,
+      "repoId": "hack-d8ff09f7-ainalym",
+      "caseId": 5,
+      "model": "GPT-5.6 Luna",
+      "snapshot": "c65ac5b59f82cd2dd9707913f9e6981f83e1b4f2",
+      "overallSummary": "Ainalym — сильный, воспроизводимый прототип автоматического пополнения склада. На реальном ETL из 12 таблиц проект поднялся в production-сборке, отдал HTTP health/calc результат, а сценарий M1–M5 прошёл: товар в пути, сезонность, stockout, выброс, группировка по поставщику, обязательства и идемпотентная лента. Основные ограничения оценки — несколько воспроизводимых регрессий в узком scheduled/affected-only/voice пути и несовместимость React-тестового раннера; отсутствие внешних ключей и визуальная проверка не штрафовались.",
+      "global": {
+        "criteria": [
+          {
+            "name": "Ценность решения",
+            "score": 24,
+            "max": 25,
+            "awarded": "24/25",
+            "deductions": "Снижен 1 балл за подтверждённое ограничение автоматического пересчёта после событий с датой, попавшей раньше wall-clock времени предыдущего запуска: это ослабляет обещанную оперативную пользу, хотя основной расчёт и ручной контроль работают.",
+            "evidence": [
+              "README.md:22-39",
+              "src/domain/engine.ts:47-55",
+              "C-RESET",
+              "C-CALC",
+              "C-SCENARIO"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "D1",
+                "reason": "Для ценности непрерывного закупочного контура важно, чтобы новый обработанный sales_day действительно инициировал пересчёт; воспроизводимый тест получил affected=[], поэтому в этом узком сценарии свежесть рекомендации не гарантируется."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Конкретная боль закупщика",
+                "implementation": "README описывает менеджера закупок дистрибьютора электротехники и одновременно финансового руководителя: ручные Excel-расчёты приводят к дефициту и излишкам, а разовая крупная продажа искажает среднее. Решение связывает рекомендацию, деньги и последующее утверждение в одном цикле.",
+                "value": "Проблема сформулирована через реальное решение о закупке и денежную цену ошибки, поэтому ценность понятна целевой аудитории, а не сводится к демонстрации модели.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:22-39",
+                  "docs/CASH_COMMITMENT_RU.md:1-80"
+                ]
+              },
+              {
+                "aspect": "Практический результат для менеджера",
+                "implementation": "runCalculation создаёт по каждому рассчитанному SKU числовую рекомендацию, urgency, rationale_ru и components, а applyRecommendations группирует положительные строки в proposal по supplier_id и создаёт задачу needs_review.",
+                "value": "Пользователь получает не только число, но и объяснимую очередь решений: какой поставщик, какие позиции, сколько денег и почему требуется действие.",
+                "verification": "source",
+                "evidence": [
+                  "src/domain/apply.ts:35-55",
+                  "src/domain/apply.ts:117-140",
+                  "src/domain/apply.ts:174-190"
+                ]
+              },
+              {
+                "aspect": "Экономическая измеримость",
+                "implementation": "После утверждения расчёт создаёт 30% предоплату и 70% остаток к ETA; в проверенном сценарии заказ SE на 97 единиц с ценой 3049.48 дал commitment 295799.56 KZT, 88739.87 и 207059.69 в графике.",
+                "value": "Связь операционного решения с замороженными деньгами делает пользу проверяемой финансовым руководителем и снижает риск заказать без понимания cash commitment.",
+                "verification": "observed",
+                "evidence": [
+                  "C-SCENARIO: Economics (approved SE order, KZT)",
+                  "src/domain/orders.ts:25-43",
+                  "src/domain/obligations.ts:1-120"
+                ]
+              },
+              {
+                "aspect": "Границы автоматизации",
+                "implementation": "Предложение остаётся needs_review, утверждение требует точной версии, а экспорт в 1С доступен только после approved/exported; внешний канал обозначен как export_only.",
+                "value": "Автоматизация ускоряет подготовку, но не скрывает момент ответственности менеджера и не создаёт иллюзию, что поставщику уже отправлена команда.",
+                "verification": "source",
+                "evidence": [
+                  "src/domain/apply.ts:174-190",
+                  "src/domain/orders.ts:25-52",
+                  "src/peers/onec_export.ts:36-50",
+                  "src/server/http.ts:13-16"
+                ]
+              }
+            ],
+            "scoreReasoning": "Почти максимальный балл заслужен: проект адресует дорогостоящую и понятную операционную проблему, показывает рекомендацию и финансовое последствие, а не только прогноз. Один балл удержан из-за D1 — доказанного сбоя свежести scheduled-пересчёта в датированном событии; это важная, но локальная граница вокруг уже работающего основного пути."
+          },
+          {
+            "name": "Результат и качество решения",
+            "score": 17,
+            "max": 20,
+            "awarded": "17/20",
+            "deductions": "Снижено 3 балла: D1 ломает один scheduled event-путь, D2 не сохраняет рекомендацию в affected-only recompute на устаревшем fixture, а D3 даёт 0 вместо ожидаемой рекомендации в двух voice tool сценариях. При этом основной end-to-end scenario и HTTP startup/calc прошли.",
+            "evidence": [
+              "C-BUILD",
+              "C-START",
+              "C-HEALTH",
+              "C-CALC",
+              "C-SCENARIO",
+              "C-TARGETED"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "D1",
+                "reason": "Качество жизненного цикла данных снижается: processed sales_day не приводит к ожидаемому повторному расчёту и affected=['SE-1'] не формируется."
+              },
+              {
+                "points": 1,
+                "findingId": "D2",
+                "reason": "Affected-only контракт должен сохранять recommendation для явно переданного кода; тест получил count=0, поэтому частичное обновление может завершиться без пользовательского результата."
+              },
+              {
+                "points": 1,
+                "findingId": "D3",
+                "reason": "Голосовой recommend_for должен вернуть фактический recommended=1 для seeded SKU и корректно повториться; обе проверки получили recommended=0, что нарушает целостность одного из интерфейсов результата."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Production deployability",
+                "implementation": "Dockerfile использует node:24-slim, устанавливает lock-файл, собирает Next.js и задаёт healthcheck /api/health; сборка среза прошла, 52 статические страницы и API routes были сгенерированы.",
+                "value": "Это подтверждает, что прототип можно поднять воспроизводимо, а не только импортировать отдельные функции из исходников.",
+                "verification": "observed",
+                "evidence": [
+                  "Dockerfile:1-23",
+                  "C-BUILD: npm run build, exit 0",
+                  "C-START: приложение стартовало",
+                  "C-HEALTH: GET /api/health -> 200"
+                ]
+              },
+              {
+                "aspect": "Полный путь от данных к proposal",
+                "implementation": "ETL загрузил 3909 SKU, 248915 sales_line, 313 in_transit и 117282 stock_month; HTTP POST /api/calc/run для SE обработал 724 SKU, создал 306 рекомендаций и proposal needs_review.",
+                "value": "Пользовательский результат существует в приложении и содержит unresolved причины, а не маскирует неполные позиции нулевыми заказами.",
+                "verification": "observed",
+                "evidence": [
+                  "C-RESET: counts",
+                  "C-CALC: run_id, skus=724, recommended=306, partial=true",
+                  "src/domain/apply.ts:42-55"
+                ]
+              },
+              {
+                "aspect": "Проверенная бизнес-методика",
+                "implementation": "computeNeed читает историю, stock_month, свежесть on_hand, transit и approved supply; затем считает очищенный ряд, stockout uplift, season, growth, forecast, safety и netNeed с Decimal.",
+                "value": "Расчёт достаточно целостен для MVP: источник каждого слагаемого сохраняется в components и выводится в rationale_ru, что облегчает контроль результата.",
+                "verification": "source",
+                "evidence": [
+                  "src/domain/engine.ts:56-89",
+                  "src/domain/engine.ts:102-180",
+                  "src/domain/engine.ts:182-247"
+                ]
+              },
+              {
+                "aspect": "Проверка основного сценария на partner data",
+                "implementation": "Сценарий ETL и сценарий проверки дали PASS для M1, M1-active, M1-source, M2, M2-peak, M3, M4, M5-full, M5, Money и World; targeted domain/voice run отдельно показал 49 проходов.",
+                "value": "Это сильнее декларации README: ключевые чувствительности и переход к обязательствам реально прогнаны на предоставленной структуре данных.",
+                "verification": "observed",
+                "evidence": [
+                  "C-SCENARIO: 11 PASS",
+                  "C-TARGETED: 49 passed, 4 failed",
+                  "scripts/scenario.mjs:64-203"
+                ]
+              }
+            ],
+            "scoreReasoning": "Основной пользовательский сценарий работоспособен: build/start/health/reset/calc и все 11 сценарных проверок прошли. До максимума не хватает устойчивости вокруг инкрементального пересчёта и voice bridge: три узких дефекта подтверждены быстрым targeted run и влияют на целостность вторичных путей, поэтому 17/20."
+          },
+          {
+            "name": "Инновационность",
+            "score": 14,
+            "max": 15,
+            "awarded": "14/15",
+            "deductions": "Снижен 1 балл за D3: голосовой интерфейс задуман как полноценный typed tool bridge с idempotency и canonical SKU, но две его ожидаемые recommendation-проверки сейчас возвращают 0.",
+            "evidence": [
+              "src/domain/engine.ts:116-180",
+              "src/voice/tools.ts:144-198",
+              "C-SCENARIO",
+              "C-TARGETED"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "D3",
+                "reason": "Нестандартный голосовой путь должен давать тот же измеримый результат, что и HTTP/domain путь; observed mismatch recommended=0 показывает неполную эквивалентность интерфейсов."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Комбинация устойчивого спроса и операционного контекста",
+                "implementation": "Движок одновременно обрабатывает monthly sales, документные строки, товары в пути, approved orders, stockout, сезонность, рост, safety stock и supplier rule; отдельный документ исключается только после сравнения с peer statistics.",
+                "value": "Для кейса это содержательно нестандартнее простого moving average: алгоритм пытается разделить регулярный спрос, цензурированный дефицитом и выбросы, сохраняя объяснение.",
+                "verification": "source",
+                "evidence": [
+                  "src/domain/engine.ts:102-180",
+                  "src/domain/engine.ts:182-247"
+                ]
+              },
+              {
+                "aspect": "Truth axes вместо скрытого AI",
+                "implementation": "Каждый HTTP ответ несёт provenance partner_anonymised, ai live/rules/replay/unavailable и external export_only; провайдеры разделены, ошибки 429/timeout дают provider_error, а rules/replay остаются явными.",
+                "value": "Такой контракт снижает риск представить синтетический или offline результат как live AI и делает инновационный AI-слой проверяемым.",
+                "verification": "source",
+                "evidence": [
+                  "src/server/http.ts:13-38",
+                  "src/ai/provider.ts:120-220",
+                  "tests/ai/guardrails.test.ts:44-108"
+                ]
+              },
+              {
+                "aspect": "Idempotent voice/action boundary",
+                "implementation": "executeVoiceTool нормализует код SKU, проверяет scope, сохраняет request_id, дедуплицирует конкурентные вызовы и возвращает replayed результат; tool names ограничены четырьмя доменными операциями.",
+                "value": "Это редкая для hackathon MVP попытка сделать голосовой интерфейс безопасным транспортом действий, а не свободным текстом, и она защищает от двойного расчёта.",
+                "verification": "source",
+                "evidence": [
+                  "src/voice/tools.ts:8-23",
+                  "src/voice/tools.ts:42-57",
+                  "src/voice/tools.ts:144-198",
+                  "tests/voice/tools.test.ts:64-91"
+                ]
+              },
+              {
+                "aspect": "Событийная демонстрация чувствительности",
+                "implementation": "world events применяются по source_id один раз, worker пересчитывает затронутые SKU, а сценарий отдельно инжектирует +100 transit, seasonal peak, stockout и 5000-unit judge document.",
+                "value": "Инновационность подтверждается не названием AI, а тем, что решение показывает реакцию на изменения входа и оставляет audit trail.",
+                "verification": "observed",
+                "evidence": [
+                  "scripts/scenario.mjs:88-147",
+                  "scripts/scenario.mjs:192-202",
+                  "C-SCENARIO: M1/M2/M3/M4/World PASS"
+                ]
+              }
+            ],
+            "scoreReasoning": "Подход заметно сильнее базового CRUD: есть устойчивый спрос, censored stockout, peer-based outlier threshold, truth axes, событийный worker и ограниченный голосовой транспорт. Один балл снят только за фактическое расхождение voice tool результата с ожидаемым domain результатом; идея и большая часть реализации остаются убедительными."
+          },
+          {
+            "name": "Потенциал развития и масштабирования",
+            "score": 18,
+            "max": 20,
+            "awarded": "18/20",
+            "deductions": "Снижено 2 балла за D1 и D2: масштабирование через частичные событийные пересчёты требует корректной временной модели, а текущий affected-only путь не сохраняет рекомендацию для одного исторического fixture.",
+            "evidence": [
+              "src/domain/recompute.ts:4-17",
+              "src/domain/schedule.ts:30-79",
+              "src/domain/apply.ts:117-216",
+              "C-TARGETED"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "D1",
+                "reason": "При росте числа событий scheduled worker должен сравнивать event time с логическим временем расчёта, иначе старые по wall-clock, но новые для snapshot события не попадут в пересчёт."
+              },
+              {
+                "points": 1,
+                "findingId": "D2",
+                "reason": "Масштабирование по затронутым кодам обещано как экономия полного пересчёта, но observed отсутствие записи recommendation для заданного кода снижает доверие к инкрементальному режиму."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Частичный пересчёт и сохранение контекста",
+                "implementation": "runCalculation принимает supplier/category/codes, а applyRecommendations переносит незатронутые строки в новую supplier proposal и помечает старые proposals stale; recomputeAffected ограничивает запрос списком кодов.",
+                "value": "Архитектура уже ориентирована на рост каталога и события, а не только на повторный полный расчёт нескольких demo SKU.",
+                "verification": "source",
+                "evidence": [
+                  "src/domain/apply.ts:12-14",
+                  "src/domain/apply.ts:117-188",
+                  "src/domain/recompute.ts:4-17"
+                ]
+              },
+              {
+                "aspect": "Поставщики и форматы данных",
+                "implementation": "ETL валидирует обязательные заголовки, различает IEK и SE, сохраняет MOQ, единицы, себестоимость, ETA transit и сезонность; exportOrder формирует CSV/XLSX с ключом Номенклатура.Код.",
+                "value": "Добавление нового supplier feed может опираться на уже выделенные этапы нормализации, а downstream получает стабильный код 1С и объяснение.",
+                "verification": "source",
+                "evidence": [
+                  "scripts/etl/load.mjs:27-46",
+                  "scripts/etl/load.mjs:62-105",
+                  "src/peers/onec_export.ts:9-10",
+                  "src/peers/onec_export.ts:36-67"
+                ]
+              },
+              {
+                "aspect": "Auditability и versioning",
+                "implementation": "Расчёты, agent actions, proposals, approvals, state_version и source references хранятся в SQLite; stale version даёт конфликт, а повторная approval не создаёт дубликаты obligations.",
+                "value": "Это создаёт основу для multi-step review, расследования изменений и безопасного подключения новых каналов без потери истории.",
+                "verification": "source",
+                "evidence": [
+                  "src/domain/apply.ts:65-114",
+                  "src/domain/orders.ts:25-43",
+                  "tests/domain/b_money_orders.test.ts:304-380"
+                ]
+              },
+              {
+                "aspect": "Дисциплина отсутствующих данных",
+                "implementation": "При отсутствии sales или stock engine не фабрикует рекомендацию: unresolved получает причину, а apply создаёт отдельную задачу проверки источника; неизвестная себестоимость не превращается в ноль.",
+                "value": "Для расширения на новые компании это важнее агрессивного coverage: система различает нулевой спрос, отсутствие источника и неполную цену.",
+                "verification": "source",
+                "evidence": [
+                  "src/domain/engine.ts:60-74",
+                  "src/domain/apply.ts:101-110",
+                  "src/domain/orders.ts:13-17",
+                  "C-CALC: unresolved"
+                ]
+              }
+            ],
+            "scoreReasoning": "Потенциал высокий: в коде есть supplier/category/codes scopes, журнал, версии, частичный recompute, экспорт и provider boundary. Два балла удержаны не за отсутствие production-инфраструктуры, а за конкретные регрессии D1/D2 именно в механизме, который должен масштабировать обработку событий без полного пересчёта."
+          },
+          {
+            "name": "Презентация, демо и ответы на вопросы",
+            "score": 19,
+            "max": 20,
+            "awarded": "19/20",
+            "deductions": "Снижен 1 балл за D4: исходный репозиторий заявляет testable UI/voice слой, но текущая установленная связка React/Testing Library падает в ряде React-тестов на React.act is not a function; это снижает воспроизводимость автоматической проверки интерфейсного контракта, не являясь штрафом за запрещённый визуальный осмотр.",
+            "evidence": [
+              "README.md:1-10",
+              "README.md:40-82",
+              "package.json:22-35",
+              "C-CHECK",
+              "C-TARGETED"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "D4",
+                "reason": "Для демо-репозитория важно, чтобы non-browser UI/voice regression suite запускался; фактическая ошибка React.act is not a function оставляет часть интерфейсных обещаний без воспроизводимого тестового подтверждения."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "README ведёт по сценарию",
+                "implementation": "README связывает данные, расчёт M1–M5, рекомендации, утверждение, деньги, экспорт и truth axes; отдельно перечисляет подтверждённое, ожидаемое и live smoke ограничения.",
+                "value": "Участнику и судье легко понять, что является рабочим прототипом, а что контрактом, поэтому README выполняет роль сценария демо, а не только маркетингового текста.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:1-10",
+                  "README.md:40-82",
+                  "docs/TASK_MAP.md:1-120"
+                ]
+              },
+              {
+                "aspect": "Воспроизводимое локальное демо",
+                "implementation": "Dockerfile запускает ETL при пустой persistent DB; /api/health сообщает mode и provider, /api/demo/reset восстанавливает partner data, /api/calc/run и /api/recommendations дают результат без ключей в offline/replay режиме.",
+                "value": "Локальная демонстрация не зависит от публичного URL или платного ключа и всё равно показывает содержательный числовой output.",
+                "verification": "observed",
+                "evidence": [
+                  "Dockerfile:1-26",
+                  "C-HEALTH",
+                  "C-RESET",
+                  "C-CALC"
+                ]
+              },
+              {
+                "aspect": "Объяснение результата",
+                "implementation": "rationale_ru содержит базовый и скорректированный спрос, forecast, safety, on_hand, transit, approved order, правило MOQ/кратности и outlier/stockout months; компонентные числа доступны в recommendation API.",
+                "value": "Такой вывод позволяет во время демо ответить «почему столько», а не просить доверять скрытой формуле.",
+                "verification": "source",
+                "evidence": [
+                  "src/domain/engine.ts:229-252",
+                  "src/domain/apply.ts:151-180",
+                  "C-SCENARIO: M5 rows=566 with rationale"
+                ]
+              },
+              {
+                "aspect": "Честная маркировка ограничений",
+                "implementation": "В health/API и README различаются replay/offline, live provider, export_only, unresolved source и отсутствие внешнего ключа; supplier channel оставляет local draft/reply boundary.",
+                "value": "Демо не выдаёт отсутствие live API или отправки поставщику за готовую production-интеграцию, что повышает доверие к представлению результата.",
+                "verification": "source",
+                "evidence": [
+                  "src/server/http.ts:13-16",
+                  "src/peers/supplier.ts:24-55",
+                  "README.md:70-82"
+                ]
+              }
+            ],
+            "scoreReasoning": "README и локальный сценарий позволяют показать целостный результат без внешней инфраструктуры; это почти полный балл для данного критерия при отсутствии устной презентации. Один балл снят только за D4 — тестовая связка React/Testing Library не проходит часть автоматических UI/voice тестов, хотя визуальная проверка намеренно не проводилась и за это отдельно баллы не снимались."
+          }
+        ],
+        "total": 92
+      },
+      "case": null,
+      "judgeScore": 92,
+      "caseRequirements": [
+        {
+          "requirement": "Расчёт заказа по артикулам учитывает историю продаж, текущие остатки, товары в пути, категории и горизонт поставки/пересмотра.",
+          "status": "met",
+          "explanation": "ETL создаёт sales_line/sales_month/stock_month/in_transit/sku, а computeNeed вычитает on_hand, transit и approved supply из прогноза горизонта; runCalculation поддерживает supplier/category scopes.",
+          "evidence": [
+            "scripts/etl/load.mjs:56-105",
+            "src/domain/engine.ts:47-89",
+            "src/domain/engine.ts:205-228",
+            "src/server/contracts.ts:11-14"
+          ]
+        },
+        {
+          "requirement": "Расчёт отражает сезонность и устойчивый рост.",
+          "status": "met",
+          "explanation": "Собственная сезонность SKU используется при достаточной истории, иначе supplier index; рост берётся по последним шести месяцам к аналогичным месяцам прошлого года и ограничивается growth_cap. M2 и M2-peak прошли на partner data.",
+          "evidence": [
+            "src/domain/engine.ts:182-215",
+            "C-SCENARIO: M2 max/min=10.38, M2-peak Q3",
+            "tests/fixtures/eval/replenishment_expectations.json"
+          ]
+        },
+        {
+          "requirement": "Компенсируется потерянный спрос при stockout.",
+          "status": "met",
+          "explanation": "Месяцы с stockout исключаются из базового ряда и добавляют uplift от uncensoredRate; observed и inferred месяцы различаются в components и rationale. В сценарии adjusted raw_need=1056.676 против raw=886.204.",
+          "evidence": [
+            "src/domain/engine.ts:170-180",
+            "src/domain/engine.ts:235-239",
+            "C-SCENARIO: M3 PASS",
+            "tests/domain/a_engine.test.ts:150-187"
+          ]
+        },
+        {
+          "requirement": "Убираются разовые крупные покупки, включая выброс одного клиента.",
+          "status": "partial",
+          "explanation": "Документные выбросы группируются по doc_no и сравниваются с median/p95 peer statistics; injected 5000-unit document исключён без изменения регулярного rate. Однако в предоставленной структуре нет customer identifier, поэтому отдельное доказательство «одного клиента» отсутствует; проект делает безопасную document-level обработку, но не может атрибутировать клиента.",
+          "evidence": [
+            "src/domain/engine.ts:102-157",
+            "src/domain/engine.ts:239-240",
+            "C-SCENARIO: M4 change=0.00%, excluded=true",
+            "tests/fixtures/eval/replenishment_expectations.json"
+          ]
+        },
+        {
+          "requirement": "Выводятся количества с объяснением и группировкой по поставщикам.",
+          "status": "met",
+          "explanation": "Каждая recommendation содержит qty_recommended, unit, urgency, rationale_ru и components; applyRecommendations формирует одну review proposal на поставщика. HTTP run SE создал 306 рекомендаций и proposal, сценарий M5 подтвердил 566 строк с supplier_id и непустым rationale.",
+          "evidence": [
+            "src/domain/apply.ts:117-180",
+            "src/server/contracts.ts:18-21",
+            "C-CALC",
+            "C-SCENARIO: M5 PASS"
+          ]
+        },
+        {
+          "requirement": "Заказ не отправляется без ручного подтверждения.",
+          "status": "met",
+          "explanation": "Расчёт создаёт needs_review proposal/task, approveOrder требует draft и точную version, obligations создаются при approval, а экспорт отклоняется для неутверждённого PO. Supplier channel также требует approved/exported.",
+          "evidence": [
+            "src/domain/apply.ts:174-190",
+            "src/domain/orders.ts:25-52",
+            "src/peers/onec_export.ts:36-50",
+            "src/peers/supplier.ts:35-55",
+            "C-SCENARIO: Money PASS"
+          ]
+        },
+        {
+          "requirement": "Данные клиентов обезличены.",
+          "status": "met",
+          "explanation": "Публичные API truth axes маркируют provenance как partner_anonymised; ETL работает с кодами 1С, товарными и агрегированными продажами, а тесты scope проверяют отказ от foreign organization references. В репозитории нет клиентского PII-потока в основном расчёте.",
+          "evidence": [
+            "src/server/http.ts:13-16",
+            "src/server/contracts.ts:5-8",
+            "tests/ai/guardrails.test.ts:110-126",
+            "tests/peers/truth_axes.test.ts:1-120"
+          ]
+        },
+        {
+          "requirement": "Проверена чувствительность к товарам в пути, сезонности, stockout и выбросу.",
+          "status": "met",
+          "explanation": "Сценарий на partner ETL выполнил четыре независимых проверки: +100 transit изменил net need ровно на 100, сезонность дала max/min 10.38 и Q3 peak, stockout повысил need, 5000-unit injection был исключён.",
+          "evidence": [
+            "scripts/scenario.mjs:88-147",
+            "C-SCENARIO: M1/M2/M3/M4 PASS",
+            "tests/fixtures/eval/replenishment_expectations.json"
+          ]
+        },
+        {
+          "requirement": "Работа с неполными входами не должна фабриковать заказ.",
+          "status": "met",
+          "explanation": "Отсутствие истории или обязательного остатка попадает в unresolved с русской причиной и отдельную задачу; устаревший stock отмечается provisional/stale, а unknown cost считается отдельно.",
+          "evidence": [
+            "src/domain/engine.ts:60-74",
+            "src/domain/apply.ts:101-110",
+            "C-CALC: partial=true and unresolved reasons",
+            "C-SCENARIO: M1-source PASS"
+          ]
+        }
+      ],
+      "testData": {
+        "provided": [
+          "cases/5/case-data/IEK/MOQ ИЭК.xlsx",
+          "cases/5/case-data/IEK/Динамика продаж_2025-2026.xlsx",
+          "cases/5/case-data/IEK/Ежемесячные остатки продукции за последние 2 года ИЭК.xlsx",
+          "cases/5/case-data/IEK/Ежемесячные продажи в количественном выражении за последние 2 года.xlsx",
+          "cases/5/case-data/IEK/Путь ИЭК 22.09.2026.xlsx",
+          "cases/5/case-data/IEK/Сезонность ИЭК.xlsx",
+          "cases/5/case-data/Systeme electric/MOQ SystemElectric.xlsx",
+          "cases/5/case-data/Systeme electric/Динамика продаж_Syseme Electric_2025-2026.xlsx",
+          "cases/5/case-data/Systeme electric/Ежемесячные остатки SystemElectric 2024-2026.xlsx",
+          "cases/5/case-data/Systeme electric/Ежемесячные продажи в кол-м выражении SystemElectric 2024-2026.xlsx",
+          "cases/5/case-data/Systeme electric/Сезонность SystemElectric 2024-2026.xlsx",
+          "cases/5/case-data/Systeme electric/Товар в пути_SystemElectric на 22.09.2026.xlsx"
+        ],
+        "used": [
+          "fixtures/partner/IEK/*.xlsx",
+          "fixtures/partner/SE/*.xlsx",
+          "tests/fixtures/eval/replenishment_expectations.json",
+          "fixtures/world_events.jsonl"
+        ],
+        "checks": [
+          {
+            "input": "12 XLSX из IEK и Systeme electric через ETL.",
+            "method": "npm run etl -- --db <database>; затем запросы counts и derived tables.",
+            "result": "Сформированы 2 supplier, 3909 SKU, 248915 sales_line, 99634 sales_month, 117282 stock_month, 313 in_transit, 66 seasonality и 24 season_index.",
+            "conclusion": "Структура входов прочитана по реальным заголовкам и загружена в SQLite; неполные строки не подменялись синтетическим полным каталогом."
+          },
+          {
+            "input": "Ожидаемый SKU intransit из replenishment_expectations плюс judge event delta_qty=100.",
+            "method": "scripts/scenario.mjs M1/M1-active; computeNeed до и после события.",
+            "result": "PASS: Δ net need=100.000; для активного дефицита Δ raw_need=100.000; отсутствие stock source получило именованную ошибку.",
+            "conclusion": "Поставка в пути вычитается чувствительно и обязательный stock source не маскируется."
+          },
+          {
+            "input": "SKU seasonal с двумя полными годами сезонности.",
+            "method": "scripts/scenario.mjs M2/M2-peak; сравнение max/min и квартала пика.",
+            "result": "PASS: max/min=10.38, peak quarter=3.",
+            "conclusion": "Сезонный профиль влияет на прогноз и сохраняет ожидаемый Q3 peak."
+          },
+          {
+            "input": "SKU stockout с помеченными месяцами дефицита.",
+            "method": "scripts/scenario.mjs M3; сравнение adjusted и raw расчёта после снятия stockout flags.",
+            "result": "PASS: raw=886.204, adjusted=1056.676.",
+            "conclusion": "Потерянный спрос увеличивает потребность, а stockout months остаются объяснимыми."
+          },
+          {
+            "input": "SKU oneoff и judge injection 5000 шт.",
+            "method": "scripts/scenario.mjs M4; сравнение base_rate и outliers_excluded.",
+            "result": "PASS: изменение регулярного rate=0.00%, injected document найден в excluded.",
+            "conclusion": "Разовый документ не раздувает регулярный спрос в проверенном кейсе."
+          },
+          {
+            "input": "SE supplier run, recommendation, draft PO, approval и money view.",
+            "method": "scripts/scenario.mjs M5/Money и HTTP POST /api/calc/run.",
+            "result": "PASS: M5 rows=566; HTTP run SE: 724 SKU, 306 recommendations, proposal needs_review; approval scenario создал 30/70 obligations.",
+            "conclusion": "Количество, supplier grouping, rationale и денежный результат проходят полный локальный сценарий."
+          }
+        ],
+        "limitations": [
+          "Публичный отчёт не публикует содержимое XLSX; проверены ETL counts и специально отобранные SKU из expectation fixture.",
+          "В предоставленных таблицах не найден идентификатор клиента, поэтому атрибуцию выброса одному клиенту проверить нельзя; это отмечено как partial, а не как доказанный дефект."
+        ]
+      },
+      "runtime": {
+        "status": "working",
+        "build": "Production Docker build прошёл: Next.js compiled successfully, TypeScript завершён, 52 static pages и API routes сгенерированы.",
+        "start": "Production image стартовал и выполнил bundled ETL; health endpoint вернул ok=true и db=ok.",
+        "scenario": "Основной offline/replay сценарий воспроизведён через HTTP и scripts/scenario.mjs; M1–M5, Money и World прошли.",
+        "environment": "Изолированный Docker runtime на node:24-slim, без API credentials, AINALYM_MODE=offline для HTTP smoke; визуальная проверка не проводилась.",
+        "summary": "Работающий основной сценарий с локальными данными подтверждён. Secondary regression suite имеет 4 подтверждённых project failures и 7 external/live/voice unverified cases; они не переводят runtime в failed.",
+        "checks": [
+          {
+            "id": "C-BUILD",
+            "stage": "build",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Production Docker image собирается из Dockerfile и выполняет npm run build.",
+            "command": "npm run build",
+            "result": "PASS, exit 0: compiled successfully; TypeScript finished; routes/static pages generated. Обнаружены только tracing warnings для dynamic filesystem access."
+          },
+          {
+            "id": "C-START",
+            "stage": "start",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Контейнер запускает ETL при пустой DB и затем Next production server.",
+            "command": "npm start",
+            "result": "PASS: приложение поднялось; ETL создал partner SQLite dataset, server начал отвечать."
+          },
+          {
+            "id": "C-HEALTH",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "GET /api/health возвращает ok=true, mode, provider и db=ok.",
+            "command": "GET /api/health",
+            "result": "HTTP 200: ok=true, mode=offline, ai_provider=offline, ai=replay, provenance=partner_anonymised, external=export_only, db=ok."
+          },
+          {
+            "id": "C-RESET",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "POST /api/demo/reset восстанавливает воспроизводимый набор партнёра.",
+            "command": "POST /api/demo/reset",
+            "result": "HTTP 200: 3909 sku, 248915 sales_line, 313 in_transit, 117282 stock_month, 2 suppliers."
+          },
+          {
+            "id": "C-CALC",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "POST /api/calc/run для SE возвращает run и review proposal с рекомендациями.",
+            "command": "POST /api/calc/run {\"scope\":{\"supplier\":\"SE\"}}",
+            "result": "HTTP 200: run_id создан, skus=724, recommended=306, partial=true, proposals=[supplier_order, needs_review], unresolved содержит конкретные причины отсутствующей истории."
+          },
+          {
+            "id": "C-SCENARIO",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "scripts/scenario.mjs проходит M1–M5, Money и World на partner ETL.",
+            "command": "node scripts/scenario.mjs",
+            "result": "11 PASS: M1, M1-active, M1-source, M2, M2-peak, M3, M4, M5-full, M5, Money, World."
+          },
+          {
+            "id": "C-TARGETED",
+            "stage": "scenario",
+            "status": "fail",
+            "cause": "project",
+            "expected": "Узкие scheduled/recompute/voice tests дают ожидаемые affected/recommendation и сохраняют idempotency.",
+            "command": "npx vitest run tests/domain/a_schedule.test.ts tests/domain/b_money_orders.test.ts tests/voice/tools.test.ts --reporter=dot",
+            "result": "49 passed, 4 failed: a_schedule получил affected=[] вместо ['SE-1']; b_money_orders получил recommendation count 0 вместо 1; два voice tools получили recommended=0 вместо 1. Это project failures, не отсутствие ключа."
+          },
+          {
+            "id": "C-CHECK",
+            "stage": "scenario",
+            "status": "fail",
+            "cause": "project",
+            "expected": "npm run check собирает корректный Vitest report без регрессий.",
+            "command": "npm run check",
+            "result": "После добавления только checkout test/config files в disposable runtime: check passed=298, failed=38, skipped=7, externally-unverified=7. Большинство оставшихся failures — React.act is not a function в UI/voice tests; core scenario отдельно PASS."
+          },
+          {
+            "id": "C-LIVE",
+            "stage": "scenario",
+            "status": "blocked",
+            "cause": "external_service",
+            "expected": "Live TypeSafe/Gateway/OpenAI/EKT/Realtime smoke подтверждает внешние интеграции.",
+            "command": "AINALYM_LIVE_SMOKE=1 <live provider smoke template>",
+            "result": "Не запускался: credentials намеренно не предоставлены. Это ограничение внешней проверки, без deduction."
+          }
+        ],
+        "limitations": [
+          "Внешние TypeSafe, AI Gateway, OpenAI, EKT и Realtime credentials не предоставлены; live smoke остаётся unverified.",
+          "Визуальная/browser-проверка не выполнялась согласно заданной политике; UI behavior не утверждается как визуально проверенный.",
+          "Production Dockerfile копирует runtime source/fixtures/scripts, но не тестовый каталог и vitest config; поэтому aggregate test suite запускался в disposable container с добавленными checkout test/config files, без изменения репозитория."
+        ]
+      },
+      "liveDemo": {
+        "status": "none",
+        "url": null,
+        "notes": "Публичной live-ссылки в проверенном контексте нет. Локальный HTTP demo подтверждён через /api/health, /api/demo/reset и /api/calc/run; отсутствие публичного URL не использовано как deduction."
+      },
+      "fiveHourContext": "Для пятичасового MVP объём выше ожидаемого: есть ETL на 12 XLSX, детерминированный расчёт, event worker, review/versioning, money obligations, export boundary, typed AI adapters, voice tools и тестовый scenario. Оценка не требует production SLA, live credentials, публичного URL или устной презентации; удержаны только факты, которые проявились в локальных тестах проекта.",
+      "strengths": [
+        "Проверенный partner ETL и сценарий M1–M5 на 3909 SKU, а не только toy fixture.",
+        "Объяснимый Decimal-based расчёт: seasonality, growth, stockout uplift, safety stock, transit/approved supply, MOQ и rationale с компонентами.",
+        "Ручное утверждение и version binding: расчёт готовит proposal, но не отправляет поставщику; обязательства 30/70 и экспорт для 1С проверены.",
+        "Честные truth axes, explicit unresolved reasons, anonymised provenance и отдельные offline/replay/live boundaries.",
+        "Событийный worker, idempotency, audit ledger и supplier-scoped proposals создают хорошую основу для дальнейшего развития."
+      ],
+      "gaps": [
+        "Scheduled check не пересчитывает SKU после processed sales_day, если дата события старше wall-clock времени предыдущего запуска: targeted test получил affected=[] вместо ['SE-1'].",
+        "Affected-only recompute с явно переданным кодом может завершиться без сохранённой recommendation на историческом snapshot: targeted test получил count=0 вместо 1; тот же stale-as_of риск проявился в voice recommend_for.",
+        "Несколько React/Testing Library тестов падают на React.act is not a function, поэтому часть UI/voice regression contract не воспроизводится текущей установленной связкой зависимостей."
+      ],
+      "futureAdvice": [
+        {
+          "findingIds": [
+            "D1",
+            "D2"
+          ],
+          "principle": "Разделяйте логическое время данных и wall-clock время процесса.",
+          "why": "D1 показывает, что scheduler сравнивает event.latest_at с finished_at, который в старом as_of fixture становится текущим временем; D2 показывает аналогичную потерю recommendation из-за default текущей даты в affected-only вызове.",
+          "how": "В другом хакатоне сразу заведите единый as_of/event watermark в context: scheduled check должен сравнивать event watermark с logical calculation watermark, а partial recompute должен наследовать дату события или явно требовать snapshot date. Добавьте по одному тесту на прошлый snapshot и на событие после него.",
+          "successCheck": "Два сценария дают affected=['SE-1'] и ровно одну recommendation при повторном tick/recompute; второй повтор не создаёт новый run или proposal.",
+          "timeboxMinutes": 45
+        },
+        {
+          "findingIds": [
+            "D3"
+          ],
+          "principle": "Все интерфейсы результата должны использовать один и тот же доменный контракт.",
+          "why": "D3: HTTP/domain расчёт на partner data создаёт рекомендации, но voice recommend_for в seeded test возвращает recommended=0 вместо 1.",
+          "how": "Для следующего кейса выделите один shared function/result mapper для HTTP, voice и UI, передавая одинаковый as_of и scope; затем прогоните один SKU через REST, voice tool и queue и сравните run_id, qty, proposal_id.",
+          "successCheck": "Один canonical SKU даёт одинаковые recommended/qty/run_id в HTTP и voice, а повторный request_id возвращает replayed=true без второго calc_run.",
+          "timeboxMinutes": 35
+        },
+        {
+          "findingIds": [
+            "D4"
+          ],
+          "principle": "Закрепляйте совместимость тестового раннера до демонстрации интерфейсных обещаний.",
+          "why": "D4: фактически установленный React 19.2.8 экспортирует React.act как undefined, и часть @testing-library/react тестов падает до проверки поведения.",
+          "how": "В другом MVP зафиксируйте рабочую комбинацию React/ReactDOM/Testing Library в clean install, запустите отдельный node/jsdom smoke для одного компонента и только затем расширяйте UI suite; не смешивайте это с browser automation.",
+          "successCheck": "Clean install проходит UI/voice unit files без React.act runtime error, а один non-browser component smoke проверяет loading/error/success states.",
+          "timeboxMinutes": 25
+        }
+      ],
+      "uncertainties": [
+        "Live TypeSafe/Gateway/OpenAI/EKT/Realtime пути статически прослежены и имеют тесты с mocks/guardrails, но внешний provider round-trip не проверен без credentials.",
+        "Визуальная композиция, responsive layout, browser microphone round-trip и фактическая видимость queue после browser stop не подтверждались; это оставлено пользователю и не уменьшило балл.",
+        "Выброс одного клиента не может быть отдельно идентифицирован по предоставленным входам, поскольку customer field в проверенном ETL contract отсутствует.",
+        "Aggregate npm run check включает ряд UI/voice failures из React.act incompatibility; бизнесовый partner scenario и targeted domain assertions были рассмотрены отдельно, чтобы не смешивать harness regression с core scenario."
+      ],
+      "reviewPolicyVersion": 2,
+      "assessmentStatus": "ready",
+      "findings": [
+        {
+          "id": "S1",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Основной расчёт пополнения воспроизводимо использует реальный partner ETL и чувствителен к transit, seasonality, stockout и one-off document.",
+          "expected": "На предоставленных XLSX сценарии M1–M4 должны давать проверяемые изменения в числах и объяснении.",
+          "actual": "C-SCENARIO дал PASS для M1, M1-active, M1-source, M2, M2-peak, M3 и M4; ETL counts соответствуют expectation fixture.",
+          "evidence": [
+            "src/domain/engine.ts:47-247",
+            "scripts/scenario.mjs:88-147",
+            "tests/fixtures/eval/replenishment_expectations.json",
+            "C-SCENARIO"
+          ],
+          "checkIds": [
+            "C-RESET",
+            "C-SCENARIO"
+          ]
+        },
+        {
+          "id": "S2",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Производственный HTTP сценарий поднимается без ключей, восстанавливает данные и создаёт review proposal.",
+          "expected": "Health, reset и calc endpoints должны отвечать валидным результатом, а неполные SKU — попадать в unresolved.",
+          "actual": "HTTP health/reset/calc прошли; calc SE вернул 724 SKU, 306 recommendations, partial=true и needs_review proposal.",
+          "evidence": [
+            "C-HEALTH",
+            "C-RESET",
+            "C-CALC",
+            "src/server/contracts.ts:11-21"
+          ],
+          "checkIds": [
+            "C-HEALTH",
+            "C-RESET",
+            "C-CALC"
+          ]
+        },
+        {
+          "id": "S3",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Ручное утверждение, version check, 30/70 obligations и export boundary реализованы и проходят сценарий.",
+          "expected": "До approval не должно быть supplier commitment/export; после точного approval создаются обязательства и файл boundary.",
+          "actual": "Money scenario PASS: утверждённый PO создал 30%/70%; source guards запрещают export до approval.",
+          "evidence": [
+            "src/domain/orders.ts:25-52",
+            "src/peers/onec_export.ts:36-67",
+            "C-SCENARIO: Money",
+            "tests/domain/b_money_orders.test.ts:304-380"
+          ],
+          "checkIds": [
+            "C-SCENARIO"
+          ]
+        },
+        {
+          "id": "S4",
+          "kind": "strength",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "AI/provider и truth boundaries не скрывают offline/replay/live статус и защищают scope/untrusted text.",
+          "expected": "Provider errors, чужой tenant context и untrusted text должны быть отделены и не превращаться в ложное решение.",
+          "actual": "HTTP axes явны; guardrail tests проверяют 429/timeout, foreign references, prompt-like text и version invalidation.",
+          "evidence": [
+            "src/server/http.ts:13-38",
+            "src/ai/provider.ts:120-220",
+            "tests/ai/guardrails.test.ts:44-162"
+          ],
+          "checkIds": [
+            "C-HEALTH",
+            "C-CHECK"
+          ]
+        },
+        {
+          "id": "S5",
+          "kind": "strength",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "ETL валидирует реальные заголовки XLSX и сохраняет provenance/source_file и supplier-specific rules.",
+          "expected": "Парсер должен использовать фактические колонки входов, не предполагая неподтверждённую схему.",
+          "actual": "load.mjs требует headers для продаж, остатков, MOQ, transit и seasonality, а source_file сохраняется в transit rows.",
+          "evidence": [
+            "scripts/etl/load.mjs:27-46",
+            "scripts/etl/load.mjs:62-105"
+          ],
+          "checkIds": [
+            "C-RESET"
+          ]
+        },
+        {
+          "id": "D1",
+          "kind": "defect",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Scheduled check пропускает processed sales_day, когда latest event date меньше wall-clock finished_at предыдущего запуска.",
+          "expected": "После вставки processed event для SE-1 runScheduledChecks должен вернуть affected=['SE-1'] и второй run.",
+          "actual": "tests/domain/a_schedule.test.ts:69-77 получил affected=[] вместо ['SE-1']; код сравнивает event.latest_at с latest/attempted finished_at в src/domain/schedule.ts:30-41, а apply использует startedAt при старом as_of в src/domain/apply.ts:65-71.",
+          "evidence": [
+            "tests/domain/a_schedule.test.ts:69-77",
+            "src/domain/schedule.ts:30-41",
+            "src/domain/apply.ts:65-71",
+            "C-TARGETED"
+          ],
+          "checkIds": [
+            "C-TARGETED"
+          ]
+        },
+        {
+          "id": "D2",
+          "kind": "defect",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Affected-only recompute не сохраняет recommendation для явно переданного исторического SKU, потому что вызов не передаёт as_of и движок видит stock как stale.",
+          "expected": "recomputeAffected(['SE-1']) должен вернуть ровно SE-1 и recommendation count=1.",
+          "actual": "tests/domain/b_money_orders.test.ts:294-303 получили count=0 вместо 1; recomputeAffected вызывает runCalculation без as_of в src/domain/recompute.ts:9, а apply передаёт ctx.as_of в computeNeed и отбрасывает stale result в src/domain/apply.ts:47-50.",
+          "evidence": [
+            "tests/domain/b_money_orders.test.ts:294-303",
+            "src/domain/recompute.ts:4-17",
+            "src/domain/apply.ts:47-50",
+            "src/domain/engine.ts:70-74",
+            "C-TARGETED"
+          ],
+          "checkIds": [
+            "C-TARGETED"
+          ]
+        },
+        {
+          "id": "D3",
+          "kind": "defect",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Voice recommend_for возвращает recommended=0 в seeded canonical/duplicate сценариях, хотя тест ожидает одну рекомендацию.",
+          "expected": "Canonical code и повторный request_id должны вернуть ok=true, recommended=1 и один calc_run/proposal.",
+          "actual": "tests/voice/tools.test.ts:31-45 и :64-79 получили recommended=0; voice tool вызывает runCalculation без as_of в src/voice/tools.ts:133-141, что проявляет тот же stale snapshot behavior.",
+          "evidence": [
+            "tests/voice/tools.test.ts:31-45",
+            "tests/voice/tools.test.ts:64-79",
+            "src/voice/tools.ts:126-141",
+            "C-TARGETED"
+          ],
+          "checkIds": [
+            "C-TARGETED"
+          ]
+        },
+        {
+          "id": "D4",
+          "kind": "defect",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Часть React/Testing Library UI и voice tests падает до проверки поведения из-за отсутствующего React.act в установленном React 19.2.8.",
+          "expected": "Non-browser UI/voice regression tests должны импортироваться и проверять компонентные состояния.",
+          "actual": "В runtime typeof require('react').act === 'undefined'; C-CHECK зафиксировал 38 failures, в том числе повторяющиеся React.act is not a function; targeted voice UI state tests также не проходят.",
+          "evidence": [
+            "package.json:22-35",
+            "package-lock.json:6644-6662",
+            "C-CHECK",
+            "tests/voice/state_machine.test.tsx:1-80",
+            "tests/voice/audio.test.tsx:1-80"
+          ],
+          "checkIds": [
+            "C-CHECK"
+          ]
+        },
+        {
+          "id": "L1",
+          "kind": "limitation",
+          "verification": "unverified",
+          "responsibility": "external_service",
+          "claim": "Live external providers не были подтверждены round-trip тестом.",
+          "expected": "При наличии credentials live smoke должен проверить TypeSafe/Gateway/OpenAI/EKT/Realtime.",
+          "actual": "Credentials не предоставлены, поэтому live smoke заблокирован внешним условием; локальные rules/replay и provider guardrails проверены отдельно.",
+          "evidence": [
+            "api_requirements: credentialsProvided=false",
+            "C-LIVE",
+            "tests/ai/live_smoke.test.ts:1-100"
+          ],
+          "checkIds": [
+            "C-LIVE"
+          ]
+        },
+        {
+          "id": "L2",
+          "kind": "limitation",
+          "verification": "unverified",
+          "responsibility": "review_environment",
+          "claim": "Визуальная и microphone/browser проверка не выполнена.",
+          "expected": "Пользовательская визуальная проверка должна подтвердить layout, responsive behavior и фактический microphone round-trip.",
+          "actual": "По заданной policy visual/browser automation не проводилась; статические, unit/domain и HTTP проверки выполнены.",
+          "evidence": [
+            "C-LIVE",
+            "README.md:70-82"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "L3",
+          "kind": "limitation",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Production Docker image не содержит tests/ и vitest.config.ts.",
+          "expected": "Production image должна содержать всё необходимое для runtime; test suite может оставаться в checkout.",
+          "actual": "npm run check внутри исходного production image не нашёл partner ETL expectations; после временного добавления checkout test/config files core checks прошли. Это ограничивает in-image test reproducibility, но не ломает production start.",
+          "evidence": [
+            "Dockerfile:10-17",
+            "scripts/check.mjs:18-24",
+            "C-CHECK"
+          ],
+          "checkIds": [
+            "C-CHECK"
+          ]
+        }
+      ],
+      "gapFindingIds": [
+        "D1",
+        "D2",
+        "D4"
+      ]
+    }
+  ],
+  "score": 92.0,
+  "status": "complete",
+  "expectedJudges": 1
+}

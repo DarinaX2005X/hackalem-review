@@ -1,0 +1,1223 @@
+{
+  "methodVersion": 4,
+  "repoId": "hack-7b57ed03-invalid-syntax",
+  "repoUrl": "https://github.com/BAITC-Hacks/hack-7b57ed03-invalid-syntax",
+  "caseId": 8,
+  "snapshot": "36b32f234e7d68edebc9af90c8c760bc2270ba2d",
+  "judges": [
+    {
+      "methodVersion": 4,
+      "repoId": "hack-7b57ed03-invalid-syntax",
+      "caseId": 8,
+      "model": "GPT-5.6 Luna",
+      "snapshot": "36b32f234e7d68edebc9af90c8c760bc2270ba2d",
+      "overallSummary": "Aqylman — содержательно оформленный FastAPI/SQLite прототип с понятным API, встроенным web-интерфейсом, структурированными контрактами AI, ручным редактированием и экспортом. В изолированной проверке приложение запускается, принимает обе предоставленные MP3 и проходит демонстрационный API-сценарий до сохранённого результата. Однако результат без ключа является фиксированным MockAIProvider и не зависит от аудио: обе реальные записи дали один и тот же искусственный русский транскрипт, две задачи и тему, не совпадающие с контрольными протоколами. Путь REAL AI отправляет аудио и транскрипт во внешний OpenAI API, что прямо нарушает ограничение кейса, а локальный путь требует отсутствующих в snapshot моделей. PDF-экспорт падает с HTTP 500 без системного шрифта, а отдельный FRONT не проходит TypeScript-сборку. Поэтому оценка готового пятичасового MVP — средняя: сильная прикладная оболочка и архитектурный задел, но ключевой сценарий на входных данных не доказан и в доступном режиме фактически не реализован.",
+      "global": {
+        "criteria": [
+          {
+            "name": "Ценность решения",
+            "score": 17,
+            "max": 25,
+            "awarded": "Проблема выбрана точно: ручное протоколирование, потеря сроков и ответственных, необходимость быстро получить управленческий итог. Интерфейс и модель данных ориентированы на секретаря и руководителя, но доказанная ценность ограничена демонстрационными данными.",
+            "deductions": "Снято 8 баллов: демонстрационный результат не извлекается из записи, cloud-путь не соответствует приватностному ограничению, а автоматических напоминаний по срокам нет.",
+            "evidence": [
+              "README.md:1-4,64-78",
+              "BACKEND/app/models/meeting.py:11-89",
+              "BACKEND/app/ai/providers/mock.py:16-67",
+              "captures/20260930T164751429870-supplied-audio-demo-2.stdout.log"
+            ],
+            "deductionItems": [
+              {
+                "points": 5,
+                "findingId": "DEF-DEMO-AUDIO",
+                "reason": "Пользователь получает фиксированные 5 реплик, 2 поручения и одну тему независимо от записи; это лишает решение основной пользы — достоверно переносить содержание конкретного совещания в контроль поручений."
+              },
+              {
+                "points": 2,
+                "findingId": "DEF-CLOUD-POLICY",
+                "reason": "При наличии ключа заявленный реальный путь передаёт аудио и текст транскрипта внешнему OpenAI, поэтому ценность для чувствительных совещаний не соответствует обязательному закрытому контуру."
+              },
+              {
+                "points": 1,
+                "findingId": "DEF-REMINDERS",
+                "reason": "Второй пользовательский сценарий с напоминанием о приближении или просрочке срока не представлен ни API, ни фоновым обработчиком."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Понятная административная боль",
+                "implementation": "README формулирует продукт как автопротокол совещания: загрузка записи, транскрипт со спикерами, саммари, решения, поручения и экспорт. Сущности Meeting, Participant, TranscriptSegment, Task и Summary разделены в SQLite-модели, поэтому в результате можно отдельно контролировать содержание, людей и действия.",
+                "value": "Это напрямую адресует работу секретаря и руководителя: итог не является просто стенограммой, а содержит ответственного, автора поручения, сырой и нормализованный срок, статус и краткие решения. За ясное попадание в боль и аудиторию решение заслуживает большую часть баллов.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:1-4,64-78",
+                  "BACKEND/app/models/meeting.py:11-89",
+                  "BACKEND/app/schemas/meeting.py:57-97"
+                ]
+              },
+              {
+                "aspect": "Результат ориентирован на управленческое использование",
+                "implementation": "API и UI сохраняют summary, список tasks с responsible/assigned_by/deadline/status и полный transcript с таймкодами. PATCH для участника обновляет имя и роль также в сегментах и связанных поручениях; экспорт строит документ из этих сохранённых данных.",
+                "value": "Связь имени с поручением и возможность исправить распознанный результат полезны в реальном документообороте: пользователь может превратить черновой AI-результат в официальный протокол, а не переписывать его с нуля.",
+                "verification": "observed",
+                "evidence": [
+                  "BACKEND/app/api/participants.py:20-48",
+                  "BACKEND/app/services/export_service.py:35-95",
+                  "captures/20260930T163907183345-backend-test.stdout.log"
+                ]
+              },
+              {
+                "aspect": "Практическая ценность ограничена источником результата",
+                "implementation": "В DEMO режиме pipeline вызывает MockAIProvider.transcribe, diarize, extract и summarize, но эти методы возвращают зашитые значения и не читают bytes или длительность audio_path. В реальном прогоне обе MP3 были приняты и обработаны, но дали одинаковый результат.",
+                "value": "Для демонстрации контракта это полезный smoke path, но для ценности продукта это существенное ограничение: пользователь не может доверять тому, что задача, срок и саммари относятся к загруженному совещанию.",
+                "verification": "observed",
+                "evidence": [
+                  "BACKEND/app/ai/providers/mock.py:13-67",
+                  "BACKEND/app/ai/pipelines/meeting.py:80-93",
+                  "captures/20260930T164751429870-supplied-audio-demo-2.stdout.log"
+                ]
+              }
+            ],
+            "scoreReasoning": "17/25 отражает сильное понимание бизнес-проблемы и полезную структуру конечного результата, подтверждённую API и моделью данных. До максимума не хватает привязки результата к реальной записи: обе предоставленные записи завершились одинаковым фиктивным содержимым. Дополнительно реальный провайдер нарушает приватностное условие, а сроками можно только управлять вручную — механизма напоминания нет. Для hackathon MVP это не обнуляет прикладную идею, но существенно снижает доказанную ценность."
+          },
+          {
+            "name": "Результат и качество решения",
+            "score": 11,
+            "max": 20,
+            "awarded": "Основной API-сценарий целостен на демонстрационном provider: создание, загрузка, фоновая обработка, сохранение, обновление участника и подготовка документов связаны. Реальная обработка записи не подтверждена, PDF не работает в чистом Linux-окружении, а отдельный React/Tauri frontend не собирается.",
+            "deductions": "Снято 9 баллов: фиксированный provider ломает достоверность сценария, PDF-экспорт возвращает 500, frontend build блокирован двумя TypeScript-ошибками.",
+            "evidence": [
+              "BACKEND/app/api/meetings.py:34-133",
+              "BACKEND/app/services/processing_service.py:14-103",
+              "captures/20260930T163907183345-backend-test.stdout.log",
+              "captures/20260930T164238616384-frontend-build.stdout.log"
+            ],
+            "deductionItems": [
+              {
+                "points": 4,
+                "findingId": "DEF-DEMO-AUDIO",
+                "reason": "Положительный статус обработки не означает корректный пользовательский результат: provider возвращает один заранее написанный разговор для любых входных файлов."
+              },
+              {
+                "points": 3,
+                "findingId": "DEF-PDF-PORTABILITY",
+                "reason": "Обязательный экспорт PDF фактически завершился HTTP 500 в изолированном Linux runtime из-за отсутствующего шрифта; тестовый сценарий остановился на этом assertion."
+              },
+              {
+                "points": 2,
+                "findingId": "DEF-FRONT-BUILD",
+                "reason": "FRONT не проходит заявленную npm run build: TypeScript не знает import.meta.env и не принимает строковый status как MeetingStatus."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Сквозной backend-контракт",
+                "implementation": "POST /meetings создаёт запись, upload сохраняет файл с ограничением размера и расширения, process ставит status=processing и запускает ProcessingService через BackgroundTasks. Сервис затем сохраняет сегменты, уникальных участников, задачи и summary, переводя встречу в completed или partial.",
+                "value": "Архитектура даёт законченный путь от входа до сохранённого результата, а не набор разрозненных AI-функций. В изолированных тестах создание, загрузка, обработка, GET результата и PATCH участника действительно отработали.",
+                "verification": "observed",
+                "evidence": [
+                  "BACKEND/app/api/meetings.py:39-88",
+                  "BACKEND/app/services/processing_service.py:41-93",
+                  "captures/20260930T163907183345-backend-test.stdout.log"
+                ]
+              },
+              {
+                "aspect": "Демонстрационная обработка воспроизводима",
+                "implementation": "Без ключа settings.ai_mode выбирает demo, pipeline проходит стадии speech_to_text, speaker_diarization, task_extraction и summarization, а MockAIProvider выдаёт валидные dataclass-объекты для дальнейшего сохранения.",
+                "value": "Это позволяет показать UI и API без внешнего сервиса и объясняет, почему приложение не падает при старте. Как quality gate это хороший контрактный smoke test, хотя он не заменяет распознавание.",
+                "verification": "observed",
+                "evidence": [
+                  "BACKEND/app/core/config.py:34-44",
+                  "BACKEND/app/ai/pipelines/meeting.py:29-36,80-104",
+                  "captures/20260930T164751429870-supplied-audio-demo-2.stdout.log"
+                ]
+              },
+              {
+                "aspect": "Документный результат реализован двумя отдельными генераторами",
+                "implementation": "ExportService формирует DOCX с участниками, содержанием, решениями, таблицей поручений и полным транскриптом; PDF строится ReportLab с таблицами и Unicode-шрифтом. API отдаёт оба формата только для completed/partial встречи.",
+                "value": "Разделение генераторов и использование сохранённой модели дают хороший пользовательский результат и позволяют не зависеть от браузерного экспорта. DOCX-ветка и формат ответа описаны конкретно, но PDF-путь не переживает чистую среду.",
+                "verification": "source",
+                "evidence": [
+                  "BACKEND/app/services/export_service.py:35-95,97-152",
+                  "BACKEND/app/api/export.py:14-48",
+                  "BACKEND/requirements.txt:6-7"
+                ]
+              },
+              {
+                "aspect": "Сборка frontend не является готовым артефактом",
+                "implementation": "FRONT/package.json объявляет build через tsc -b и vite build, но App.tsx передаёт результат status с типом string в строго типизированное состояние, а api.ts использует import.meta.env без vite/client типовой декларации.",
+                "value": "Основной встроенный web UI отделён от этого старого Vite/Tauri слоя, поэтому backend MVP всё ещё запускаем. Но наличие заявленного frontend без собираемого артефакта уменьшает целостность решения и воспроизводимость альтернативного интерфейса.",
+                "verification": "observed",
+                "evidence": [
+                  "FRONT/package.json:1",
+                  "FRONT/src/App.tsx:6",
+                  "FRONT/src/services/api.ts:1-3",
+                  "captures/20260930T164238616384-frontend-build.stdout.log"
+                ]
+              }
+            ],
+            "scoreReasoning": "11/20 присуждены за реально связанный backend-сценарий и аккуратную persistence/export архитектуру. Снятие существенно: главный пользовательский результат на аудио является Mock-данными, обязательный PDF упал с 500, а второй frontend не проходит компиляцию. Это оставляет рабочий демонстрационный каркас, но не целостное качество результата по заявленному сценарию."
+          },
+          {
+            "name": "Инновационность",
+            "score": 8,
+            "max": 15,
+            "awarded": "Есть заслуживающие баллов инженерные решения: локально-ориентированный provider interface, объединение STT с diarization по максимальному времени пересечения, структурированный Pydantic Output и контекстное сопоставление имени с говорящим. Инновационный эффект ограничен тем, что доступный fallback не является AI-анализом входного аудио, а рекомендуемый REAL AI — внешняя облачная интеграция.",
+            "deductions": "Снято 7 баллов: 5 за несоответствие cloud-пути ограничению закрытого контура и 2 за то, что демонстрационная ветка имитирует, а не извлекает результат из записи.",
+            "evidence": [
+              "BACKEND/app/ai/pipelines/meeting.py:58-78",
+              "BACKEND/app/ai/providers/openai_provider.py:80-185",
+              "BACKEND/app/ai/providers/local_llm.py:91-143",
+              "BACKEND/app/ai/providers/mock.py:13-67"
+            ],
+            "deductionItems": [
+              {
+                "points": 5,
+                "findingId": "DEF-CLOUD-POLICY",
+                "reason": "Основной путь с ключом использует OpenAI audio transcription и Responses API, хотя задача запрещает передавать аудио/текст во внешние облачные API. Это не может считаться допустимым инновационным подходом для данного кейса."
+              },
+              {
+                "points": 2,
+                "findingId": "DEF-DEMO-AUDIO",
+                "reason": "Без ключа инновационная часть заменена предопределёнными русскими строками, поэтому смешанная речь и реальная мультиязычная устойчивость не демонстрируются."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Заменяемые provider-ы и единый контракт",
+                "implementation": "MeetingProcessingPipeline отделяет demo, openai и local режимы, а контракты SpeechSegment, SpeakerTurn, MergedSegment, ExtractedTask и GeneratedSummary связывают реализации через простые структуры данных.",
+                "value": "Для пятичасового MVP это разумный нестандартный способ одновременно показать продуктовый UX и оставить путь к self-hosted моделям. Он снижает связанность между FastAPI и AI-частью и упрощает замену провайдера.",
+                "verification": "source",
+                "evidence": [
+                  "BACKEND/app/ai/contracts.py:7-69",
+                  "BACKEND/app/ai/pipelines/meeting.py:29-36,145-151",
+                  "BACKEND/app/ai/model_manager.py:11-40"
+                ]
+              },
+              {
+                "aspect": "Привязка реплик к diarization",
+                "implementation": "merge_stt_and_diarization вычисляет пересечение каждого STT-сегмента с каждым speaker turn и выбирает говорящего с максимальным суммарным overlap; при отсутствии turn используется Speaker_01. Для ясного обращения есть консервативный contextual_speaker_mapping.",
+                "value": "Это конкретный алгоритмический вклад, а не только вызов модели: временные интервалы превращаются в пригодный для пользователя speaker label и затем сохраняются вместе с поручениями.",
+                "verification": "observed",
+                "evidence": [
+                  "BACKEND/app/ai/pipelines/meeting.py:58-78",
+                  "BACKEND/app/ai/speaker_mapping/mapper.py:11-28",
+                  "BACKEND/tests/test_ai_logic.py:19-25"
+                ]
+              },
+              {
+                "aspect": "Структурированный анализ и нормализация сроков",
+                "implementation": "OpenAI и local provider валидируют ответы через Pydantic-модели, сохраняют original_text, responsible, assigned_by и confidence, а parser.py переводит русские относительные формулировки вроде «завтра», «до пятницы», «две недели» и даты в календарный срок.",
+                "value": "Типизированный выход и сохранение исходной фразы уменьшают риск потерять контекст поручения и дают человеку возможность проверить интерпретацию. Это заметно сильнее простого текстового summary.",
+                "verification": "observed",
+                "evidence": [
+                  "BACKEND/app/ai/providers/openai_provider.py:15-32,154-184",
+                  "BACKEND/app/ai/providers/local_llm.py:26-46,112-143",
+                  "BACKEND/app/ai/deadline_parser/parser.py:14-55",
+                  "BACKEND/tests/test_ai_logic.py:10-16"
+                ]
+              }
+            ],
+            "scoreReasoning": "8/15 — у проекта есть реальная архитектурная идея, а не только экран: модульные provider-ы, overlap-merge, контекстное отображение имён и структурированные сроки. Но для этого кейса инновационность должна работать в закрытом контуре. OpenAI-путь нарушает это условие, local-путь не имеет моделей в snapshot, а demo не анализирует аудио. Поэтому инженерный задел признаётся, но не оценивается как доказанное преимущество решения."
+          },
+          {
+            "name": "Потенциал развития и масштабирования",
+            "score": 11,
+            "max": 20,
+            "awarded": "Потенциал выше среднего благодаря отдельным слоям API, service/repository, модели данных, фоновой обработке и возможному local provider. Документация описывает расширяемые статусы и ручное редактирование. Снижают оценку отсутствие поставляемых локальных моделей, запретный cloud fallback, отсутствие напоминаний и несобираемый альтернативный frontend.",
+            "deductions": "Снято 9 баллов: 4 за невозможность подтвердить закрытый self-hosted deployment из snapshot, 2 за несобираемый FRONT и 3 за отсутствие механизма напоминаний.",
+            "evidence": [
+              "BACKEND/app/ai/model_manager.py:11-40",
+              "BACKEND/app/core/database.py:26-56",
+              "BACKEND/app/api/tasks.py:20-32",
+              "FRONT/src-tauri/tauri.conf.json:1"
+            ],
+            "deductionItems": [
+              {
+                "points": 4,
+                "findingId": "DEF-CLOUD-POLICY",
+                "reason": "Закрытый контур заявлен как возможность, но фактически рекомендуемый путь требует внешнего OpenAI; локальная ветка зависит от моделей, которых в repository snapshot нет. Масштабирование в среде заказчика не воспроизводится из поставки."
+              },
+              {
+                "points": 2,
+                "findingId": "DEF-FRONT-BUILD",
+                "reason": "Невозможно получить собираемый Vite/Tauri артефакт из заявленного package.json без исправления типовой конфигурации и кода."
+              },
+              {
+                "points": 3,
+                "findingId": "DEF-REMINDERS",
+                "reason": "Для заявленного второго сценария не существует планировщика, уведомления или endpoint, который бы проверял приближение/просрочку дедлайна."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Разделение слоёв облегчает расширение",
+                "implementation": "FastAPI роутеры не содержат AI-деталей: они вызывают MeetingService, ProcessingService и ExportService; repository изолирует SQLAlchemy-запросы, а AI pipeline выбирает provider. Это оставляет точки для добавления очереди, другого STT или нового формата экспорта.",
+                "value": "Такой каркас можно развивать в сторону нескольких источников, авторизации и СЭД без переписывания всего UI. Для прототипа это хороший задел масштабирования по функциям и интеграциям.",
+                "verification": "source",
+                "evidence": [
+                  "BACKEND/app/api/meetings.py:21-22,76-88",
+                  "BACKEND/app/services/processing_service.py:10-14",
+                  "BACKEND/app/repositories/meeting_repository.py:7-35",
+                  "BACKEND/app/ai/pipelines/meeting.py:29-36"
+                ]
+              },
+              {
+                "aspect": "Additive migration и сохранение пользовательских правок",
+                "implementation": "init_db выполняет только создание таблиц и добавление недостающих колонок, а PATCH-обработчики позволяют менять имя, роль, текст, ответственного, срок и status задачи после AI-обработки.",
+                "value": "Это важное свойство для перехода от hackathon demo к рабочему инструменту: схема не требует удаления данных, а человек может корректировать распознавание перед экспортом.",
+                "verification": "source",
+                "evidence": [
+                  "BACKEND/app/core/database.py:26-56",
+                  "BACKEND/app/api/participants.py:20-48",
+                  "BACKEND/app/api/tasks.py:20-32"
+                ]
+              },
+              {
+                "aspect": "Локальный provider предусмотрен концептуально",
+                "implementation": "Для local режима есть FasterWhisperProvider с local_files_only=True, LocalDiarizationProvider с offline-переменными и LocalLLMProvider с GGUF; README описывает каталоги моделей и отсутствие runtime-загрузки.",
+                "value": "Это правильное направление для чувствительных данных и возможность заменить облачную часть на self-hosted inference. Потенциал признаётся как архитектурный, но не как готовая поставка.",
+                "verification": "source",
+                "evidence": [
+                  "BACKEND/app/ai/stt/faster_whisper_provider.py:10-24",
+                  "BACKEND/app/ai/diarization/local_provider.py:10-27",
+                  "BACKEND/app/ai/providers/local_llm.py:49-63",
+                  "README.md:58-62"
+                ]
+              },
+              {
+                "aspect": "Масштабирование управления сроками не доведено",
+                "implementation": "Task хранит deadline_normalized и status, а desktop UI вычисляет отображаемую просрочку только при открытии задачи. Поиск по проекту не обнаруживает scheduler, уведомления или канал доставки напоминаний.",
+                "value": "Поле для будущего dashboard есть, но второй пользовательский сценарий не превращён в автоматическую функцию. Без этого развитие в сторону исполнительской дисциплины остаётся ручным.",
+                "verification": "source",
+                "evidence": [
+                  "BACKEND/app/models/meeting.py:61-74",
+                  "FRONT/python/desktop.py:35-42",
+                  "BACKEND/app/api/tasks.py:12-32"
+                ]
+              }
+            ],
+            "scoreReasoning": "11/20 — слоистая структура, additive-миграция, ручная коррекция и local provider дают хороший фундамент для следующей итерации. Потенциал нельзя оценить выше из-за разрыва между архитектурной декларацией и поставкой: self-hosted модели отсутствуют, cloud-путь запрещён кейсом, уведомлений нет, а Vite/Tauri слой не собирается. Это перспективный каркас, но не воспроизводимый масштабируемый контур."
+          },
+          {
+            "name": "Презентация, демо и ответы на вопросы",
+            "score": 13,
+            "max": 20,
+            "awarded": "Устное выступление не оценивалось. README хорошо объясняет запуск, режимы AI, API, ограничения размера и ручной сценарий; встроенный web UI позволяет показать результат локально. Оценка снижена за то, что описанный полный demo обещает обработку записи, хотя fallback фиксирован, PDF ломается, а альтернативный frontend не собирается.",
+            "deductions": "Снято 7 баллов: 3 за PDF, 3 за frontend build и 1 за несоответствие описания DEMO фактическому использованию аудио.",
+            "evidence": [
+              "README.md:6-23,25-63,64-114",
+              "BACKEND/README.md:3-22",
+              "captures/20260930T163907183345-backend-test.stdout.log",
+              "captures/20260930T164238616384-frontend-build.stdout.log"
+            ],
+            "deductionItems": [
+              {
+                "points": 3,
+                "findingId": "DEF-PDF-PORTABILITY",
+                "reason": "Воспроизводимое демо обещает PDF/DOCX, но полный тест остановился на HTTP 500 PDF из-за отсутствующего шрифта."
+              },
+              {
+                "points": 3,
+                "findingId": "DEF-FRONT-BUILD",
+                "reason": "Заявленный FRONT имеет npm scripts, но чистая сборка завершается TypeScript-ошибками до Vite build."
+              },
+              {
+                "points": 1,
+                "findingId": "DEF-DEMO-AUDIO",
+                "reason": "README называет fallback полным сценарием загрузка → обработка, но не раскрывает, что итог не читает загруженный аудиофайл; это вводит в заблуждение при демонстрации кейса."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Однокомандный запуск описан ясно",
+                "implementation": "README даёт команды установки и python main.py, URL интерфейса, health и Swagger, флаг ALEM_NO_BROWSER и способ запуска тестов из BACKEND. Указано, что Node, Docker и отдельный uvicorn для основного пути не нужны.",
+                "value": "Участнику или проверяющему легко понять минимальный маршрут к приложению; это соответствует критерию ясности README и локального демо.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:6-23",
+                  "README.md:80-102",
+                  "BACKEND/README.md:3-20"
+                ]
+              },
+              {
+                "aspect": "Документация объясняет режимы и ограничения",
+                "implementation": "README отдельно описывает REAL AI, DEMO MODE и optional LOCAL AI, перечисляет поддерживаемые расширения и лимит 25 МБ, а также показывает REST-контракт и структуру каталогов.",
+                "value": "Такое разбиение помогает воспроизвести backend и понять назначение модулей без чтения всего дерева. Описание локального provider также показывает, как команда видит развитие проекта.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:25-63",
+                  "README.md:80-114",
+                  "BACKEND/.env.example:1-17"
+                ]
+              },
+              {
+                "aspect": "Демонстрационный контракт имеет автоматическую проверку",
+                "implementation": "tests/test_api.py проверяет home, health, создание, upload, process, tasks, переименование участника и форматы экспортов; test_ai_logic.py проверяет deadlines, overlap merge и fake OpenAI Structured Output.",
+                "value": "Наличие тестового сценария делает объяснение демо конкретным и показывает ожидаемый результат, а не только скриншот или маркетинговое описание.",
+                "verification": "observed",
+                "evidence": [
+                  "BACKEND/tests/test_api.py:9-51",
+                  "BACKEND/tests/test_ai_logic.py:10-68",
+                  "captures/20260930T163907183345-backend-test.stdout.log"
+                ]
+              },
+              {
+                "aspect": "Воспроизводимость прерывается реальными сбоями",
+                "implementation": "В чистом окружении `python -m pytest -q` завершился с 3 passed и 1 failed: PDF assertion получил 500. `npm run build` завершился двумя TypeScript errors. Реальные MP3 принимаются, но demo output одинаков для обеих записей.",
+                "value": "README полезен как навигация, но демонстрация, которую он обещает, не воспроизводит полный пользовательский результат без ручных обходов и не доказывает обработку входных материалов.",
+                "verification": "observed",
+                "evidence": [
+                  "captures/20260930T163907183345-backend-test.stdout.log",
+                  "captures/20260930T164238616384-frontend-build.stdout.log",
+                  "captures/20260930T164751429870-supplied-audio-demo-2.stdout.log"
+                ]
+              }
+            ],
+            "scoreReasoning": "13/20 — README выше среднего и пригоден как инструкция локального backend demo; API и тесты делают сценарий объяснимым. Но критерий проверяет воспроизводимое демо из repository: PDF падает, frontend build не проходит, а две реальные записи превращаются в одинаковый mock-результат. Устное выступление и отсутствие публичной ссылки здесь не штрафовались."
+          }
+        ],
+        "total": 60
+      },
+      "case": {
+        "criteria": [
+          {
+            "name": "Соответствие задаче и работоспособность",
+            "score": 12,
+            "max": 25,
+            "awarded": "Форма основного сценария присутствует: запись можно загрузить, получить протокол, поручения, участников и экспорт. Но на предоставленных MP3 доступный режим не распознаёт запись, а обязательный закрытый контур не обеспечен доступным рабочим провайдером.",
+            "deductions": "Снято 13 баллов за фиксированный результат вместо анализа аудио, cloud-путь, отсутствующие local model assets и недоведённый PDF.",
+            "evidence": [
+              "BACKEND/app/api/meetings.py:44-88",
+              "BACKEND/app/ai/pipelines/meeting.py:145-151",
+              "captures/20260930T164751429870-supplied-audio-demo-2.stdout.log",
+              "captures/20260930T163907183345-backend-test.stdout.log"
+            ],
+            "deductionItems": [
+              {
+                "points": 7,
+                "findingId": "DEF-DEMO-AUDIO",
+                "reason": "Для обеих организаторских записей по 274.296 и 206.064 секунды endpoint завершился, но сохранил один и тот же 5-сегментный русский текст, 2 поручения и topic про презентацию; это не выполнение STT и извлечения по входу."
+              },
+              {
+                "points": 4,
+                "findingId": "DEF-CLOUD-POLICY",
+                "reason": "При реальном ключе pipeline вызывает внешний OpenAI для аудио и анализа текста, что запрещено условиями кейса; local provider не может быть воспроизведён из snapshot без моделей."
+              },
+              {
+                "points": 2,
+                "findingId": "DEF-PDF-PORTABILITY",
+                "reason": "Требуемый экспорт протокола в PDF не работает в чистом Linux runtime: GET export/pdf возвращает 500 до генерации документа."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Загрузка аудио и основной жизненный цикл",
+                "implementation": "upload принимает MP3 и сохраняет его в uploads, process создаёт фоновой job, status отдаёт стадии и прогресс, а GET встречи возвращает протокол. В проверке обе предоставленные MP3 получили HTTP 200 на upload и HTTP 202 на process.",
+                "value": "Это покрывает вход и операционную оболочку задачи и показывает, что команда не ограничилась статической презентацией.",
+                "verification": "observed",
+                "evidence": [
+                  "BACKEND/app/api/meetings.py:44-88",
+                  "captures/20260930T164751429870-supplied-audio-demo-2.stdout.log"
+                ]
+              },
+              {
+                "aspect": "Структура выхода совпадает с предметной задачей",
+                "implementation": "MeetingRead включает participants, transcript, tasks и summary; TaskRead содержит задачу, responsible, assigned_by, deadline_raw, deadline_normalized, original_text и status.",
+                "value": "Если inference действительно заполнит эти поля, структура соответствует протоколу с ответственным, сроком, сутью и кратким итогом.",
+                "verification": "source",
+                "evidence": [
+                  "BACKEND/app/schemas/meeting.py:45-97",
+                  "BACKEND/app/services/processing_service.py:48-92"
+                ]
+              },
+              {
+                "aspect": "Фактическая проверка на контрольных материалах выявила несоответствие",
+                "implementation": "В первом reference-протоколе перечислены 9 поручений, во втором — 6. Реальный demo прогон обоих файлов сохранил по 2 поручения и одинаковую тему, поэтому содержание и количество задач не связано с контрольными совещаниями.",
+                "value": "Сравнение с организаторскими данными проверяет именно основной сценарий, а не только статус HTTP. Оно показывает границу между работающим UI-контрактом и отсутствующим распознаванием.",
+                "verification": "observed",
+                "evidence": [
+                  "cases/8/case-data/Протокол_совещания№1.docx.md:145-162",
+                  "cases/8/case-data/Протокол_совещания№2.docx.md:132-141",
+                  "captures/20260930T164751429870-supplied-audio-demo-2.stdout.log"
+                ]
+              }
+            ],
+            "scoreReasoning": "12/25 — API принимает нужный тип входа и формирует правильную по форме предметную модель, но ключевая семантика не выполнена на данных кейса. Demo игнорирует аудио, OpenAI нарушает запрет, local assets отсутствуют, а PDF не выдаётся. Для пятичасового MVP это оставляет полезный skeleton, но не работоспособную реализацию обязательного сценария."
+          },
+          {
+            "name": "Техническая реализация",
+            "score": 14,
+            "max": 25,
+            "awarded": "Технический каркас аккуратен: FastAPI, SQLAlchemy, фоновые задачи, provider abstraction, Pydantic-схемы, overlap merge, нормализация сроков и два генератора документов. Оценка ограничена несоблюдением приватностного требования, неготовой локальной веткой, отсутствием входозависимого fallback и ошибками сборки/экспорта.",
+            "deductions": "Снято 11 баллов за cloud API в запрещённом режиме, mock вместо STT, PDF portability defect и несобираемый FRONT.",
+            "evidence": [
+              "BACKEND/app/ai/contracts.py:7-69",
+              "BACKEND/app/ai/pipelines/meeting.py:58-151",
+              "BACKEND/app/services/processing_service.py:10-103",
+              "captures/20260930T163907183345-backend-test.stdout.log",
+              "captures/20260930T164238616384-frontend-build.stdout.log"
+            ],
+            "deductionItems": [
+              {
+                "points": 5,
+                "findingId": "DEF-CLOUD-POLICY",
+                "reason": "OpenAIMeetingProvider открывает аудиофайл и отправляет его в audio.transcriptions.create, затем отправляет полный diarized transcript в responses.parse; этот путь несовместим с обязательным запретом внешних cloud API."
+              },
+              {
+                "points": 3,
+                "findingId": "DEF-DEMO-AUDIO",
+                "reason": "Mock provider имеет методы с audio_path, но тело каждого метода возвращает константы; техническая связка pipeline проверена, однако AI-часть не обрабатывает фактический вход в доступном режиме."
+              },
+              {
+                "points": 2,
+                "findingId": "DEF-PDF-PORTABILITY",
+                "reason": "PDF helper ищет шрифты только в наборе путей ОС и выбрасывает RuntimeError при их отсутствии; зависимость или файл шрифта не поставляются, что приводит к observed 500."
+              },
+              {
+                "points": 1,
+                "findingId": "DEF-FRONT-BUILD",
+                "reason": "TypeScript-проект из package.json не проходит typecheck на snapshot, поэтому его техническая реализация не является воспроизводимой сборкой."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Разумная декомпозиция данных и сервисов",
+                "implementation": "Роутеры отвечают за HTTP-валидацию, ProcessingService за orchestration и persistence, MeetingRepository за запросы, модели за связи и ExportService за форматирование. Фоновая обработка обновляет stage/progress и переводит ошибки в status/error.",
+                "value": "Это соответствует техническому уровню MVP: код можно читать и заменять по слоям, а формат API не смешан с деталями inference. Связи meeting/participants/transcript/tasks/summary поддерживают основной результат.",
+                "verification": "source",
+                "evidence": [
+                  "BACKEND/app/api/meetings.py:24-133",
+                  "BACKEND/app/services/processing_service.py:10-103",
+                  "BACKEND/app/repositories/meeting_repository.py:7-35",
+                  "BACKEND/app/models/meeting.py:11-89"
+                ]
+              },
+              {
+                "aspect": "Провайдеры используют типизированные контракты",
+                "implementation": "Pydantic-модели OpenAIAnalysis/OpenAITask и local PeopleOutput/TasksOutput/SummaryOutput проверяют структурированный ответ; ошибки провайдеров имеют отдельные классы, а pipeline умеет сохранить транскрипт с warning при локальных частичных сбоях.",
+                "value": "Валидация схемы и явные warning/error-коды лучше защищают экспорт и UI от произвольного ответа модели. Это заметная сильная сторона технической реализации.",
+                "verification": "source",
+                "evidence": [
+                  "BACKEND/app/ai/providers/openai_provider.py:15-32,121-185",
+                  "BACKEND/app/ai/providers/local_llm.py:15-46,99-143",
+                  "BACKEND/app/ai/errors.py:1-33"
+                ]
+              },
+              {
+                "aspect": "Локальная цепочка спроектирована, но не поставлена",
+                "implementation": "Local STT использует local_files_only, diarization выставляет HF_HUB_OFFLINE/TRANSFORMERS_OFFLINE, а GGUF LLM загружается из models/llm. В snapshot каталоги моделей содержат только .gitkeep, поэтому settings.ai_mode=local приводит к ModelNotFoundError при запуске обработки.",
+                "value": "Концепция закрытого контура технически предусмотрена, но участник не может запустить её по данным repository без самостоятельной подготовки больших моделей. Это снижает фактическую реализацию, не являясь штрафом за отсутствие ключа.",
+                "verification": "source",
+                "evidence": [
+                  "BACKEND/app/ai/stt/faster_whisper_provider.py:10-24",
+                  "BACKEND/app/ai/diarization/local_provider.py:10-27",
+                  "BACKEND/app/ai/model_manager.py:23-36",
+                  "BACKEND/models/whisper/.gitkeep",
+                  "BACKEND/models/diarization/.gitkeep",
+                  "BACKEND/models/llm/.gitkeep"
+                ]
+              },
+              {
+                "aspect": "Проверяемые технические дефекты обнаружены запуском",
+                "implementation": "Изолированный `python -m pytest -q` получил 3 passed и 1 failed на PDF; `npm run build` остановился на TS2345 в Processing и TS2339 для import.meta.env. При этом `python -m compileall -q .` на writable копии прошёл.",
+                "value": "Разделение успехов и ошибок показывает, что проблема не в общей синтаксической невалидности всех файлов, а в конкретных runtime/build gaps, которые влияют на пользовательский результат.",
+                "verification": "observed",
+                "evidence": [
+                  "captures/20260930T164638223937-syntax-compile-writable.stdout.log",
+                  "captures/20260930T163907183345-backend-test.stdout.log",
+                  "captures/20260930T164238616384-frontend-build.stdout.log"
+                ]
+              }
+            ],
+            "scoreReasoning": "14/25 — за хорошо разделённые слои, типизированные AI-контракты и продуманную локальную архитектуру. Потери относятся к фактическому соответствию технического решения кейсу: внешний OpenAI запрещён, local provider не готов из snapshot, demo не читает вход, PDF зависит от случайного системного шрифта, FRONT не собирается. Это выше простого набора заглушек, но ниже работоспособной закрытой технической реализации."
+          },
+          {
+            "name": "README и воспроизводимость",
+            "score": 16,
+            "max": 25,
+            "awarded": "README подробно описывает запуск, режимы, API, тесты, структуру и сценарий; backend стартует через один main.py и синтаксически компилируется. Воспроизводимость результата ограничена тем, что DEMO не использует аудио, PDF требует не заявленный системный ресурс, FRONT не собирается, а local inference требует отсутствующих моделей.",
+            "deductions": "Снято 9 баллов: 3 за PDF, 3 за FRONT build и 3 за несоответствующий аудио-сценарий в demo.",
+            "evidence": [
+              "README.md:6-23,25-63,80-114",
+              "BACKEND/README.md:3-22",
+              "captures/20260930T164638223937-syntax-compile-writable.stdout.log",
+              "captures/20260930T163907183345-backend-test.stdout.log",
+              "captures/20260930T164751429870-supplied-audio-demo-2.stdout.log"
+            ],
+            "deductionItems": [
+              {
+                "points": 3,
+                "findingId": "DEF-PDF-PORTABILITY",
+                "reason": "Документация обещает PDF, но requirements не обеспечивают Unicode-шрифт и тестовый запуск возвращает 500. Воспроизведение полного результата зависит от неописанного состояния ОС."
+              },
+              {
+                "points": 3,
+                "findingId": "DEF-FRONT-BUILD",
+                "reason": "В README структура включает FRONT, package.json предлагает build/typecheck, но чистая команда npm run build завершается до создания артефакта."
+              },
+              {
+                "points": 3,
+                "findingId": "DEF-DEMO-AUDIO",
+                "reason": "Описанный DEMO как полный сценарий на записи не соответствует фактическому provider: реальные MP3 загружаются, но их содержание не читается."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Инструкция запуска минимальна и конкретна",
+                "implementation": "Из корня указаны pip install -r BACKEND/requirements.txt и python main.py, URL 127.0.0.1:8000, health/Swagger и ALEM_NO_BROWSER. Отдельно указано, что основной MVP не требует Node или Docker.",
+                "value": "Это хорошая стартовая точка для проверяющего и объяснение, какой из двух UI является основным. Команды короткие и соответствуют действующему launcher.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:6-23",
+                  "main.py:142-163"
+                ]
+              },
+              {
+                "aspect": "Документация связывает режимы с конфигурацией",
+                "implementation": "README показывает .env для REAL AI, объясняет auto/local/demo и приводит модели, лимит файлов, API endpoints и структуру каталогов. BACKEND README дополняет сведения о SQLite и additive migration.",
+                "value": "Проверяющий понимает, какие переменные нужны и где искать provider, pipeline, web UI и persistence. Это заслуживает значительную часть критерия.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:25-63,80-114",
+                  "BACKEND/README.md:9-22",
+                  "BACKEND/.env.example:1-17"
+                ]
+              },
+              {
+                "aspect": "Тестовая документация имеет ожидаемый контракт",
+                "implementation": "В README есть команда pytest и пояснение, что тесты не обращаются к OpenAI; фактически тесты проверяют deadlines, merge, fake Structured Output, health, CRUD-проход и сигнатуры документов.",
+                "value": "Это делает проект проверяемым статически и доменно, а не оставляет единственную проверку на ручном просмотре интерфейса.",
+                "verification": "observed",
+                "evidence": [
+                  "README.md:94-102",
+                  "BACKEND/tests/test_ai_logic.py:10-68",
+                  "BACKEND/tests/test_api.py:9-51"
+                ]
+              },
+              {
+                "aspect": "Воспроизводимость зависит от неявных ресурсов",
+                "implementation": "Local AI требует модели в BACKEND/models, PDF требует один из системных шрифтов, а FRONT требует типов Vite, которых нет в include. В чистой проверке компиляция Python прошла, но backend pytest и frontend build дали конкретные сбои.",
+                "value": "README не даёт проверяющему полностью воспроизвести все заявленные варианты из repository snapshot. Ограничение API-ключа само по себе не штрафовалось; баллы сняты только за реальные дефекты поставки и несоответствие fallback.",
+                "verification": "observed",
+                "evidence": [
+                  "README.md:47-62",
+                  "BACKEND/app/services/export_service.py:98-106",
+                  "captures/20260930T163907183345-backend-test.stdout.log",
+                  "captures/20260930T164238616384-frontend-build.stdout.log"
+                ]
+              }
+            ],
+            "scoreReasoning": "16/25 — документация заметно лучше среднего и достаточна для понимания backend. Но воспроизводимость оценивается по наблюдаемому результату: supplied-data demo не является транскрипцией, PDF не проходит, frontend не собирается, а local branch требует не поставленных моделей. Поэтому README получает высокую, но не близкую к полной оценку."
+          },
+          {
+            "name": "Ценность и применимость решения",
+            "score": 11,
+            "max": 15,
+            "awarded": "Модель данных, редактирование и протоколирование хорошо соответствуют ежедневной работе с совещаниями. Пользовательский результат потенциально применим для управленческого контроля, но применимость на реальных записях не доказана: доступный fallback фиксирован, а privacy-compliant inference отсутствует в поставке.",
+            "deductions": "Снято 4 балла: 3 за неиспользование реального аудио и 1 за отсутствие автоматических напоминаний.",
+            "evidence": [
+              "BACKEND/app/models/meeting.py:34-89",
+              "BACKEND/app/api/participants.py:20-48",
+              "BACKEND/app/api/tasks.py:20-32",
+              "captures/20260930T164751429870-supplied-audio-demo-2.stdout.log"
+            ],
+            "deductionItems": [
+              {
+                "points": 3,
+                "findingId": "DEF-DEMO-AUDIO",
+                "reason": "На обеих предоставленных записях результат не отражает содержание файлов, поэтому практическая применимость как автопротоколирования остаётся недоказанной."
+              },
+              {
+                "points": 1,
+                "findingId": "DEF-REMINDERS",
+                "reason": "Срок сохраняется и отображается, но напоминание куратору при приближении/просрочке не выполняется."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Полезный результат для секретаря",
+                "implementation": "Сервис сохраняет полный транскрипт с таймкодами, список участников и отдельную таблицу поручений. Экспорт формирует официальный протокол с разделами участников, содержания, решений, поручений и транскрипта.",
+                "value": "Такой результат сокращает ручную компоновку документа и даёт единый объект для проверки ответственными лицами. Структура применима к совещаниям в организациях с большим числом поручений.",
+                "verification": "source",
+                "evidence": [
+                  "BACKEND/app/services/export_service.py:40-95",
+                  "BACKEND/app/schemas/meeting.py:57-97"
+                ]
+              },
+              {
+                "aspect": "Человек остаётся в контуре проверки",
+                "implementation": "PATCH participants меняет имя и роль в транскрипте и связанных задачах, PATCH tasks меняет текст, responsible, assigned_by, срок и статус. Это позволяет исправить ошибку AI перед экспортом.",
+                "value": "Для чувствительных протоколов это практичнее, чем безусловно доверять модели, и снижает стоимость ручной верификации результата.",
+                "verification": "observed",
+                "evidence": [
+                  "BACKEND/app/api/participants.py:20-48",
+                  "BACKEND/app/api/tasks.py:20-32",
+                  "BACKEND/tests/test_api.py:33-41"
+                ]
+              },
+              {
+                "aspect": "Применимость ограничивает отсутствие достоверного STT",
+                "implementation": "MockAIProvider формирует русскую презентацию про пилотный проект и всегда возвращает два поручения, тогда как reference-протоколы описывают химическую промышленность, безопасность, показатели, других участников и 9/6 поручений.",
+                "value": "Пользователь может увидеть форму результата, но не может использовать его для контроля реального совещания; это ключевой разрыв между UX и рабочей ценностью.",
+                "verification": "observed",
+                "evidence": [
+                  "BACKEND/app/ai/providers/mock.py:16-67",
+                  "cases/8/case-data/Протокол_совещания№1.docx.md:139-162",
+                  "cases/8/case-data/Протокол_совещания№2.docx.md:121-141",
+                  "captures/20260930T164751429870-supplied-audio-demo-2.stdout.log"
+                ]
+              }
+            ],
+            "scoreReasoning": "11/15 — предметная модель и редактирование дают реальную потенциальную пользу, а официальный документ хорошо соответствует рабочему процессу. Снижение связано не с отсутствием production-функций, а с проверенным фактом: запись не влияет на результат и не запускает контроль сроков. Для прототипа это существенный, но не полный провал ценности."
+          },
+          {
+            "name": "Потенциал развития и оригинальность подхода",
+            "score": 7,
+            "max": 10,
+            "awarded": "Сильные стороны — provider abstraction, local-first намерение, отдельные модели задач/сроков, ручная коррекция и возможность подключить новые источники. Оригинальность умеренная: ключевые элементы типичны для meeting assistant, а текущая demo-ветка не демонстрирует собственный inference. Потенциал ограничен приватностным конфликтом, отсутствием local assets, reminders и frontend build.",
+            "deductions": "Снято 3 балла: 2 за cloud/local несоответствие закрытому контуру и 1 за неготовый FRONT.",
+            "evidence": [
+              "BACKEND/app/ai/pipelines/meeting.py:29-151",
+              "BACKEND/app/ai/speaker_mapping/mapper.py:11-28",
+              "BACKEND/app/core/database.py:33-56",
+              "captures/20260930T164238616384-frontend-build.stdout.log"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "DEF-CLOUD-POLICY",
+                "reason": "Архитектурная возможность self-hosted предусмотрена, но рабочий путь по умолчанию при ключе нарушает правило закрытого контура, а локальные модели не входят в поставку."
+              },
+              {
+                "points": 1,
+                "findingId": "DEF-FRONT-BUILD",
+                "reason": "Нез собираемый альтернативный интерфейс уменьшает потенциал расширения desktop/web-поставки на текущем snapshot."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Provider abstraction как точка развития",
+                "implementation": "Pipeline различает demo/openai/local, а контракты не зависят от FastAPI. Local STT, diarization и GGUF LLM вынесены в отдельные адаптеры; mock используется явно.",
+                "value": "Можно заменить модели или добавить self-hosted inference без изменения persistence и UI-контракта. Это хороший задел для следующего хакатона и закрытого deployment.",
+                "verification": "source",
+                "evidence": [
+                  "BACKEND/app/ai/contracts.py:56-69",
+                  "BACKEND/app/ai/pipelines/meeting.py:29-36,145-151",
+                  "BACKEND/app/ai/model_manager.py:11-40"
+                ]
+              },
+              {
+                "aspect": "Оригинальная связка временного merge и контекстных имён",
+                "implementation": "Алгоритм выбирает label по максимальному пересечению STT-отрезка с diarization turn, а затем пытается распознать явное обращение к человеку и применить имя к следующей реплике другого speaker.",
+                "value": "Для короткого MVP это осмысленное дополнение к голому STT: оно создаёт путь от технического Speaker_01 к поручению с человеком и сохраняет возможность ручной правки.",
+                "verification": "source",
+                "evidence": [
+                  "BACKEND/app/ai/pipelines/meeting.py:59-78",
+                  "BACKEND/app/ai/speaker_mapping/mapper.py:7-28"
+                ]
+              },
+              {
+                "aspect": "Следующие расширения естественно следуют из схемы",
+                "implementation": "Task уже хранит normalized deadline и status, meeting имеет progress/stage/error, а additive migration оставляет место для новых полей. API имеет отдельные routers для tasks, participants и export.",
+                "value": "Это позволяет добавить уведомления, dashboard, СЭД или дополнительные форматы без изменения базового жизненного цикла. Потенциал подтверждён структурой, а не общим обещанием.",
+                "verification": "source",
+                "evidence": [
+                  "BACKEND/app/models/meeting.py:17-30,61-89",
+                  "BACKEND/app/core/database.py:33-56",
+                  "BACKEND/app/api/tasks.py:9-32"
+                ]
+              }
+            ],
+            "scoreReasoning": "7/10 — потенциал заслуживает баллов благодаря модульной цепочке, временной привязке говорящих и расширяемой persistence-модели. До максимума не хватает работающего privacy-compliant inference, поставляемых local assets, уведомлений и собираемого frontend. Оригинальность есть на уровне инженерного MVP, но не доказана фактическим анализом кейсовых записей."
+          }
+        ],
+        "total": 60
+      },
+      "judgeScore": 60,
+      "caseRequirements": [
+        {
+          "requirement": "Приём аудио/видеозаписи совещания как входа",
+          "status": "partial",
+          "explanation": "API принимает MP3 и другие перечисленные расширения, проверяет content type и лимит, а обе предоставленные MP3 были загружены с HTTP 200. Но доступный demo pipeline принимает путь только формально: содержимое записи не влияет на итог.",
+          "evidence": [
+            "BACKEND/app/api/meetings.py:44-73",
+            "captures/20260930T164751429870-supplied-audio-demo-2.stdout.log"
+          ]
+        },
+        {
+          "requirement": "Распознавание речи на русском языке",
+          "status": "partial",
+          "explanation": "В mock есть русский текст, а local Whisper и OpenAI adapter теоретически дают STT путь. На реальной записи русский транскрипт не получен: обе записи получили один заранее заданный диалог.",
+          "evidence": [
+            "BACKEND/app/ai/providers/mock.py:16-23",
+            "BACKEND/app/ai/stt/faster_whisper_provider.py:26-43",
+            "captures/20260930T164751429870-supplied-audio-demo-2.stdout.log"
+          ]
+        },
+        {
+          "requirement": "Понимание казахской речи",
+          "status": "partial",
+          "explanation": "Local STT передаёт language=None, а OpenAI prompt заявляет русский, казахский и смешанный язык, но ни один путь не был выполнен на казахском входе. Demo provider содержит только заранее написанный русский текст.",
+          "evidence": [
+            "BACKEND/app/ai/stt/faster_whisper_provider.py:26-30",
+            "BACKEND/app/ai/providers/openai_provider.py:124-132",
+            "BACKEND/app/ai/providers/mock.py:16-23"
+          ]
+        },
+        {
+          "requirement": "Понимание смешанной русско-казахской речи",
+          "status": "partial",
+          "explanation": "Архитектура допускает multilingual STT и prompt прямо упоминает смешанный язык, но fallback не читает вход, local models отсутствуют, а кейсовые аудио не дали доказательства mixed-language transcription.",
+          "evidence": [
+            "BACKEND/app/ai/providers/openai_provider.py:124-132",
+            "BACKEND/app/ai/stt/faster_whisper_provider.py:26-30",
+            "BACKEND/models/whisper/.gitkeep"
+          ]
+        },
+        {
+          "requirement": "Диаризация и различение говорящих",
+          "status": "partial",
+          "explanation": "Есть local pyannote adapter, OpenAI diarized_json adapter и overlap merge с тестом на пересечение. Demo provider возвращает четыре заранее заданных speaker turn, поэтому говорящие в предоставленных аудио не были реально различены.",
+          "evidence": [
+            "BACKEND/app/ai/diarization/local_provider.py:10-43",
+            "BACKEND/app/ai/providers/openai_provider.py:80-111",
+            "BACKEND/app/ai/pipelines/meeting.py:59-78",
+            "BACKEND/app/ai/providers/mock.py:25-31",
+            "BACKEND/tests/test_ai_logic.py:19-25"
+          ]
+        },
+        {
+          "requirement": "Привязка поручения к конкретному говорящему",
+          "status": "partial",
+          "explanation": "Task содержит responsible и assigned_by, а speaker mapping умеет дать имя по обращению и участник связан с задачами при переименовании. В реальном кейсовом прогоне эти значения относятся к фиктивному mock-диалогу, а не к спикерам записи.",
+          "evidence": [
+            "BACKEND/app/ai/speaker_mapping/mapper.py:11-28",
+            "BACKEND/app/services/processing_service.py:64-78",
+            "BACKEND/app/api/participants.py:32-45",
+            "captures/20260930T164751429870-supplied-audio-demo-2.stdout.log"
+          ]
+        },
+        {
+          "requirement": "Извлечение сути поручения, ответственного и срока",
+          "status": "partial",
+          "explanation": "Схемы и parser покрывают task, responsible, assigned_by, original_text, deadline_raw и normalized date; unit-тест проверяет относительные русские сроки. В demo результат фиксирован и не сопоставляется с 9/6 заданиями reference-протоколов.",
+          "evidence": [
+            "BACKEND/app/schemas/meeting.py:57-79",
+            "BACKEND/app/ai/deadline_parser/parser.py:14-55",
+            "BACKEND/tests/test_ai_logic.py:10-16",
+            "cases/8/case-data/Протокол_совещания№1.docx.md:145-162",
+            "cases/8/case-data/Протокол_совещания№2.docx.md:132-141"
+          ]
+        },
+        {
+          "requirement": "Краткое саммари совещания",
+          "status": "partial",
+          "explanation": "Summary сущность и структурированный output поддерживают topic, summary_text, key_points, problems, decisions, risks и metrics. В фактическом прогоне topic и текст были одним и тем же demo summary для двух разных записей.",
+          "evidence": [
+            "BACKEND/app/models/meeting.py:77-89",
+            "BACKEND/app/ai/providers/local_llm.py:39-46,133-143",
+            "BACKEND/app/ai/providers/mock.py:56-67",
+            "captures/20260930T164751429870-supplied-audio-demo-2.stdout.log"
+          ]
+        },
+        {
+          "requirement": "Экспорт итогового протокола в PDF/DOCX",
+          "status": "partial",
+          "explanation": "Оба endpoint и генератора присутствуют, DOCX source-path реализует нужные разделы, но обязательный PDF запрос в полном тесте вернул 500: ExportService не нашёл Unicode-шрифт. До DOCX assertion тест не дошёл, поэтому успешный runtime DOCX здесь не заявляется.",
+          "evidence": [
+            "BACKEND/app/api/export.py:14-48",
+            "BACKEND/app/services/export_service.py:35-152",
+            "captures/20260930T163907183345-backend-test.stdout.log"
+          ]
+        },
+        {
+          "requirement": "Возможность закрытого контура без передачи аудио/текста во внешнее облако",
+          "status": "missing",
+          "explanation": "Ограничение кейса явно запрещает внешний cloud API, но при ключе auto/openai выбирает OpenAIMeetingProvider, который передаёт аудио и полный diarized transcript в OpenAI. Local branch предусмотрен, однако в snapshot нет Whisper, diarization и GGUF model files, поэтому закрытый рабочий сценарий из поставки не доказан.",
+          "evidence": [
+            "cases/8/case-data/HackAlem AI_ Система автопротоколирования совещаний с фиксацией поручений.md:39-54",
+            "BACKEND/app/core/config.py:35-44",
+            "BACKEND/app/ai/providers/openai_provider.py:80-87,140-147",
+            "BACKEND/models/whisper/.gitkeep",
+            "BACKEND/models/diarization/.gitkeep",
+            "BACKEND/models/llm/.gitkeep"
+          ]
+        },
+        {
+          "requirement": "Сценарий напоминания ответственному при приближении или просрочке срока",
+          "status": "missing",
+          "explanation": "Task хранит срок и status, а desktop UI может показать строку «Просрочено» при открытии, но в репозитории нет scheduler, фоновой проверки, notification endpoint или отправки напоминания.",
+          "evidence": [
+            "cases/8/case-data/HackAlem AI_ Система автопротоколирования совещаний с фиксацией поручений.md:22-31",
+            "BACKEND/app/models/meeting.py:61-74",
+            "FRONT/python/desktop.py:35-42"
+          ]
+        }
+      ],
+      "testData": {
+        "provided": [
+          "cases/8/case-data/Совещание №1.mp3",
+          "cases/8/case-data/Совещание №2.mp3",
+          "cases/8/case-data/Протокол_совещания№1.docx.md",
+          "cases/8/case-data/Протокол_совещания№2.docx.md",
+          "cases/8/case-data/HackAlem AI_ Система автопротоколирования совещаний с фиксацией поручений.md"
+        ],
+        "used": [
+          "cases/8/case-data/Совещание №1.mp3",
+          "cases/8/case-data/Совещание №2.mp3",
+          "cases/8/case-data/Протокол_совещания№1.docx.md",
+          "cases/8/case-data/Протокол_совещания№2.docx.md",
+          "cases/8/case-data/HackAlem AI_ Система автопротоколирования совещаний с фиксацией поручений.md"
+        ],
+        "checks": [
+          {
+            "input": "Совещание №1.mp3, mono 48 kHz, duration 274.296 s, uploaded as audio/mpeg",
+            "method": "Изолированный TestClient сценарий создал встречу, отправил сам MP3 через POST /api/v1/meetings/{id}/upload, затем вызвал process и получил полную встречу.",
+            "result": "HTTP upload=200, process=202, status=completed; сохранено 5 transcript segments, 2 tasks, topic «Подготовка презентации по пилотному проекту».",
+            "conclusion": "Приём и демонстрационное сохранение работают, но результат не соответствует reference-протоколу №1: в нём 9 поручений и тема химической промышленности/безопасности."
+          },
+          {
+            "input": "Совещание №2.mp3, mono 48 kHz, duration 206.064 s, uploaded as audio/mpeg",
+            "method": "Тем же изолированным сценарием отправлен второй реальный MP3; файл не заменялся текстовым протоколом.",
+            "result": "HTTP upload=200, process=202, status=completed; снова 5 transcript segments, 2 tasks и ровно тот же topic, что у MP3 №1.",
+            "conclusion": "Это наблюдаемое доказательство, что DEMO provider не анализирует содержание входной записи и возвращает константу."
+          },
+          {
+            "input": "Протокол_совещания№1.docx.md и Протокол_совещания№2.docx.md",
+            "method": "Открыты как контрольные ориентиры и сопоставлены с результатами обоих MP3; текстовые протоколы не передавались приложению как вход.",
+            "result": "В reference №1 перечислено 9 заданий, в reference №2 — 6; имена, темы и задачи отличаются от двух одинаковых demo results.",
+            "conclusion": "Контрольные материалы подтверждают существенное содержательное расхождение; они использованы для оценки, а не как замена аудио."
+          },
+          {
+            "input": "Требования кейса из task.txt и expanded case brief",
+            "method": "Проверены обязательный минимум, вход/выход и privacy restriction; дополнительно исходники прослежены по OpenAI/local provider и export path.",
+            "result": "Форма большинства полей присутствует, но внешний OpenAI-путь отправляет аудио/текст, local model assets отсутствуют, reminders не реализованы, PDF runtime падает.",
+            "conclusion": "Архитектурное соответствие частичное; ключевые ограничения и доказанный входозависимый inference не выполнены."
+          }
+        ],
+        "limitations": [
+          "API credentials намеренно не предоставлялись; REAL AI вызов не выполнялся. Это ограничение проверки и не отдельный штраф. Cloud-путь оценён по исходникам, а не по отсутствию ключа.",
+          "Пользователь выполняет визуальную проверку; браузер, скриншоты и UI automation не использовались. Состояние внешнего вида не заявляется.",
+          "Проверка local inference не проводилась на моделях, отсутствующих в snapshot; это зафиксировано как ограничение доказательства и отдельно оценено по факту отсутствующих файлов."
+        ]
+      },
+      "runtime": {
+        "status": "partial",
+        "build": "Python compileall прошёл на writable копии snapshot; backend pytest имеет 3 passed и 1 failed на PDF; frontend npm run build не проходит typecheck.",
+        "start": "FastAPI TestClient lifespan стартовал, GET / и GET /health вернули 200, health сообщил mode=demo без ключа.",
+        "scenario": "Сценарий upload/process/GET результата на обеих реальных MP3 завершился статусом completed, но семантически дал одинаковый fixed demo result; PDF export возвращает 500.",
+        "environment": "Проверки выполнялись в изолированных Docker-окружениях без секретов и браузера; для приложений использовались Python 3.11 и Node 22 с ограничением до 3 GiB памяти и 2 CPU.",
+        "summary": "Приложение реально стартует и демонстрационный API-контракт связен, поэтому статус не failed/blocked. Основной кейсовый сценарий воспроизведён только как mock, а PDF и отдельный frontend имеют подтверждённые project defects, поэтому итоговый runtime — partial.",
+        "checks": [
+          {
+            "command": "python -m compileall -q .",
+            "result": "Выход 0; Python-файлы snapshot скомпилированы без syntax errors.",
+            "id": "CHK-SYNTAX",
+            "stage": "build",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Все отслеживаемые Python-исходники компилируются без синтаксических ошибок."
+          },
+          {
+            "command": "cd BACKEND; python -m pytest -q",
+            "result": "Выход 1: 3 passed, 1 failed. test_meeting_mock_flow получил HTTP 500 от export/pdf вместо %PDF; проверка DOCX в этом тесте после упавшего PDF assertion не была достигнута.",
+            "id": "CHK-BACKEND-TEST",
+            "stage": "scenario",
+            "status": "fail",
+            "cause": "project",
+            "expected": "Все 4 backend tests проходят; после mock flow доступны PDF и DOCX, начинающиеся с соответствующих сигнатур."
+          },
+          {
+            "command": "GET /health",
+            "result": "HTTP 200 через TestClient lifespan; JSON содержит status=ok, mode=demo, offline=true, api_key_configured=false. GET / также вернул 200 и встроенный Aqylman HTML.",
+            "id": "CHK-START",
+            "stage": "start",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Приложение стартует без ключа, health доступен и сообщает текущий режим."
+          },
+          {
+            "command": "cd FRONT; npm run build",
+            "result": "Выход 1 на tsc: TS2345 в App.tsx — status string не совместим с MeetingStatus; TS2339 в services/api.ts — Property env does not exist on ImportMeta.",
+            "id": "CHK-FRONT-BUILD",
+            "stage": "build",
+            "status": "fail",
+            "cause": "project",
+            "expected": "TypeScript typecheck и Vite build завершаются успешно и создают frontend artifact."
+          },
+          {
+            "command": "TestClient: POST /api/v1/meetings/{id}/upload; POST /api/v1/meetings/{id}/process; GET /api/v1/meetings/{id}",
+            "result": "Для Совещание №1.mp3 и Совещание №2.mp3: upload=200, process=202, status=completed; для каждого transcript=5, tasks=2, topic=Подготовка презентации по пилотному проекту.",
+            "id": "CHK-SUPPLIED-AUDIO",
+            "stage": "scenario",
+            "status": "fail",
+            "cause": "project",
+            "expected": "STT, speakers, tasks, deadlines и summary зависят от конкретного MP3 и согласуются по смыслу с соответствующим reference-протоколом."
+          },
+          {
+            "command": "TestClient: GET /api/v1/meetings/{id}/export/pdf",
+            "result": "HTTP 500 с detail EXPORT_FAILED: Unicode-шрифт не найден в runtime; исключение исходит из ExportService._font.",
+            "id": "CHK-PDF-EXPORT",
+            "stage": "scenario",
+            "status": "fail",
+            "cause": "project",
+            "expected": "Завершённая встреча возвращает валидный PDF с кириллическим текстом."
+          }
+        ],
+        "limitations": [
+          "REAL AI не запускался без OPENAI_API_KEY; это ограничивает наблюдение внешнего provider, но его полный путь проверен по исходникам.",
+          "Визуальная проверка web/desktop UI не выполнялась по правилам задания; runtime вывод относится к HTTP/API и сборкам.",
+          "Случай отсутствующего системного шрифта проявился в чистом Linux runtime; он считается project defect поставки, потому что код требует такой ресурс, а requirements и репозиторий его не обеспечивают."
+        ]
+      },
+      "liveDemo": {
+        "status": "none",
+        "url": null,
+        "notes": "Публичной live-demo ссылки в материалах snapshot нет. Локальный HTTP/API запуск проверен; отсутствие публичного URL само по себе баллы не уменьшало."
+      },
+      "fiveHourContext": "Оценка учитывает пятичасовой формат: не требуется production auth, СЭД, видеосервис или промышленное масштабирование. Поэтому баллы сохранены за API-каркас, local provider design, ручную коррекцию и понятный README. Сняты только за существенные для самого MVP факты: доступный demo не использует предоставленное аудио, основной real-путь нарушает прямой privacy запрет, обязательный PDF падает, frontend не собирается и заявленный сценарий напоминаний отсутствует.",
+      "strengths": [
+        "Понятная продуктовая оболочка и предметная модель: встреча, участники, транскрипт, поручения, сроки, статусы и саммари.",
+        "Хорошо разделённые FastAPI/service/repository/AI/export слои и заменяемые provider-контракты.",
+        "Overlap merge для diarization, контекстное сопоставление говорящих и нормализация русских относительных сроков покрыты исходниками и unit-тестами.",
+        "README содержит короткий запуск, API-контракт, режимы, структуру проекта и тестовую команду.",
+        "Проверка без ключа не падает на старте: локальный демонстрационный путь позволяет показать CRUD и сохранение результата."
+      ],
+      "gaps": [
+        "DEMO provider возвращает фиксированный русский транскрипт, speaker turns, задачи и summary, не читая загруженный аудиофайл; это подтверждено на обеих реальных MP3. [DEF-DEMO-AUDIO]",
+        "REAL AI path отправляет аудио в OpenAI transcription и полный транскрипт в Responses API вопреки запрету внешних cloud API; local path требует отсутствующие model files. [DEF-CLOUD-POLICY]",
+        "PDF export возвращает HTTP 500 при отсутствии одного из жёстко заданных системных шрифтов; dependency/resource не поставляется. [DEF-PDF-PORTABILITY]",
+        "FRONT npm run build завершается TS2345 для status и TS2339 для import.meta.env до Vite build. [DEF-FRONT-BUILD]",
+        "Нет scheduler, notification endpoint или фоновой проверки для напоминаний о приближении/просрочке дедлайна; desktop только вычисляет отображаемую строку просрочки. [DEF-REMINDERS]"
+      ],
+      "futureAdvice": [
+        {
+          "principle": "Тестовый fallback должен сохранять причинность от входа",
+          "why": "DEF-DEMO-AUDIO показывает, что одинаковый mock result выдаётся для двух разных записей и не позволяет честно демонстрировать кейс.",
+          "how": "В следующем хакатоне зафиксируйте два режима явно: demo fixture только для контрактного smoke test, а кейсовый demo — с локальным STT или с входозависимым тестовым adapter. Прогоняйте каждый supplied audio через один и тот же endpoint и сохраняйте небольшое структурированное сравнение с ожидаемыми сущностями.",
+          "findingIds": [
+            "DEF-DEMO-AUDIO"
+          ],
+          "successCheck": "Два разных входных аудиофайла дают разные измеримые transcript/task outputs, а в логе или API виден source-dependent результат; fixture режим помечен отдельно и не выдаётся за STT.",
+          "timeboxMinutes": 50
+        },
+        {
+          "principle": "Ограничение приватности должно быть enforced в выборе провайдера",
+          "why": "DEF-CLOUD-POLICY: при ключе auto выбирает OpenAI и передаёт аудио/текст, хотя кейс требует закрытый контур.",
+          "how": "Для другого кейса сначала зафиксируйте policy gate в конфигурации: внешний adapter должен быть недоступен в privacy mode, а default должен быть локальным. Проверьте source-level call graph и запустите минимальный local fake provider без сетевых обращений до добавления любого cloud option.",
+          "findingIds": [
+            "DEF-CLOUD-POLICY"
+          ],
+          "successCheck": "При конфигурации заказчика ни один request не уходит во внешний host, health явно показывает local provider, а сценарий проходит на поставленных или воспроизводимо подготовленных локальных моделях.",
+          "timeboxMinutes": 45
+        },
+        {
+          "principle": "Форматный экспорт должен быть self-contained и проверяться в чистом runtime",
+          "why": "DEF-PDF-PORTABILITY: путь PDF зависит от системного шрифта, которого нет в чистом окружении, и превращает экспорт в HTTP 500.",
+          "how": "В следующем прототипе положите совместимый Unicode-шрифт в проектный ресурс или объявите пакет ОС как явную prerequisite, затем добавьте smoke check PDF/DOCX после создания встречи. Проверяйте контейнером без заранее установленных desktop fonts.",
+          "findingIds": [
+            "DEF-PDF-PORTABILITY"
+          ],
+          "successCheck": "Оба endpoint возвращают 200 в чистом CI/container runtime, PDF содержит кириллицу, а тест проверяет сигнатуру и небольшой текстовый фрагмент документа.",
+          "timeboxMinutes": 30
+        },
+        {
+          "principle": "Сборка каждого заявленного клиента должна быть частью smoke path",
+          "why": "DEF-FRONT-BUILD: package.json обещает Vite/Tauri build, но typecheck останавливается на двух локальных ошибках.",
+          "how": "В новом проекте добавьте vite/client types и типизируйте status response как MeetingStatus или сузьте его перед setState; запускайте npm run build в том же чистом окружении, которое указано в README, до демонстрации.",
+          "findingIds": [
+            "DEF-FRONT-BUILD"
+          ],
+          "successCheck": "npm run build завершается кодом 0 на чистом checkout и создаёт dist; API status и import.meta.env имеют типы, согласованные с frontend runtime.",
+          "timeboxMinutes": 25
+        }
+      ],
+      "uncertainties": [
+        "Без предоставленного OPENAI_API_KEY невозможно наблюдать настоящий внешний ответ, квоту и сетевые ошибки; оценка OpenAI-пути основана на статическом call graph и fake-client unit test.",
+        "Визуальное поведение встроенного web UI и desktop UI не проверялось, поскольку визуальную проверку выполняет пользователь; выводы ограничены source и HTTP/API.",
+        "Не проводился inference локальных моделей, потому что в snapshot присутствуют только .gitkeep и нет model weights; это не трактовалось как проблема окружения, а сопоставлено с заявленной воспроизводимостью closed-contour пути."
+      ],
+      "reviewPolicyVersion": 2,
+      "assessmentStatus": "ready",
+      "findings": [
+        {
+          "id": "DEF-DEMO-AUDIO",
+          "kind": "defect",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Демо-обработка не извлекает транскрипт, говорящих, поручения и саммари из загруженного аудио.",
+          "expected": "Результат должен зависеть от содержания конкретной записи и согласовываться с ней по смыслу.",
+          "actual": "Оба реальных MP3 завершились status=completed с одинаковыми 5 сегментами, 2 задачами и topic «Подготовка презентации по пилотному проекту», который записан в MockAIProvider.",
+          "evidence": [
+            "BACKEND/app/ai/providers/mock.py:13-67",
+            "BACKEND/app/ai/pipelines/meeting.py:34-35,80-93",
+            "captures/20260930T164751429870-supplied-audio-demo-2.stdout.log"
+          ],
+          "checkIds": [
+            "CHK-SUPPLIED-AUDIO"
+          ]
+        },
+        {
+          "id": "DEF-CLOUD-POLICY",
+          "kind": "defect",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Реальный provider передаёт аудио и транскрипт во внешний OpenAI API, хотя кейс запрещает передачу аудио/текста во внешние облачные API.",
+          "expected": "Рабочий путь кейса должен использовать локальные или self-hosted модели; внешняя интеграция не должна быть default способом обработки чувствительной записи.",
+          "actual": "При ai_provider=auto и наличии OPENAI_API_KEY settings.ai_mode выбирает openai; OpenAIMeetingProvider передаёт file в audio.transcriptions.create и полный diarized transcript в responses.parse.",
+          "evidence": [
+            "BACKEND/app/core/config.py:35-44",
+            "BACKEND/app/ai/providers/openai_provider.py:80-87,121-147",
+            "README.md:27-45",
+            "cases/8/case-data/HackAlem AI_ Система автопротоколирования совещаний с фиксацией поручений.md:39-54"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "DEF-PDF-PORTABILITY",
+          "kind": "defect",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "PDF export не работает в чистом Linux runtime без заранее установленного системного Unicode-шрифта.",
+          "expected": "GET export/pdf для завершённой встречи должен вернуть валидный PDF с кириллическим протоколом в окружении, описанном зависимостями проекта.",
+          "actual": "ExportService._font не нашёл ни один из жёстко заданных путей, выбросил RuntimeError, а endpoint вернул HTTP 500; backend test получил 500 вместо %PDF.",
+          "evidence": [
+            "BACKEND/app/services/export_service.py:97-109",
+            "BACKEND/app/api/export.py:23-33",
+            "BACKEND/requirements.txt:6-7",
+            "captures/20260930T163907183345-backend-test.stdout.log"
+          ],
+          "checkIds": [
+            "CHK-BACKEND-TEST",
+            "CHK-PDF-EXPORT"
+          ]
+        },
+        {
+          "id": "DEF-FRONT-BUILD",
+          "kind": "defect",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Vite/Tauri frontend не проходит объявленную TypeScript-сборку.",
+          "expected": "npm run build должен пройти typecheck и Vite build на чистом checkout.",
+          "actual": "tsc сообщил TS2345 в Processing из-за string status и TS2339 в api.ts из-за отсутствующей типовой декларации import.meta.env; Vite build не был достигнут.",
+          "evidence": [
+            "FRONT/src/App.tsx:6",
+            "FRONT/src/services/api.ts:1-3",
+            "FRONT/tsconfig.json:1",
+            "captures/20260930T164238616384-frontend-build.stdout.log"
+          ],
+          "checkIds": [
+            "CHK-FRONT-BUILD"
+          ]
+        },
+        {
+          "id": "DEF-REMINDERS",
+          "kind": "defect",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Сценарий автоматического напоминания о приближении или просрочке поручения отсутствует.",
+          "expected": "После нормализации deadline система должна иметь проверку срока и механизм уведомления ответственного/куратора.",
+          "actual": "Task хранит deadline/status, но проект не содержит scheduler, notification endpoint или фонового job; desktop лишь возвращает строку «Просрочено» при расчёте отображения.",
+          "evidence": [
+            "BACKEND/app/models/meeting.py:61-74",
+            "FRONT/python/desktop.py:35-42",
+            "BACKEND/app/api/tasks.py:9-32",
+            "cases/8/case-data/HackAlem AI_ Система автопротоколирования совещаний с фиксацией поручений.md:22-31"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "STR-ARCHITECTURE",
+          "kind": "strength",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Provider abstraction и слоистая backend-архитектура позволяют независимо развивать AI, persistence, API и export.",
+          "expected": "Для MVP компоненты должны иметь ясные границы и совместимый контракт результата.",
+          "actual": "Contracts, pipeline, model manager, services, repositories и API routers разделены; local/demo/openai выбираются в pipeline.",
+          "evidence": [
+            "BACKEND/app/ai/contracts.py:7-69",
+            "BACKEND/app/ai/pipelines/meeting.py:29-36,145-151",
+            "BACKEND/app/services/processing_service.py:10-14",
+            "BACKEND/app/repositories/meeting_repository.py:7-35"
+          ],
+          "checkIds": [
+            "CHK-SYNTAX"
+          ]
+        },
+        {
+          "id": "STR-DOMAIN-CONTRACT",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Основной демонстрационный CRUD/API-контракт от создания встречи до редактирования участника и сохранённого результата работает.",
+          "expected": "Локальное демо должно позволять создать, загрузить, обработать и получить структурированный протокол.",
+          "actual": "Backend test подтвердил home/health, create, upload, process, GET результата, PATCH participant; 3 теста и доменные проверки прошли.",
+          "evidence": [
+            "BACKEND/tests/test_api.py:9-41",
+            "captures/20260930T163907183345-backend-test.stdout.log",
+            "captures/20260930T164751429870-supplied-audio-demo-2.stdout.log"
+          ],
+          "checkIds": [
+            "CHK-START",
+            "CHK-SUPPLIED-AUDIO"
+          ]
+        },
+        {
+          "id": "STR-README",
+          "kind": "strength",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "README содержит воспроизводимый минимальный маршрут запуска и объясняет режимы, API, тесты и структуру MVP.",
+          "expected": "Проверяющий должен понимать, как запустить приложение и какой результат ожидать, без устной презентации.",
+          "actual": "Документация содержит команды, URL, env-переменные, режимы AI, API endpoints, тестовую команду и дерево ключевых модулей.",
+          "evidence": [
+            "README.md:6-23,25-63,80-114",
+            "BACKEND/README.md:3-22"
+          ],
+          "checkIds": [
+            "CHK-SYNTAX",
+            "CHK-START"
+          ]
+        },
+        {
+          "id": "LIM-NO-CREDENTIALS",
+          "kind": "limitation",
+          "verification": "unverified",
+          "responsibility": "review_environment",
+          "claim": "Внешний REAL AI вызов не наблюдался, потому что judging session не предоставляет API credentials.",
+          "expected": "Для полного наблюдения OpenAI integration нужен действующий внешний credential и доступ к сервису.",
+          "actual": "Проверены исходники и fake-client unit test; реальный сетевой inference не запускался.",
+          "evidence": [
+            "BACKEND/tests/test_ai_logic.py:28-68",
+            "api_requirements: credentialsProvided=false"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "LIM-NO-VISUAL",
+          "kind": "limitation",
+          "verification": "unverified",
+          "responsibility": "review_environment",
+          "claim": "Визуальное поведение интерфейсов не проверялось в рамках user-owned visual verification policy.",
+          "expected": "Визуальные детали должен проверить пользователь отдельно.",
+          "actual": "Оценены статические файлы, сборка и HTTP/API; браузеры, screenshots и UI automation не использовались.",
+          "evidence": [
+            "runtime check IDs CHK-START, CHK-FRONT-BUILD"
+          ],
+          "checkIds": []
+        }
+      ],
+      "gapFindingIds": [
+        "DEF-DEMO-AUDIO",
+        "DEF-CLOUD-POLICY",
+        "DEF-PDF-PORTABILITY",
+        "DEF-FRONT-BUILD",
+        "DEF-REMINDERS"
+      ]
+    }
+  ],
+  "score": 60.0,
+  "status": "complete",
+  "expectedJudges": 1
+}

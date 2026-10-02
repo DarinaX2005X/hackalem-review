@@ -1,0 +1,747 @@
+{
+  "methodVersion": 4,
+  "repoId": "hack-aa7e8423-grimstack",
+  "repoUrl": "https://github.com/BAITC-Hacks/hack-aa7e8423-grimstack",
+  "caseId": 5,
+  "snapshot": "18a48b9dfeb76f13e60b66ea1e5a286f79c5d26b",
+  "judges": [
+    {
+      "methodVersion": 4,
+      "repoId": "hack-aa7e8423-grimstack",
+      "caseId": 5,
+      "model": "GPT-5.6 Luna",
+      "snapshot": "18a48b9dfeb76f13e60b66ea1e5a286f79c5d26b",
+      "overallSummary": "GrimStack — сильный воспроизводимый прототип закупочного расчёта: на реальных выгрузках IEK и Systeme Electric он строит заказ по SKU, учитывает запас, ETA товара в пути, сезонность, тренд, stockout и разовые продажи, объясняет waterfall и оставляет утверждение менеджеру. Локальный HTTP-сценарий прошёл, фронтенд собрался, а 169 из 171 автотеста успешны. Итог 97/100; два небольших снятия подтверждены тестами: предупреждения не охватывают динамического поставщика, а загрузка полного набора занимает около 63 секунд при лимите 40 секунд.",
+      "global": {
+        "criteria": [
+          {
+            "name": "Ценность решения",
+            "score": 25,
+            "max": 25,
+            "awarded": "Полный балл: решение адресует конкретную операционную боль менеджера закупок и выдаёт полезный результат, близкий к рабочему процессу.",
+            "deductions": "Подтверждённых дефектов, уменьшающих ценность для заявленной аудитории, не установлено.",
+            "evidence": [
+              "README.md:47-69",
+              "cases/5/task.txt",
+              "check-http-run"
+            ],
+            "deductionItems": [],
+            "awardedDetails": [
+              {
+                "aspect": "Конкретная проблема закупок",
+                "implementation": "README связывает продукт с ручным расчётом пополнения в Excel, редкими заказами и искажением среднего разовыми крупными продажами. Приложение переводит менеджера от этой ручной операции к расчёту по SKU и поставщику.",
+                "value": "Польза понятна целевой аудитории: меньше ручной сверки, меньше риска заказать по единичному всплеску, единый список действий перед заказом.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:47-51",
+                  "cases/5/task.txt"
+                ]
+              },
+              {
+                "aspect": "Результат в терминах закупщика",
+                "implementation": "API возвращает строки с остатком, в пути, прогнозом, кратностью, рекомендованным и итоговым количеством, срочностью и суммой; поставщики агрегируются отдельно. Реальный прогон SE вернул 249 строк, 23 критичных позиции и сумму 36 108 635.33.",
+                "value": "Результат можно использовать как рабочий черновик заказа, а не только как абстрактный прогноз.",
+                "verification": "observed",
+                "evidence": [
+                  "app/contracts.py:45-83",
+                  "check-http-run"
+                ]
+              },
+              {
+                "aspect": "Снижение риска ошибочного решения",
+                "implementation": "Менеджер видит объяснение и компоненты количества, может изменить итог в пределах кратности, затем утверждает заказ; автоматической отправки нет.",
+                "value": "Решение сохраняет контроль человека над финансово значимым действием и делает основания рекомендации проверяемыми.",
+                "verification": "observed",
+                "evidence": [
+                  "app/api/routes.py:296-370",
+                  "check-http-workflow"
+                ]
+              },
+              {
+                "aspect": "Доказанная применимость к данным кейса",
+                "implementation": "Проект использует два формата выгрузок и реальные наборы IEK/SE, а не только маленький демонстрационный fixture. В прогоне найден демонстрационный SKU 030200193_ / IMT35150 с 37 800 в пути и рекомендацией 22 680 против Excel-метода 0.",
+                "value": "Связь с фактической задачей Электрокомплекта показана численно и воспроизводимо.",
+                "verification": "observed",
+                "evidence": [
+                  "tests/engine/test_real_data.py:120-130",
+                  "check-http-run",
+                  "check-xlsx-structure"
+                ]
+              }
+            ],
+            "scoreReasoning": "Ценность полностью подтверждается совпадением предметной боли, структуры входных данных и результата, который менеджер может проверить и утвердить. Известные ограничения — один склад, отсутствие идентификатора клиента в исходных выгрузках и отсутствие production-авторизации — не являются дефектом пятичасового прототипа и не уменьшают балл по этому критерию."
+          },
+          {
+            "name": "Результат и качество решения",
+            "score": 18,
+            "max": 20,
+            "awarded": "Основной сценарий целостен и реально отрабатывает, но два наблюдаемых дефекта удерживают результат от максимума.",
+            "deductions": "Снято 2 балла: 1 за неполное формирование предупреждений для динамического поставщика и 1 за превышение заявленного лимита времени загрузки полного набора.",
+            "evidence": [
+              "check-pytest",
+              "check-start",
+              "check-http-workflow",
+              "check-http-output"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "F-01",
+                "reason": "При добавлении поставщика через пользовательскую загрузку расчёт может работать, но supplier-specific предупреждение об оценочном остатке не формируется: код перебирает только статические IEK и SE. Это снижает полноту пользовательского результата для расширяемого сценария."
+              },
+              {
+                "points": 1,
+                "findingId": "F-02",
+                "reason": "Загрузка полного реального набора заняла 63.0 секунды при тестовом лимите 40 секунд; сервер стартовал за 67.63 секунды. Сценарий работает, но первая готовность к работе заметно медленнее заявленного quality budget."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Рабочий путь от старта до заказа",
+                "implementation": "После загрузки данных FastAPI создаёт Dataset, POST /api/runs вызывает engine.run, сохраняет прогон, а API отдаёт строки и KPI. В HTTP-проверке расчёт SE вернул 249 строк без NaN в проверяемом сценарии.",
+                "value": "Это целостный пользовательский результат, а не набор разрозненных функций.",
+                "verification": "observed",
+                "evidence": [
+                  "app/main.py:46-53",
+                  "app/api/routes.py:200-214",
+                  "check-http-run"
+                ]
+              },
+              {
+                "aspect": "Числовая прозрачность",
+                "implementation": "policy.py рассчитывает горизонт спроса, safety stock, net и округление по MOQ; explain.py формирует компоненты, сумма qty-компонентов равна рекомендации. Реальная и acceptance-проверки проверяют этот инвариант.",
+                "value": "Менеджер может разложить рекомендацию и понять влияние каждого источника данных.",
+                "verification": "source",
+                "evidence": [
+                  "app/engine/policy.py:55-86",
+                  "app/engine/explain.py:11-58",
+                  "tests/engine/test_acceptance.py:108-120",
+                  "tests/engine/test_real_data.py:43-62"
+                ]
+              },
+              {
+                "aspect": "Управляемость заказа",
+                "implementation": "PATCH проверяет неотрицательность, верхний предел и кратность; POST approval сохраняет строки в SQLite и после этого PATCH возвращает конфликт.",
+                "value": "Опасное изменение после подтверждения блокируется, а экспорт содержит уже утверждённый статус.",
+                "verification": "observed",
+                "evidence": [
+                  "app/api/routes.py:296-370",
+                  "check-http-workflow",
+                  "check-http-output"
+                ]
+              },
+              {
+                "aspect": "Оставшиеся эксплуатационные дефекты",
+                "implementation": "Полный pytest прогон на snapshot завершился 169 passed, 2 failed: тест динамического поставщика получил StopIteration при поиске его предупреждения, а test_load_default_under_budget измерил 63.0 секунды вместо менее 40.",
+                "value": "Дефекты локальны и не ломают основной расчёт, но они объективно уменьшают полноту расширяемого сценария и скорость первой готовности.",
+                "verification": "observed",
+                "evidence": [
+                  "captures/20261002T075756355737-test.stdout.log",
+                  "tests/engine/test_custom_supplier.py:69-76",
+                  "tests/engine/test_real_data.py:15-36"
+                ]
+              }
+            ],
+            "scoreReasoning": "18/20 отражает рабочий основной сценарий и высокий объём подтверждённой логики при двух конкретных проблемах. Ошибка динамического предупреждения не ломает заказ, а задержка загрузки не блокирует запуск, поэтому это не основание для резкого снижения; однако обе проблемы воспроизводимы и относятся к качеству сданного результата."
+          },
+          {
+            "name": "Инновационность",
+            "score": 15,
+            "max": 15,
+            "awarded": "Полный балл: для хакатонного прототипа есть собственный, обоснованный состав методов, а не только среднее продаж и вычитание остатка.",
+            "deductions": "Подтверждённых дефектов, обнуляющих заявленный нестандартный подход, не установлено.",
+            "evidence": [
+              "app/engine/cleaning.py:15-68",
+              "app/engine/stockout.py:9-52",
+              "app/engine/forecast.py:84-143",
+              "tests/engine/test_acceptance.py:24-98"
+            ],
+            "deductionItems": [],
+            "awardedDetails": [
+              {
+                "aspect": "Очистка разовых и паллетных продаж",
+                "implementation": "cleaning.py исключает из статистики SE-паллеты по MOQ и выявляет B/U-строки по медиане, квартилям, числу строк и месяцам; излишек заменяется типичным объёмом, а проектные документы помечаются.",
+                "value": "Это непосредственно отвечает на центральную боль кейса — единичная крупная закупка не должна раздувать регулярную потребность.",
+                "verification": "source",
+                "evidence": [
+                  "app/engine/cleaning.py:15-68",
+                  "tests/engine/test_acceptance.py:84-98",
+                  "tests/engine/test_real_data.py:133-149"
+                ]
+              },
+              {
+                "aspect": "Восстановление спроса при stockout",
+                "implementation": "stockout.py определяет full/start/end/effective дефицит по открытию и закрытию месяца, учитывает долю рабочих дней и восстанавливает спрос на базе предыдущих доступных месяцев с верхним ограничением.",
+                "value": "Подход не принимает нулевые продажи в дефицитный месяц за нулевой спрос, что является содержательной особенностью относительно простого среднего.",
+                "verification": "source",
+                "evidence": [
+                  "app/engine/stockout.py:26-52",
+                  "tests/engine/test_acceptance.py:60-82"
+                ]
+              },
+              {
+                "aspect": "Сезонность, сегментация и устойчивый тренд",
+                "implementation": "forecast.py строит профиль по группе и при длинной согласованной истории смешивает его с профилем SKU; тренд сравнивает последние шесть месяцев с теми же месяцами прошлого года, ограничивает коэффициент и отключает его для intermittent/lumpy.",
+                "value": "Прогноз адаптируется к разным типам спроса и не выдаёт одинаковое плоское среднее всем товарам.",
+                "verification": "source",
+                "evidence": [
+                  "app/engine/forecast.py:84-143",
+                  "tests/engine/test_acceptance.py:41-57",
+                  "tests/engine/test_real_data.py:98-113"
+                ]
+              },
+              {
+                "aspect": "Сценарное сравнение и объяснимый waterfall",
+                "implementation": "Система параллельно считает analyze и baseline, показывает отличие от Excel-метода, а API compare строит delta по количеству, срочности и сумме. Компоненты ответа разделены на info, factor и qty.",
+                "value": "Нестандартность не скрыта за одной моделью: менеджер может сопоставить метод команды с привычным Excel-ориентиром и увидеть причины.",
+                "verification": "source",
+                "evidence": [
+                  "app/engine/pipeline.py:194-204",
+                  "app/api/routes.py:217-282",
+                  "app/contracts.py:28-43",
+                  "check-http-run"
+                ]
+              }
+            ],
+            "scoreReasoning": "Инновационность здесь оценивается относительно пятичасового кейсового MVP, а не как исследовательская новизна. Комбинация очистки транзакций, восстановления censored demand, профильной сезонности, тренда, policy по горизонту и объяснения результата образует самостоятельный подход и подтверждена acceptance-тестами."
+          },
+          {
+            "name": "Потенциал развития и масштабирования",
+            "score": 19,
+            "max": 20,
+            "awarded": "Почти полный балл: архитектура разделяет ingest, engine, API и frontend и допускает новые загрузки, поставщиков и сценарии; один подтверждённый дефект уменьшает готовность именно динамического расширения.",
+            "deductions": "Снято 1 балл за F-01: путь custom supplier предусмотрен, но supplier-specific предупреждения пока привязаны к статическим кодам.",
+            "evidence": [
+              "app/ingest/__init__.py:73-101",
+              "app/ingest/dataset.py:31-51",
+              "app/api/routes.py:498-556",
+              "README.md:235-247"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "F-01",
+                "reason": "Механизм добавления нового поставщика есть, но предупреждения не используют тот же metadata-driven список поставщиков. Это конкретный разрыв между расширяемой архитектурой и полнотой результата при масштабировании."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Расширяемый слой загрузки",
+                "implementation": "load_uploaded принимает роли файлов, проверяет обязательные роли и передаёт данные одному из шаблонных loaders; upload_new_supplier создаёт код поставщика, переименовывает весь Dataset и сохраняет template, lead time и review period в metadata.",
+                "value": "Новые выгрузки можно подключать без переписывания ядра расчёта, если они соответствуют одному из поддержанных форматов.",
+                "verification": "source",
+                "evidence": [
+                  "app/ingest/__init__.py:73-101",
+                  "app/ingest/dataset.py:31-51",
+                  "app/api/routes.py:498-556"
+                ]
+              },
+              {
+                "aspect": "Переиспользуемое ядро и контракты",
+                "implementation": "Dataset использует единый MultiIndex supplier/sku, pipeline принимает параметры срока, периода проверки, категории, метода и роста, а Pydantic-контракты зеркалятся в frontend API types.",
+                "value": "Переход от двух исходных поставщиков к нескольким сценариям не требует дублировать формулы.",
+                "verification": "source",
+                "evidence": [
+                  "app/ingest/dataset.py:13-28",
+                  "app/engine/pipeline.py:152-204",
+                  "app/contracts.py:17-27",
+                  "frontend/src/api/types.ts:1-80"
+                ]
+              },
+              {
+                "aspect": "Практические точки интеграции",
+                "implementation": "Есть JSON API, история SKU, compare endpoint, XLSX-экспорт для 1С и SQLite-история утверждений; LLM-слой получает уже посчитанные цифры, а не владеет расчётом.",
+                "value": "Прототип можно развивать в сторону планового запуска, интеграции с 1С и аудита решений без перестройки числового ядра.",
+                "verification": "source",
+                "evidence": [
+                  "app/api/routes.py:217-282",
+                  "app/api/routes.py:382-470",
+                  "app/api/routes.py:561-578",
+                  "app/ai/llm.py:1-5",
+                  "app/store.py:18-29"
+                ]
+              },
+              {
+                "aspect": "Проверка переносимости метода",
+                "implementation": "В репозитории есть бэктест с шестью временными точками, защитой от утечки будущего и сравнением с baseline; тесты отдельно проверяют truncate_dataset и реальные данные.",
+                "value": "Команда заложила основу для последующей калибровки на новых периодах и поставщиках, а не ограничилась одним красивым примером.",
+                "verification": "source",
+                "evidence": [
+                  "tests/engine/test_backtest.py:55-109",
+                  "README.md:231-233",
+                  "GET /api/backtest via check-http-output"
+                ]
+              }
+            ],
+            "scoreReasoning": "19/20 учитывает зрелую модульную основу и реальные точки расширения. Снижение относится только к F-01: добавление поставщика технически предусмотрено, но часть предупреждений всё ещё зашита на IEK/SE. Отсутствие аккаунтов, распределённой БД и универсального формата 1С оставлено как ограничение MVP, а не как штраф за production-функции вне кейса."
+          },
+          {
+            "name": "Презентация, демо и ответы на вопросы",
+            "score": 20,
+            "max": 20,
+            "awarded": "Полный балл за ясный README, воспроизводимые команды и конкретный локальный демо-сценарий; устной презентации и live URL не было, поэтому они не трактовались как обязательные доказательства.",
+            "deductions": "Подтверждённых дефектов публичного объяснения или воспроизводимого локального демо не установлено.",
+            "evidence": [
+              "README.md:47-69",
+              "README.md:130-205",
+              "docs/design.md:486-500",
+              "check-build",
+              "check-http-output"
+            ],
+            "deductionItems": [],
+            "awardedDetails": [
+              {
+                "aspect": "README ведёт к результату",
+                "implementation": "README описывает проблему, архитектуру, алгоритм, роли файлов, быстрый старт, команды тестов, API-коды ошибок и пошаговый сценарий с конкретным SKU 030200193_ / IMT35150.",
+                "value": "Участник или проверяющий понимает, что запускать и какое число искать, без устного сопровождения.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:47-69",
+                  "README.md:130-205"
+                ]
+              },
+              {
+                "aspect": "Демо опирается на конкретные цифры",
+                "implementation": "В инструкции заданы 37 800 в пути, рекомендация 22 680, baseline 0, ручная правка 26 460 и блокировка после утверждения. HTTP-проверка подтвердила эти числа и состояния.",
+                "value": "Описание не ограничивается маркетинговыми формулировками и связывает UI-сценарий с API-результатом.",
+                "verification": "observed",
+                "evidence": [
+                  "README.md:187-205",
+                  "check-http-run",
+                  "check-http-workflow"
+                ]
+              },
+              {
+                "aspect": "Объяснение компромиссов",
+                "implementation": "README отдельно описывает оценочный остаток IEK, отсутствие client ID, ограничения 2024 года, отсутствие публичного deployment и поведение LLM без ключа.",
+                "value": "Пользователь получает честные границы применимости и не принимает прогноз за финансовую гарантию.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:235-260",
+                  "docs/design.md:501-519"
+                ]
+              },
+              {
+                "aspect": "Сборка и локальная воспроизводимость",
+                "implementation": "npm ci и npm run build завершились с exit code 0; FastAPI стартовал, /health и основной расчёт ответили успешно, экспорт сформировал XLSX.",
+                "value": "Сценарий демо подтверждён репозиторием и HTTP-проверкой без подмены реального API mock-ответом.",
+                "verification": "observed",
+                "evidence": [
+                  "captures/20261002T080421213872-build.stdout.log",
+                  "check-start",
+                  "check-http-output"
+                ]
+              }
+            ],
+            "scoreReasoning": "20/20 соответствует правилам этого разбора: оценивается README и воспроизводимое локальное демо, а не отсутствовавшее выступление. Визуальная часть интерфейса намеренно не проверялась, но API-результат, сборка и инструкции достаточно конкретны, чтобы обосновать полный балл."
+          }
+        ],
+        "total": 97
+      },
+      "case": null,
+      "judgeScore": 97,
+      "caseRequirements": [
+        {
+          "requirement": "Расчёт заказа по истории продаж, текущему остатку, товарам в пути, категории и прогнозу прироста",
+          "status": "met",
+          "explanation": "Pipeline строит единый Dataset, учитывает все перечисленные источники, применяет категориальный service level и параметр growth_pct, затем формирует рекомендованное количество по SKU.",
+          "evidence": [
+            "app/engine/pipeline.py:68-107",
+            "app/engine/pipeline.py:172-190",
+            "app/engine/policy.py:55-86",
+            "check-http-run"
+          ]
+        },
+        {
+          "requirement": "Сезонность и устойчивый рост должны отражаться в прогнозе",
+          "status": "met",
+          "explanation": "Сезонность строится по группе с возможным смешением профиля SKU, тренд сравнивает одинаковые месяцы год к году и ограничивается; acceptance и реальные данные проверяют пик/спад и trend_up.",
+          "evidence": [
+            "app/engine/forecast.py:84-143",
+            "tests/engine/test_acceptance.py:41-57",
+            "tests/engine/test_real_data.py:98-113"
+          ]
+        },
+        {
+          "requirement": "Компенсировать потерянный спрос при stockout",
+          "status": "met",
+          "explanation": "Stockout классифицируется по остаткам и доле дней в наличии, восстановленный спрос включается в demand и помечается в строке заказа.",
+          "evidence": [
+            "app/engine/stockout.py:26-52",
+            "tests/engine/test_acceptance.py:70-82",
+            "tests/engine/test_real_data.py:87-95"
+          ]
+        },
+        {
+          "requirement": "Убирать разовые крупные покупки, включая случай одного клиента",
+          "status": "partial",
+          "explanation": "Крупные строки выявляются по транзакциям и документу-накладной, заменяются медианой и исключаются из месячного спроса; в предоставленных данных нет client/customer-поля, поэтому один клиент реализован только как proxy одного документа и не может быть подтверждён на уровне клиента.",
+          "evidence": [
+            "app/engine/cleaning.py:30-68",
+            "app/ingest/common.py:56-73",
+            "README.md:244-245",
+            "tests/engine/test_real_data.py:133-139"
+          ]
+        },
+        {
+          "requirement": "Выводить количество с объяснением и группировкой по поставщикам",
+          "status": "met",
+          "explanation": "Каждая OrderLine содержит explanation и components, а _suppliers_summary агрегирует строки и суммы по supplier; реальный HTTP-прогон вернул строки по SE с объяснением и waterfall.",
+          "evidence": [
+            "app/engine/pipeline.py:248-343",
+            "app/engine/pipeline.py:358-370",
+            "check-http-run"
+          ]
+        },
+        {
+          "requirement": "Не отправлять заказ без ручного подтверждения",
+          "status": "met",
+          "explanation": "Экспорт и approval являются отдельными действиями, approve сохраняет подтверждение, а после approval изменение строки получает 409; автоматического outbound-вызова поставщику в коде нет.",
+          "evidence": [
+            "app/api/routes.py:339-370",
+            "app/api/routes.py:382-470",
+            "check-http-workflow"
+          ]
+        },
+        {
+          "requirement": "Обезличить клиентские данные",
+          "status": "met",
+          "explanation": "В транзакционный Dataset попадает укороченный SHA-1 хэш документа, а отдельного customer ID в модели нет; исходный идентификатор клиента не выдаётся в API или экспорт.",
+          "evidence": [
+            "app/ingest/common.py:32-33",
+            "app/ingest/common.py:53-73",
+            "app/contracts.py:106-124"
+          ]
+        },
+        {
+          "requirement": "Проверить чувствительность к товарам в пути, сезонности, stockout и выбросу",
+          "status": "met",
+          "explanation": "Acceptance-тесты меняют in_transit, stockout, сезонный профиль и one-off; реальные тесты отдельно проверяют SKU 030200193_, 130300792_, 010300096_ и 010500008_. HTTP-проверка воспроизвела демонстрацию товара в пути.",
+          "evidence": [
+            "tests/engine/test_acceptance.py:24-98",
+            "tests/engine/test_real_data.py:78-149",
+            "check-http-run",
+            "check-pytest"
+          ]
+        }
+      ],
+      "testData": {
+        "provided": [
+          "cases/5/case-data/HackAlem AI_ Автоматизация формирования заказов поставщикам.docx.md",
+          "cases/5/case-data/IEK/MOQ  ИЭК.xlsx",
+          "cases/5/case-data/IEK/Динамика продаж_2025-2026.xlsx",
+          "cases/5/case-data/IEK/Ежемесячные остатки продукции за последние 2 года  ИЭК.xlsx",
+          "cases/5/case-data/IEK/Ежемесячные продажи в количественном выражении за последние 2 года.xlsx",
+          "cases/5/case-data/IEK/Путь ИЭК 22.09.2026.xlsx",
+          "cases/5/case-data/IEK/Сезонность ИЭК.xlsx",
+          "cases/5/case-data/Systeme electric/MOQ SystemElectric.xlsx",
+          "cases/5/case-data/Systeme electric/Динамика продаж_Syseme Electric_2025-2026.xlsx",
+          "cases/5/case-data/Systeme electric/Ежемесячные остатки SystemElectric 2024-2026.xlsx",
+          "cases/5/case-data/Systeme electric/Ежемесячные продажи в кол-м выражении SystemElectric 2024-2026.xlsx",
+          "cases/5/case-data/Systeme electric/Сезонность SystemElectric 2024-2026.xlsx",
+          "cases/5/case-data/Systeme electric/Товар в пути_SystemElectric на 22.09.2026.xlsx"
+        ],
+        "used": [
+          "cases/5/case-data/IEK/MOQ  ИЭК.xlsx → data/raw/iek/moq.xlsx",
+          "cases/5/case-data/IEK/Динамика продаж_2025-2026.xlsx → data/raw/iek/sales_tx.xlsx",
+          "cases/5/case-data/IEK/Ежемесячные остатки продукции за последние 2 года  ИЭК.xlsx → data/raw/iek/monthly_stock.xlsx",
+          "cases/5/case-data/IEK/Ежемесячные продажи в количественном выражении за последние 2 года.xlsx → data/raw/iek/monthly_sales.xlsx",
+          "cases/5/case-data/IEK/Путь ИЭК 22.09.2026.xlsx → data/raw/iek/in_transit.xlsx",
+          "cases/5/case-data/IEK/Сезонность ИЭК.xlsx → data/raw/iek/seasonality.xlsx",
+          "cases/5/case-data/Systeme electric/MOQ SystemElectric.xlsx → data/raw/se/moq.xlsx",
+          "cases/5/case-data/Systeme electric/Динамика продаж_Syseme Electric_2025-2026.xlsx → data/raw/se/sales_tx.xlsx",
+          "cases/5/case-data/Systeme electric/Ежемесячные остатки SystemElectric 2024-2026.xlsx → data/raw/se/monthly_stock.xlsx",
+          "cases/5/case-data/Systeme electric/Ежемесячные продажи в кол-м выражении SystemElectric 2024-2026.xlsx → data/raw/se/monthly_sales.xlsx",
+          "cases/5/case-data/Systeme electric/Сезонность SystemElectric 2024-2026.xlsx → data/raw/se/seasonality.xlsx",
+          "cases/5/case-data/Systeme electric/Товар в пути_SystemElectric на 22.09.2026.xlsx → data/raw/se/in_transit.xlsx"
+        ],
+        "checks": [
+          {
+            "input": "12 XLSX из cases/5/case-data; проверены ZIP/XML-структура, листы и диапазоны без публикации строк датасета.",
+            "method": "Открытие всех книг и чтение workbook.xml/worksheet dimension; затем сопоставление ролей с data/raw и загрузчиками IEK/SE.",
+            "result": "Открыты все 12 XLSX: IEK — листы Лист7, Лист_1, Лист_1, Лист_1, Лист4, Сезонность; SE — Лист_1, Лист_1, Лист_1, Лист_1+Лист1, Лист1, TDSheet+Лист1. Диапазоны соответствуют заявленным выгрузкам.",
+            "conclusion": "Тестовые материалы пригодны для применения; проект использует их нормализованные роли в data/raw."
+          },
+          {
+            "input": "data/raw/iek и data/raw/se, дата среза 2026-09-22.",
+            "method": "pytest -q, включая ingest, acceptance, real-data, API и backtest тесты.",
+            "result": "169 passed, 2 failed, 46 warnings за 536.56 секунды. Провалены только test_ai_warning_is_scoped_to_dynamic_supplier (StopIteration) и test_load_default_under_budget (63.0s > 40s).",
+            "conclusion": "Основные формулы и реальные demo-SKU проверены; два подтверждённых дефекта вынесены в F-01 и F-02."
+          },
+          {
+            "input": "Systeme Electric, SKU 030200193_ / артикул IMT35150, supplier=SE.",
+            "method": "POST /api/runs с supplier=SE и анализ JSON OrderLine.",
+            "result": "HTTP 200; 249 строк; in_transit=37800, recommended_qty=22680, baseline_qty=0, moq=3780; components и explanation присутствуют.",
+            "conclusion": "Чувствительность к товару в пути и сравнение с baseline воспроизведены на данных кейса."
+          },
+          {
+            "input": "Созданный SE-прогон и строка IMT35150.",
+            "method": "PATCH количества → POST approval → повторный PATCH; затем summary, history и export.xlsx.",
+            "result": "PATCH 200 с 26460; approval 200 approved; повторный PATCH 409 conflict; summary 200 cached=true; history 200 с 32 месяцами; export 200 XLSX, 30529 байт.",
+            "conclusion": "Ручная управляемость, блокировка после подтверждения, кэшированная сводка и экспорт реально работают."
+          }
+        ],
+        "limitations": [
+          "В кейсовых XLSX нет client/customer-поля; проверка one-client сделана только через обезличенный документ-накладную.",
+          "Визуальная проверка интерфейса не выполнялась по правилам задания; оценены сборка, HTTP/API и исходники.",
+          "OPENAI_API_KEY намеренно не предоставлялся; проверена кэшированная сводка для штатного прогона, живой внешний вызов не заявляется.",
+          "Среда ревью использовала Python 3.10.11 и Node 22.13.0, тогда как README рекомендует Python 3.12+ и Node 24+; приложение и сборка при этом успешно отработали."
+        ]
+      },
+      "runtime": {
+        "status": "working",
+        "build": "Успешно: npm ci и npm run build --prefix frontend, TypeScript и Vite завершились с exit code 0; Vite обработал 4694 модуля и собрал frontend/dist.",
+        "start": "Успешно: python -m app загрузил встроенные IEK/SE данные за 67.63 секунды, сообщил Application startup complete и принял HTTP-запросы.",
+        "scenario": "Основной сценарий воспроизведён: health/meta, расчёт SE, поиск demo-SKU, ручная правка, approval, блокировка правки, history, cached summary и XLSX export.",
+        "environment": "Локальный запуск без API-ключей; Python 3.10.11, FastAPI 0.139.0, pandas 2.3.0, NumPy 1.26.4, openpyxl 3.1.5; версии окружения отличаются от части pinned requirements, поэтому точный Python 3.12/pandas 3.0 прогон не заявляется.",
+        "summary": "Приложение работает и выдаёт содержательный результат на реальных данных кейса. Слабые места — медленная первичная загрузка полного набора и отсутствие предупреждения для динамического поставщика; оба отражены как project defects, а не как ограничения среды.",
+        "checks": [
+          {
+            "command": "npm ci --prefix frontend; npm run build --prefix frontend",
+            "result": "exit code 0; добавлено 207 пакетов, найдено 0 npm vulnerabilities; TypeScript и Vite build завершены.",
+            "id": "check-build",
+            "stage": "build",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Собранный frontend/dist без ошибок."
+          },
+          {
+            "command": "python -m app",
+            "result": "exit code процесса после штатной остановки; startup complete, Uvicorn начал слушать приложение после загрузки данных за 67.63s.",
+            "id": "check-start",
+            "stage": "start",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Сервис запускается, загружает встроенные данные и отвечает после startup complete."
+          },
+          {
+            "command": "GET /health",
+            "result": "HTTP 200, {\"status\":\"ok\"}.",
+            "id": "check-http-health",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Доступность API после загрузки исходных данных."
+          },
+          {
+            "command": "GET /api/meta; POST /api/runs (supplier=SE)",
+            "result": "GET meta HTTP 200 с IEK и SE; POST run HTTP 200, 249 строк, KPI lines_to_order=249, critical=23.",
+            "id": "check-http-run",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Метаданные и расчёт по одному поставщику возвращают валидный JSON с поставщиком, строками и KPI."
+          },
+          {
+            "command": "PATCH /api/runs/{run_id}/lines/{line_id}; POST /api/runs/{run_id}/suppliers/SE/approve; повторный PATCH",
+            "result": "Для IMT35150 PATCH 200 установил 26460; approval HTTP 200 со статусом approved; повторный PATCH HTTP 409 conflict.",
+            "id": "check-http-workflow",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "До подтверждения количество меняется с проверкой, после подтверждения изменение блокируется."
+          },
+          {
+            "command": "POST /api/runs/{run_id}/summary?supplier=SE; GET /api/runs/{run_id}/export.xlsx?supplier=SE; GET /api/sku/SE/030200193_/history",
+            "result": "Summary HTTP 200 cached=true; history HTTP 200 с 32 месяцами; export HTTP 200 с XLSX content type и 30529 байтами.",
+            "id": "check-http-output",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Кэшированная сводка, история SKU и файл экспорта доступны без внешнего API-ключа."
+          },
+          {
+            "command": "python -m pytest -q",
+            "result": "169 passed, 2 failed, 46 warnings за 536.56s; F-01: StopIteration в test_ai_warning_is_scoped_to_dynamic_supplier; F-02: load_default=63.0s при лимите 40s.",
+            "id": "check-pytest",
+            "stage": "scenario",
+            "status": "fail",
+            "cause": "project",
+            "expected": "Все репозиторные unit/domain/API/real-data/backtest тесты проходят, а загрузка default dataset укладывается в 40 секунд."
+          }
+        ],
+        "limitations": [
+          "Визуальная работа UI не проверялась; это пользовательская часть верификации.",
+          "Живой OpenAI-compatible вызов не выполнялся без предоставленного ключа; штатный cached summary проверен.",
+          "Точный заявленный стек Python 3.12+/pandas 3.0 не воспроизводился в среде ревью."
+        ]
+      },
+      "liveDemo": {
+        "status": "none",
+        "url": null,
+        "notes": "Публичной live-ссылки в репозитории нет. Это не снижает балл: локальное HTTP/API демо воспроизведено, а визуальная проверка намеренно оставлена пользователю."
+      },
+      "fiveHourContext": "Для пятичасового MVP объём реализации высокий: два загрузчика 1С, единое ядро расчёта, очистка транзакций, stockout, сезонность, тренд, baseline, объяснения, compare, API, экспорт, approval, кэшированные AI-сводки, реальный бэктест и тесты. Оценка не требует от проекта авторизации, распределённого хранилища, универсального формата всех 1С и production deployment. Снятия ограничены двумя фактическими дефектами, которые проявились в собственных тестах.",
+      "strengths": [
+        "Реальный data-to-order pipeline для IEK и Systeme Electric с проверяемым waterfall.",
+        "Содержательная обработка outlier, stockout, сезонности, тренда и товара в пути, подтверждённая acceptance и real-data тестами.",
+        "Безопасный для закупщика workflow: ручное изменение, явное утверждение, блокировка после approval и XLSX для 1С.",
+        "Сильная воспроизводимость: README с конкретными числами, API-документация, backtest report и 169 успешных тестов.",
+        "LLM ограничен пересказом уже рассчитанных чисел и не становится источником закупочного количества."
+      ],
+      "gaps": [
+        "F-01: app/engine/pipeline.py:388-393 перебирает только статический SUPPLIERS, поэтому при custom supplier из metadata не создаётся supplier-specific предупреждение об оценочном остатке; это подтверждено падением test_ai_warning_is_scoped_to_dynamic_supplier.",
+        "F-02: загрузка полного набора в test_load_default_under_budget заняла 63.0 секунды при ожидаемых менее 40 секунд; HTTP startup сообщил 67.63 секунды. Основной сценарий после старта работает, но performance budget нарушен."
+      ],
+      "futureAdvice": [
+        {
+          "principle": "Все пользовательские расширения должны использовать один источник конфигурации",
+          "why": "F-01 показывает рассинхронизацию: custom supplier сохраняется в metadata и участвует в расчёте, но _warnings перебирает только статические коды. В итоге менеджер может не увидеть важное предупреждение именно для добавленного поставщика.",
+          "how": "В следующем хакатоне получать список поставщиков из suppliers_for_dataset(ds) внутри формирования предупреждений, отдельно проверять prefix для каждого dynamic code и добавить один маленький acceptance-сценарий с custom supplier до полировки UI.",
+          "findingIds": [
+            "F-01"
+          ],
+          "successCheck": "Тест с новым supplier code получает собственное предупреждение, а сводка другого поставщика его не содержит; встроенные IEK/SE тесты остаются зелёными.",
+          "timeboxMinutes": 30
+        },
+        {
+          "principle": "Измеряйте latency главного пути на реальном объёме до финальной демонстрации",
+          "why": "F-02 показывает, что чтение и подготовка 12-месячных/транзакционных выгрузок занимает 63 секунды при лимите 40 секунд; это влияет на первое впечатление и повторный запуск.",
+          "how": "В другом кейсе сначала профилировать чтение XLSX и преобразования по поставщику, затем кэшировать неизменяемую нормализацию или прогревать её один раз; после каждой оптимизации повторять тот же benchmark на полном наборе и оставить лимит в тесте.",
+          "findingIds": [
+            "F-02"
+          ],
+          "successCheck": "load_default на полном наборе стабильно ниже 40 секунд, а HTTP startup и результат расчёта остаются неизменными.",
+          "timeboxMinutes": 45
+        }
+      ],
+      "uncertainties": [
+        "Визуальное соответствие UI, графиков и состояний кнопок не проверялось: это явно оставлено пользовательской проверке.",
+        "Живой внешний LLM-provider не проверялся без credentials; по исходникам подтверждены вход facts, вызов OpenAI-compatible API, обработка исключения и cache fallback.",
+        "Проверка точного Python 3.12/pandas 3.0 окружения не выполнена; успешный runtime относится к доступному Python 3.10 окружению.",
+        "Клиентский уровень one-off нельзя подтвердить из предоставленных таблиц, поскольку в них нет customer ID."
+      ],
+      "reviewPolicyVersion": 2,
+      "assessmentStatus": "ready",
+      "findings": [
+        {
+          "id": "F-01",
+          "kind": "defect",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Предупреждение об оценочном остатке не формируется для динамически добавленного поставщика.",
+          "expected": "Custom supplier, сохранённый в Dataset metadata, должен получать собственное supplier-specific предупреждение, а сводка другого поставщика не должна его наследовать.",
+          "actual": "В тесте custom supplier с source=estimate_lower_bound поиск предупреждения с префиксом CUSTOM_a1b2c3d4 завершился StopIteration. Код _warnings перебирает только SUPPLIERS, то есть статические IEK и SE.",
+          "evidence": [
+            "app/engine/pipeline.py:384-397",
+            "tests/engine/test_custom_supplier.py:69-76",
+            "captures/20261002T075756355737-test.stdout.log"
+          ],
+          "checkIds": [
+            "check-pytest"
+          ]
+        },
+        {
+          "id": "F-02",
+          "kind": "defect",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Первичная загрузка полного набора данных превышает заложенный performance budget.",
+          "expected": "test_load_default_under_budget ожидает ingest.load_default менее 40 секунд на реальных data/raw выгрузках.",
+          "actual": "Полный pytest измерил 63.0 секунды; отдельный запуск сервера сообщил «Данные загружены за 67.63 с».",
+          "evidence": [
+            "tests/engine/test_real_data.py:15-36",
+            "captures/20261002T075756355737-test.stdout.log",
+            "check-start"
+          ],
+          "checkIds": [
+            "check-pytest",
+            "check-start"
+          ]
+        },
+        {
+          "id": "S-01",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Основной расчётный и управляемый HTTP-сценарий воспроизводится на реальных SE данных.",
+          "expected": "Сервис должен запустить расчёт, выдать объяснимую строку, принять правку до approval и заблокировать её после approval.",
+          "actual": "POST /api/runs вернул 249 строк; для 030200193_ получены 37800 в пути, 22680 рекомендация, explanation и components; PATCH дал 200, approval 200, повторный PATCH 409.",
+          "evidence": [
+            "check-http-run",
+            "check-http-workflow",
+            "app/api/routes.py:296-370"
+          ],
+          "checkIds": [
+            "check-http-run",
+            "check-http-workflow"
+          ]
+        },
+        {
+          "id": "S-02",
+          "kind": "strength",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Ядро объединяет несколько релевантных сигналов в объяснимый расчёт, а не только усредняет продажи.",
+          "expected": "Изменения товара в пути, сезонности, stockout, выброса и роста должны иметь отдельную обработку и отражаться в результате.",
+          "actual": "cleaning, stockout, forecast, policy и explain разделены по модулям; acceptance и real-data тесты покрывают каждый сценарий.",
+          "evidence": [
+            "app/engine/cleaning.py:30-68",
+            "app/engine/stockout.py:9-52",
+            "app/engine/forecast.py:84-143",
+            "app/engine/policy.py:55-86",
+            "tests/engine/test_acceptance.py:24-98"
+          ],
+          "checkIds": [
+            "check-pytest"
+          ]
+        },
+        {
+          "id": "S-03",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Результат можно передать в закупочный процесс через историю, сводку и XLSX.",
+          "expected": "После расчёта должны быть доступны история SKU, сводка без обязательного live key при наличии cache и выгрузка для 1С.",
+          "actual": "History HTTP 200 с 32 месяцами, summary HTTP 200 cached=true, export HTTP 200 с XLSX content type и 30529 байтами.",
+          "evidence": [
+            "check-http-output",
+            "app/api/routes.py:382-470",
+            "app/api/routes.py:561-578"
+          ],
+          "checkIds": [
+            "check-http-output"
+          ]
+        },
+        {
+          "id": "L-01",
+          "kind": "limitation",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "На уровне предоставленных входов one-client анализ заменён proxy одного документа, а не идентификатором клиента.",
+          "expected": "Для строгой проверки сценария одного клиента нужен обезличенный, но стабильный customer key в транзакциях.",
+          "actual": "В Dataset есть supplier, sku, date, doc, qty; doc хэшируется, отдельного customer/client поля нет. README это прямо описывает.",
+          "evidence": [
+            "app/ingest/common.py:32-33",
+            "app/ingest/common.py:53-73",
+            "README.md:244-245"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "L-02",
+          "kind": "limitation",
+          "verification": "unverified",
+          "responsibility": "review_environment",
+          "claim": "Живой OpenAI-compatible summary provider и визуальные состояния UI не подтверждены этим ревью.",
+          "expected": "Для внешней сводки нужен credentials, а визуальная проверка должна выполняться пользователем.",
+          "actual": "Ключ намеренно не предоставлен; штатная cached summary проверена, UI визуально не инспектировался.",
+          "evidence": [
+            "app/ai/llm.py:99-133",
+            "check-http-output"
+          ],
+          "checkIds": [
+            "check-http-output"
+          ]
+        }
+      ],
+      "gapFindingIds": [
+        "F-01",
+        "F-02"
+      ]
+    }
+  ],
+  "score": 97.0,
+  "status": "complete",
+  "expectedJudges": 1
+}

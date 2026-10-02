@@ -1,0 +1,863 @@
+{
+  "methodVersion": 4,
+  "repoId": "hack-801b451b-atlas",
+  "repoUrl": "https://github.com/BAITC-Hacks/hack-801b451b-atlas",
+  "caseId": 5,
+  "snapshot": "9718f04e84299f0f5ac76a026d89fcaab7f1f5dd",
+  "judges": [
+    {
+      "methodVersion": 4,
+      "repoId": "hack-801b451b-atlas",
+      "caseId": 5,
+      "model": "GPT-5.6 Luna",
+      "snapshot": "9718f04e84299f0f5ac76a026d89fcaab7f1f5dd",
+      "overallSummary": "Atlas — сильный, воспроизводимый прототип расчёта пополнения: backend детерминированно учитывает историю, сезонность, тренд, рост, stockout, остатки, входящие поставки и аномальные продажи, а workflow сохраняет черновик, ревизии, ручное утверждение и CSV. Сборка, запуск, HTTP-сценарий и пакетные тесты прошли в degraded-режиме без внешних ключей. Главный подтверждённый разрыв с кейсом — предоставленные Excel-выгрузки не являются входом приложения: UI и API принимают только нормализованный JSON, поэтому на реальных таблицах партнёра расчёт не воспроизведён. Совместимость CSV с 1С также честно оставлена неподтверждённой.",
+      "global": {
+        "criteria": [
+          {
+            "name": "Ценность решения",
+            "score": 22,
+            "max": 25,
+            "awarded": "Да — решение адресует конкретную операционную проблему закупщика и даёт полезный результат с объяснением и обязательной ручной проверкой.",
+            "deductions": "Снято 3 балла за то, что путь от предоставленных партнёрских таблиц к расчёту не реализован: практическая ценность на реальных выгрузках пока не доказана.",
+            "evidence": [
+              "README.md:3-15",
+              "cases/5/case-data/HackAlem AI_ Автоматизация формирования заказов поставщикам.docx.md:3-10",
+              "DEF-001"
+            ],
+            "deductionItems": [
+              {
+                "points": 3,
+                "findingId": "DEF-001",
+                "reason": "Ценность для менеджера понятна, но предоставленные XLSX не загружаются и не преобразуются самим продуктом; на их фактических строках список заказов не получен."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Понятная задача закупщика",
+                "implementation": "README формулирует сценарий подготовки, проверки и утверждения пополнения, а поток разделён на данные, анализ, расчёт, ревизию и CSV. Целевая роль — менеджер по закупкам, что совпадает с кейсом.",
+                "value": "Пользователь получает не общий чат или совет, а операционный черновик заказа, который можно проверить и исправить перед фиксацией.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:3-15",
+                  "cases/5/case-data/HackAlem AI_ Автоматизация формирования заказов поставщикам.docx.md:5-10"
+                ]
+              },
+              {
+                "aspect": "Снижение искажений спроса",
+                "implementation": "Backend выделяет аномальные события по медиане и MAD за 90 дней, учитывает крупную продажу одному обезличенному customerToken и сохраняет excludedEventIds/metrics для каждой строки.",
+                "value": "Разовая покупка не превращается автоматически в регулярную потребность; при этом факт исключения остаётся видимым менеджеру.",
+                "verification": "observed",
+                "evidence": [
+                  "apps/api/src/calculation/index.ts:142-225",
+                  "apps/api/src/calculation/index.ts:289-301",
+                  "CHK-SCENARIO-HTTP"
+                ]
+              },
+              {
+                "aspect": "Снижение дефицита",
+                "implementation": "Расчёт вычитает актуальный запас и входящие поставки в горизонте lead time + review + safety, а интервалы stockout превращает в lostDemandUnits и скорректированный ряд.",
+                "value": "Количество привязано к сроку поставки и риску дефицита, а не к одному среднему продаж; это непосредственно полезно для регулярного пополнения.",
+                "verification": "observed",
+                "evidence": [
+                  "apps/api/src/calculation/index.ts:303-365",
+                  "apps/api/test/calculation.test.ts:63-80",
+                  "CHK-TESTS"
+                ]
+              },
+              {
+                "aspect": "Ручной контроль решения",
+                "implementation": "Результат сохраняется как draft; изменения количества требуют причины и новой ревизии, предупреждения требуют acknowledgeWarnings, а экспорт разрешён только для approved текущей ревизии.",
+                "value": "Ценность не ограничивается прогнозом: менеджер получает безопасную точку контроля перед фактическим использованием заказа.",
+                "verification": "observed",
+                "evidence": [
+                  "apps/api/src/orders/index.ts:15-45",
+                  "apps/api/src/orders/index.ts:63-75",
+                  "CHK-SCENARIO-HTTP"
+                ]
+              }
+            ],
+            "scoreReasoning": "22/25 заслужены за прямое попадание в задачу закупщика, объяснимую экономику количества и полноценный ручной workflow. До максимума не хватает только доказанного применения к реальным входным выгрузкам: проект сам описывает JSON boundary и synthetic seed, но не предлагает работоспособный путь из 12 XLSX кейса в этот boundary."
+          },
+          {
+            "name": "Результат и качество решения",
+            "score": 16,
+            "max": 20,
+            "awarded": "Основной локальный сценарий реально работает в degraded-режиме: данные сохраняются, расчёт создаёт 6 строк, ревизии защищены, approve и CSV проходят.",
+            "deductions": "Снято 4 балла: предоставленный табличный вход не поддержан, а экспорт не подтверждён как формат текущей учётной системы партнёра.",
+            "evidence": [
+              "CHK-BUILD-API",
+              "CHK-BUILD-WEB",
+              "CHK-SCENARIO-HTTP",
+              "CHK-TESTS",
+              "DEF-001",
+              "DEF-002"
+            ],
+            "deductionItems": [
+              {
+                "points": 3,
+                "findingId": "DEF-001",
+                "reason": "На вход рабочего сценария подан seed-нормализованный JSON, потому что API/UI не принимают XLSX; фактическая проверка на организаторских таблицах невозможна по проектному контракту."
+              },
+              {
+                "points": 1,
+                "findingId": "DEF-002",
+                "reason": "CSV корректно формируется и защищён от formula injection, но его совместимость с 1С/партнёрским форматом не подтверждена и адаптер в репозитории отсутствует."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Детерминированная арифметика",
+                "implementation": "Калькулятор отдельно строит inspection, сезонные коэффициенты, базовый ряд последних 28 дней, устойчивый тренд до 1.5, рост категории и целевой горизонт; итоговое количество — ceil(target - stock - eligibleInbound).",
+                "value": "Числа принадлежат backend, а не модели, поэтому один и тот же snapshot даёт воспроизводимый результат и его можно объяснить по metrics.",
+                "verification": "observed",
+                "evidence": [
+                  "apps/api/src/calculation/index.ts:229-280",
+                  "apps/api/src/calculation/index.ts:362-389",
+                  "apps/api/test/calculation.test.ts:50-80"
+                ]
+              },
+              {
+                "aspect": "Проверенный lifecycle заказа",
+                "implementation": "HTTP-прогон создал draft revision 1 с 6 строками, изменил первую строку до revision 2, отклонил устаревшее изменение 409, отклонил approve без acknowledgement 422, затем утвердил revision 3 и получил CSV 200.",
+                "value": "Это целостный результат пользователя, включая ошибочные ветки и сохранённое состояние, а не только вызов расчётной функции.",
+                "verification": "observed",
+                "evidence": [
+                  "CHK-SCENARIO-HTTP",
+                  "apps/api/src/routes.ts:78-116",
+                  "apps/api/src/routes.ts:119-150"
+                ]
+              },
+              {
+                "aspect": "Контракты и границы ошибок",
+                "implementation": "Общие strict Zod-схемы валидируют DatasetInput, Run, runtime statuses, цены, ревизии и экспорт; API кодирует validation, 409, 422 и DB/runtime ошибки в единый формат.",
+                "value": "Неверные данные не должны тихо превращаться в заказ, а ошибки конфликта и необходимости проверки доступны клиенту явно.",
+                "verification": "observed",
+                "evidence": [
+                  "packages/contracts/src/index.ts:19-31",
+                  "packages/contracts/src/index.ts:92-153",
+                  "apps/api/src/routes.ts:16-44",
+                  "CHK-TESTS"
+                ]
+              },
+              {
+                "aspect": "Результат пользователя",
+                "implementation": "Web build прошёл, root и same-origin API proxy ответили 200; backend export содержит UTF-8 BOM, semicolon/CRLF и русское объяснение, а в HTTP прогоне total quote составил 28200 KZT при budget 100000.",
+                "value": "Оператор может увидеть сгруппированные строки, проверить основания, оценить бюджет и скачать утверждённую ревизию.",
+                "verification": "observed",
+                "evidence": [
+                  "CHK-WEB-HTTP",
+                  "CHK-SCENARIO-HTTP",
+                  "apps/api/src/orders/index.ts:48-75"
+                ]
+              }
+            ],
+            "scoreReasoning": "16/20: техническое качество MVP выше среднего — сборки и тесты чистые, а HTTP сценарий прошёл от health до export. Четыре балла удерживают граница входных данных и отсутствие подтверждённого партнёрского обмена: работающий synthetic/normalized path ещё не равен готовому сценарию на выданных Excel-таблицах."
+          },
+          {
+            "name": "Инновационность",
+            "score": 14,
+            "max": 15,
+            "awarded": "Сильный нестандартный аспект — AI ограничен инструментами наблюдения и расчёта, а количественная логика и GPU-классификация имеют строгие проверяемые границы.",
+            "deductions": "Снят 1 балл, поскольку инновационный AI/GPU путь не был воспроизведён в текущей проверке, а его влияние на партнёрский набор не измерено; это ограничение доказательств и интеграции, а не ошибка отсутствующего ключа.",
+            "evidence": [
+              "packages/ai/src/openai/agent.ts:120-188",
+              "packages/ai/src/run.ts:56-151",
+              "README.md:42-50",
+              "DEF-001"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "DEF-001",
+                "reason": "Преимущество AI-классификации аномалий показано архитектурой и тестовыми guard-ами, но не продемонстрировано на реальных таблицах кейса; синтетический JSON остаётся единственным воспроизводимым входом."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Разделение AI и бизнес-чисел",
+                "implementation": "Agent вызывает inspectDemand, classifyEvents и calculateOrders в фиксированном порядке, получает observations, а backend сохраняет собственный calculationId и не принимает произвольные количества от модели.",
+                "value": "Это более надёжная конструкция, чем генерация закупочного текста: модель координирует обзор, но не может сама назначить заказ.",
+                "verification": "source",
+                "evidence": [
+                  "packages/ai/src/openai/agent.ts:120-169",
+                  "packages/ai/src/run.ts:56-64",
+                  "README.md:42-50"
+                ]
+              },
+              {
+                "aspect": "Проверяемая классификация аномалий",
+                "implementation": "SpecialistReport обязан покрыть ровно набор candidates; evidenceCodes проверяются против измеримых условий extreme size, recurrence, customer concentration и history.",
+                "value": "AI-решение не принимается как свободное объяснение: его доказательства связаны с наблюдаемыми данными и могут быть отклонены схемой.",
+                "verification": "observed",
+                "evidence": [
+                  "packages/contracts/src/index.ts:182-200",
+                  "packages/contracts/test/contracts.test.ts:32-37",
+                  "CHK-TESTS"
+                ]
+              },
+              {
+                "aspect": "Честный degraded режим",
+                "implementation": "При недоступном OpenAI/GPU fallback считает backend-формулу, specialist и gpuEvidence остаются null, runtime получает failed/skipped, а draft помечается degraded и требует acknowledgement.",
+                "value": "Система не маскирует отсутствие внешней модели фиктивным live-успехом; это полезный паттерн для AI-прототипов с дорогой инфраструктурой.",
+                "verification": "observed",
+                "evidence": [
+                  "packages/ai/src/run.ts:97-151",
+                  "apps/api/src/orders/index.ts:36-45",
+                  "CHK-SCENARIO-HTTP"
+                ]
+              },
+              {
+                "aspect": "Защитная ревизионность",
+                "implementation": "AI не имеет approval tool, изменения привязаны к expectedRevision, а экспорт проверяет approved status и текущую revision.",
+                "value": "Инновационная часть встроена в безопасный процесс принятия решения, а не добавлена как декоративная AI-панель.",
+                "verification": "source",
+                "evidence": [
+                  "apps/api/src/orders/index.ts:15-45",
+                  "apps/api/src/orders/index.ts:63-75",
+                  "docs/api.md:58"
+                ]
+              }
+            ],
+            "scoreReasoning": "14/15: ограниченные tool calls, строгая валидация evidence, GPU provenance и честный fallback — заметное собственное преимущество. Один балл снят только за отсутствие воспроизводимой live AI/GPU демонстрации в этой среде и отсутствие измерения эффекта на партнёрских таблицах; ключи намеренно не предоставлялись и это не трактуется как дефект команды."
+          },
+          {
+            "name": "Потенциал развития и масштабирования",
+            "score": 14,
+            "max": 20,
+            "awarded": "Архитектура хорошо подготовлена к расширению: workspace-пакеты, общие контракты, immutable snapshots, supplier/category scopes, ревизии и отдельные AI/GPU boundaries.",
+            "deductions": "Снято 6 баллов за отсутствие партнёрского адаптера/1С mapping и за локальную, неаутентифицированную модель оператора; проект сам называет эти ограничения.",
+            "evidence": [
+              "packages/contracts/src/index.ts:92-153",
+              "packages/db/src/schema.ts:1-220",
+              "README.md:216-227",
+              "DEF-001",
+              "DEF-002"
+            ],
+            "deductionItems": [
+              {
+                "points": 3,
+                "findingId": "DEF-001",
+                "reason": "Расширение на новые организации потребует отдельного нормализатора для каждой выгрузки: текущий продукт не принимает XLSX/CSV и не содержит mapping из выданных форматов."
+              },
+              {
+                "points": 3,
+                "findingId": "DEF-002",
+                "reason": "Нет подтверждённого 1С-профиля, серверной аутентификации и ролей; локальный DEMO_OPERATOR годится для демо, но не для многопользовательского корпоративного контура."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Модульная граница данных",
+                "implementation": "DatasetInput отделяет источники, справочники, продажи, stock, stockouts и inbound; snapshot получает hash, а run ссылается на datasetHash и asOf.",
+                "value": "Новые источники можно подключать через нормализующий адаптер, не меняя сам калькулятор и workflow ревизий.",
+                "verification": "source",
+                "evidence": [
+                  "packages/contracts/src/index.ts:92-116",
+                  "packages/db/src/schema.ts:1-90",
+                  "docs/api.md:26-53"
+                ]
+              },
+              {
+                "aspect": "Масштабирование по ассортименту и поставщикам",
+                "implementation": "Схемы ограничивают, но поддерживают до 12 items, 10 складов/категорий/поставщиков, а расчёт сортирует строки по supplierId и SKU; UI показывает supplier grouping и priority.",
+                "value": "Сценарий переносится с демонстрационного склада на несколько поставщиков без переписывания основного формата результата.",
+                "verification": "source",
+                "evidence": [
+                  "packages/contracts/src/index.ts:96-103",
+                  "apps/api/src/calculation/index.ts:376-385",
+                  "apps/web/src/components/workbench/LiveWorkbench.tsx:256-260"
+                ]
+              },
+              {
+                "aspect": "Надёжное хранение и concurrency",
+                "implementation": "Immutable dataset, hash consistency, transaction-like revision checks, audit entries и persisted approvedAt/approvedBy позволяют повторно открыть результат и не затереть чужую правку устаревшим запросом.",
+                "value": "Это хорошая основа для нескольких операторов и будущих интеграций, даже если auth/roles пока не входят в MVP.",
+                "verification": "observed",
+                "evidence": [
+                  "apps/api/src/orders/index.ts:15-45",
+                  "apps/api/test/orders.test.ts:37-84",
+                  "CHK-TESTS"
+                ]
+              },
+              {
+                "aspect": "Честно обозначенный roadmap",
+                "implementation": "README отдельно перечисляет получение обезличенных выгрузок, согласование импорта, проверку CSV в тестовой 1С, auth/roles и измерение качества без утечки будущих данных.",
+                "value": "Ограничения не спрятаны за обещаниями production-ready; следующая инженерная работа сформулирована предметно и масштабируемо.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:216-227",
+                  "docs/api.md:79-83"
+                ]
+              }
+            ],
+            "scoreReasoning": "14/20: внутренние boundaries и persistence позволяют развивать продукт, но масштабирование за пределы synthetic normalized data пока требует существенной адаптерной и организационной работы. Отдельно учитываю отсутствие auth/roles и 1С acceptance как ограничения будущего применения, а не как проблему локального запуска."
+          },
+          {
+            "name": "Презентация, демо и ответы на вопросы",
+            "score": 17,
+            "max": 20,
+            "awarded": "README подробно описывает проблему, архитектуру, запуск, команды тестов, degraded/live границы и пример workflow; локальный HTTP результат воспроизводим.",
+            "deductions": "Снято 3 балла за то, что демонстрационный сценарий опирается на synthetic seed и нормализованный JSON, а формат 1С не подтверждён.",
+            "evidence": [
+              "README.md:1-15",
+              "README.md:116-190",
+              "README.md:192-244",
+              "CHK-BUILD-API",
+              "CHK-SCENARIO-HTTP",
+              "DEF-001",
+              "DEF-002"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "DEF-001",
+                "reason": "Инструкция позволяет показать локальный demo, но не показывает, как открыть именно 12 выданных Excel-источников в продукте; граница входа вынесена в ручную нормализацию."
+              },
+              {
+                "points": 2,
+                "findingId": "DEF-002",
+                "reason": "README корректно предупреждает, что CSV не подтверждён для 1С и заказ не отправляется; для максимальной убедительности отсутствует подтверждённый partner-format demo."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Ясная история пользователя",
+                "implementation": "README последовательно объясняет проблему ручного Excel-расчёта, решение, семь шагов demo-сценария и границу ответственности менеджера.",
+                "value": "Даже без устной презентации репозиторий даёт жюри понятную модель того, что именно должно произойти.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:5-27"
+                ]
+              },
+              {
+                "aspect": "Воспроизводимая инструкция",
+                "implementation": "Документ содержит Node/pnpm требования, `.env`, Docker Compose, migrate/seed, команды build/typecheck/test и отдельный browser E2E сценарий с ожидаемым degraded статусом.",
+                "value": "Результат можно восстановить из репозитория, а не только поверить скриншоту или заявлению о live demo.",
+                "verification": "observed",
+                "evidence": [
+                  "README.md:116-190",
+                  "CHK-BUILD-API",
+                  "CHK-BUILD-WEB",
+                  "CHK-TESTS"
+                ]
+              },
+              {
+                "aspect": "Хорошая честность ограничений",
+                "implementation": "README явно пишет о synthetic seed, normalized JSON, отсутствии 1С acceptance, локальном operator identity, остановленном GPU instance и необходимости свежей проверки runtime.",
+                "value": "Это снижает риск неверного прочтения прототипа как готовой интеграции и делает демонстрацию проверяемой.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:216-227",
+                  "README.md:240-244"
+                ]
+              },
+              {
+                "aspect": "Фактическая HTTP-демонстрация",
+                "implementation": "Без браузера проверены health, web root/proxy, создание degraded draft, ревизионная правка, stale 409, quote, review-required 422, approve и CSV.",
+                "value": "Репозиторий подтверждает содержательный пользовательский результат допустимым CLI/HTTP способом; визуальные свойства намеренно не выдаются за проверенные.",
+                "verification": "observed",
+                "evidence": [
+                  "CHK-START-API",
+                  "CHK-WEB-HTTP",
+                  "CHK-SCENARIO-HTTP"
+                ]
+              }
+            ],
+            "scoreReasoning": "17/20: README и локальная проверка заметно сильнее обычного hackathon handoff. Три балла удерживают только отсутствие рабочего показа на реальных XLSX и отсутствие подтверждённого 1С-обмена. Публичный URL, видео и устные ответы не использовались как основание для штрафа."
+          }
+        ],
+        "total": 83
+      },
+      "case": null,
+      "judgeScore": 83,
+      "caseRequirements": [
+        {
+          "requirement": "Расчёт по истории продаж, текущему запасу, товарам в пути, категории и плановому росту",
+          "status": "partial",
+          "explanation": "Все источники представлены в нормализованном DatasetInput и реально участвуют в формуле; HTTP seed показал inbound/stock/category growth в metrics. Но выданные Excel-источники не импортируются напрямую и не были прогнаны через приложение.",
+          "evidence": [
+            "packages/contracts/src/index.ts:92-114",
+            "apps/api/src/calculation/index.ts:303-383",
+            "CHK-SCENARIO-HTTP",
+            "DEF-001"
+          ]
+        },
+        {
+          "requirement": "Учёт сезонности и устойчивого роста",
+          "status": "met",
+          "explanation": "Сезонные индексы строятся по 12 месяцам, тренд проверяет четыре недельных сравнения и ограничивается 1.5, plannedGrowthPct входит в forecastDaily. Unit test проверяет сезонный пик, rising series и отличие результата от flat series.",
+          "evidence": [
+            "apps/api/src/calculation/index.ts:229-280",
+            "apps/api/test/calculation.test.ts:63-75",
+            "CHK-TESTS"
+          ]
+        },
+        {
+          "requirement": "Компенсация упущенного спроса при stockout",
+          "status": "met",
+          "explanation": "Интервалы stockout превращаются в дневной mask, при наличии семи предыдущих дней corrected спрос заменяет нулевые продажи медианой; lostDemandUnits сохраняется. Тест проверяет, что скорректированный заказ выше raw counterfactual.",
+          "evidence": [
+            "apps/api/src/calculation/index.ts:328-363",
+            "apps/api/test/calculation.test.ts:76-80",
+            "CHK-TESTS"
+          ]
+        },
+        {
+          "requirement": "Устойчивость к разовой крупной продаже, включая одного клиента",
+          "status": "met",
+          "explanation": "Продажи агрегируются по SKU/date/customerToken, candidate выявляется по median/MAD и customerShare90d, hardOneOff исключается независимо от specialist. В HTTP seed SPIKE исключил 350 единиц, а unit test проверил одного клиента и повторяющийся borderline event.",
+          "evidence": [
+            "apps/api/src/calculation/index.ts:41-56",
+            "apps/api/src/calculation/index.ts:176-202",
+            "CHK-SCENARIO-HTTP",
+            "CHK-TESTS"
+          ]
+        },
+        {
+          "requirement": "Список заказов, группировка по поставщику и краткое объяснение",
+          "status": "met",
+          "explanation": "OrderLine хранит supplier, quantities, urgency, metrics, warnings и excludedEventIds; backend сортирует по supplierId/SKU, UI визуально группирует supplierName, CSV содержит explanation. HTTP результат дал 6 строк по SUP_A/SUP_B и экспорт 200.",
+          "evidence": [
+            "apps/api/src/calculation/index.ts:376-385",
+            "apps/web/src/components/workbench/LiveWorkbench.tsx:256-260",
+            "apps/api/src/orders/index.ts:55-75",
+            "CHK-SCENARIO-HTTP"
+          ]
+        },
+        {
+          "requirement": "Заказ не отправляется без ручного подтверждения",
+          "status": "met",
+          "explanation": "До approve run остаётся draft, export draft возвращает RUN_LOCKED, approve требует confirm=true и при предупреждениях acknowledgeWarnings=true. В HTTP прогоне approve без acknowledgement дал 422, с acknowledgement — approved revision 3.",
+          "evidence": [
+            "apps/api/src/orders/index.ts:36-45",
+            "apps/api/src/orders/index.ts:63-68",
+            "CHK-SCENARIO-HTTP",
+            "CHK-TESTS"
+          ]
+        },
+        {
+          "requirement": "Обезличивание данных клиентов",
+          "status": "partial",
+          "explanation": "Контракт принимает только customerToken формата anon_..., fixture использует такие токены, а UI требует подтверждение privacy. Это форматная и процессная защита, но не доказательство обезличивания произвольной загружаемой выгрузки; raw PII detector отсутствует.",
+          "evidence": [
+            "packages/contracts/src/index.ts:100",
+            "packages/db/src/fixture.ts:14-15",
+            "apps/web/src/components/workbench/LiveWorkbench.tsx:127-135",
+            "docs/api.md:51"
+          ]
+        },
+        {
+          "requirement": "Проверка чувствительности к inbound, сезонности, stockout и выбросу",
+          "status": "met",
+          "explanation": "Unit suite меняет inbound, review horizon, growth, seasonal phase, rising demand, stockout interval и extra spike; HTTP seed дополнительно показал inbound 5/3, season factors, lostDemandUnits 100 и excludedUnits 350/260. Входом служил synthetic fixture, не raw XLSX.",
+          "evidence": [
+            "apps/api/test/calculation.test.ts:50-109",
+            "CHK-SCENARIO-HTTP",
+            "CHK-TESTS"
+          ]
+        },
+        {
+          "requirement": "Использование предоставленных таблиц кейса",
+          "status": "missing",
+          "explanation": "12 XLSX были открыты и их структура сопоставлена с контрактом, но приложение не имеет xlsx parser или partner adapter. UI принимает только .json, а CSV заявлен только как локальная предпроверка без импорта; расчёт на строках кейсовых таблиц не выполнен.",
+          "evidence": [
+            "apps/web/src/components/workbench/LiveWorkbench.tsx:127-135",
+            "apps/web/src/components/workbench/LiveWorkbench.tsx:238-250",
+            "README.md:216-220",
+            "DEF-001"
+          ]
+        }
+      ],
+      "testData": {
+        "provided": [
+          "cases/5/case-data/HackAlem AI_ Автоматизация формирования заказов поставщикам.docx.md",
+          "cases/5/case-data/IEK/MOQ  ИЭК.xlsx",
+          "cases/5/case-data/IEK/Динамика продаж_2025-2026.xlsx",
+          "cases/5/case-data/IEK/Ежемесячные остатки продукции за последние 2 года  ИЭК.xlsx",
+          "cases/5/case-data/IEK/Ежемесячные продажи в количественном выражении за последние 2 года.xlsx",
+          "cases/5/case-data/IEK/Путь ИЭК 22.09.2026.xlsx",
+          "cases/5/case-data/IEK/Сезонность ИЭК.xlsx",
+          "cases/5/case-data/Systeme electric/MOQ SystemElectric.xlsx",
+          "cases/5/case-data/Systeme electric/Динамика продаж_Syseme Electric_2025-2026.xlsx",
+          "cases/5/case-data/Systeme electric/Ежемесячные остатки SystemElectric 2024-2026.xlsx",
+          "cases/5/case-data/Systeme electric/Ежемесячные продажи в кол-м выражении SystemElectric 2024-2026.xlsx",
+          "cases/5/case-data/Systeme electric/Сезонность SystemElectric 2024-2026.xlsx",
+          "cases/5/case-data/Systeme electric/Товар в пути_SystemElectric на 22.09.2026.xlsx"
+        ],
+        "used": [
+          "cases/5/task.txt",
+          "cases/5/case-data/HackAlem AI_ Автоматизация формирования заказов поставщикам.docx.md",
+          "cases/5/case-data/IEK/MOQ  ИЭК.xlsx",
+          "cases/5/case-data/IEK/Динамика продаж_2025-2026.xlsx",
+          "cases/5/case-data/IEK/Ежемесячные остатки продукции за последние 2 года  ИЭК.xlsx",
+          "cases/5/case-data/IEK/Ежемесячные продажи в количественном выражении за последние 2 года.xlsx",
+          "cases/5/case-data/IEK/Путь ИЭК 22.09.2026.xlsx",
+          "cases/5/case-data/IEK/Сезонность ИЭК.xlsx",
+          "cases/5/case-data/Systeme electric/MOQ SystemElectric.xlsx",
+          "cases/5/case-data/Systeme electric/Динамика продаж_Syseme Electric_2025-2026.xlsx",
+          "cases/5/case-data/Systeme electric/Ежемесячные остатки SystemElectric 2024-2026.xlsx",
+          "cases/5/case-data/Systeme electric/Ежемесячные продажи в кол-м выражении SystemElectric 2024-2026.xlsx",
+          "cases/5/case-data/Systeme electric/Сезонность SystemElectric 2024-2026.xlsx",
+          "cases/5/case-data/Systeme electric/Товар в пути_SystemElectric на 22.09.2026.xlsx",
+          "packages/db/src/fixture.ts"
+        ],
+        "checks": [
+          {
+            "input": "12 XLSX из IEK и Systeme electric: продажи, месячные остатки/продажи, сезонность, MOQ и inbound.",
+            "method": "Открыты через read-only workbook inspection; просмотрены листы, dimensions и первые строки каждого листа, без публикации полного датасета.",
+            "result": "Структуры неоднородны: продажи содержат дату, код, склад и отрицательное расходное количество; месячные отчёты имеют несколько строк заголовков; MOQ/inbound/seasonality вынесены в отдельные книги. В XLSX продаж нет customerToken формата anon_..., а в нескольких отчётах нет дневного stockout-интервала.",
+            "conclusion": "Файлы нельзя безопасно подставить в DatasetInput без mapping и правил знака/заголовков; проект такой mapping не реализует."
+          },
+          {
+            "input": "Один raw XLSX против UI/API boundary.",
+            "method": "Сопоставлены фактические headers workbook с DatasetInputSchema и UI file input; проверен source search по xlsx/workbook/multipart.",
+            "result": "DatasetInputSchema требует нормализованные arrays sales/stock/stockouts/inbound и anon customerToken; UI accept=.json, API POST /datasets принимает JSON и в репозитории нет xlsx parser/adapter.",
+            "conclusion": "Кейс на предоставленных таблицах не воспроизводится напрямую; это подтверждённый gap DEF-001, а не внешнее ограничение проверки."
+          },
+          {
+            "input": "Synthetic 24-month demo v4, warehouse WH_DEMO, all categories.",
+            "method": "Создан run через POST /api/v1/runs после seed и прочитан GET /api/v1/runs/:id.",
+            "result": "Draft revision 1, 6 lines, degraded; STABLE eligibleInbound=5, GROWING=3, STOCKOUT lostDemandUnits=100, SPIKE excludedUnits=350, BORDERLINE excludedUnits=260 и ANOMALY_REVIEW.",
+            "conclusion": "Основные источники и объясняемые метрики доходят до результата; synthetic path работает."
+          },
+          {
+            "input": "Fixture mutations for inbound, review horizon, growth, seasonal phase, rising trend, stockout, spike and recurrent customer.",
+            "method": "Запущены apps/api/test/calculation.test.ts assertions по exact arithmetic, sensitivity, candidate guard and rolling median/MAD.",
+            "result": "Все соответствующие тесты прошли; suite проверяет 80 vs 60 при inbound, horizon/growth changes, seasonal peak, trendFactor > 1, lostDemandUnits > 0, hardOneOff и pending/retain recurrence.",
+            "conclusion": "Логика чувствительности доказана на синтетических domain fixtures, но не на raw partner workbooks."
+          }
+        ],
+        "limitations": [
+          "Организаторские XLSX использованы для структурной совместимости и проверки входной границы, но не были преобразованы вручную в скрытый production-like dataset и не подменены синтетикой в отчёте.",
+          "Нет в предоставленных таблицах единого подтверждённого mapping для customerToken/stockout intervals/warehouse semantics; нельзя честно утверждать результат на партнёрских данных.",
+          "MOQ присутствует в отдельных книгах, но в обязательную формулу не входит; в материалах кейса MOQ отнесён к optional."
+        ]
+      },
+      "runtime": {
+        "status": "partial",
+        "build": "API и web production images собраны успешно; внутри прошли workspace TypeScript builds.",
+        "start": "PostgreSQL 16.9, API и web реально стартовали; GET /api/v1/health вернул {status:ok,database:ok}, web root и same-origin /api/v1/datasets вернули 200.",
+        "scenario": "Основной API сценарий воспроизведён частично в degraded mode: seed → run → edit → stale conflict → quote → warning acknowledgment → approve → CSV. OpenAI/GPU live path не выполнялся без credentials/GPU.",
+        "environment": "Изолированные Docker-контейнеры на Node 22.16.0, pnpm 11.15.1 и PostgreSQL 16.9; внешние API credentials не передавались. Визуальная проверка браузером не выполнялась по правилам задания.",
+        "summary": "Проект deployable и содержательный локальный fallback работает. Статус partial отражает только недоступный внешний live AI/GPU сценарий, а не ошибку старта приложения.",
+        "checks": [
+          {
+            "command": "pnpm --filter @atlas/api... build",
+            "result": "Exit 0; contracts, db, ai and api build completed. Full output: captures/20261002T071000581364-build-api.stderr.log.",
+            "id": "CHK-BUILD-API",
+            "stage": "build",
+            "status": "pass",
+            "cause": "none",
+            "expected": "API workspace and its dependencies compile from the frozen snapshot."
+          },
+          {
+            "command": "pnpm --filter @atlas/web... build",
+            "result": "Exit 0; Next.js 15.5.3 compiled, type validity checked and static page generated. Full output: captures/20261002T071241422319-build-web.stderr.log.",
+            "id": "CHK-BUILD-WEB",
+            "stage": "build",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Web production build completes from the frozen snapshot."
+          },
+          {
+            "command": "pnpm -r --if-present typecheck",
+            "result": "Exit 0 inside the API image; all configured package typechecks passed.",
+            "id": "CHK-TYPECHECK",
+            "stage": "build",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Repository typechecks pass, including test tsconfigs where configured."
+          },
+          {
+            "command": "pnpm --filter @atlas/contracts exec tsx --test test/contracts.test.ts; pnpm --filter @atlas/ai exec tsx --test test/config.test.ts test/openai.test.ts test/gpu.test.ts test/run.test.ts; pnpm --filter @atlas/api exec tsx --test test/import.test.ts test/calculation.test.ts test/runs.test.ts test/orders.test.ts test/quote.test.ts",
+            "result": "Exit 0; 15 tests passed, 0 failed. Full output: captures/20261002T071754834792-tests.stdout.log.",
+            "id": "CHK-TESTS",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Contracts, AI/GPU status handling, import, calculation, persistence workflow, order edits and quote behavior pass."
+          },
+          {
+            "command": "pnpm --filter @atlas/web exec tsx --test test/transport.test.ts test/priority-csv.test.ts",
+            "result": "Exit 0; 11 tests passed, 0 failed. Full output: captures/20261002T071940924194-typecheck-webtests.stdout.log.",
+            "id": "CHK-WEB-TESTS",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Web transport, strict response handling and local CSV preflight tests pass."
+          },
+          {
+            "command": "read-only workbook structure inspection",
+            "result": "All 12 supplied XLSX opened successfully; sheet names, dimensions and representative headers were inspected. The formats are heterogeneous and do not directly match DatasetInput.",
+            "id": "DATA-XLSX-STRUCTURE",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Supplied case workbooks are opened and compared with the project's declared input contract without inventing missing columns."
+          },
+          {
+            "command": "pnpm --filter @atlas/api start",
+            "result": "Process stayed up; GET /api/v1/health returned HTTP 200 and database ok after migration/seed.",
+            "id": "CHK-START-API",
+            "stage": "start",
+            "status": "pass",
+            "cause": "none",
+            "expected": "API starts against PostgreSQL and reports healthy database connectivity."
+          },
+          {
+            "command": "pnpm --filter @atlas/web start",
+            "result": "Process stayed up; GET / returned HTTP 200 and GET /api/v1/datasets through the web proxy returned HTTP 200 with the seeded dataset.",
+            "id": "CHK-WEB-HTTP",
+            "stage": "start",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Web starts and serves the app plus same-origin API proxy."
+          },
+          {
+            "command": "GET /api/v1/health; GET /api/v1/datasets; POST /api/v1/runs; GET /api/v1/runs/:runId; PATCH /api/v1/runs/:runId/lines; POST /api/v1/runs/:runId/quote; POST /api/v1/runs/:runId/approve; GET /api/v1/runs/:runId/export",
+            "result": "Seeded dataset returned; run returned HTTP 201 draft revision 1 with 6 lines and mode degraded; edit returned revision 2; stale edit returned 409; quote returned totalMinor 28200 and withinBudget true; approve without acknowledgement returned 422; approve with acknowledgement returned approved revision 3; export returned 200 text/csv with BOM and Russian explanation.",
+            "id": "CHK-SCENARIO-HTTP",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "A user can produce, review, revise, approve and export a persisted supplier-order draft over HTTP."
+          },
+          {
+            "command": "POST /api/v1/runs with OPENAI_API_KEY unset",
+            "result": "The application returned a valid degraded draft and retained backend calculation. OpenAI runtime was failed/AUTH and GPU was skipped/not_reached; specialist and gpuEvidence were null. This was an intentional no-credential test, not a project failure.",
+            "id": "CHK-DEGRADED",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "review_environment",
+            "expected": "Missing external credentials produce an honest degraded calculation when arithmetic can complete."
+          }
+        ],
+        "limitations": [
+          "OpenAI live inference and Brev GPU inference were not executed because credentials and verified GPU workload were intentionally unavailable; source flow was inspected and degraded behavior was observed.",
+          "Visual layout, browser click-through and screenshots were not checked; the user performs visual verification.",
+          "The first web HTTP attempt used a manually named network without the Compose alias api and returned 500; after adding the equivalent network alias, the Compose-shaped web proxy returned 200. This is a test-harness configuration detail, not a project defect."
+        ]
+      },
+      "liveDemo": {
+        "status": "none",
+        "url": null,
+        "notes": "Публичная live-ссылка в доступных материалах не подтверждалась. Локальный HTTP demo был проверен; отсутствие URL не использовано как причина снижения баллов."
+      },
+      "fiveHourContext": "Для пятичасового хакатона команда собрала необычно полный вертикальный MVP: typed contracts, расчёт с domain fixtures, PostgreSQL persistence, AI/GPU boundary, degraded fallback, revision-safe review, bilingual export, Docker build и подробный README. Ожидаемая граница прототипа — отсутствие production auth, партнёрского 1С-адаптера, калибровки и постоянного GPU — честно обозначена. Однако обязательный путь от выданных Excel-таблиц к нормализованному входу остался за пределами реализованного demo, поэтому это существенный, но локализованный gap.",
+      "strengths": [
+        "Детерминированные количества считаются backend-кодом и сопровождаются metrics, warnings и eventActions.",
+        "Сезонность, тренд, growth, inbound, stockout и outlier sensitivity покрыты отдельными domain-тестами.",
+        "Revision-aware edit/approve/export workflow реально проверен по HTTP, включая stale 409 и review-required 422.",
+        "AI/GPU fallback честно сохраняет null evidence и degraded status вместо фиктивного успеха.",
+        "README содержит запуск, архитектуру, тесты, ограничения и чёткую границу synthetic/partner данных."
+      ],
+      "gaps": [
+        "Предоставленные XLSX не загружаются и не преобразуются продуктом; UI принимает нормализованный JSON, поэтому обязательный сценарий на исходных таблицах не воспроизведён.",
+        "CSV является предложенным обменным форматом без подтверждённого mapping/acceptance в 1С; локальный DEMO_OPERATOR не заменяет корпоративную аутентификацию и роли."
+      ],
+      "futureAdvice": [
+        {
+          "principle": "Сначала фиксировать минимальный executable data adapter",
+          "why": "DEF-001: сильная расчётная логика работает только после ручной нормализации, а выданные sales/stock/seasonality/MOQ/inbound книги имеют разные заголовки и семантику.",
+          "how": "Для следующего хакатона выбрать один реально предоставленный workbook, за 20–30 минут описать mapping таблица→DatasetInput, отдельно зафиксировать знак расхода, даты, склад, stockout и отсутствие customer ID, затем добавить один dry-run adapter с отчётом rejected rows.",
+          "findingIds": [
+            "DEF-001"
+          ],
+          "successCheck": "Один исходный XLSX проходит через повторяемую команду adapter/check, создаёт DatasetInput с hash и показывает количество принятых/отклонённых строк; затем тот же run даёт 201 и metrics.",
+          "timeboxMinutes": 30
+        },
+        {
+          "principle": "Отделять формат обмена от локального прототипа, но проверять контракт на одном acceptance sample",
+          "why": "DEF-002: экспорт технически качественный, но совместимость с 1С и полевая семантика поставщика не подтверждены.",
+          "how": "Попросить у владельца кейса один обезличенный пример ожидаемого импорта, сопоставить каждую колонку CSV с ним, проверить кодировку/разделитель/нулевые строки и записать контрактный round-trip тест.",
+          "findingIds": [
+            "DEF-002"
+          ],
+          "successCheck": "Тестовый импорт партнёра принимает CSV утверждённой ревизии и возвращает ожидаемые supplier/SKU/quantity без ручного переименования колонок.",
+          "timeboxMinutes": 35
+        }
+      ],
+      "uncertainties": [
+        "Live OpenAI/GPU quality, actual model output and material effect of specialist classification не подтверждены в текущем окружении; подтверждена только статическая цепочка и honest degraded behavior.",
+        "Визуальная доступность, переносы длинных русских labels и фактический browser click-through не проверялись по обязательному правилу user-owned visual verification.",
+        "Партнёрский mapping из 12 Excel-источников и совместимость с конкретной конфигурацией 1С отсутствуют в материалах репозитория; нельзя выводить их из одних названий колонок."
+      ],
+      "reviewPolicyVersion": 2,
+      "assessmentStatus": "ready",
+      "findings": [
+        {
+          "id": "STR-001",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Основной degraded HTTP workflow создаёт и сохраняет объяснимый supplier-order draft.",
+          "expected": "При валидном dataset и warehouse приложение должно вернуть draft с quantities, metrics, warnings и revision.",
+          "actual": "POST /api/v1/runs вернул 201, 6 lines, revision 1, mode degraded; metrics содержали inbound, season, lost demand и excluded units.",
+          "evidence": [
+            "CHK-SCENARIO-HTTP",
+            "apps/api/src/calculation/index.ts:376-389",
+            "apps/api/src/runs/assemble.ts:1-120"
+          ],
+          "checkIds": [
+            "CHK-SCENARIO-HTTP"
+          ]
+        },
+        {
+          "id": "STR-002",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Ревизионная ручная проверка защищает edit/approve/export lifecycle.",
+          "expected": "Stale revision должна отклоняться, warnings должны требовать подтверждения, draft нельзя экспортировать.",
+          "actual": "HTTP stale edit дал 409, approve без acknowledgement дал 422, approve с acknowledgement создал revision 3, экспорт revision 3 дал 200.",
+          "evidence": [
+            "CHK-SCENARIO-HTTP",
+            "apps/api/src/orders/index.ts:15-75",
+            "apps/api/test/orders.test.ts:33-84"
+          ],
+          "checkIds": [
+            "CHK-SCENARIO-HTTP",
+            "CHK-TESTS"
+          ]
+        },
+        {
+          "id": "STR-003",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Расчёт реагирует на сезонность, рост, stockout, inbound и крупные события по детерминированным правилам.",
+          "expected": "Изменение релевантного источника или synthetic event должно менять metrics/order или оставлять явное предупреждение.",
+          "actual": "15 backend/AI тестов прошли; HTTP seed показал eligibleInbound 5/3, lostDemandUnits 100, excludedUnits 350/260 и сезонные коэффициенты.",
+          "evidence": [
+            "CHK-TESTS",
+            "CHK-SCENARIO-HTTP",
+            "apps/api/test/calculation.test.ts:50-128"
+          ],
+          "checkIds": [
+            "CHK-TESTS",
+            "CHK-SCENARIO-HTTP"
+          ]
+        },
+        {
+          "id": "STR-004",
+          "kind": "strength",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "AI boundary ограничивает модель и честно обрабатывает failed/skipped external runtimes.",
+          "expected": "Модель не должна назначать количества или выдавать specialist без валидного GPU report/evidence.",
+          "actual": "Agent tools gated по phase; calculation идёт через backend; non-successful GPU оставляет specialist/evidence null, а degraded run требует review.",
+          "evidence": [
+            "packages/ai/src/openai/agent.ts:120-188",
+            "packages/ai/src/run.ts:114-151",
+            "packages/contracts/src/index.ts:74-85"
+          ],
+          "checkIds": [
+            "CHK-DEGRADED",
+            "CHK-TESTS"
+          ]
+        },
+        {
+          "id": "STR-005",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Сборка, typecheck и пакетные проверки воспроизводимы в Docker.",
+          "expected": "Production API/web builds and documented tests should complete on the frozen snapshot.",
+          "actual": "API/web builds, typecheck, 15 backend/AI tests and 11 web tests completed with exit 0.",
+          "evidence": [
+            "captures/20261002T071000581364-build-api.stderr.log",
+            "captures/20261002T071241422319-build-web.stderr.log",
+            "captures/20261002T071754834792-tests.stdout.log",
+            "captures/20261002T071940924194-typecheck-webtests.stdout.log"
+          ],
+          "checkIds": [
+            "CHK-BUILD-API",
+            "CHK-BUILD-WEB",
+            "CHK-TYPECHECK",
+            "CHK-TESTS",
+            "CHK-WEB-TESTS"
+          ]
+        },
+        {
+          "id": "DEF-001",
+          "kind": "defect",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Проект не реализует импорт предоставленных XLSX/CSV-выгрузок в DatasetInput.",
+          "expected": "Для кейса должен существовать проверяемый путь от доступных таблиц продаж, остатков, сезонности, MOQ и inbound к расчёту либо явно исполненный adapter с mapping.",
+          "actual": "UI file input принимает только .json; importDataset парсит JSON и вызывает POST /datasets; CSV служит только preflight и явно не импортируется; source search не нашёл xlsx/workbook/multipart adapter. README описывает только normalized JSON, а run проверен на synthetic seed.",
+          "evidence": [
+            "apps/web/src/components/workbench/LiveWorkbench.tsx:127-145",
+            "apps/web/src/components/workbench/LiveWorkbench.tsx:238-250",
+            "apps/api/src/routes.ts:54-66",
+            "README.md:216-220",
+            "DATA-XLSX-STRUCTURE"
+          ],
+          "checkIds": [
+            "DATA-XLSX-STRUCTURE"
+          ]
+        },
+        {
+          "id": "DEF-002",
+          "kind": "defect",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Партнёрский accounting/1С обмен и корпоративная идентичность оператора не реализованы.",
+          "expected": "Выходной формат должен иметь подтверждённый mapping в текущую учётную систему, а ручное approve в многопользовательском сервисе — надёжно идентифицировать ответственного сотрудника.",
+          "actual": "Export генерирует общий CSV с warehouse_code/sku/supplier_code и README называет его proposed profile без 1С acceptance; DEMO_OPERATOR — конфигурационная строка, а auth/roles перечислены как future work.",
+          "evidence": [
+            "apps/api/src/orders/index.ts:63-75",
+            "README.md:216-227",
+            "docs/api.md:79-83",
+            "apps/api/src/config.ts:1-80"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "LIM-001",
+          "kind": "limitation",
+          "verification": "unverified",
+          "responsibility": "review_environment",
+          "claim": "Live OpenAI/GPU path не исполнен в этой проверке.",
+          "expected": "Для полного live результата нужны external OpenAI credential и current verified GPU workload.",
+          "actual": "Credentials не предоставлялись; observed result — honest degraded fallback с OpenAI failed/AUTH и GPU skipped/not_reached.",
+          "evidence": [
+            "CHK-DEGRADED",
+            "README.md:130-145",
+            "packages/ai/src/run.ts:70-151"
+          ],
+          "checkIds": [
+            "CHK-DEGRADED"
+          ]
+        },
+        {
+          "id": "LIM-002",
+          "kind": "limitation",
+          "verification": "unverified",
+          "responsibility": "review_environment",
+          "claim": "Визуальное поведение web UI не проверялось.",
+          "expected": "Visual layout/accessibility требует ручной проверки владельцем UI.",
+          "actual": "Проверены только web build, root/proxy HTTP и transport tests; браузер/скриншоты не использовались по правилам задания.",
+          "evidence": [
+            "CHK-BUILD-WEB",
+            "CHK-WEB-HTTP",
+            "CHK-WEB-TESTS"
+          ],
+          "checkIds": [
+            "CHK-BUILD-WEB",
+            "CHK-WEB-HTTP",
+            "CHK-WEB-TESTS"
+          ]
+        }
+      ],
+      "gapFindingIds": [
+        "DEF-001",
+        "DEF-002"
+      ]
+    }
+  ],
+  "score": 83.0,
+  "status": "complete",
+  "expectedJudges": 1
+}

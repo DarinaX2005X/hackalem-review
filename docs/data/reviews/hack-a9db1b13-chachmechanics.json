@@ -1,0 +1,1119 @@
+{
+  "methodVersion": 4,
+  "repoId": "hack-a9db1b13-chachmechanics",
+  "repoUrl": "https://github.com/BAITC-Hacks/hack-a9db1b13-chachmechanics",
+  "caseId": 1,
+  "snapshot": "07577177ef45d883bd393f8ccbe8ad0e1eaea7b6",
+  "judges": [
+    {
+      "methodVersion": 4,
+      "repoId": "hack-a9db1b13-chachmechanics",
+      "caseId": 1,
+      "model": "GPT-5.6 Luna",
+      "snapshot": "07577177ef45d883bd393f8ccbe8ad0e1eaea7b6",
+      "overallSummary": "Проект представляет собой зрелый воспроизводимый прототип почасового прогноза для двух турбин. Сборка, зависимости, 150 автоматических тестов, импорт обоих предоставленных CSV, bootstrap запуска, HTTP health-check, проверка 28 реальных operational-archive выпусков и экспорт 2688 строк прошли в изолированном окружении. Сильные стороны — строгие as-of-инварианты, архивные NOAA GFS runs с provenance, versioned power-curve+bias, честные интервалы и сохранённый февральский replay. Оценка удержана ниже максимума из-за того, что production power curve имеет training cutoff 31.12.2025 при наличии зрелой январской истории, а в репозитории остались рассинхронизированный проектный документ и абсолютные пути в одном provenance-отчёте.",
+      "global": {
+        "criteria": [
+          {
+            "name": "Ценность решения",
+            "score": 25,
+            "max": 25,
+            "awarded": "25/25: проект адресует конкретную операционную задачу диспетчера ВЭС и выдаёт проверяемый почасовой прогноз с происхождением и неопределённостью.",
+            "deductions": "Снятий по подтверждённым дефектам нет. Ограничение отсутствия измеренного денежного эффекта честно раскрыто в документации и не является обязательным требованием пятичасового MVP.",
+            "evidence": [
+              "README.md:3-5",
+              "README.md:66-94",
+              "docs/PROJECT_SPEC.md:15-26",
+              "scenario-verify-1"
+            ],
+            "deductionItems": [],
+            "awardedDetails": [
+              {
+                "aspect": "Целевая операционная потребность",
+                "implementation": "README описывает диспетчера или аналитика оператора ВЭС как пользователя, которому нужны значения мощности на следующие двое суток, свежесть погодного run и объяснение изменений. В конфигурации закреплены две турбины, координаты и выпуск в 23:00 местного времени.",
+                "value": "Пользователь получает не абстрактную демонстрацию ML, а результат, пригодный для планирования графика и сопоставимый между последовательными выпусками.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:112-119",
+                  "configs/site.yaml:6-25"
+                ]
+              },
+              {
+                "aspect": "Практический формат результата",
+                "implementation": "ForecastResult содержит по одной строке на каждую турбину и каждый целевой час, а CLI умеет проверить сохранённый выпуск и экспортировать CSV. Проверенный seed содержит 28 ежедневных выпусков по 96 строк.",
+                "value": "Формат можно передать оператору или downstream-процессу без ручного копирования графика; при этом нормализованные единицы не маскируются под неизвестные МВт.",
+                "verification": "observed",
+                "evidence": [
+                  "scenario-verify-1",
+                  "scenario-export-1",
+                  "src/TwinTurbo.ai/service.py:69-94"
+                ]
+              },
+              {
+                "aspect": "Полезная неопределённость",
+                "implementation": "Модель публикует Q10/Q50/Q90 только после накопления зрелых ошибок, хранит coverage и width, а при недостатке истории оставляет квантили null. README также запрещает трактовать рекомендации как команду управления или диагноз поломки.",
+                "value": "Такой результат лучше поддерживает резервирование и оценку риска, чем одно число без указания свежести и границ доверия.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:56-64",
+                  "README.md:85-104",
+                  "src/TwinTurbo.ai/schemas.py:177-191"
+                ]
+              },
+              {
+                "aspect": "Честная граница применимости",
+                "implementation": "rated_power_mw оставлен null, поэтому система показывает normalized_power и не выдумывает МВт·ч; в README отдельно описаны ограничения GFS 0.25° и отсутствие сигналов predictive maintenance.",
+                "value": "Это повышает доверие аудитории энергетики: полезный MVP не делает неподтверждённых инженерных или экономических заявлений.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:68-74",
+                  "README.md:108-110",
+                  "configs/site.yaml:6-14"
+                ]
+              }
+            ],
+            "scoreReasoning": "Максимальный балл заслужен: проблема понятна, целевая аудитория названа, а пользовательский результат действительно существует в проверяемом формате. Отсутствие подтверждённого денежного эффекта и физической мощности не снижает оценку, поскольку входной кейс сам предоставляет нормализованную мощность, а команда прямо обозначила, какие выводы нельзя делать из имеющихся данных."
+          },
+          {
+            "name": "Результат и качество решения",
+            "score": 18,
+            "max": 20,
+            "awarded": "18/20: основной сценарий реально стартует и воспроизводит полный февральский operational replay, но выбранная production power curve не переобучена на январской истории.",
+            "deductions": "Снято 2 балла за подтверждённый cutoff production-модели 31.12.2025 при том, что данные и зрелый bias доступны до 31.01.2026; это уменьшает использование последнего месяца в самом fitted predictor, хотя не создаёт утечки и не ломает выпуски.",
+            "evidence": [
+              "DEF-MODEL-CUTOFF",
+              "artifacts/models/february-production.json:1",
+              "outputs/replay-february/replay-report.json:54-66",
+              "start-http-1",
+              "scenario-verify-1"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "DEF-MODEL-CUTOFF",
+                "reason": "Для качества финального прогнозного результата последняя доступная январская история входит в bias и backtest, но не в обучение выбранной power curve; это оставляет модельный слой менее актуальным, чем требует сценарий, хотя февральский replay всё равно проходит проверку."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Фактически воспроизведённый сценарий",
+                "implementation": "Docker build завершился, scripts/run.py --check провёл bootstrap и подтвердил model, bias, selection report и 28 replay seed выпусков. Реальный запуск Streamlit ответил HTTP 200 ok на /_stcore/health.",
+                "value": "Это отделяет рабочий пользовательский контур от одного лишь наличия файлов в Git и подтверждает deployability локального прототипа.",
+                "verification": "observed",
+                "evidence": [
+                  "build-1",
+                  "start-check-1",
+                  "start-http-1"
+                ]
+              },
+              {
+                "aspect": "Полный сохранённый февральский результат",
+                "implementation": "verify принял 28 forecast JSON, всего 2688 строк, а export сформировал CSV с теми же 2688 строками. Дополнительный аудит нашёл 28 origins от 2026-01-31T18:00Z до 2026-02-27T18:00Z, по 96 строк на выпуск и обе турбины.",
+                "value": "Основной месячный сценарий не является заглушкой: сохранены ежедневные версии, 48-часовая почасовая детализация и машинно проверяемый экспорт.",
+                "verification": "observed",
+                "evidence": [
+                  "scenario-verify-1",
+                  "scenario-export-1",
+                  "replay-audit-1"
+                ]
+              },
+              {
+                "aspect": "Контроль целостности результата",
+                "implementation": "index.json содержит checksum каждого выпуска, verify вызывает verify_result, bootstrap проверяет mode, provenance, model/bias identity и полное покрытие 48 часов на две турбины.",
+                "value": "Пользователь не получает молча повреждённый или fixture-результат под видом конкурсного replay.",
+                "verification": "source",
+                "evidence": [
+                  "scripts/bootstrap.py:185-270",
+                  "scripts/generate_february.py:225-265",
+                  "src/TwinTurbo.ai/cli.py:114-127"
+                ]
+              },
+              {
+                "aspect": "Измеренное качество модели",
+                "implementation": "Отчёт выбора модели сравнивает baseline, power curve и Ridge на untouched январском периоде; selection зафиксировал power_curve+bias с MAE 0.1952489, а README раскрывает coverage Q10-Q90 0.76747 вместо округления к целевой 0.80.",
+                "value": "Есть воспроизводимая оценка качества и осознанное решение не включать более сложную модель без независимого улучшения.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:38-64",
+                  "reports/january-model-comparison.json:selection",
+                  "artifacts/bias/february-production-bias.json:1-80"
+                ]
+              }
+            ],
+            "scoreReasoning": "Результат очень близок к полному: сборка, старт, API health, 150 тестов, replay и экспорт подтверждены наблюдением. Два балла удержаны только за актуальность обученного predictor: production artifact указывает training_cutoff 2025-12-31T18:00Z, тогда как bias и тестовые факты доходят до 2026-01-31. Это не утечка и не ошибка запуска, но для прогноза февраля разумно ожидать финальное обучение на всей доступной зрелой истории."
+          },
+          {
+            "name": "Инновационность",
+            "score": 15,
+            "max": 15,
+            "awarded": "15/15: нестандартность здесь не в LLM-обёртке, а в воспроизводимом as-of replay, версии погодных входов, conservative bias lifecycle и отказе от неподтверждённых причин.",
+            "deductions": "Снятий по подтверждённым дефектам нет. Детеминированная оркестрация без обязательной LLM соответствует спецификации проекта и лучше подходит для проверяемой численной модели.",
+            "evidence": [
+              "src/TwinTurbo.ai/agents/orchestrator.py:7-47",
+              "src/TwinTurbo.ai/weather/archive.py:231-273",
+              "scripts/generate_february.py:155-219",
+              "tests/test_temporal_contract.py:1-33",
+              "replay-audit-1"
+            ],
+            "deductionItems": [],
+            "awardedDetails": [
+              {
+                "aspect": "As-of как основной механизм, а не декларация",
+                "implementation": "Weather audit отклоняет FUTURE_WEATHER и STALE_WEATHER, AsOfSnapshot отклоняет поздние observations, а selection выбирает operational archive run только при admissible available_at и нужной геометрии.",
+                "value": "Для погодного forecasting replay это существеннее, чем обычный train/test split: каждый результат привязан к тому, что могло быть известно в исторический момент.",
+                "verification": "source",
+                "evidence": [
+                  "src/TwinTurbo.ai/weather/audit.py:6-22",
+                  "src/TwinTurbo.ai/schemas.py:128-144",
+                  "src/TwinTurbo.ai/weather/archive.py:231-251"
+                ]
+              },
+              {
+                "aspect": "Версионированный агентный цикл",
+                "implementation": "Orchestrator разделяет WeatherArchivist, service snapshot/create_forecast и store events; новый weather run проходит через new_run, сохраняет parent_forecast_id и не меняет прежний выпуск.",
+                "value": "Изменение входа становится аудируемым событием с новой версией, а не перезаписью числа на экране.",
+                "verification": "source",
+                "evidence": [
+                  "src/TwinTurbo.ai/agents/orchestrator.py:11-47",
+                  "tests/test_replay.py:6-30"
+                ]
+              },
+              {
+                "aspect": "Честный bias и интервалы",
+                "implementation": "bias_lifecycle различает future_skipped, active и expired_passthrough; при устаревшем bias correction обнуляется, квантили становятся null и status получает expired_history. Critic использует только зрелые OOS ошибки.",
+                "value": "Подход предотвращает тихую подмену истории будущим фактом и не продаёт оператору ложную уверенность.",
+                "verification": "source",
+                "evidence": [
+                  "scripts/generate_february.py:155-219",
+                  "src/TwinTurbo.ai/models/bias.py:111-152",
+                  "src/TwinTurbo.ai/agents/critic.py:120-210"
+                ]
+              },
+              {
+                "aspect": "Осознанное ограничение AI-роли",
+                "implementation": "Документация и код оставляют математику в models, а агентные классы принимают решения о выборе run, повторном расчёте и bias; код не утверждает, что LLM вычисляет мощность или ставит диагноз оборудованию.",
+                "value": "Это оригинальная для hackathon-подачи форма agentic AI: агентность выражена в проверяемом цикле решений, а не в непроверяемом тексте модели.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:26-36",
+                  "src/TwinTurbo.ai/agents/forecaster.py:21-52",
+                  "docs/PROJECT_SPEC.md:87-113"
+                ]
+              }
+            ],
+            "scoreReasoning": "Максимальный балл оправдан: проект предлагает содержательно нестандартный temporal/provenance-контур и реализует его контрактами, а не только названиями классов. Использование простой power curve вместо необоснованного ансамбля не уменьшает инновационность, потому что выбор сделан по последовательной проверке и сопровождается журналом и версиями."
+          },
+          {
+            "name": "Потенциал развития и масштабирования",
+            "score": 18,
+            "max": 20,
+            "awarded": "18/20: архитектура хорошо расширяется по моделям, провайдерам, турбинам и UI, но текущее хранилище сознательно рассчитано на один экземпляр.",
+            "deductions": "Снято 2 балла за подтверждённое ограничение масштабирования: README прямо говорит, что SQLite подходит для demo/одного экземпляра, а адаптер PostgreSQL для нескольких реплик пока не реализован.",
+            "evidence": [
+              "DEF-SINGLE-INSTANCE",
+              "README.md:321-356",
+              "src/TwinTurbo.ai/service.py:11-18",
+              "docs/CONTRACTS.md:78-105"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "DEF-SINGLE-INSTANCE",
+                "reason": "Для развития на несколько реплик или production-нагрузку отсутствует реализованный внешний storage adapter; текущая связка SQLite плюс локальный погодный cache ограничивает горизонт масштабирования за пределами одного web service."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Расширяемая граница predictor",
+                "implementation": "ForecastService принимает Predictor по протоколу, ModelState и registry сериализуют power curve, baseline, Ridge, boosting и ensemble, а слой UI/CLI остаётся общим.",
+                "value": "Другую модель можно подключить через явный контракт и checksum, не переписывая temporal storage и интерфейс.",
+                "verification": "source",
+                "evidence": [
+                  "src/TwinTurbo.ai/schemas.py:221-225",
+                  "src/TwinTurbo.ai/models/registry.py:39-68",
+                  "src/TwinTurbo.ai/service.py:38-98"
+                ]
+              },
+              {
+                "aspect": "Масштабирование по объектам и погоде",
+                "implementation": "Конфигурация хранит список turbines, архивный адаптер работает по координатам, sample step и wind height, а ingest и service не зашиты на одну конкретную строку датасета, хотя CLI кейса принимает два файла.",
+                "value": "Площадку можно расширять по турбинам и менять погодный источник с сохранением audit/provenance границы.",
+                "verification": "source",
+                "evidence": [
+                  "configs/site.yaml:6-25",
+                  "src/TwinTurbo.ai/ingest.py:57-90",
+                  "src/TwinTurbo.ai/weather/archive.py:148-229"
+                ]
+              },
+              {
+                "aspect": "Практичный deployment path",
+                "implementation": "README описывает Render single-service, persistent disk для SQLite/GFS и будущую схему Render API плюс отдельный frontend; одновременно явно отделяет готовую конфигурацию от непроверенного публичного деплоя.",
+                "value": "Следующий инженерный шаг понятен и не требует преждевременно вводить Kafka, GPU или микросервисы в MVP.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:339-364",
+                  "render.yaml:1-80"
+                ]
+              },
+              {
+                "aspect": "Развитие в predictive maintenance",
+                "implementation": "README предлагает добавлять alarms/events, vibration, температуры узлов, pitch/yaw, icing и паспортные пределы, но не выдаёт это за уже сделанную функцию.",
+                "value": "Дорожная карта привязана к конкретным недостающим сигналам и сохраняет безопасную границу между прогнозом и remote control.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:85-104",
+                  "docs/PROJECT_SPEC.md:33-43"
+                ]
+              }
+            ],
+            "scoreReasoning": "Потенциал высокий: контракты отделяют storage, weather, model, agents и UI, а документация предлагает реалистичное развёртывание и дальнейшие источники данных. Два балла сняты только за текущую single-instance архитектуру SQLite/local cache, которую команда сама фиксирует как ограничение; это не дефект обязательного пятилчасового сценария, но препятствие для настоящей многорепличной эксплуатации."
+          },
+          {
+            "name": "Презентация, демо и ответы на вопросы",
+            "score": 18,
+            "max": 20,
+            "awarded": "18/20: README, команды запуска, demo-раздел и сохранённые результаты позволяют объяснить и воспроизвести продукт, но один проектный документ противоречит фактической финальной реализации.",
+            "deductions": "Снято 2 балла за docs/PROJECT_SPEC.md, который всё ещё называет репозиторий начальным каркасом без реализации, хотя сборка, тесты и operational replay это опровергают. Это создаёт лишнюю неопределённость при чтении проекта жюри.",
+            "evidence": [
+              "DEF-DOC-STALE",
+              "README.md:1-40",
+              "README.md:112-165",
+              "docs/PROJECT_SPEC.md:1-14",
+              "start-check-1",
+              "scenario-verify-1"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "DEF-DOC-STALE",
+                "reason": "Противоречащий текущему продукту статус в PROJECT_SPEC ухудшает ясность демонстрации и onboarding: читатель может принять рабочий Streamlit/replay за нереализованный план, несмотря на подтверждённые запуск и тесты."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Понятное объяснение архитектуры",
+                "implementation": "README показывает путь SCADA -> as-of observations и NOAA GFS -> admissible run -> power curve -> bias -> intervals, а затем связывает результат с SQLite, JSON/CSV и Streamlit.",
+                "value": "Жюри может быстро восстановить причинную цепочку от входа до пользовательского результата, не читая весь исходник.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:9-36"
+                ]
+              },
+              {
+                "aspect": "Воспроизводимые команды",
+                "implementation": "Документация содержит clone/install, audit/ingest, weather bootstrap, selection, predict, February replay, verify/export и UI launch, с отдельным предупреждением о synthetic fixture.",
+                "value": "README не выдаёт мгновенное fixture-demo за доказательство качества и позволяет повторить как быстрый просмотр, так и реальный offline replay.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:112-165",
+                  "README.md:167-299"
+                ]
+              },
+              {
+                "aspect": "Демонстрация подтверждена запуском",
+                "implementation": "Bootstrap сообщил validated для model, bias, report и replay seed; Streamlit реально стартовал и вернул HTTP 200, а CLI verify/export отработали на сохранённых operational results.",
+                "value": "Даже без устной презентации репозиторий содержит воспроизводимый материал для показа результата.",
+                "verification": "observed",
+                "evidence": [
+                  "start-check-1",
+                  "start-http-1",
+                  "scenario-verify-1",
+                  "scenario-export-1"
+                ]
+              },
+              {
+                "aspect": "Честная коммуникация ограничений",
+                "implementation": "README отдельно помечает отсутствие публичного URL, незавершённость облачного деплоя, ограничения нормализованной мощности, покрытие интервала 0.76747 и синтетический режим.",
+                "value": "Материал снижает риск неверной интерпретации демо как production-системы и помогает отвечать на вопросы по границам доказательств.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:56-64",
+                  "README.md:299-356"
+                ]
+              }
+            ],
+            "scoreReasoning": "README заметно сильнее обычного hackathon README: он раскрывает команды, формат данных, provenance, артефакты, ограничения и путь demo. Два балла сняты за старый PROJECT_SPEC, который не был обновлён после реализации; это единственная существенная путаница в публичной документации, тогда как сам заявленный replay проверен."
+          }
+        ],
+        "total": 94
+      },
+      "case": {
+        "criteria": [
+          {
+            "name": "Соответствие задаче и работоспособность",
+            "score": 23,
+            "max": 25,
+            "awarded": "23/25: все основные шаги кейса реализованы и месячный replay работает, но финальная power curve использует cutoff до января вместо обучения на всей доступной истории.",
+            "deductions": "Снято 2 балла за частичное выполнение требования о модели на истории до 31.01.2026: production artifact обучен с cutoff 31.12.2025. Bias действительно создан 31.01 и не использует будущее, поэтому это ограничение актуальности, а не провал сценария.",
+            "evidence": [
+              "DEF-MODEL-CUTOFF",
+              "cases/1/case-data/HackAlem AI_ Agentic AI для прогнозирования выработки ВЭС:22-38",
+              "artifacts/models/february-production.json:1",
+              "replay-audit-1",
+              "scenario-verify-1"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "DEF-MODEL-CUTOFF",
+                "reason": "Кейс требует использовать историю до 31 января для февральского прогнозирования; shipped model state показывает 31 декабря, поэтому базовая модель не использует последний месяц SCADA, хотя февральские origins, weather и 48-часовое покрытие полностью присутствуют."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Две турбины и исходные данные",
+                "implementation": "site.yaml задаёт turbine_1 и turbine_2 с координатами, ingest принимает оба организаторских CSV и переводит naive local timestamps через Etc/GMT-5 с confirmed time basis.",
+                "value": "Решение действительно соответствует двухтурбинному кейсу, а не универсальной декларации без привязки к предоставленному формату.",
+                "verification": "observed",
+                "evidence": [
+                  "configs/site.yaml:1-14",
+                  "case-ingest-1",
+                  "src/TwinTurbo.ai/ingest.py:18-90"
+                ]
+              },
+              {
+                "aspect": "24-48 часов с почасовой детализацией",
+                "implementation": "Конфигурация устанавливает horizon_hours=48; bootstrap требует по 96 строк на выпуск, а каждый из 28 replay origins получил две турбины × 48 часов.",
+                "value": "Это точно покрывает заявленный горизонт и формат целевых часов, включая выпуск на 31 января и ежедневные выпуски февраля.",
+                "verification": "observed",
+                "evidence": [
+                  "configs/site.yaml:23-25",
+                  "scripts/bootstrap.py:253-270",
+                  "replay-audit-1"
+                ]
+              },
+              {
+                "aspect": "Историческое воспроизведение февраля",
+                "implementation": "Seed содержит origins от 2026-01-31T18:00Z до 2026-02-27T18:00Z; bootstrap проверяет ровно 28 ежедневных scheduled выпусков и запрет parent/update в seed.",
+                "value": "Последовательность из задания сохранена явно и может быть повторно проверена без доступа к исходной SQLite через index/checksum.",
+                "verification": "observed",
+                "evidence": [
+                  "scripts/bootstrap.py:202-240",
+                  "outputs/replay-february/replay-report.json:59-66",
+                  "scenario-verify-1"
+                ]
+              },
+              {
+                "aspect": "Повторный расчёт при обновлении входа",
+                "implementation": "Orchestrator.new_run проверяет available_at и более новый run, формирует release_kind=update и связывает новый ForecastResult с parent_forecast_id; test_replay проверяет сохранение старой версии и изменение новой.",
+                "value": "Существенная agentic-часть кейса присутствует в рабочем контуре, даже если поставленный месячный seed содержит только ежедневные scheduled releases.",
+                "verification": "source",
+                "evidence": [
+                  "src/TwinTurbo.ai/agents/orchestrator.py:25-47",
+                  "tests/test_replay.py:6-30"
+                ]
+              },
+              {
+                "aspect": "Разделение прогноза и факта",
+                "implementation": "generate_february.py явно формирует отчёт с raw_csv_read=false, получает weather только из CachedWeatherProvider и проходит preflight до записи результатов; manifest сохраняет weather_values отдельно от actuals.",
+                "value": "Фактическая погода и февральская target power не становятся скрытым входом прогноза, что является центральным временным требованием кейса.",
+                "verification": "source",
+                "evidence": [
+                  "scripts/generate_february.py:329-350",
+                  "scripts/generate_february.py:369-420",
+                  "replay-audit-1"
+                ]
+              }
+            ],
+            "scoreReasoning": "Реализованы две турбины, 48 часов, 28 исторических origins, архивная погода, updates и запрет будущих входов. Единственная содержательная потеря — production curve не была финально переобучена после 31 декабря, хотя bias использует зрелые январские ошибки; поэтому соответствие очень высокое, но не максимальное."
+          },
+          {
+            "name": "Техническая реализация",
+            "score": 25,
+            "max": 25,
+            "awarded": "25/25: техническая реализация целостна для MVP — от CSV и GRIB Range-загрузок до typed contracts, immutable artifacts, replay, store, CLI и UI boundary.",
+            "deductions": "Снятий по подтверждённым техническим дефектам нет. Ограничение single-instance учтено в потенциале масштабирования, а не повторно оштрафовано здесь.",
+            "evidence": [
+              "build-1",
+              "deps-1",
+              "test-1",
+              "src/TwinTurbo.ai/service.py:11-98",
+              "src/TwinTurbo.ai/weather/archive.py:35-229"
+            ],
+            "deductionItems": [],
+            "awardedDetails": [
+              {
+                "aspect": "Слой данных и временные контракты",
+                "implementation": "ingest проверяет точные имена колонок, 10-минутную сетку, дубликаты, числовые границы и неполные часы; observations получают event_start/event_end/available_at и quality_flag.",
+                "value": "Неполные или поздние измерения не превращаются молча в нули и не попадают в модель как зрелые labels.",
+                "verification": "observed",
+                "evidence": [
+                  "src/TwinTurbo.ai/ingest.py:18-90",
+                  "case-audit-1",
+                  "case-ingest-1"
+                ]
+              },
+              {
+                "aspect": "Operational weather adapter",
+                "implementation": "GFSArchive читает .idx и bounded byte ranges, декодирует UGRD/VGRD/TMP ecCodes, проверяет init/lead/units/height, интерполирует u/v и хранит SHA-256 provenance.",
+                "value": "Выбор NOAA GFS не является mock: сетевой путь, декодирование и проверка происхождения определены в коде, а seed маркирован operational_archive.",
+                "verification": "source",
+                "evidence": [
+                  "src/TwinTurbo.ai/weather/archive.py:35-125",
+                  "src/TwinTurbo.ai/weather/archive.py:148-229",
+                  "replay-audit-1"
+                ]
+              },
+              {
+                "aspect": "Единая service boundary",
+                "implementation": "ForecastService одинаково обслуживает CLI и UI, валидирует ModelState/BiasState, проверяет coverage ровно по всем turbine/hour keys, сохраняет base_predictions и manifest.",
+                "value": "Интеграция компонентов имеет одну проверяемую точку, поэтому UI не создаёт независимую от CLI математику.",
+                "verification": "source",
+                "evidence": [
+                  "src/TwinTurbo.ai/service.py:11-98",
+                  "docs/CONTRACTS.md:72-105"
+                ]
+              },
+              {
+                "aspect": "Контроль качества и regressions",
+                "implementation": "Полный pytest набор из 150 тестов проходит; отдельно проверены pip check и ecCodes selfcheck. В тестах есть ingest, clock, temporal contract, weather, replay, models, export и UI contract.",
+                "value": "Для пятичасового прототипа это необычно полное покрытие критичных инвариантов и снижает риск, что красивый seed не соответствует коду.",
+                "verification": "observed",
+                "evidence": [
+                  "test-1",
+                  "deps-1",
+                  "tests/test_temporal_contract.py:1-33",
+                  "tests/test_ui_contract.py:321-339"
+                ]
+              }
+            ],
+            "scoreReasoning": "Технический балл максимален в контексте кейса: все ключевые границы типов, времени, provenance, model/bias identity, immutable output и UI/CLI integration реализованы и проверены. Не следует снижать этот критерий за отсутствие production-scale PostgreSQL, поскольку это обозначено как следующий deployment step, не обязательная функция задания."
+          },
+          {
+            "name": "README и воспроизводимость",
+            "score": 22,
+            "max": 25,
+            "awarded": "22/25: README и скрипты позволяют понять и проверить проект, но stale PROJECT_SPEC и абсолютные пути в committed replay-report ухудшают переносимость и единообразие документации.",
+            "deductions": "Снято 2 балла за DEF-DOC-STALE: PROJECT_SPEC говорит, что код и приложение ещё не реализованы. Снят 1 балл за DEF-REPORT-PATH: replay-report.json содержит абсолютные пути исходной рабочей машины вместо относительных путей, хотя генератор предусматривает portable_path.",
+            "evidence": [
+              "DEF-DOC-STALE",
+              "DEF-REPORT-PATH",
+              "README.md:112-165",
+              "README.md:167-299",
+              "outputs/replay-february/replay-report.json:11-80",
+              "scenario-verify-1"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "DEF-DOC-STALE",
+                "reason": "Старый статус в PROJECT_SPEC противоречит финальному README и наблюдаемым тестам, поэтому новый проверяющий может выбрать неверный порядок действий и решить, что рабочий сценарий отсутствует."
+              },
+              {
+                "points": 1,
+                "findingId": "DEF-REPORT-PATH",
+                "reason": "В опубликованном provenance replay-report остаются C:\\Users\\Chach\\Documents\\GitHub... paths; это не ломает checksum/verify, но снижает переносимость отчёта и засоряет воспроизводимую демонстрацию machine-specific деталями."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Clone-to-run инструкция",
+                "implementation": "README последовательно описывает окружение, установку lock, быстрый fixture preview, импорт CSV, weather bootstrap, January selection, predict, February generate, verify/export и Streamlit.",
+                "value": "Проверяющий получает как короткий путь к демо, так и путь к реальному архивному replay, с объяснением, какие команды требуют сеть и большой кэш.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:112-165",
+                  "README.md:167-299"
+                ]
+              },
+              {
+                "aspect": "Документация формата и границ",
+                "implementation": "README фиксирует UTC+05, interval_start, observation delay 15 минут, normalized power, происхождение GFS, Q10/Q50/Q90, fixture restriction и отсутствие номинальной мощности.",
+                "value": "Документация объясняет не только как запустить, но и как интерпретировать результат без ложных единиц или уверенности.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:9-36",
+                  "README.md:54-104",
+                  "configs/site.yaml:1-28"
+                ]
+              },
+              {
+                "aspect": "Артефакты, пригодные для offline проверки",
+                "implementation": "В Git присутствуют trained model/bias, January report, replay index/checksums, forecast JSON и CSV; bootstrap и verify проверяют их взаимное соответствие без исходной SQLite.",
+                "value": "Даже без повторной сетевой загрузки можно проверить содержательный пользовательский результат и экспорт.",
+                "verification": "observed",
+                "evidence": [
+                  "scripts/bootstrap.py:178-270",
+                  "scenario-verify-1",
+                  "scenario-export-1"
+                ]
+              },
+              {
+                "aspect": "Проблема с единой правдой и портативностью",
+                "implementation": "docs/PROJECT_SPEC.md сохранил scaffold-статус, а committed replay-report содержит абсолютные пути; при этом generate_february.py уже имеет portable_path, то есть разрыв находится именно в сданном артефакте/документе.",
+                "value": "Это небольшая, но реальная помеха для жюри и следующего разработчика: приходится вручную отличать устаревший план от финальной реализации и игнорировать локальные пути.",
+                "verification": "source",
+                "evidence": [
+                  "docs/PROJECT_SPEC.md:1-14",
+                  "outputs/replay-february/replay-report.json:11-80",
+                  "scripts/generate_february.py:119-126"
+                ]
+              }
+            ],
+            "scoreReasoning": "Воспроизводимость подтверждена не только текстом: clean image собирается, seed проходит bootstrap/verify и экспортируется. Поэтому основная часть баллов заслужена. Три балла удержаны за две конкретные публикационные проблемы — stale проектный статус и machine-specific пути; отсутствие тяжёлого GFS cache само по себе не штрафуется, потому что README явно документирует его восстановление и в репозитории есть проверяемый seed."
+          },
+          {
+            "name": "Ценность и применимость решения",
+            "score": 15,
+            "max": 15,
+            "awarded": "15/15: решение применимо как operational decision-support прототип для планирования ВЭС и аккуратно отделяет подтверждённые сигналы от инженерных гипотез.",
+            "deductions": "Снятий по подтверждённым дефектам нет. Нормализованный выход и отсутствие MWh оставлены как честная граница данных кейса, а не ошибочно оценены как отсутствие применимости.",
+            "evidence": [
+              "README.md:66-104",
+              "README.md:106-110",
+              "case-ingest-1",
+              "scenario-export-1"
+            ],
+            "deductionItems": [],
+            "awardedDetails": [
+              {
+                "aspect": "Результат для диспетчерского планирования",
+                "implementation": "Система выдаёт 48 почасовых значений на обе турбины, CSV-export и доступный факт только после его as-of availability; UI contract предусматривает график, сравнение выпусков, metrics и provenance.",
+                "value": "Это соответствует непосредственной потребности планирования на сутки-двое и не требует от пользователя разбирать внутренние модели.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:66-83",
+                  "src/TwinTurbo.ai/service.py:115-185",
+                  "scenario-export-1"
+                ]
+              },
+              {
+                "aspect": "Поддержка решений, не автоматическое управление",
+                "implementation": "Critic и Advisor формируют проверяемые подсказки про резерв, сетевые ограничения, доступность и качество данных, а код добавляет causal_limitation и запрещает диагноз по одним residuals.",
+                "value": "Такой boundary реалистичен для энергетического MVP и уменьшает риск опасной интерпретации прогноза как команды уставки.",
+                "verification": "source",
+                "evidence": [
+                  "src/TwinTurbo.ai/agents/critic.py:24-61",
+                  "src/TwinTurbo.ai/agents/critic.py:289-318",
+                  "README.md:85-104"
+                ]
+              },
+              {
+                "aspect": "Доказуемая пользу от погодного происхождения",
+                "implementation": "Каждый выпуск хранит run_id, available_at, provider, source URLs, grid points и SHA-256 records; operational replay использует реальные архивные runs, а не фактическую будущую погоду.",
+                "value": "Оператор может объяснить, почему прогноз был таким, и проверить свежесть/происхождение входа — важный практический атрибут для планирования.",
+                "verification": "source",
+                "evidence": [
+                  "src/TwinTurbo.ai/weather/archive.py:215-226",
+                  "src/TwinTurbo.ai/service.py:83-94",
+                  "replay-audit-1"
+                ]
+              },
+              {
+                "aspect": "Применимость при неполных данных",
+                "implementation": "Аудит различает complete, incomplete, invalid и missing hours, а service добавляет INCOMPLETE_OBSERVATIONS/STALE_ACTUALS/NO_ACTUALS вместо подстановки нулей.",
+                "value": "Решение сохраняет объяснимое поведение на реальных SCADA-пропусках — это ближе к эксплуатации, чем предположение идеально полной таблицы.",
+                "verification": "observed",
+                "evidence": [
+                  "case-audit-1",
+                  "case-ingest-1",
+                  "src/TwinTurbo.ai/ingest.py:68-86",
+                  "tests/test_ingest.py:14-47"
+                ]
+              }
+            ],
+            "scoreReasoning": "Полный балл оправдан практической ориентированностью и безопасной границей claims. Команда не обещает экономию, диагноз или физические MWh без исходных паспортных данных, но даёт ровно тот normalized hourly support, который допускает кейсовый датасет, с экспортом и provenance."
+          },
+          {
+            "name": "Потенциал развития и оригинальность подхода",
+            "score": 9,
+            "max": 10,
+            "awarded": "9/10: сочетание temporal replay, bias lifecycle, uncertainty и agent audit даёт хороший задел, но текущая single-instance инфраструктура ограничивает непосредственный путь к широкому production deployment.",
+            "deductions": "Снят 1 балл за DEF-SINGLE-INSTANCE: масштабирование на несколько реплик и production-нагрузку требует ещё не реализованного PostgreSQL/storage adapter, хотя дорожная карта и граница ограничения описаны правильно.",
+            "evidence": [
+              "DEF-SINGLE-INSTANCE",
+              "README.md:339-364",
+              "docs/CONTRACTS.md:78-105",
+              "src/TwinTurbo.ai/agents/orchestrator.py:25-47"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "DEF-SINGLE-INSTANCE",
+                "reason": "Оригинальный temporal/provenance подход хорошо переносится на новые модели и площадки, но общая эксплуатация нескольких реплик пока потребует архитектурного шага за пределами текущего SQLite/local-cache контура."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Оригинальность temporal replay",
+                "implementation": "Выпуски идентифицируются по request/model/bias/snapshot/config hash, сохраняют lineage и допускают сравнение пересекающихся target hours после нового weather run.",
+                "value": "Это переносимый шаблон для любых forecast-задач, где будущая информация и поздние revisions должны быть строго отделены.",
+                "verification": "source",
+                "evidence": [
+                  "src/TwinTurbo.ai/service.py:53-98",
+                  "src/TwinTurbo.ai/agents/orchestrator.py:25-47"
+                ]
+              },
+              {
+                "aspect": "Расширение источников и моделей",
+                "implementation": "WeatherProvider и Predictor — явные протоколы; registry поддерживает несколько сериализуемых predictor kinds, а feature/model layers отделены от UI и weather I/O.",
+                "value": "Следующий кейс может заменить поставщика погоды или алгоритм без разрушения основной as-of проверки.",
+                "verification": "source",
+                "evidence": [
+                  "src/TwinTurbo.ai/weather/base.py:6-13",
+                  "src/TwinTurbo.ai/schemas.py:221-225",
+                  "src/TwinTurbo.ai/models/registry.py:39-68"
+                ]
+              },
+              {
+                "aspect": "Путь к predictive maintenance",
+                "implementation": "Документация связывает новые SCADA alarms, vibration, bearing/gearbox temperature, pitch/yaw, icing и maintenance history с будущей проверкой рекомендаций.",
+                "value": "Расширение исходит из конкретных отсутствующих сигналов и сохраняет доказательную дисциплину, вместо добавления декоративного AI.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:96-104"
+                ]
+              },
+              {
+                "aspect": "Инфраструктурная граница",
+                "implementation": "README предлагает persistent disk для одного Render service и прямо оставляет PostgreSQL adapter как будущую работу; текущий store — SQLite с immutable records.",
+                "value": "План развития реалистичен и хорошо очерчен, но отсутствие реализованного multi-replica storage не позволяет дать полный балл потенциалу масштабирования.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:341-354",
+                  "src/TwinTurbo.ai/store.py:1-80"
+                ]
+              }
+            ],
+            "scoreReasoning": "Проект заметно оригинальнее стандартного notebook: temporal contracts, archive provenance, immutable forecast lineage и conservative intervals образуют переносимый pattern. Один балл снят не за отсутствие лишней production-функции, а за явно подтверждённое ограничение текущей архитектуры при переходе от одного экземпляра к нескольким."
+          }
+        ],
+        "total": 94
+      },
+      "judgeScore": 94,
+      "caseRequirements": [
+        {
+          "requirement": "Построить модель по предоставленной истории двух турбин до периода тестирования.",
+          "status": "partial",
+          "explanation": "Данные до 31.01.2026 импортируются и проверяются, а trained production model существует, однако его training_cutoff равен 31.12.2025. Январская история использована для selection/backtest и bias, но не полностью вошла в fitted power curve.",
+          "evidence": [
+            "cases/1/case-data/HackAlem AI_ Agentic AI для прогнозирования выработки ВЭС:22-24",
+            "artifacts/models/february-production.json:1",
+            "outputs/replay-february/replay-report.json:54-56",
+            "case-ingest-1"
+          ]
+        },
+        {
+          "requirement": "Получать погодные прогнозы по координатам из открытого источника с учётом доступности на момент выпуска.",
+          "status": "met",
+          "explanation": "Реализован NOAA GFS S3 adapter с координатным nearest-grid lookup, bounded GRIB ranges, provenance и проверкой available_at/run age. Все сохранённые февральские результаты имеют operational_archive provenance; повторный online fetch не выполнялся из-за отсутствия предоставленных credentials, но это не блокирует проверенный offline seed.",
+          "evidence": [
+            "configs/site.yaml:6-25",
+            "src/TwinTurbo.ai/weather/archive.py:148-229",
+            "src/TwinTurbo.ai/weather/audit.py:6-22",
+            "replay-audit-1"
+          ]
+        },
+        {
+          "requirement": "Формировать прогноз на 24-48 часов с почасовой детализацией для обеих турбин.",
+          "status": "met",
+          "explanation": "Конфигурация задаёт 48 часов, bootstrap требует ровно 96 строк на выпуск, а проверенный seed содержит 28 выпусков по 96 строк и обе turbine_id.",
+          "evidence": [
+            "configs/site.yaml:23-25",
+            "scripts/bootstrap.py:253-270",
+            "replay-audit-1",
+            "scenario-verify-1"
+          ]
+        },
+        {
+          "requirement": "Выполнять полный agentic цикл: погода, подготовка, модель, прогноз, анализ и повторный расчёт при обновлении входа.",
+          "status": "met",
+          "explanation": "Orchestrator и WeatherArchivist фиксируют выбор/отказ weather run, ForecastService создаёт versioned result, Critic анализирует зрелые ошибки и new_run сохраняет update с parent_forecast_id. Повторный расчёт подтверждён domain-тестом; production seed намеренно содержит scheduled daily releases.",
+          "evidence": [
+            "src/TwinTurbo.ai/agents/orchestrator.py:11-47",
+            "src/TwinTurbo.ai/agents/weather_archivist.py:5-23",
+            "src/TwinTurbo.ai/agents/critic.py:77-332",
+            "tests/test_replay.py:6-30"
+          ]
+        },
+        {
+          "requirement": "Воспроизвести выпуск на 31 января и последующие ежедневные origins февраля.",
+          "status": "met",
+          "explanation": "Bootstrap проверяет ровно 28 origins от 2026-01-31T18:00Z до 2026-02-27T18:00Z; verify подтвердил все 28 сохранённых forecast JSON.",
+          "evidence": [
+            "scripts/bootstrap.py:202-211",
+            "outputs/replay-february/replay-report.json:61-66",
+            "scenario-verify-1",
+            "replay-audit-1"
+          ]
+        },
+        {
+          "requirement": "Не подмешивать фактическую будущую погоду или февральскую целевую выработку во вход прогноза.",
+          "status": "met",
+          "explanation": "AsOfSnapshot и audit_bundle отклоняют future weather/observation, модель получает snapshot, а generate_february.py сообщает raw_csv_read=false и использует только cached weather plus frozen model/bias. Manifest-аудит 28 выпусков дал ноль временных нарушений.",
+          "evidence": [
+            "src/TwinTurbo.ai/schemas.py:128-160",
+            "src/TwinTurbo.ai/service.py:15-36",
+            "scripts/generate_february.py:329-385",
+            "replay-audit-1"
+          ]
+        }
+      ],
+      "testData": {
+        "provided": [
+          "cases/1/case-data/Dataset HackAlemAI для участников 11.03.2023-28.02.2026 - turbine 1.csv",
+          "cases/1/case-data/Dataset HackAlemAI для участников 11.03.2023-28.02.2026 - turbine 2.csv",
+          "cases/1/case-data/HackAlem AI_ Agentic AI для прогнозирования выработки ВЭС.md"
+        ],
+        "used": [
+          "cases/1/case-data/Dataset HackAlemAI для участников 11.03.2023-28.02.2026 - turbine 1.csv",
+          "cases/1/case-data/Dataset HackAlemAI для участников 11.03.2023-28.02.2026 - turbine 2.csv",
+          "cases/1/case-data/HackAlem AI_ Agentic AI для прогнозирования выработки ВЭС.md"
+        ],
+        "checks": [
+          {
+            "input": "Оба предоставленных CSV",
+            "method": "windoracle audit-csv в контейнере; дополнительно SHA-256 сопоставлен с data/raw/turbine_1.csv и turbine_2.csv из snapshot",
+            "result": "turbine 1: 142360 строк, 2023-03-11 00:00:00—2026-01-31 23:50:00; turbine 2: 149499 строк, тот же диапазон. Для обеих duplicate_timestamps=0, invalid_numeric_values=0, invalid_power_rows=0, negative_wind_rows=0. SHA-256 совпали с repo-копиями.",
+            "conclusion": "Входная структура соответствует проектному reader; реальные пропуски 10-минутной сетки не скрыты и передаются в quality audit."
+          },
+          {
+            "input": "Оба предоставленных CSV",
+            "method": "windoracle ingest --config configs/site.yaml с внешними case-файлами как turbine-1/turbine-2",
+            "result": "Обе турбины обработаны в Etc/GMT-5, timestamp_semantics=interval_start, time_basis=confirmed. Для каждой построено 25392 hourly_rows; valid_complete_hours: 23667 для turbine 1 и 24785 для turbine 2.",
+            "conclusion": "Проект применяет организаторские CSV, а не только встроенные фикстуры; неполные часы сохраняются как неполные, не используются как полные target."
+          },
+          {
+            "input": "outputs/replay-february и его manifest/checksums",
+            "method": "verify, export и отдельный аудит forecast manifests по origin, training_cutoff, weather.available_at, turbine/hour keys",
+            "result": "verify: 28 verified_forecasts, 2688 rows; export: 2688 rows. Manifest audit: 28 files, 96 rows each, both turbines, origins 2026-01-31T18:00Z—2026-02-27T18:00Z, leakage_violations=0, modes=[replay], provenances=[operational_archive].",
+            "conclusion": "Сохранённый результат соответствует целевому 28-дневному replay и не показывает обнаруженной временной утечки."
+          },
+          {
+            "input": "Docker image проекта и локальный запуск",
+            "method": "pip check, ecCodes selfcheck, python -m pytest -q, scripts/run.py --check, Streamlit HTTP GET /_stcore/health",
+            "result": "pip check: No broken requirements found; ecCodes selfcheck: Your system is ready; pytest: 150 passed in 8.90s; bootstrap status=ready; HTTP status 200 body=ok.",
+            "conclusion": "Сборка, зависимости, старт и содержательный offline пользовательский результат воспроизведены отдельно."
+          }
+        ],
+        "limitations": [
+          "Предоставленные CSV заканчиваются 31.01.2026, поэтому независимая оценка точности на фактических целях февраля невозможна по самим тестовым данным; проверены структура, temporal contracts и сохранённый replay.",
+          "Онлайн NOAA fetch в рамках ревью не запускался: credentials намеренно не предоставлены. Это не мешает offline verify уже сохранённых operational-archive выпусков и не является снятием баллов.",
+          "Визуальный вид Streamlit не проверялся по правилам ревью; проверен только фактический процесс старта и HTTP health endpoint."
+        ]
+      },
+      "runtime": {
+        "status": "working",
+        "build": "Docker image собран успешно на Python 3.13; requirements.lock установлен, editable package установлен, ecCodes selfcheck прошёл.",
+        "start": "scripts/run.py --check успешно провёл bootstrap и реальный Streamlit-процесс ответил 200 ok на health endpoint.",
+        "scenario": "Сохранённый operational replay февраля проверен через verify и экспортирован в CSV; 28 выпусков и 2688 строк доступны без внешнего ключа.",
+        "environment": "Изолированный Docker-контейнер с Python 3.13, зафиксированными зависимостями и без секретов; проверка не использовала браузер или визуальную автоматизацию.",
+        "summary": "Основной сценарий воспроизведён, поэтому status=working. Online weather acquisition не выполнялся отдельно из-за отсутствия credentials, но репозиторный offline seed прошёл provenance/checksum/as-of проверки и является предусмотренным режимом демонстрации.",
+        "checks": [
+          {
+            "command": "docker build",
+            "result": "Exit 0; образ создан, pip install requirements.lock и editable package завершились, встроенный ecCodes selfcheck сообщил Your system is ready.",
+            "id": "build-1",
+            "stage": "build",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Проектный Dockerfile собирается и устанавливает все зависимости без ошибки."
+          },
+          {
+            "command": "python -m pip check && python -m eccodes selfcheck",
+            "result": "No broken requirements found; ecCodes v2.49.0 selfcheck: Your system is ready.",
+            "id": "deps-1",
+            "stage": "build",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Зависимости согласованы, native ecCodes доступен для погодного адаптера."
+          },
+          {
+            "command": "python -m pytest -q",
+            "result": "150 passed in 8.90s, stderr пустой.",
+            "id": "test-1",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Unit/domain/UI contract тесты проекта проходят в чистом окружении."
+          },
+          {
+            "command": "python -m windoracle audit-csv <case turbine 1 CSV> <case turbine 2 CSV>",
+            "result": "Оба CSV прочитаны; дублей, invalid numeric/power и отрицательного ветра нет. Метрики строк и диапазонов приведены в testData.",
+            "id": "case-audit-1",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Проект принимает точную схему организаторских CSV и формирует честный аудит качества."
+          },
+          {
+            "command": "python -m windoracle ingest --config configs/site.yaml --turbine-1 <case turbine 1 CSV> --turbine-2 <case turbine 2 CSV>",
+            "result": "Обе внешние case-записи импортированы; по 25392 hourly rows на турбину, с корректным UTC+05 processing и revision hash.",
+            "id": "case-ingest-1",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Импорт применяет предоставленные данные и не ломается на их реальных пропусках."
+          },
+          {
+            "command": "python scripts/run.py --check --host 0.0.0.0 --port 8501",
+            "result": "status=ready; bootstrap validated model, bias, January selection report and replay seed with forecast_count=28 and prediction_rows=2688.",
+            "id": "start-check-1",
+            "stage": "start",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Проектный startup contract валидирует артефакты и готовит Streamlit launch command."
+          },
+          {
+            "command": "GET /_stcore/health",
+            "result": "HTTP 200; response body ok.",
+            "id": "start-http-1",
+            "stage": "start",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Запущенный Streamlit service принимает health request."
+          },
+          {
+            "command": "python -m windoracle verify --input outputs/replay-february",
+            "result": "verified_forecasts=28, rows=2688.",
+            "id": "scenario-verify-1",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Каждый сохранённый forecast проходит checksum/schema/coverage verification."
+          },
+          {
+            "command": "python -m windoracle export --input outputs/replay-february --output <replay.csv>",
+            "result": "exported CSV, rows=2688.",
+            "id": "scenario-export-1",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Проверенный operational replay экспортируется в пользовательский CSV без fixture-разрешения."
+          },
+          {
+            "command": "offline replay manifest audit",
+            "result": "28 forecast files, 96 rows each, both turbines, 0 leakage violations, replay mode and operational_archive provenance.",
+            "id": "replay-audit-1",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Origins, model/weather availability and output coverage satisfy the case temporal contract."
+          }
+        ],
+        "limitations": [
+          "Online NOAA fetch не выполнялся без credentials; offline committed replay проверен полностью.",
+          "Визуальное поведение интерфейса не проверялось; health/start и статические UI-контракты проверены."
+        ]
+      },
+      "liveDemo": {
+        "status": "none",
+        "url": null,
+        "notes": "Публичный URL в README не заявлен. Локальный Streamlit запуск и HTTP health endpoint подтверждены; отсутствие публичной ссылки не использовано как причина снятия баллов."
+      },
+      "fiveHourContext": "Для пятичасового MVP объём реализации существенно выше минимального: команда собрала end-to-end temporal pipeline, реальный GFS adapter, модельные артефакты, bias/interval logic, immutable replay, UI boundary и тестовый контур. Не требовались production multi-replica storage, публичный cloud deployment, физические MWh при null rated_power_mw или отдельная LLM. Оценка учитывает именно этот контекст; снятия относятся только к конкретному cutoff модели и двум публикационным несогласованностям.",
+      "strengths": [
+        "Сильный as-of temporal contract: future weather, observations и inadmissible model/bias отклоняются на typed boundary.",
+        "Реальный operational NOAA GFS путь с bounded downloads, ecCodes decoding, coordinate provenance и audit available_at.",
+        "Полностью проверенный 28-дневный replay: 28 выпусков, 2688 строк, 96 строк на выпуск и обе турбины.",
+        "150 автоматических тестов плюс ручные проверки сборки, зависимостей, case CSV, startup, HTTP и export.",
+        "Честная коммуникация normalized power, неопределённости, fixture режима и причинных ограничений рекомендаций."
+      ],
+      "gaps": [
+        "Production power curve имеет training_cutoff 2025-12-31, поэтому январская история не полностью вошла в обучение базовой модели перед февральским прогнозом.",
+        "docs/PROJECT_SPEC.md остался стартовым scaffold-документом и прямо утверждает, что приложение ещё не реализовано, что противоречит финальному README и проверенному коду.",
+        "outputs/replay-february/replay-report.json содержит абсолютные пути исходной рабочей машины вместо стабильных относительных provenance paths.",
+        "Текущий SQLite/local-cache store рассчитан на один экземпляр; PostgreSQL adapter для нескольких реплик ещё не реализован."
+      ],
+      "futureAdvice": [
+        {
+          "principle": "Финальный predictor должен быть обучен после закрытия последнего зрелого исторического окна.",
+          "why": "DEF-MODEL-CUTOFF показывает, что production power curve остановлена на 31.12.2025, хотя январские labels уже использованы для bias и доступны для финального fitted model; это оставляет актуальность базовой кривой ниже возможной.",
+          "how": "В другом хакатоне после model-selection freeze отдельным коротким шагом переобучите выбранный predictor на всех labels с label_available_at до 31.01.2026, создайте новый versioned artifact, затем прогоните smoke replay первого и последнего origin и сравните checksum/MAE с предшественником.",
+          "findingIds": [
+            "DEF-MODEL-CUTOFF"
+          ],
+          "successCheck": "Новый artifact имеет training_cutoff не раньше последнего разрешённого зрелого label, проходит temporal validator, а 28-origin replay и strict verify дают полное покрытие без роста MAE на независимом holdout.",
+          "timeboxMinutes": 60
+        },
+        {
+          "principle": "Перед сдачей нужен единый источник истины для статусов и provenance.",
+          "why": "DEF-DOC-STALE и DEF-REPORT-PATH дают два конкретных несоответствия: публичный проектный документ описывает старый scaffold, а committed report привязан к локальному пути автора.",
+          "how": "В другом хакатоне перед публикацией выполните короткий release sweep: найдите machine-specific paths, замените их portable_path, затем обновите статусные документы так, чтобы каждый заявленный command был либо реально проверен, либо помечен как planned.",
+          "findingIds": [
+            "DEF-DOC-STALE",
+            "DEF-REPORT-PATH"
+          ],
+          "successCheck": "rg по docs/reports/outputs не находит абсолютных пользовательских путей, PROJECT_SPEC и README согласованно описывают реализованные команды, а clean clone проходит bootstrap/verify без ручного редактирования отчётов.",
+          "timeboxMinutes": 30
+        }
+      ],
+      "uncertainties": [
+        "Online NOAA GFS download в этой проверке не выполнялся без credentials и внешнего доступа; вывод о provider path основан на исходниках, operational provenance сохранённых выпусков и offline verify.",
+        "Визуальная компоновка Streamlit не проверялась в соответствии с пользовательской политикой; HTTP start и статические/UI contract тесты пройдены.",
+        "Фактическая февральская мощность отсутствует в предоставленных CSV, поэтому независимая оценка MAE именно на target-феврале не проводилась.",
+        "Availability weather metadata консервативно выводится из archive Last-Modified плюс configured delay; README и код не утверждают наличие оригинального dissemination log."
+      ],
+      "reviewPolicyVersion": 2,
+      "assessmentStatus": "ready",
+      "findings": [
+        {
+          "id": "STR-REPLAY",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Сохранённый operational replay действительно проходит проверку целостности и экспортируется.",
+          "expected": "Каждый из 28 ежедневных выпусков должен иметь checksum, полные две турбины и 48 часов.",
+          "actual": "verify сообщил 28 выпусков и 2688 строк, export сообщил 2688 строк; отдельный аудит дал 96 строк на файл и обе turbine_id.",
+          "evidence": [
+            "scenario-verify-1",
+            "scenario-export-1",
+            "replay-audit-1",
+            "scripts/bootstrap.py:202-270"
+          ],
+          "checkIds": [
+            "scenario-verify-1",
+            "scenario-export-1",
+            "replay-audit-1"
+          ]
+        },
+        {
+          "id": "STR-TEMPORAL",
+          "kind": "strength",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Temporal availability проверяется на weather, observations, model и bias boundaries.",
+          "expected": "Ни один вход с available_at или activation после origin не должен попасть в прогноз.",
+          "actual": "audit_bundle, AsOfSnapshot, ForecastService и bias_lifecycle явно отклоняют/пропускают только допустимые состояния; replay manifest audit нашёл 0 нарушений.",
+          "evidence": [
+            "src/TwinTurbo.ai/weather/audit.py:6-22",
+            "src/TwinTurbo.ai/schemas.py:128-174",
+            "src/TwinTurbo.ai/service.py:38-63",
+            "replay-audit-1"
+          ],
+          "checkIds": [
+            "replay-audit-1"
+          ]
+        },
+        {
+          "id": "STR-CASE-DATA",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Проект применяет именно предоставленные организаторами CSV и корректно обрабатывает их пропуски.",
+          "expected": "Reader должен принять точные колонки, не создать дублей и сохранить quality flags при неполных часах.",
+          "actual": "Оба case CSV побайтно совпали с repo data/raw копиями; audit и ingest прошли с нулём дублей/invalid values и с явно посчитанными partial/missing hours.",
+          "evidence": [
+            "case-audit-1",
+            "case-ingest-1",
+            "src/TwinTurbo.ai/ingest.py:18-90"
+          ],
+          "checkIds": [
+            "case-audit-1",
+            "case-ingest-1"
+          ]
+        },
+        {
+          "id": "STR-QUALITY",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Сборка, зависимости и автоматические регрессии проекта проходят в изолированном окружении.",
+          "expected": "Образ должен собраться, зависимости быть согласованы, ecCodes доступен, pytest пройти без ошибок.",
+          "actual": "Docker build exit 0; pip check чист; ecCodes selfcheck готов; 150 pytest passed.",
+          "evidence": [
+            "build-1",
+            "deps-1",
+            "test-1"
+          ],
+          "checkIds": [
+            "build-1",
+            "deps-1",
+            "test-1"
+          ]
+        },
+        {
+          "id": "STR-HONEST-UNCERTAINTY",
+          "kind": "strength",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Проект не маскирует недостаточную историю интервалов, неизвестную номинальную мощность и причинную неопределённость рекомендаций.",
+          "expected": "Неизвестные значения должны быть null/ограничены, а не заменены фиктивной уверенностью.",
+          "actual": "README и model contracts оставляют квантили null при недостатке зрелых ошибок, rated_power_mw null и рекомендации с causal limitation.",
+          "evidence": [
+            "README.md:56-104",
+            "src/TwinTurbo.ai/schemas.py:177-191",
+            "src/TwinTurbo.ai/agents/critic.py:24-61"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "DEF-MODEL-CUTOFF",
+          "kind": "defect",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Выбранный production model artifact обучен только до 2025-12-31T18:00Z, хотя case history и зрелый bias доходят до 2026-01-31.",
+          "expected": "Для февральского сценария fitted model должна использовать разрешённую зрелую историю до 31.01.2026 либо явно объяснить, почему финальное переобучение невозможно.",
+          "actual": "artifacts/models/february-production.json и replay-report указывают training_cutoff 2025-12-31T18:00Z; bias создан 2026-01-31T18:00Z и использует январские ошибки, поэтому последний месяц не вошёл именно в power curve.",
+          "evidence": [
+            "artifacts/models/february-production.json:1",
+            "outputs/replay-february/replay-report.json:54-56",
+            "artifacts/bias/february-production-bias.json:1-80",
+            "reports/january-model-comparison.json:selection"
+          ],
+          "checkIds": [
+            "replay-audit-1"
+          ]
+        },
+        {
+          "id": "DEF-DOC-STALE",
+          "kind": "defect",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "docs/PROJECT_SPEC.md публикует статус начального каркаса и утверждает, что приложение, зависимости, тесты и погодный коннектор ещё не реализованы.",
+          "expected": "Публичные документы должны описывать один согласованный статус сданного snapshot.",
+          "actual": "README, код, тесты и артефакты описывают и подтверждают рабочий проект, но PROJECT_SPEC:1-14 оставляет противоположное сообщение.",
+          "evidence": [
+            "docs/PROJECT_SPEC.md:1-14",
+            "README.md:1-40",
+            "test-1",
+            "start-check-1"
+          ],
+          "checkIds": [
+            "test-1",
+            "start-check-1"
+          ]
+        },
+        {
+          "id": "DEF-REPORT-PATH",
+          "kind": "defect",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Committed outputs/replay-february/replay-report.json содержит абсолютные пути исходного рабочего checkout.",
+          "expected": "Публикуемый provenance report должен использовать переносимые относительные пути, особенно если генератор проекта содержит portable_path.",
+          "actual": "В полях bias.path, config.path, model.path, output, store и weather.cache_path записаны C:\\Users\\Chach\\Documents\\GitHub\\... paths; verify не ломается, но отчёт не переносим как текстовый артефакт.",
+          "evidence": [
+            "outputs/replay-february/replay-report.json:11-80",
+            "scripts/generate_february.py:119-126"
+          ],
+          "checkIds": [
+            "scenario-verify-1"
+          ]
+        },
+        {
+          "id": "DEF-SINGLE-INSTANCE",
+          "kind": "defect",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Текущий storage/deployment слой ограничен одним экземпляром SQLite/local cache и не имеет PostgreSQL adapter.",
+          "expected": "Для полного production-scale потенциала несколько реплик должны иметь общий durable storage или реализованный adapter path.",
+          "actual": "README прямо сообщает, что SQLite подходит для demo/одного экземпляра, а PostgreSQL adapter ещё не заявлен реализованным.",
+          "evidence": [
+            "README.md:341-354",
+            "src/TwinTurbo.ai/store.py:1-80"
+          ],
+          "checkIds": []
+        }
+      ],
+      "gapFindingIds": [
+        "DEF-MODEL-CUTOFF",
+        "DEF-DOC-STALE",
+        "DEF-REPORT-PATH",
+        "DEF-SINGLE-INSTANCE"
+      ]
+    }
+  ],
+  "score": 94.0,
+  "status": "complete",
+  "expectedJudges": 1
+}

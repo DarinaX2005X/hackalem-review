@@ -1,0 +1,1024 @@
+{
+  "methodVersion": 4,
+  "repoId": "hack-93b60efd-404",
+  "repoUrl": "https://github.com/BAITC-Hacks/hack-93b60efd-404",
+  "caseId": 9,
+  "snapshot": "2bdedd9aef0fa8760d4dc0739ac3e43aa5260219",
+  "judges": [
+    {
+      "methodVersion": 4,
+      "repoId": "hack-93b60efd-404",
+      "caseId": 9,
+      "model": "GPT-5.6 Luna",
+      "snapshot": "2bdedd9aef0fa8760d4dc0739ac3e43aa5260219",
+      "overallSummary": "Saqta Voice — цельный пятчасовой прототип голосового страхового ассистента с LLM-маршрутизацией по официальному каталогу из 40 сценариев. Исходники показывают связный путь от Gemini Live и текстового fallback через серверную сессию, OpenAI router, извлечение слотов и synthetic actions до ответа и supervisor trace. Предоставленный evaluator воспроизводимо дал 104/104 exact ordered routes: RU 52/52, KK 45/45, mixed 7/7 и multi-intent 13/13. Production-образ собрался, процесс стартовал, /health, /catalog и статическая выдача ответили; полноценный provider-backed turn в этой проверке ограничен отсутствием credentials. Основная недоказанная часть — фактическое визуальное поведение браузерного voice-flow, которое по правилам проверки выполняет пользователь.",
+      "global": {
+        "criteria": [
+          {
+            "name": "Ценность решения",
+            "score": 23,
+            "max": 25,
+            "awarded": "Решение адресует понятную проблему голосовых меню: естественные RU/KK/mixed запросы, смена темы и необходимость объяснимой маршрутизации.",
+            "deductions": "2 балла удержаны из-за отсутствия независимого пользовательского или production-метрического подтверждения ценности; доказательства в основном synthetic dataset и прототипный supervisor workflow.",
+            "evidence": [
+              "README.md:16-42",
+              "README.md:105-111",
+              "data/voice_router_dataset/scenarios.json",
+              "runtime-check-evaluate"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "F1",
+                "reason": "Отсутствие автоматизированного набора проектных тестов и независимого пользовательского измерения оставляет ценность подтверждённой демонстрационным synthetic case, но не эксплуатационными данными."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Проблема естественной речи",
+                "implementation": "README описывает типичный сбой фиксированного меню: клиент формулирует проблему своими словами, добавляет второй вопрос или меняет язык. Архитектура передаёт текущую реплику и историю в LLM router, а не сопоставляет её с локальным списком фраз; это видно в `backend/voice_router/router.py:108-131`.",
+                "value": "Ценность направлена на реальную точку потери качества контакт-центра — неправильный первый выбор сценария и повторное объяснение ситуации, а не только на эффект голосового интерфейса.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:20-26",
+                  "backend/voice_router/router.py:108-137"
+                ]
+              },
+              {
+                "aspect": "Мультиязычность и смена темы",
+                "implementation": "Router явно принимает русский, казахский и смешанный ввод, хранит `history`, `active_scenario` и `pending_scenarios`; `DialogueService` возвращает незавершённую тему в очередь при переходе на новую (`backend/voice_router/dialogue.py:88-121`).",
+                "value": "Это делает продукт полезнее обычного IVR для разговоров, где намерение не укладывается в одну заранее подготовленную реплику.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/voice_router/router.py:108-130",
+                  "backend/voice_router/dialogue.py:112-121",
+                  "runtime-check-evaluate: lang=kk/mixed и type=multi_intent"
+                ]
+              },
+              {
+                "aspect": "Объяснимость для супервизора",
+                "implementation": "Ответ содержит выбранные сценарии, альтернативы, reason, model, flags продолжения и измеренные стадии; frontend `TracePanel` раскрывает сценарий, reason, альтернативы и latency (`frontend/src/components/TracePanel.tsx:95-160`).",
+                "value": "Ценность получает не только клиент, но и контроль качества: супервизор может понять, почему выбран маршрут, а не видеть непрозрачный готовый текст.",
+                "verification": "source",
+                "evidence": [
+                  "docs/BACKEND_API.md:28-32",
+                  "frontend/src/api/types.ts:17-36",
+                  "frontend/src/components/TracePanel.tsx:95-160"
+                ]
+              },
+              {
+                "aspect": "Безопасный synthetic scope",
+                "implementation": "README и actions ограничивают записи synthetic case data; irreversible actions сначала формируют awaiting_confirmation, а реальные SMS, платежи, бронирования и операторская связь явно не заявляются выполненными.",
+                "value": "Для страхового прототипа это снижает риск демонстрации ложного завершения чувствительной операции и ясно задаёт границу применимости.",
+                "verification": "source",
+                "evidence": [
+                  "backend/voice_router/actions.py:34-44",
+                  "backend/voice_router/dialogue.py:483-508",
+                  "README.md:105-109"
+                ]
+              }
+            ],
+            "scoreReasoning": "Высокий балл заслужен ясной проблемой, поддержкой реального разговорного контекста и supervisor-oriented ценностью. До максимума не хватает независимого пользовательского подтверждения и автоматизированных project tests; это ограничивает степень доказанности ценности, но не отменяет полезность собранного MVP."
+          },
+          {
+            "name": "Результат и качество решения",
+            "score": 18,
+            "max": 20,
+            "awarded": "Основной backend-сценарий реализован связно: session, route, slot extraction, data-backed action, grounded answer и trace.",
+            "deductions": "2 балла удержаны за отсутствие репозиторных автотестов; provider-backed пользовательский turn не повторён без внешних ключей, поэтому качество полного voice-to-answer flow опирается на source и сохранённые экспериментальные результаты.",
+            "evidence": [
+              "backend/voice_router/dialogue.py:57-149",
+              "backend/voice_router/dialogue.py:475-610",
+              "runtime-check-build",
+              "runtime-check-start",
+              "runtime-check-evaluate"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "F1",
+                "reason": "В dossier указано отсутствие тестов, а в checkout нет отдельного unit/domain test suite; для сложного состояния confirmation, pending topics и actions это уменьшает воспроизводимую гарантию качества."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Маршрутизация по официальному каталогу",
+                "implementation": "`Catalog.load_catalog` проверяет ровно 40 уникальных сценариев и 3 system intents, проверяет ссылки на actions, slots и boundaries (`backend/voice_router/catalog.py:80-107`). Router передаёт в model описания, not_this_if, приоритеты и примеры, затем валидирует IDs и ограничения 1–3 маршрутов (`backend/voice_router/router.py:79-93`, `153-162`).",
+                "value": "Основное требование кейса выполнено фактической data-driven маршрутизацией, а не хардкодом проверочных фраз.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/voice_router/catalog.py:80-117",
+                  "backend/voice_router/router.py:79-162",
+                  "runtime-check-start: /catalog returned 40 scenarios and 3 system_intents"
+                ]
+              },
+              {
+                "aspect": "Context-aware dialogue",
+                "implementation": "Сессия ограничивает историю десятью клиентскими turns, хранит active/pending scenarios, slot values и pending confirmation; при смене темы незавершённый сценарий ставится в pending, а завершённый не requeue-ится (`backend/voice_router/dialogue.py:64-121`).",
+                "value": "Это закрывает сложную часть задачи — продолжение и возврат к теме — на уровне сервиса, а не только в UI.",
+                "verification": "source",
+                "evidence": [
+                  "backend/voice_router/dialogue.py:18-35",
+                  "backend/voice_router/dialogue.py:64-149",
+                  "docs/experiments/2026-09-23-real-voice.md:25-29"
+                ]
+              },
+              {
+                "aspect": "Grounded business answers",
+                "implementation": "После extraction сервис проверяет required slots, identity и ownership policy/claim, вызывает только официальные actions и передаёт результат в `compose_answer` с verified facts и флагами недоступных интеграций (`backend/voice_router/dialogue.py:278-314`, `backend/voice_router/router.py:281-327`).",
+                "value": "Ответы не должны произвольно придумывать цену, покрытие или факт отправки; synthetic records становятся источником конкретного пользовательского результата.",
+                "verification": "source",
+                "evidence": [
+                  "backend/voice_router/dialogue.py:278-314",
+                  "backend/voice_router/dialogue.py:510-610",
+                  "backend/voice_router/router.py:291-317"
+                ]
+              },
+              {
+                "aspect": "Рабочий deployment path",
+                "implementation": "Dockerfile собирает frontend через TypeScript/Vite, устанавливает Python package, копирует dataset, запускает HTTP server под отдельным непривилегированным пользователем. В проверке build завершился успешно; контейнер стартовал и обработал health/catalog/static запросы.",
+                "value": "Для пятичасового MVP это сильный признак целостности: проект не ограничен отдельными исходниками, а упакован в deployable artifact.",
+                "verification": "observed",
+                "evidence": [
+                  "Dockerfile:1-24",
+                  "captures/20260930T082749301199-build.stderr.log",
+                  "runtime-check-build",
+                  "runtime-check-start"
+                ]
+              }
+            ],
+            "scoreReasoning": "Решение фактически покрывает основной route-to-answer сценарий и успешно собирается/стартует. Потеря баллов относится к инженерной доказательности: нет committed tests для stateful dialogue/actions, а внешний provider-backed turn в текущем review environment завершился 502 с dummy credential; это ограничение проверки не превращено в отдельный дефект, но не позволяет уверенно дать максимум за полный пользовательский цикл."
+          },
+          {
+            "name": "Инновационность",
+            "score": 15,
+            "max": 15,
+            "awarded": "Гибрид LLM router + официальный scenario catalogue + supervisor trace представляет обоснованный нестандартный подход к voice menu.",
+            "deductions": "Существенных подтверждённых дефектов по критерию не установлено.",
+            "evidence": [
+              "backend/voice_router/router.py:108-131",
+              "backend/voice_router/router.py:169-230",
+              "frontend/src/voice/useGeminiLive.ts:121-177",
+              "docs/experiments/2026-09-23-luna-sol-routing.md:11-35"
+            ],
+            "deductionItems": [],
+            "awardedDetails": [
+              {
+                "aspect": "LLM выбирает сценарий, а не готовый intent classifier",
+                "implementation": "Router отправляет модели каталог и boundaries, требует структурированный `RouteDecision`, запрещает изобретать IDs и валидирует ответ через Catalog; в коде нет phrase-to-intent map для development utterances.",
+                "value": "Подход соответствует сути задания: модель работает на контексте и границах сценариев, а не маскирует хардкод под AI.",
+                "verification": "source",
+                "evidence": [
+                  "backend/voice_router/router.py:79-162",
+                  "docs/experiments/2026-09-23-luna-sol-routing.md:11-14"
+                ]
+              },
+              {
+                "aspect": "Второй review для genuine ambiguity",
+                "implementation": "Когда первичный ответ `SYS_UNCLEAR` имеет альтернативы, router делает отдельный structured ambiguity review, отличающий неясную операцию от просто отсутствующих slots (`backend/voice_router/router.py:169-230`).",
+                "value": "Это аккуратная нестандартная защита от типичной ошибки LLM-router: превращать неполные параметры в неправильную ambiguity.",
+                "verification": "source",
+                "evidence": [
+                  "backend/voice_router/router.py:183-208",
+                  "backend/voice_router/router.py:213-230",
+                  "docs/experiments/2026-09-23-luna-sol-routing.md:33-35"
+                ]
+              },
+              {
+                "aspect": "Разделение речевого и содержательного слоя",
+                "implementation": "Gemini Live отвечает за microphone streaming, transcription/playback и function call, а backend принимает полную utterance и владеет scenario selection, slots, facts и actions (`frontend/src/voice/useGeminiLive.ts:121-177`, `docs/BACKEND_API.md:15-20`).",
+                "value": "Такой boundary позволяет менять voice provider/UX, не отдавая business truth клиентской модели.",
+                "verification": "source",
+                "evidence": [
+                  "frontend/src/voice/useGeminiLive.ts:16-30",
+                  "frontend/src/voice/useGeminiLive.ts:121-177",
+                  "backend/voice_router/server.py:107-132"
+                ]
+              },
+              {
+                "aspect": "Безопасный confirmation как часть диалога",
+                "implementation": "Невозвратные действия не исполняются сразу: сервис сохраняет pending action, озвучивает конкретный preview и интерпретирует следующий отдельный turn через structured confirmation decision (`backend/voice_router/dialogue.py:483-508`, `665-710`).",
+                "value": "Это не декоративная фича, а важное изменение UX для голосовой системы, где ошибочная команда может быть плохо заметна.",
+                "verification": "source",
+                "evidence": [
+                  "backend/voice_router/router.py:241-279",
+                  "backend/voice_router/dialogue.py:665-710"
+                ]
+              }
+            ],
+            "scoreReasoning": "Инновационность полностью подтверждается архитектурой и экспериментальной историей: LLM применён на уровне выбора сценария, а не как свободный генератор фактов; ambiguity review, multilingual context и supervisor trace усиливают именно поставленную задачу."
+          },
+          {
+            "name": "Потенциал развития и масштабирования",
+            "score": 18,
+            "max": 20,
+            "awarded": "Каталог, backend boundaries и trace создают понятную основу для расширения сценариев и замены synthetic integrations.",
+            "deductions": "2 балла удержаны за in-process state, отсутствие persistent history/rate limiting/live operator integration и за отсутствие test harness, который облегчил бы безопасное расширение каталога.",
+            "evidence": [
+              "README.md:99-111",
+              "backend/voice_router/catalog.py:80-117",
+              "backend/voice_router/dialogue.py:48-55",
+              "docs/BACKEND_API.md:38-40"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "F2",
+                "reason": "Сессии, audio cache и action records живут только в памяти процесса; README/API docs прямо фиксируют reset после рестарта и отсутствие persistence/rate limit/operator integration, поэтому масштабирование за пределы MVP пока требует существенной инфраструктурной работы."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Расширяемый scenario catalogue",
+                "implementation": "Сценарии, system intents, actions, slots, knowledge base и mock backend загружаются из dataset, а Catalog проверяет cross-references при старте. Router строит routing context из catalogue, не из UI-компонентов.",
+                "value": "Добавление нового сценария может оставаться data/config-driven и не требует переписывать основной HTTP/session pipeline.",
+                "verification": "source",
+                "evidence": [
+                  "backend/voice_router/catalog.py:26-33",
+                  "backend/voice_router/catalog.py:62-117",
+                  "data/voice_router_dataset/scenarios.json"
+                ]
+              },
+              {
+                "aspect": "Провайдеры изолированы за API boundaries",
+                "implementation": "OpenAI используется серверно для route/slot/answer/audio diagnostics, Gemini token выдаётся короткоживущим endpoint и voice session устанавливается клиентом; ключи не отправляются в browser code (`backend/voice_router/server.py:92-105`, `frontend/src/api/client.ts:36-41`).",
+                "value": "Это облегчает последующую замену provider implementation и уменьшает риск привязать бизнес-логику к конкретному UI SDK.",
+                "verification": "source",
+                "evidence": [
+                  "backend/voice_router/server.py:79-105",
+                  "frontend/src/voice/useGeminiLive.ts:121-141",
+                  "README.md:62-67"
+                ]
+              },
+              {
+                "aspect": "Измеримость для следующей итерации",
+                "implementation": "Trace собирает router/extractor/response/server timings, token counts, rejected slots и action results; README предлагает сравнивать p50/p95 и accuracy при дальнейшей оптимизации.",
+                "value": "Вместо субъективного улучшения команда оставила измерительные точки для speed/accuracy trade-off и supervisor feedback.",
+                "verification": "source",
+                "evidence": [
+                  "backend/voice_router/dialogue.py:57-64",
+                  "frontend/src/api/types.ts:17-36",
+                  "README.md:99-103",
+                  "docs/experiments/2026-09-23-luna-sol-routing.md:35"
+                ]
+              },
+              {
+                "aspect": "Честно очерченный MVP scope",
+                "implementation": "README прямо перечисляет следующие шаги: persistent history, real operator handoff, scenario editor, browser first-audio measurement, production auth/privacy/rate limits.",
+                "value": "Ограничения не скрыты за заявлением о production readiness; это повышает реалистичность плана миграции synthetic case в реальную организацию.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:101-109",
+                  "docs/BACKEND_API.md:38-40"
+                ]
+              }
+            ],
+            "scoreReasoning": "Архитектурная декомпозиция хорошо масштабируется по scenario catalogue и provider boundaries, а trace задаёт основу для измерений. Снижение связано с подтверждённым in-process lifecycle и отсутствием тестового слоя, которые становятся важными при росте числа сценариев и параллельных сессий; для пятичасового MVP это разумная граница, но не полный production path."
+          },
+          {
+            "name": "Презентация, демо и ответы на вопросы",
+            "score": 19,
+            "max": 20,
+            "awarded": "README очень подробно описывает problem, flow, запуск, API, экспериментальные ограничения, deployment и карту проверки; локально воспроизводимый образ подтверждён.",
+            "deductions": "1 балл удержан за отсутствие committed automated tests и за то, что visual/browser voice demonstration не может быть подтверждена в этой проверке по установленной политике.",
+            "evidence": [
+              "README.md:1-120",
+              "docs/BACKEND_API.md:1-40",
+              "captures/20260930T082749301199-build.stderr.log",
+              "runtime-check-start"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "F1",
+                "reason": "Воспроизводимость опирается на README, Docker build и сохранённые experiments, но в репозитории нет отдельного тестового набора, который давал бы независимую повторяемую проверку regression cases."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Понятный reviewer map",
+                "implementation": "README связывает критерии с конкретными `router.py`, `dialogue.py`, `actions.py`, `TracePanel.tsx`, dataset и experiments; отдельно предупреждает, что 104/104 — tuned development result, а не hidden-set estimate.",
+                "value": "Документация помогает отличить заявленный факт от его доказательства и не выдаёт dev accuracy за generalization.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:73-93",
+                  "README.md:124-130"
+                ]
+              },
+              {
+                "aspect": "Воспроизводимый локальный запуск",
+                "implementation": "README даёт `scripts/run-local.sh`, requirements, env variables, HTTP contract и Docker/Compose deployment. Docker build реально завершился, включая `tsc --noEmit` и Vite bundle.",
+                "value": "Участник/ревьюер может понять, как собрать артефакт и какие provider credentials нужны, без догадки о скрытых шагах.",
+                "verification": "observed",
+                "evidence": [
+                  "README.md:44-67",
+                  "scripts/run-local.sh:1-25",
+                  "Dockerfile:1-24",
+                  "runtime-check-build"
+                ]
+              },
+              {
+                "aspect": "API documentation matches implementation",
+                "implementation": "Документация описывает `/health`, `/catalog`, session creation, text/audio turns, Gemini token, response trace и HTTP error semantics; сервер реализует соответствующие paths и status handling (`backend/voice_router/server.py:240-326`).",
+                "value": "Это делает backend проверяемым CLI/HTTP способом даже без визуальной части.",
+                "verification": "observed",
+                "evidence": [
+                  "docs/BACKEND_API.md:10-36",
+                  "backend/voice_router/server.py:240-326",
+                  "runtime-check-start"
+                ]
+              },
+              {
+                "aspect": "Ограничения и эксперименты раскрыты",
+                "implementation": "README и experiment docs приводят exact route counts, language breakdown, latency, tuned-set caveat, in-process limitations и отсутствие реального operator/SMS/payment integration.",
+                "value": "Такой уровень disclosure повышает доверие к демо: сильные результаты не смешаны с недоказанными production claims.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:85-116",
+                  "docs/experiments/2026-09-23-luna-sol-routing.md:21-35",
+                  "docs/experiments/2026-09-23-real-voice.md:1-29"
+                ]
+              }
+            ],
+            "scoreReasoning": "README и HTTP/deployment docs существенно выше минимального уровня hackathon MVP, а build/start evidence подтверждает воспроизводимость артефакта. Один балл удержан только за отсутствие тестового слоя и невозможность подтвердить визуальный voice demo по правилам review; это не трактуется как доказательство поломки UI."
+          }
+        ],
+        "total": 93
+      },
+      "case": {
+        "criteria": [
+          {
+            "name": "Соответствие задаче и работоспособность",
+            "score": 24,
+            "max": 25,
+            "awarded": "Основные требования Voice Router покрыты: каталог 40 сценариев, LLM selection, context, RU/KK/mixed, text fallback, voice integration, trace и confirmation guard.",
+            "deductions": "1 балл удержан за отсутствие автотестов полного stateful сценария и невозможность повторить provider-backed turn без credentials; build/start и dataset evaluator при этом подтверждены.",
+            "evidence": [
+              "backend/voice_router/catalog.py:89-107",
+              "backend/voice_router/router.py:108-230",
+              "frontend/src/voice/useGeminiLive.ts:16-30",
+              "runtime-check-build",
+              "runtime-check-start",
+              "runtime-check-evaluate"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "F1",
+                "reason": "Нет committed test suite для полного сценария; это снижает доказанность работоспособности сложных веток, хотя каталог загрузился, образ стартовал и официальный evaluator прошёл."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "40 сценариев и 3 system intents",
+                "implementation": "Catalog валидирует размер и уникальность официального каталога, а HTTP `/catalog` в запущенном контейнере вернул 40 scenarios и 3 system_intents.",
+                "value": "Центральное количественное требование проверено и source-валидацией, и runtime endpoint.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/voice_router/catalog.py:89-94",
+                  "runtime-check-start: GET /catalog -> 200, scenarios=40, system_intents=3"
+                ]
+              },
+              {
+                "aspect": "Контекст и multi-intent",
+                "implementation": "Router принимает history/active/pending state и допускает до трёх ordered routes; DialogueService переносит дополнительные routes в pending и возвращает к ним после текущего сценария.",
+                "value": "Это напрямую соответствует требованию смены темы и compound requests.",
+                "verification": "source",
+                "evidence": [
+                  "backend/voice_router/router.py:95-137",
+                  "backend/voice_router/router.py:153-162",
+                  "backend/voice_router/dialogue.py:112-121"
+                ]
+              },
+              {
+                "aspect": "Языки и голосовой слой",
+                "implementation": "RouteDecision различает ru/kk/mixed, slot extractor выбирает ru/kk response language, а Gemini Live получает system instruction для русского/казахского переключения и вызывает backend tool с полной текущей utterance.",
+                "value": "Поставленный multilingual voice interaction покрыт архитектурно; текстовый путь остаётся запасным каналом.",
+                "verification": "source",
+                "evidence": [
+                  "backend/voice_router/router.py:16-21",
+                  "backend/voice_router/slots.py:18-27",
+                  "frontend/src/voice/useGeminiLive.ts:16-30",
+                  "frontend/src/voice/useGeminiLive.ts:121-177"
+                ]
+              },
+              {
+                "aspect": "Неподтверждённые операции защищены",
+                "implementation": "ActionExecutor блокирует irreversible action без `confirmed=True`; DialogueService сохраняет pending confirmation и выполняет действие только после интерпретации следующей реплики.",
+                "value": "Это выполняет отдельное требование кейса о невозможности необратимого действия без подтверждения.",
+                "verification": "source",
+                "evidence": [
+                  "backend/voice_router/actions.py:34-44",
+                  "backend/voice_router/dialogue.py:483-508",
+                  "backend/voice_router/dialogue.py:665-710"
+                ]
+              }
+            ],
+            "scoreReasoning": "Соответствие заданию очень высокое: архитектура и runtime metadata подтверждают все существенные обязательные элементы, а evaluator даёт 104/104 exact ordered routes на предоставленном dev set. До максимума не хватает самостоятельной regression-проверки dialogue/action branches и provider-backed turn в текущей credential-free среде; последнее отмечено как limitation, а не как defect."
+          },
+          {
+            "name": "Техническая реализация",
+            "score": 24,
+            "max": 25,
+            "awarded": "Архитектура разделяет catalogue, router, extractor, dialogue state, actions, HTTP API и frontend voice/trace; data flow прослеживается и собирается.",
+            "deductions": "1 балл удержан за отсутствие automated tests вокруг сложного state machine и in-process storage, который ограничивает эксплуатационную устойчивость.",
+            "evidence": [
+              "backend/voice_router/catalog.py:26-117",
+              "backend/voice_router/router.py:66-330",
+              "backend/voice_router/dialogue.py:38-149",
+              "Dockerfile:1-24",
+              "runtime-check-build"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "F1",
+                "reason": "Нет тестов, которые закрепляют routing validation, confirmation, ownership и pending topic transitions; при такой сложности это реальный пробел технической верификации проекта."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Структурированный LLM contract",
+                "implementation": "Pydantic models `RouteDecision`, `Extraction`, `SpokenAnswer`, `ConfirmationDecision` задают schema-constrained provider responses; IDs и route combinations дополнительно валидируются кодом.",
+                "value": "Это уменьшает риск свободного текстового ответа там, где backend ожидает конкретную структуру, и делает модельный слой интегрируемым.",
+                "verification": "source",
+                "evidence": [
+                  "backend/voice_router/router.py:16-52",
+                  "backend/voice_router/router.py:140-162",
+                  "backend/voice_router/slots.py:18-27",
+                  "backend/voice_router/slots.py:139-167"
+                ]
+              },
+              {
+                "aspect": "Проверка slots и ownership",
+                "implementation": "Extractor ограничивает допустимые slots выбранными scenarios, нормализует enum/integer/date/list и собирает rejected values; dialogue проверяет client identity перед обращением к policy/claim и возвращает ownership mismatch.",
+                "value": "Для synthetic insurance data это существенная техническая защита от действия над чужой записью и от передачи model-generated invalid values в action layer.",
+                "verification": "source",
+                "evidence": [
+                  "backend/voice_router/slots.py:39-72",
+                  "backend/voice_router/slots.py:83-159",
+                  "backend/voice_router/dialogue.py:278-314"
+                ]
+              },
+              {
+                "aspect": "HTTP and deployment discipline",
+                "implementation": "Server ограничивает body до 10 MB, валидирует content type, отделяет `/api`, делает path traversal check для static files, отдаёт понятные 404/422/502 и собирается в non-root image user.",
+                "value": "Прототип имеет практический boundary между browser, API и provider, а не только демонстрационный in-memory function.",
+                "verification": "source",
+                "evidence": [
+                  "backend/voice_router/server.py:181-229",
+                  "backend/voice_router/server.py:273-326",
+                  "Dockerfile:17-24"
+                ]
+              },
+              {
+                "aspect": "Сценарные actions и честные side effects",
+                "implementation": "ActionExecutor работает по definitions из `actions.json`; записи помечены `local_case_simulation`, delivery/booking/operator outputs явно возвращают not connected/not sent, а duplicate action keys не выполняются повторно.",
+                "value": "Техническая реализация не маскирует mock/synthetic side effects под реальные страховые операции.",
+                "verification": "source",
+                "evidence": [
+                  "backend/voice_router/actions.py:24-49",
+                  "backend/voice_router/actions.py:350-410",
+                  "backend/voice_router/dialogue.py:475-512",
+                  "backend/voice_router/dialogue.py:625-630"
+                ]
+              }
+            ],
+            "scoreReasoning": "Технический балл почти максимальный благодаря чистому разделению ответственности, structured outputs, data validation, ownership guard и deployable container. Единственное существенное удержание — отсутствие regression tests для stateful/LLM boundary и in-process lifecycle; это особенно важно при расширении каталога, но не перечёркивает качество MVP-архитектуры."
+          },
+          {
+            "name": "README и воспроизводимость",
+            "score": 24,
+            "max": 25,
+            "awarded": "Документация даёт запуск, env contract, API flow, deployment, reviewer map, dataset evaluator и честные границы проверки; Docker build реально воспроизведён.",
+            "deductions": "1 балл удержан за отсутствие тестового набора в репозитории как отдельного воспроизводимого артефакта.",
+            "evidence": [
+              "README.md:44-93",
+              "README.md:99-120",
+              "docs/BACKEND_API.md:1-40",
+              "Dockerfile:1-24",
+              "runtime-check-build"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "F1",
+                "reason": "README предлагает evaluator и experiments, но checkout не содержит project test suite; расширенная воспроизводимость regression поведения остаётся ручной/source-based."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "One-command local path",
+                "implementation": "README указывает Python 3.12, uv, Node/npm, два server-side keys и `bash scripts/run-local.sh`; script выполняет frozen sync, npm ci и запускает backend/frontend.",
+                "value": "Предварительные условия и причина provider failure явно описаны, поэтому локальный запуск не требует угадывать конфигурацию.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:44-57",
+                  "scripts/run-local.sh:1-25"
+                ]
+              },
+              {
+                "aspect": "HTTP contract",
+                "implementation": "`docs/BACKEND_API.md` документирует session lifecycle, Gemini token, text/audio paths, response trace и error codes, а строки server.py соответствуют этим endpoint mappings.",
+                "value": "Backend можно проверять без UI через HTTP, что особенно полезно для voice prototype и CI.",
+                "verification": "observed",
+                "evidence": [
+                  "docs/BACKEND_API.md:10-36",
+                  "backend/voice_router/server.py:240-326",
+                  "runtime-check-start"
+                ]
+              },
+              {
+                "aspect": "Реальный build evidence",
+                "implementation": "Docker build прошёл TypeScript check, Vite production bundle, Python installation и dataset copy; `/health`, `/catalog` и `/` после старта ответили 200.",
+                "value": "Заявление о deployability подтверждено конкретным артефактом и HTTP checks, а не только README.",
+                "verification": "observed",
+                "evidence": [
+                  "captures/20260930T082749301199-build.stderr.log",
+                  "runtime-check-build",
+                  "runtime-check-start"
+                ]
+              },
+              {
+                "aspect": "Датасетный acceptance check",
+                "implementation": "Запущен организаторский `evaluate.py` на `docs/experiments/results/luna-dev-predictions.json` и `data/voice_router_dataset/dev_utterances.json`; получены all 104, RU 52/52, KK 45/45, mixed 7/7, multi-intent 13/13.",
+                "value": "Документация предоставляет недорогую повторяемую проверку routing contract без API credit, с оговоркой о tuned development set.",
+                "verification": "observed",
+                "evidence": [
+                  "data/voice_router_dataset/evaluate.py",
+                  "docs/experiments/results/luna-dev-predictions.json",
+                  "runtime-check-evaluate",
+                  "README.md:85-93"
+                ]
+              }
+            ],
+            "scoreReasoning": "README и docs дают редкую для hackathon-проекта полноту: от запуска и API до experiments и ограничений. Один балл удержан только за отсутствие committed tests; build и evaluator воспроизводимы, поэтому критерий почти полностью выполнен."
+          },
+          {
+            "name": "Ценность и применимость решения",
+            "score": 14,
+            "max": 15,
+            "awarded": "Подход применим как слой маршрутизации и объяснимости для страхового contact center, а data-backed answers демонстрируют конкретную пользу на synthetic case.",
+            "deductions": "1 балл удержан за отсутствие реальной операторской интеграции, persistence и production privacy controls; README корректно обозначает это как scope MVP, поэтому deduction умеренный.",
+            "evidence": [
+              "README.md:16-42",
+              "README.md:105-111",
+              "backend/voice_router/actions.py:46-49",
+              "docs/BACKEND_API.md:38-40"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "F2",
+                "reason": "Применимость за пределами synthetic demo ограничена in-process records, отсутствием live operator, production auth/privacy/rate limiting и настоящих downstream integrations."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Понятная аудитория",
+                "implementation": "README адресует клиента, которому неудобно выбирать короткий пункт меню, и supervisor, которому нужны transcript, chosen scenario, reason, alternatives и timings.",
+                "value": "Описанный benefit связан с двумя конкретными ролями и наблюдаемым workflow, а не с абстрактным обещанием AI.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:16-42",
+                  "README.md:67-80"
+                ]
+              },
+              {
+                "aspect": "Конкретные страховые операции",
+                "implementation": "Actions покрывают расчёты, policy/claim lookup, documents, coverage, clinics, callbacks, complaints, fraud и handoff; knowledge base и mock backend поставлены организаторским case kit.",
+                "value": "Демо может показать не только route label, но и ответ на synthetic business question с проверяемым фактом или явной границей.",
+                "verification": "source",
+                "evidence": [
+                  "backend/voice_router/actions.py:24-49",
+                  "backend/voice_router/dialogue.py:315-355",
+                  "data/voice_router_dataset/knowledge_base.json",
+                  "data/voice_router_dataset/mock_backend.json"
+                ]
+              },
+              {
+                "aspect": "Применимость без ложных обещаний",
+                "implementation": "Ответы получают verified facts и инструкцию не утверждать SMS/payment/booking/operator completion; local record statuses явно сообщают, что внешняя доставка не подключена.",
+                "value": "Для финансово чувствительного домена честное ограничение результата — часть практической ценности, а не недостаток презентации.",
+                "verification": "source",
+                "evidence": [
+                  "backend/voice_router/router.py:291-305",
+                  "backend/voice_router/actions.py:350-410",
+                  "README.md:105-109"
+                ]
+              },
+              {
+                "aspect": "Путь к production",
+                "implementation": "README описывает миграцию catalogue/facts/integrations и перечисляет необходимые privacy, persistent history, operator handoff и rate limiting improvements.",
+                "value": "Команда понимает, какие части являются заменяемым synthetic adapter, а какие — повторно используемым routing/trace experience.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:101-111"
+                ]
+              }
+            ],
+            "scoreReasoning": "Решение практически применимо как contact-center routing prototype и демонстрирует полезные synthetic operations. Один балл удержан за неизбежную, но существенную границу между локальной записью case action и реальной организационной интеграцией; команда эту границу честно зафиксировала."
+          },
+          {
+            "name": "Потенциал развития и оригинальность подхода",
+            "score": 10,
+            "max": 10,
+            "awarded": "Потенциал и оригинальность полностью подтверждены каталогом, ambiguity review, multilingual voice, trace-driven iteration и явным планом расширения.",
+            "deductions": "Существенных подтверждённых дефектов по критерию не установлено.",
+            "evidence": [
+              "backend/voice_router/catalog.py:62-117",
+              "backend/voice_router/router.py:169-230",
+              "README.md:99-111",
+              "docs/experiments/2026-09-23-luna-sol-routing.md:29-35"
+            ],
+            "deductionItems": [],
+            "awardedDetails": [
+              {
+                "aspect": "Оригинальная модель маршрутизации",
+                "implementation": "Вместо обычного intent classifier команда использует LLM для ordered scenario selection с not_this_if boundaries, alternatives и language/continuation flags.",
+                "value": "Подход прямо использует сильную сторону LLM — интерпретацию естественного контекста — и оставляет факты/actions детерминированному backend.",
+                "verification": "source",
+                "evidence": [
+                  "backend/voice_router/router.py:108-131",
+                  "backend/voice_router/router.py:153-162"
+                ]
+              },
+              {
+                "aspect": "Измеримый roadmap",
+                "implementation": "README предлагает проверить быстрый decision layer только для narrow low-risk checks, сократить context и overlap streaming; acceptance checks сформулированы через accuracy, p50/p95 и handoff context.",
+                "value": "Следующие шаги не являются общим пожеланием улучшить продукт: для них задан измеримый критерий успеха.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:99-103"
+                ]
+              },
+              {
+                "aspect": "Переносимость на новые каталоги",
+                "implementation": "Scenario catalogue, company knowledge и action definitions отделены от router/dialogue pipeline; README прямо описывает замену fictional catalogue на approved products/integrations.",
+                "value": "Это создаёт путь от challenge-specific data к повторно используемому domain adapter.",
+                "verification": "source",
+                "evidence": [
+                  "backend/voice_router/catalog.py:80-117",
+                  "README.md:111-116"
+                ]
+              },
+              {
+                "aspect": "Supervisor feedback loop",
+                "implementation": "UI хранит review verdict/correct scenario рядом с trace, а backend измеряет decision stages; эти данные могут стать основой для оценки новых каталогов и моделей.",
+                "value": "Система спроектирована с наблюдаемостью, необходимой для итеративного улучшения маршрутизации, а не только для one-shot demo.",
+                "verification": "source",
+                "evidence": [
+                  "frontend/src/components/TracePanel.tsx:141-175",
+                  "frontend/src/state/types.ts",
+                  "backend/voice_router/dialogue.py:57-64"
+                ]
+              }
+            ],
+            "scoreReasoning": "Категория полностью заслужена: оригинальность находится в сочетании context-aware LLM routing, deterministic facts/actions, multilingual voice и trace-based supervision, а roadmap содержит измеримые дальнейшие эксперименты."
+          }
+        ],
+        "total": 96
+      },
+      "judgeScore": 94.5,
+      "caseRequirements": [
+        {
+          "requirement": "Выбирать один из 40 официальных сценариев и поддерживать системные intents",
+          "status": "met",
+          "explanation": "Catalog проверяет 40 уникальных scenarios и 3 system intents; runtime catalog endpoint вернул именно эти количества.",
+          "evidence": [
+            "backend/voice_router/catalog.py:89-94",
+            "runtime-check-start"
+          ]
+        },
+        {
+          "requirement": "LLM-слой должен выбирать сценарий по контексту, без готового intent classifier и хардкода проверочных реплик",
+          "status": "met",
+          "explanation": "Router передаёт модели каталог, boundaries, историю и active/pending state; в исходниках нет map реплик к expected IDs.",
+          "evidence": [
+            "backend/voice_router/router.py:79-162",
+            "docs/experiments/2026-09-23-luna-sol-routing.md:11-14"
+          ]
+        },
+        {
+          "requirement": "Контекст диалога, compound requests, смена темы и возврат к незавершённой теме",
+          "status": "met",
+          "explanation": "SessionState хранит history, active_scenario и pending_scenarios; DialogueService переносит незавершённые routes и возвращает их после смены темы.",
+          "evidence": [
+            "backend/voice_router/dialogue.py:18-35",
+            "backend/voice_router/dialogue.py:88-149",
+            "docs/experiments/2026-09-23-real-voice.md:25-29"
+          ]
+        },
+        {
+          "requirement": "Русская, казахская и смешанная речь",
+          "status": "met",
+          "explanation": "RouteDecision имеет ru/kk/mixed, extractor выбирает ru/kk output language, Gemini instructions требуют language matching/switching; evaluator покрывает 52 RU, 45 KK и 7 mixed.",
+          "evidence": [
+            "backend/voice_router/router.py:16-21",
+            "backend/voice_router/slots.py:23-27",
+            "frontend/src/voice/useGeminiLive.ts:16-30",
+            "runtime-check-evaluate"
+          ]
+        },
+        {
+          "requirement": "Голосовой ответ и текстовый fallback",
+          "status": "partial",
+          "explanation": "Text endpoint и Gemini Live integration реализованы; отдельный TTS/audio path есть. Реальное браузерное microphone/playback поведение не проверялось визуально по обязательной политике, а provider credentials не предоставлены.",
+          "evidence": [
+            "backend/voice_router/server.py:107-152",
+            "frontend/src/voice/useGeminiLive.ts:103-233",
+            "docs/BACKEND_API.md:15-24",
+            "uncertainty: visual/provider path"
+          ]
+        },
+        {
+          "requirement": "Supervisor trace: transcript, selection, reason, alternatives и latency",
+          "status": "met",
+          "explanation": "Backend формирует trace со selected_scenarios, alternatives, reason, model, stage timings и action results; frontend отображает эти поля.",
+          "evidence": [
+            "docs/BACKEND_API.md:28-32",
+            "frontend/src/api/types.ts:17-36",
+            "frontend/src/components/TracePanel.tsx:95-160"
+          ]
+        },
+        {
+          "requirement": "Проверить смену темы, mixed language и evaluate.py на предоставленных данных",
+          "status": "met",
+          "explanation": "Evaluator реально запущен на prediction map и dev utterances и дал 104/104 по всем языковым и multi-intent группам; source/experiment описывают topic-switch replay.",
+          "evidence": [
+            "runtime-check-evaluate",
+            "data/voice_router_dataset/evaluate.py",
+            "docs/experiments/2026-09-23-real-voice.md:15-29"
+          ]
+        },
+        {
+          "requirement": "Не выполнять irreversible actions без отдельного подтверждения",
+          "status": "met",
+          "explanation": "ActionExecutor запрещает irreversible action без confirmed=True; DialogueService создаёт pending_confirmation и интерпретирует следующую отдельную реплику.",
+          "evidence": [
+            "backend/voice_router/actions.py:34-44",
+            "backend/voice_router/dialogue.py:483-508",
+            "backend/voice_router/dialogue.py:665-710"
+          ]
+        },
+        {
+          "requirement": "Измерять задержку и показывать ограничения, а не заявлять production readiness",
+          "status": "met",
+          "explanation": "Trace содержит router/extractor/response/server timings, experiments приводят median/p95, README прямо отделяет tuned dev result от hidden-set accuracy и перечисляет отсутствующие production integrations.",
+          "evidence": [
+            "backend/voice_router/dialogue.py:57-64",
+            "README.md:85-111",
+            "docs/experiments/2026-09-23-luna-sol-routing.md:35"
+          ]
+        }
+      ],
+      "testData": {
+        "provided": [
+          "data/voice_router_dataset/scenarios.json",
+          "data/voice_router_dataset/dialogs_sample.json",
+          "data/voice_router_dataset/dev_utterances.json",
+          "data/voice_router_dataset/knowledge_base.json",
+          "data/voice_router_dataset/mock_backend.json",
+          "data/voice_router_dataset/actions.json",
+          "data/voice_router_dataset/slots.json",
+          "data/voice_router_dataset/evaluate.py"
+        ],
+        "used": [
+          "data/voice_router_dataset/scenarios.json",
+          "data/voice_router_dataset/dev_utterances.json",
+          "data/voice_router_dataset/evaluate.py",
+          "docs/experiments/results/luna-dev-predictions.json",
+          "data/voice_router_dataset/actions.json",
+          "data/voice_router_dataset/slots.json",
+          "data/voice_router_dataset/knowledge_base.json",
+          "data/voice_router_dataset/mock_backend.json"
+        ],
+        "checks": [
+          {
+            "input": "docs/experiments/results/luna-dev-predictions.json + data/voice_router_dataset/dev_utterances.json",
+            "method": "python -X utf8 data/voice_router_dataset/evaluate.py ...",
+            "result": "all n=104 primary_acc=1.000 full_match=1.000; kk 45/45, mixed 7/7, ru 52/52, multi_intent 13/13, out_of_scope 4/4, unclear 3/3; intent_recall multi-intent=1.000.",
+            "conclusion": "Предоставленный development acceptance check проходит полностью; результат tuned на dev set и не является оценкой hidden jury set."
+          },
+          {
+            "input": "Official catalogue, actions, slots, knowledge_base and mock_backend loaded by server startup",
+            "method": "Container startup plus GET /api/catalog",
+            "result": "Process started; /api/catalog returned HTTP 200 with 40 scenarios and 3 system_intents.",
+            "conclusion": "Cross-file catalog validation and dataset loading succeeded in the built image."
+          },
+          {
+            "input": "RU example text: Я оплатил полис, но он не активен",
+            "method": "POST /api/sessions then POST /api/sessions/{id}/turns/text with speak=false",
+            "result": "Session creation returned 201; turn reached OpenAI router and returned HTTP 502 because the review used an intentionally dummy key; container log shows OpenAI AuthenticationError.",
+            "conclusion": "HTTP/session/error path is exercised. Provider-backed route/answer result is limited by absent credentials, not claimed as passed."
+          },
+          {
+            "input": "Scenario acceptance claims in README and real-voice experiment",
+            "method": "Read source and experiment records; no browser/audio automation",
+            "result": "Experiment records 11/11 scorable completed-audio routes and a SC03→SC33→SC03 topic-switch replay; no raw recordings are committed.",
+            "conclusion": "Useful supporting evidence for the intended audio path, but it remains recorded evidence rather than a fresh provider run in this review."
+          }
+        ],
+        "limitations": [
+          "Closed jury set is unavailable, so 104/104 is a tuned development result.",
+          "No OpenAI/Gemini credentials were provided; no real external provider response was fabricated.",
+          "Browser visual and microphone/playback behavior was not tested per the review policy.",
+          "dialogs_sample.json was inspected as provided case data but no separate executable assertion was available in the repository."
+        ]
+      },
+      "runtime": {
+        "status": "partial",
+        "build": "Docker production build passed, including frontend TypeScript check/Vite bundle and Python package installation.",
+        "start": "Built image started as a non-root voice-router process; GET /api/health, GET /api/catalog and static GET / returned 200.",
+        "scenario": "A text session was created and a Russian business turn reached the OpenAI router, but the provider rejected the intentionally dummy credential with 401 and the API returned 502. No successful provider-backed answer is claimed.",
+        "environment": "Docker image uses Python 3.12 and Node 22 build stages. Host frontend commands were not usable because node_modules was absent and tsc was not found; container build supplied the intended dependency environment.",
+        "summary": "The application is deployable and process/HTTP skeleton is working. The primary scenario is partial in this review because external AI credentials were intentionally unavailable; this is a review limitation, not an automatic project failure.",
+        "checks": [
+          {
+            "command": "docker build --memory 3g -t <image> .",
+            "result": "Exit 0; frontend tsc/vite build completed, Python dependencies installed, image exported.",
+            "id": "runtime-check-build",
+            "stage": "build",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Production image builds from the tracked Dockerfile."
+          },
+          {
+            "command": "python -m voice_router.server",
+            "result": "Container process printed listening message; GET /api/health returned 200 {status: process_running}; GET /api/catalog returned 200 with 40 scenarios and 3 system_intents; root static page returned 200 text/html.",
+            "id": "runtime-check-start",
+            "stage": "start",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Server starts, loads dataset and serves documented health/catalog/static endpoints."
+          },
+          {
+            "command": "POST /sessions; POST /sessions/{session_id}/turns/text",
+            "result": "Session 201; business turn returned 502 after OpenAI AuthenticationError 401 with dummy key. No fabricated success answer was returned.",
+            "id": "runtime-check-scenario",
+            "stage": "scenario",
+            "status": "blocked",
+            "cause": "review_environment",
+            "expected": "A valid provider-backed text turn returns answer_text, route and trace."
+          },
+          {
+            "command": "python data/voice_router_dataset/evaluate.py <predictions> <dev_utterances>",
+            "result": "Exit 0; 104/104 exact ordered routes and 1.000 intent recall for multi-intent.",
+            "id": "runtime-check-evaluate",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Provided official evaluator reproduces the recorded development prediction result."
+          }
+        ],
+        "limitations": [
+          "Provider API keys were intentionally not supplied, so routing/slot/answer calls could not be freshly completed.",
+          "Visual browser and microphone verification was explicitly out of scope for this judge; static and HTTP checks were used.",
+          "The committed real-voice experiment is evidence from the project record, not a fresh external-service run."
+        ]
+      },
+      "liveDemo": {
+        "status": "claimed",
+        "url": "https://hackalem-137-74-166-29.sslip.io/",
+        "notes": "README claims a deployed HTTPS demo with guest credentials. This judge did not open a browser or independently verify the live page; no score deduction is based on that."
+      },
+      "fiveHourContext": "Для пятичасового хакатона это сильный, но честно ограниченный MVP: команда собрала каталоговый LLM router, stateful dialogue, synthetic actions, voice bridge, supervisor trace и deployment artifact. Persistent production infrastructure, live operator, real downstream integrations, rate limiting и полноценный automated test suite не требовались для базового прототипа, но остаются естественными следующими шагами.",
+      "strengths": [
+        "104/104 exact ordered routes на предоставленном evaluator с полным покрытием RU, KK, mixed и multi-intent групп.",
+        "Data-driven каталог из 40 сценариев и 3 system intents с runtime validation.",
+        "Связный backend data flow: route → slots → ownership/facts → action → grounded answer → trace.",
+        "Отдельный confirmation flow для irreversible actions и честные synthetic side-effect statuses.",
+        "Deployable Docker image и подробные README/API/experiment материалы."
+      ],
+      "gaps": [
+        "В репозитории нет отдельного автоматизированного unit/domain test suite для stateful dialogue, confirmation и actions.",
+        "Сессии, action records и audio cache in-process; production persistence, rate limiting и live operator integration отсутствуют по заявленному scope."
+      ],
+      "futureAdvice": [
+        {
+          "principle": "Закрепляйте stateful voice logic тестами на переходы, а не только на итоговый route.",
+          "why": "F1: сложные ветки `pending_scenarios`, confirmation, ownership и duplicate action keys реализованы, но в checkout нет regression suite, поэтому расширение каталога может незаметно сломать состояние диалога.",
+          "how": "В следующем хакатоне зафиксируйте несколько fake provider responses и прогоните сценарии: смена темы и возврат, approve/reject/change_request, ownership mismatch и повтор одного action; отделите router contract tests от live provider checks.",
+          "findingIds": [
+            "F1"
+          ],
+          "successCheck": "Один локальный test command проходит для всех перечисленных переходов и проверяет route, pending state, action status и отсутствие duplicate side effect.",
+          "timeboxMinutes": 35
+        },
+        {
+          "principle": "Разделяйте MVP action adapter и production integration через явный контракт результата.",
+          "why": "F2: проект уже честно возвращает local/not_sent/not_booked, но persistence и реальные downstream systems остаются за пределами процесса.",
+          "how": "Для другого кейса сохраните текущий `ActionExecutor` как domain interface, добавьте durable event/outbox adapter и contract tests, не меняя router; сначала подключите одну безопасную интеграцию с idempotency key и audit record.",
+          "findingIds": [
+            "F2"
+          ],
+          "successCheck": "После рестарта session/audit data сохраняется, повтор запроса не создаёт второй side effect, а unavailable integration возвращает явный статус без ложного успеха.",
+          "timeboxMinutes": 45
+        }
+      ],
+      "uncertainties": [
+        "Не проверялась визуальная раскладка и реальное microphone/playback поведение; это запрещено заданной user-owned visual verification policy.",
+        "Без API credentials нельзя подтвердить свежий ответ Gemini/OpenAI или latency provider calls; сохранённые experiments остаются source evidence.",
+        "Закрытый jury set недоступен; 104/104 относится к development set, который использовался при настройке.",
+        "Live demo URL заявлен README, но в этой проверке не открывался браузер и не выполнялась независимая проверка публичного deployment."
+      ],
+      "reviewPolicyVersion": 2,
+      "assessmentStatus": "ready",
+      "findings": [
+        {
+          "id": "F1",
+          "kind": "defect",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "В repository нет отдельного automated unit/domain test suite для stateful dialogue, confirmation, ownership и action idempotency.",
+          "expected": "Сложные переходы основного MVP должны иметь локально воспроизводимые regression checks.",
+          "actual": "Dossier отмечает tests: нет; доступный executable evaluator проверяет routing predictions, но не stateful server/action branches.",
+          "evidence": [
+            "project dossier: tests нет",
+            "backend/voice_router/dialogue.py:64-149",
+            "backend/voice_router/dialogue.py:665-710",
+            "data/voice_router_dataset/evaluate.py"
+          ],
+          "checkIds": [
+            "runtime-check-evaluate"
+          ]
+        },
+        {
+          "id": "F2",
+          "kind": "defect",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Runtime state и case actions ограничены процессом; production persistence, live operator, SMS/payment/booking transports и rate limiting не подключены.",
+          "expected": "Для production contact-center применения нужны durable history/audit и реальные downstream integrations с idempotency.",
+          "actual": "API docs и README фиксируют reset после рестарта, local synthetic records и отсутствие live connections.",
+          "evidence": [
+            "docs/BACKEND_API.md:32-40",
+            "README.md:101-109",
+            "backend/voice_router/actions.py:46-49",
+            "backend/voice_router/actions.py:350-410"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "F3",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Официальный evaluator воспроизводимо даёт exact ordered route match для всех 104 development utterances.",
+          "expected": "Prediction map должна соответствовать ожидаемому route order по предоставленным данным.",
+          "actual": "all=104, primary_acc=1.000, full_match=1.000; все языковые и multi-intent группы также 1.000.",
+          "evidence": [
+            "runtime-check-evaluate",
+            "data/voice_router_dataset/evaluate.py",
+            "docs/experiments/results/luna-dev-predictions.json"
+          ],
+          "checkIds": [
+            "runtime-check-evaluate"
+          ]
+        },
+        {
+          "id": "F4",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Production Docker image собирается и HTTP process skeleton работает с загруженным каталогом.",
+          "expected": "Build должен завершиться, server должен загрузить dataset и отдать health/catalog/static endpoints.",
+          "actual": "Build exit 0; health/catalog/root получили 200; catalog содержит 40 scenarios и 3 system intents.",
+          "evidence": [
+            "captures/20260930T082749301199-build.stderr.log",
+            "runtime-check-build",
+            "runtime-check-start",
+            "Dockerfile:1-24"
+          ],
+          "checkIds": [
+            "runtime-check-build",
+            "runtime-check-start"
+          ]
+        },
+        {
+          "id": "F5",
+          "kind": "limitation",
+          "verification": "observed",
+          "responsibility": "review_environment",
+          "claim": "Свежий business turn не завершён из-за отсутствия реального provider credential.",
+          "expected": "POST text turn с валидным provider access должен вернуть answer_text, route и trace.",
+          "actual": "Session creation прошёл 201; router call получил OpenAI AuthenticationError 401 от dummy key; HTTP layer вернул 502 без fabricated success.",
+          "evidence": [
+            "runtime-check-scenario",
+            "container start log: OpenAI AuthenticationError"
+          ],
+          "checkIds": [
+            "runtime-check-scenario"
+          ]
+        }
+      ],
+      "gapFindingIds": [
+        "F1",
+        "F2"
+      ]
+    }
+  ],
+  "score": 94.5,
+  "status": "complete",
+  "expectedJudges": 1
+}

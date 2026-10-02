@@ -1,0 +1,958 @@
+{
+  "methodVersion": 4,
+  "repoId": "hack-86eb72c7-tessera",
+  "repoUrl": "https://github.com/BAITC-Hacks/hack-86eb72c7-tessera",
+  "caseId": 5,
+  "snapshot": "20be898b1f2554a1960e927c922eea9a7c7a7d3e",
+  "judges": [
+    {
+      "methodVersion": 4,
+      "repoId": "hack-86eb72c7-tessera",
+      "caseId": 5,
+      "model": "GPT-5.6 Luna",
+      "snapshot": "20be898b1f2554a1960e927c922eea9a7c7a7d3e",
+      "overallSummary": "Tessera — сильный серверный прототип расчёта пополнения: детерминированный прогноз и replenishment-движок учитывают сезонность, рост, stockout, выбросы, остатки, поставки в пути и поставщиков; строгие DTO, PostgreSQL-публикация, идемпотентный dispatch и ручной review подтверждены большим набором тестов. Главная граница результата — пользовательское рабочее место остаётся локальным демо на заранее зашитых синтетических данных и не вызывает серверный импорт/расчёт. При проверке реального пакета кейса встроенный XLSX-парсер отверг два значимых файла: MOQ ИЭК из-за externalLinks и динамику продаж ИЭК из-за лимита распакованного worksheet. Материальная ведомость также принимается только в диагностический черновик и блокирует SQL-публикацию. Итоговая оценка 80/100; отдельной шкалы кейса нет.",
+      "global": {
+        "criteria": [
+          {
+            "name": "Ценность решения",
+            "score": 21,
+            "max": 25,
+            "awarded": "Проблема и целевая аудитория определены точно, а ключевая операционная ценность — быстрее и обоснованнее готовить закупку при меньшем риске дефицита и избыточного запаса — реализована в доменном ядре и демонстрационном review-потоке.",
+            "deductions": "Сняты 4 балла за то, что ценность не доведена до реального пути пользователя: `/workspace` показывает заранее подготовленные значения, а не заказ по загруженным данным.",
+            "evidence": [
+              "README.md:17-20",
+              "README.md:38-46",
+              "components/procurement/procurement-workspace.tsx:40-75",
+              "CHK-START",
+              "CHK-JOBS"
+            ],
+            "deductionItems": [
+              {
+                "points": 4,
+                "findingId": "DEF-UI-001",
+                "reason": "Для менеджера ценность должна проявляться на собственном наборе данных и сохраняемом результате. В текущем интерфейсе состояние и рекомендации берутся из initialProjects/demoRecommendations, поэтому основной пользовательский сценарий не доказывает экономию времени на фактической закупочной выгрузке."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Чёткая операционная проблема",
+                "implementation": "README описывает ручное сведение продаж, остатков и товаров в пути в Excel и связывает это с редкими расчётами, дефицитом, избыточным запасом и искажением от разовых заказов. Целевой пользователь назван явно: менеджер отдела закупа.",
+                "value": "Это не абстрактный аналитический дашборд: решение адресует конкретное повторяющееся действие и формирует понятный результат — рекомендацию заказа по артикулу и поставщику.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:10-20",
+                  "cases/5/task.txt:1-8"
+                ]
+              },
+              {
+                "aspect": "Объяснимое решение для принятия закупочного решения",
+                "implementation": "В расчётной строке сохраняются forecastDemandH, safetyStock, usableStock, eligibleInbound, rawNeed, unitStep и finalQty; формула `rawNeed = max(0, forecastDemandH + safetyStock - usableStock - eligibleInbound)` отделена от текста объяснения.",
+                "value": "Менеджер может понять, почему количество изменилось, и проверить его до подтверждения, а не получать непрозрачный ответ модели.",
+                "verification": "observed",
+                "evidence": [
+                  "lib/domain/replenishment/calculate.ts:149-168",
+                  "tests/domain/replenishment/core.test.mjs:46-78",
+                  "CHK-REPLENISHMENT"
+                ]
+              },
+              {
+                "aspect": "Снижение риска неправильной автоматизации",
+                "implementation": "Серверный результат допускает unavailable/null вместо подстановки нуля при нехватке фактов, а UI требует причину ручной правки и повторную проверку поставщика перед утверждением.",
+                "value": "Для закупок это полезнее безусловного автозаказа: неопределённость становится видимой, а ответственность остаётся у сотрудника.",
+                "verification": "observed",
+                "evidence": [
+                  "lib/domain/replenishment/calculate.ts:135-147",
+                  "lib/procurement/review-state.ts:87-121",
+                  "tests/domain/replenishment/edge.test.mjs",
+                  "tests/components/workspace-state.test.mjs"
+                ]
+              },
+              {
+                "aspect": "Приватность и обезличивание",
+                "implementation": "Импорт проверяет политику приватности и не принимает очевидные клиентские идентификаторы; транзакционный прогноз использует anonymizedCustomerKey/customerKeyAvailable и не подменяет отсутствие клиента номером документа.",
+                "value": "Это напрямую соответствует ограничению кейса и снижает риск передачи персональных данных в расчёт или объяснение.",
+                "verification": "observed",
+                "evidence": [
+                  "lib/server/imports/adapters.ts:130-145",
+                  "tests/imports/behavior.test.mjs:52-69",
+                  "tests/ai/adapters.test.mjs:1-11"
+                ]
+              }
+            ],
+            "scoreReasoning": "21 балл заслужен за точное понимание аудитории, полезную формулу пополнения, explainability и осторожную работу с неопределённостью. До максимума не хватает соединения этих сильных серверных частей с фактическим пользовательским входом: интерфейс подтверждает процесс только на демо-данных, поэтому ценность для реального менеджера пока доказана архитектурой и тестами, а не сквозным использованием партнёрской выгрузки."
+          },
+          {
+            "name": "Результат и качество решения",
+            "score": 12,
+            "max": 20,
+            "awarded": "Серверный сценарий расчёта, сохранения рекомендаций и повторного выполнения работает на синтетическом интеграционном наборе; чистые доменные тесты покрывают существенные математические границы. Однако основной экран не подключён к этому сценарию, два реальных входных XLSX отвергаются парсером, материальная ведомость не публикуется, а экспорт остаётся предпросмотром.",
+            "deductions": "Сняты 8 баллов: 4 за разрыв UI и серверного результата, 2 за несовместимость с двумя предоставленными файлами, 1 за неподдержанную публикацию материальной ведомости и 1 за отсутствие фактического экспортного артефакта.",
+            "evidence": [
+              "CHK-BUILD",
+              "CHK-START",
+              "CHK-JOBS",
+              "CHK-SERVER",
+              "CHK-CASE-DATA",
+              "components/procurement/procurement-workspace.tsx:155-167",
+              "lib/server/imports/commit.ts:176-199"
+            ],
+            "deductionItems": [
+              {
+                "points": 4,
+                "findingId": "DEF-UI-001",
+                "reason": "Серверный `executeCalculation` и API runs существуют, но `/workspace` не вызывает их: `startCalculation` создаёт demo-local-run и через timeout меняет state в памяти. Поэтому работающий серверный результат не является результатом, который видит основной пользовательский экран."
+              },
+              {
+                "points": 2,
+                "findingId": "DEF-CASE-DATA-001",
+                "reason": "При прогоне project parser на предоставленных файлах `IEK/MOQ ИЭК.xlsx` завершился ACTIVE_CONTENT из-за externalLinks, а `IEK/Динамика продаж_2025-2026.xlsx` — ARCHIVE_SIZE_LIMIT из-за XML worksheet больше лимита. Это оставляет важные части входного пакета вне рабочего импорта."
+              },
+              {
+                "points": 1,
+                "findingId": "DEF-MATERIAL-001",
+                "reason": "Существенный вход из задания — материальная ведомость — доходит до диагностического черновика, но `writeNormalizedSnapshot` безусловно бросает ошибку на sourceType material_statement, поэтому полный набор нельзя опубликовать в DatasetVersion."
+              },
+              {
+                "points": 1,
+                "findingId": "DEF-EXPORT-001",
+                "reason": "Кнопка `Экспорт (демо)` открывает только предпросмотр утверждённых строк; файл совместимого формата не создаётся и не скачивается. Это оставляет выходной артефакт незавершённым."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Детерминированный forecast → replenishment pipeline",
+                "implementation": "Trigger-задача загружает проверенный snapshot, выполняет validate, forecast и recommend, затем сохраняет результат через repository; доменное ядро отдельно рассчитывает forecastDemand и calculateRecommendations.",
+                "value": "Сценарий не является только UI-макетом: есть настоящее разделение этапов, стабильный результат и ошибки unavailable вместо скрытых нулей.",
+                "verification": "observed",
+                "evidence": [
+                  "trigger/calculate-procurement.ts:20-70",
+                  "tests/trigger/calculation-e2e.test.ts",
+                  "CHK-JOBS"
+                ]
+              },
+              {
+                "aspect": "Корректная математика пополнения",
+                "implementation": "Потребность на горизонт суммирует forecast и страховку, вычитает свободный остаток и eligible inbound, после чего округляет положительное значение вверх до unit step. Срочность симулируется по дням и не скрывает ранний дефицит поздней поставкой.",
+                "value": "Это даёт воспроизводимый и аудируемый результат для поставщика, а не только число в таблице; тесты отдельно проверяют ETA, fractional quantities, seasonality и safety.",
+                "verification": "observed",
+                "evidence": [
+                  "lib/domain/replenishment/calculate.ts:130-168",
+                  "lib/domain/replenishment/README.md:12-33",
+                  "CHK-REPLENISHMENT"
+                ]
+              },
+              {
+                "aspect": "Долговечное хранение и идемпотентность",
+                "implementation": "PostgreSQL-репозитории фиксируют версии набора, run state, stages, recommendations и dispatch intents; tests проверяют replay, cancellation, owner isolation, atomic publication и durable cursors.",
+                "value": "Для расчёта заказов это важный уровень качества: повтор Trigger не должен создать второй заказ или изменить чужой проект.",
+                "verification": "observed",
+                "evidence": [
+                  "lib/server/calculation-execution.ts",
+                  "lib/server/dispatch.ts:140-234",
+                  "tests/trigger/*.test.ts",
+                  "tests/server/*.test.ts",
+                  "CHK-JOBS",
+                  "CHK-SERVER"
+                ]
+              },
+              {
+                "aspect": "Основной пользовательский результат пока демонстрационный",
+                "implementation": "Компонент workspace и mock-workspace хранят projects, runs и recommendations в React state; `initialProjects` содержит заранее заданные строки, а `startCalculation` лишь имитирует переход running → success.",
+                "value": "Для демонстрации review-потока это полезно, но качество целостного продукта ниже: изменение реального файла или запуск API не меняет таблицу.",
+                "verification": "source",
+                "evidence": [
+                  "components/procurement/procurement-workspace.tsx:40-75",
+                  "components/procurement/procurement-workspace.tsx:155-167",
+                  "lib/procurement/mock-workspace.ts:138-160",
+                  "README.md:40-44"
+                ]
+              },
+              {
+                "aspect": "Проверка развёртываемости",
+                "implementation": "Production build завершился с маршрутом `/workspace` и API routes; production server вернул HTTP 200 для `/workspace` и HTTP 503 AUTH_UNAVAILABLE для защищённого `/api/projects` без Clerk.",
+                "value": "Приложение действительно собирается и стартует, а отсутствие внешней авторизации обрабатывается явным безопасным ответом, а не падением процесса.",
+                "verification": "observed",
+                "evidence": [
+                  "CHK-BUILD",
+                  "CHK-START",
+                  "CHK-HTTP-WORKSPACE",
+                  "CHK-HTTP-AUTH",
+                  "lib/server/auth.ts:15-36"
+                ]
+              }
+            ],
+            "scoreReasoning": "12 баллов отражают сильный и проверенный backend/MVP расчёт, но не целостность конечного пользовательского результата. Участник честно сделал серверные сервисы и тесты, однако UI не читает их результат, а полный пакет кейса не проходит импорт целиком. Для пяти часов это существенные, но локализованные ограничения, поэтому оценка выше половины, но заметно ниже максимума."
+          },
+          {
+            "name": "Инновационность",
+            "score": 13,
+            "max": 15,
+            "awarded": "Нестандартная часть решения — осторожный объяснимый forecast вместо использования LLM как калькулятора: сезонность, тренд, stockout restoration и robust outlier handling объединены с числовым evidence. Подход технически обоснован и лучше обычного среднего на проверенном синтетическом holdout.",
+            "deductions": "Сняты 2 балла за то, что инновационный алгоритм демонстрируется и тестируется на синтетических DTO, но не включён в рабочий экран и не подтверждён расчётом на полном наборе файлов кейса.",
+            "evidence": [
+              "lib/domain/forecast/prepare.ts:85-125",
+              "lib/domain/forecast/prepare.ts:192-270",
+              "lib/domain/forecast/model.ts:24-52",
+              "tests/domain/forecast/monthly.test.mjs:29-47",
+              "CHK-FORECAST"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "DEF-UI-001",
+                "reason": "Нестандартная математика не достигает пользовательского результата: экран показывает готовые synthetic recommendations, а не forecastDemand для выбранного файла. Преимущество подхода доказано тестами, но не end-to-end на продуктовой поверхности."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Robust-обработка выбросов",
+                "implementation": "Для событий используются медиана/MAD и сравнение с season-adjusted baseline; отдельный проход объединяет крупный документ и customer-week, распределяет исключённый объём по исходным строкам и сохраняет sourceRefs.",
+                "value": "Это адресует именно проблему кейса с разовой крупной покупкой и крупным клиентом, сохраняя регулярный спрос вместо наивного включения всплеска в среднее.",
+                "verification": "observed",
+                "evidence": [
+                  "lib/domain/forecast/prepare.ts:192-244",
+                  "tests/domain/forecast/model.test.mjs",
+                  "tests/domain/forecast/monthly.test.mjs:34-36",
+                  "CHK-FORECAST"
+                ]
+              },
+              {
+                "aspect": "Восстановление lost demand при stockout",
+                "implementation": "Stockout intervals объединяются как полуинтервалы; для доступных сопоставимых weekday/month observations медианный expected заменяет недостающую экспозицию, а adjustment сохраняется в evidence и warning quality.",
+                "value": "Алгоритм не трактует нулевые продажи во время отсутствия товара как нулевой спрос и тем самым отличает операционный дефицит от слабого спроса.",
+                "verification": "observed",
+                "evidence": [
+                  "lib/domain/forecast/prepare.ts:118-121",
+                  "lib/domain/forecast/prepare.ts:254-286",
+                  "tests/domain/forecast/model.test.mjs",
+                  "CHK-FORECAST"
+                ]
+              },
+              {
+                "aspect": "Разделение детерминированного числа и LLM-объяснения",
+                "implementation": "README и код делают calculation ядром, а AI adapters ограничивают модель выбором ссылок на разрешённые факты; при сбое провайдера используется шаблонное объяснение и не меняется количество.",
+                "value": "Это зрелее типичного hackathon-подхода с генерацией закупочного количества языковой моделью: результат повторяем и может быть проверен по входным фактам.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:48-54",
+                  "lib/ai/explain-recommendations-core.ts",
+                  "tests/ai/adapters.test.mjs",
+                  "CHK-AI"
+                ]
+              },
+              {
+                "aspect": "Календарная модель сезонности и роста",
+                "implementation": "Поддерживаются provided/category/estimated seasonality, deseasonalized trend и explicit growth modes; forecast-sum интегрирует сезонный индекс и месячный фактор по календарной дробной позиции.",
+                "value": "Сезонный паттерн и устойчивый рост не сведены к одной средней величине; модель использует только подтверждённые полные циклы и явно объявляет fallback.",
+                "verification": "observed",
+                "evidence": [
+                  "lib/domain/forecast/model.ts:24-52",
+                  "lib/domain/replenishment/forecast-sum.ts:51-77",
+                  "tests/domain/forecast/monthly.test.mjs:33-47",
+                  "tests/domain/replenishment/core.test.mjs",
+                  "CHK-FORECAST"
+                ]
+              }
+            ],
+            "scoreReasoning": "13 баллов заслужены за сочетание robust outlier detection, stockout restoration, сезонно-трендовой модели и строго ограниченного AI-слоя. Оставлены 2 балла вне максимума, потому что инновационный подход пока не соединён с реальным импортом и экраном менеджера; это ограничивает доказанное преимущество продукта, но не отменяет качества самого алгоритма."
+          },
+          {
+            "name": "Потенциал развития и масштабирования",
+            "score": 16,
+            "max": 20,
+            "awarded": "Архитектура хорошо подготовлена к расширению: immutable dataset versions, строгие контракты, PostgreSQL-состояние, отдельный dispatch/recovery, ограниченные внешние адаптеры и чистые доменные функции позволяют наращивать источники и сценарии без смешивания бизнес-логики с UI.",
+            "deductions": "Сняты 4 балла за незавершённое соединение модулей: пользовательский интерфейс, импорт реальных книг, material statement и экспорт ещё не образуют расширяемый end-to-end продуктовый контур.",
+            "evidence": [
+              "lib/contracts/calculation.ts",
+              "lib/server/db/schema.ts:101-738",
+              "lib/server/dispatch.ts:140-234",
+              "README.md:65-83",
+              "context/progress-tracker.md:184-187"
+            ],
+            "deductionItems": [
+              {
+                "points": 4,
+                "findingId": "DEF-UI-001",
+                "reason": "Пока UI не использует API runs/datasets, расширение backend не расширяет реальный пользовательский workflow; каждая новая интеграция может оставаться отдельным модулем без пользовательского эффекта."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Версионирование и происхождение данных",
+                "implementation": "DatasetVersion и нормализованные наблюдения связаны project/dataset/source provenance, manifest hash и checksum; публикация атомарна, после ready набор запечатывается.",
+                "value": "Это создаёт основу для воспроизводимости расчёта и безопасного сравнения версий при последующем добавлении новых источников или исправлений маппинга.",
+                "verification": "observed",
+                "evidence": [
+                  "lib/server/imports/commit.ts:23-117",
+                  "tests/server/db.test.ts",
+                  "tests/imports/commit.test.ts",
+                  "CHK-SERVER"
+                ]
+              },
+              {
+                "aspect": "Масштабируемое выполнение задач",
+                "implementation": "Trigger jobs отделены от HTTP, имеют bounded retries/concurrency, устойчивые dispatch intents, cancellation и recovery; `executeCalculation` проверяет payload, состояние и повторяемость этапов.",
+                "value": "При росте числа проектов и запусков бизнес-операция не зависит от одного веб-процесса и не должна дублироваться при повторной доставке.",
+                "verification": "observed",
+                "evidence": [
+                  "trigger/calculate-procurement.ts:20-111",
+                  "lib/server/dispatch.ts:140-234",
+                  "tests/trigger/dispatch.test.ts",
+                  "CHK-JOBS"
+                ]
+              },
+              {
+                "aspect": "Модульное доменное ядро",
+                "implementation": "Forecast и replenishment представлены чистыми функциями без сети, БД, времени и случайности; входы валидируются Zod-схемами, десятичные количества обрабатываются строками/bigint.",
+                "value": "Такой слой можно переиспользовать для новых складов, категорий и интерфейсов, не переписывая основную математику.",
+                "verification": "observed",
+                "evidence": [
+                  "lib/domain/replenishment/README.md:1-5",
+                  "lib/domain/replenishment/decimal.ts",
+                  "lib/domain/forecast/index.ts:58-92",
+                  "CHK-FORECAST",
+                  "CHK-REPLENISHMENT"
+                ]
+              },
+              {
+                "aspect": "Границы внешних сервисов",
+                "implementation": "Clerk, S3, Trigger, Liveblocks и OpenAI имеют отдельные серверные адаптеры и явные безопасные ошибки; API не принимает произвольные S3 URLs и проверяет owner/project boundary.",
+                "value": "Это разумный фундамент для production-интеграции и замены провайдера, даже если живые аккаунты не входили в проверку.",
+                "verification": "observed",
+                "evidence": [
+                  "lib/server/project-data-http.ts:80-100",
+                  "lib/server/imports/upload-storage.ts",
+                  "lib/realtime/authorize.ts",
+                  "tests/server/storage.test.ts",
+                  "tests/realtime/server.test.mjs",
+                  "CHK-SERVER"
+                ]
+              }
+            ],
+            "scoreReasoning": "16 баллов отражают сильную основу для продолжения: модели данных, контракты, идемпотентный фон и чистое ядро уже разделены. Максимум удерживается не из-за отсутствия облачных credentials, а из-за подтверждённого проектного разрыва между этими модулями и `/workspace`, а также из-за незакрытых реальных входов material statement/двух XLSX и экспортного артефакта."
+          },
+          {
+            "name": "Презентация, демо и ответы на вопросы",
+            "score": 18,
+            "max": 20,
+            "awarded": "README unusually ясно разделяет демо, dry-run импорта и серверный расчёт, перечисляет команды, ожидаемые результаты и ограничения. Репозиторий даёт воспроизводимый локальный маршрут сборки, тестов, CLI и HTTP smoke. Устной презентации и вопросов не было, поэтому они не приписываются команде.",
+            "deductions": "Сняты 2 балла за то, что описанное жюри пользовательское демо явно является синтетическим и не показывает сквозной путь от фактической XLSX-выгрузки до таблицы; это ограничение демонстрационной убедительности, а не штраф за отсутствие публичной ссылки или браузерной проверки.",
+            "evidence": [
+              "README.md:38-54",
+              "README.md:211-274",
+              "components/procurement/procurement-workspace.tsx:207-228",
+              "CHK-BUILD",
+              "CHK-START",
+              "CHK-HTTP-WORKSPACE"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "DEF-UI-001",
+                "reason": "README честно предупреждает, что UI использует синтетические рекомендации и не подключён к server calculation. Поэтому демонстрация понятна и воспроизводима, но не показывает главный бизнес-результат на реальном входе."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Понятный маршрут проверки",
+                "implementation": "README даёт отдельные сценарии `/workspace`, синтетического XLSX dry-run и `npm run test:jobs`, с ожидаемыми статусами и объяснением, что именно каждый сценарий доказывает.",
+                "value": "Проверяющий может быстро отличить UI demo, parser validation и server calculation, не принимая один из них за полный production workflow.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:38-46",
+                  "README.md:211-238"
+                ]
+              },
+              {
+                "aspect": "Воспроизводимая автоматическая приёмка",
+                "implementation": "README перечисляет test scripts, server-only условия и требование запускать PostgreSQL-тесты обычным пользователем; фактические прогоны в этом ревью дали pass для build, 24 import tests, 37 server tests и 13 job tests.",
+                "value": "Это сильнее декларации о готовности: инструкции приводят к наблюдаемым результатам, а не только к скриншоту.",
+                "verification": "observed",
+                "evidence": [
+                  "README.md:240-274",
+                  "CHK-BUILD",
+                  "CHK-IMPORTS",
+                  "CHK-SERVER",
+                  "CHK-JOBS"
+                ]
+              },
+              {
+                "aspect": "Честная маркировка границ",
+                "implementation": "На странице и в README явно написано `Демо · синтетические данные`, а также отдельно указано, что экспорт — preview, интеграции и точность на партнёрских данных не заявляются.",
+                "value": "Такая маркировка предотвращает ложное впечатление, что заранее заданные строки являются результатом загрузки пользователя.",
+                "verification": "source",
+                "evidence": [
+                  "components/procurement/procurement-workspace.tsx:207-228",
+                  "README.md:42-44",
+                  "README.md:215-220"
+                ]
+              },
+              {
+                "aspect": "Демо review-сценария",
+                "implementation": "UI содержит группировку по поставщикам, раскрываемые факты, редактирование количества с причиной, повторную проверку поставщика, approval gate и frozen local snapshot.",
+                "value": "Даже при mock-данных это показывает предполагаемую последовательность работы менеджера и ограничения автоматизации.",
+                "verification": "source",
+                "evidence": [
+                  "components/procurement/recommendation-table.tsx:44-100",
+                  "components/procurement/procurement-workspace.tsx:170-228",
+                  "tests/components/workspace-state.test.mjs"
+                ]
+              }
+            ],
+            "scoreReasoning": "18 баллов — высокая оценка за ясные инструкции, ожидаемые результаты и честное описание того, что именно проверено. Снижение ограничено 2 баллами: демонстрация убедительно показывает review-механику, но не сквозной расчёт по предоставленной книге. Устное выступление, видео и публичный URL не оценивались и не использовались как основания для штрафа."
+          }
+        ],
+        "total": 80
+      },
+      "case": null,
+      "judgeScore": 80,
+      "caseRequirements": [
+        {
+          "requirement": "Базовый расчёт пополнения по артикулу с историей продаж, остатками, товарами в пути, категориями и ростом",
+          "status": "partial",
+          "explanation": "Серверное ядро принимает все эти нормализованные сущности, проверяет согласованность project/dataset version и учитывает их в rawNeed. Интеграционный synthetic job это подтверждает, но основной UI не подаёт в него загруженные файлы, а часть реального пакета не проходит parser.",
+          "evidence": [
+            "lib/domain/replenishment/calculate.ts:60-64",
+            "lib/domain/replenishment/calculate.ts:149-168",
+            "tests/domain/replenishment/core.test.mjs:46-78",
+            "tests/trigger/calculation-e2e.test.ts",
+            "DEF-UI-001",
+            "DEF-CASE-DATA-001"
+          ]
+        },
+        {
+          "requirement": "Сезонность и устойчивый рост должны менять прогноз, а не только подпись",
+          "status": "met",
+          "explanation": "Provided и estimated seasonality нормализуются, trend строится по deseasonalized months, а growth mode участвует в календарной сумме. Тесты отдельно меняют сезонный индекс и рост и проверяют изменение прогноза/заказа.",
+          "evidence": [
+            "lib/domain/forecast/model.ts:24-52",
+            "lib/domain/replenishment/forecast-sum.ts:51-77",
+            "tests/domain/forecast/monthly.test.mjs",
+            "tests/domain/replenishment/core.test.mjs",
+            "CHK-FORECAST",
+            "CHK-REPLENISHMENT"
+          ]
+        },
+        {
+          "requirement": "Оценка и компенсация упущенного спроса при stockout",
+          "status": "met",
+          "explanation": "Stockout intervals объединяются и для сопоставимых доступных дней добавляется медианная оценка; evidence хранит observedQty, comparableQty, addedQty и quality. Unit-тест проверяет, что восстановленный спрос выше сырого и пересечения не считаются дважды.",
+          "evidence": [
+            "lib/domain/forecast/prepare.ts:118-121",
+            "lib/domain/forecast/prepare.ts:254-286",
+            "tests/domain/forecast/model.test.mjs",
+            "CHK-FORECAST"
+          ]
+        },
+        {
+          "requirement": "Выявление и исключение разовых крупных заказов, включая крупную продажу одному клиенту",
+          "status": "met",
+          "explanation": "Транзакционный путь группирует строки в события, применяет season-adjusted median/MAD к документу и customer-week, а регулярный объём и исключённый объём сохраняются отдельно. Тесты проверяют единичный 100x всплеск и постоянного крупного клиента.",
+          "evidence": [
+            "lib/domain/forecast/prepare.ts:192-244",
+            "tests/domain/forecast/monthly.test.mjs",
+            "tests/imports/behavior.test.mjs:52-69",
+            "CHK-FORECAST"
+          ]
+        },
+        {
+          "requirement": "Список рекомендаций должен быть сгруппирован по поставщикам и содержать объяснение каждой строки",
+          "status": "partial",
+          "explanation": "calculateRecommendations создаёт supplierGroups и сохраняет numericFactors/evidence/rationale; UI умеет раскрывать факты и показывает две группы поставщиков. Но UI использует зашитые demoRecommendations, поэтому связь реального server result → экран не доказана.",
+          "evidence": [
+            "lib/domain/replenishment/calculate.ts:81-103",
+            "components/procurement/recommendation-table.tsx:44-100",
+            "lib/procurement/mock-workspace.ts:138-145",
+            "DEF-UI-001"
+          ]
+        },
+        {
+          "requirement": "Нельзя отправлять заказ без ручного подтверждения ответственного сотрудника",
+          "status": "partial",
+          "explanation": "Локальное демо требует проверки поставщиков, причины изменения и явного подтверждения; backend не вызывает отправку поставщику. Однако approval в workspace — только in-memory snapshot, а полноценный серверный approve/export endpoint в проверенном приложении не подключён к экрану.",
+          "evidence": [
+            "lib/procurement/review-state.ts:87-121",
+            "components/procurement/order-review-dialog.tsx:25-48",
+            "components/procurement/procurement-workspace.tsx:223-228",
+            "tests/components/workspace-state.test.mjs",
+            "DEF-UI-001"
+          ]
+        },
+        {
+          "requirement": "Клиентские данные должны быть обезличены",
+          "status": "met",
+          "explanation": "Схема и adapter требуют anonymized customer key для клиентской аномалии, не принимают очевидные ФИО/телефон/e-mail/ИНН/БИН и явно понижают coverage, если клиентская доступность отсутствует.",
+          "evidence": [
+            "lib/server/imports/adapters.ts:130-145",
+            "lib/domain/forecast/prepare.ts:111-113",
+            "tests/imports/behavior.test.mjs:52-69",
+            "tests/contracts/feature04.test.ts"
+          ]
+        },
+        {
+          "requirement": "Материальная ведомость из 1С должна быть учтена во входном пути",
+          "status": "missing",
+          "explanation": "Source type material_statement есть в контракте и диагностическом отчёте, но публикация нормализованного snapshot заканчивается явным исключением `Материальная ведомость требует подтверждённой предметной схемы`. Полный набор с этим источником не становится опубликованным dataset.",
+          "evidence": [
+            "lib/contracts/imports.ts:1-20",
+            "lib/server/imports/commit.ts:196-199",
+            "README.md:236-238",
+            "DEF-MATERIAL-001"
+          ]
+        },
+        {
+          "requirement": "Выход должен быть пригоден для просмотра и экспорта",
+          "status": "partial",
+          "explanation": "Табличный review по поставщикам и локальный предпросмотр есть, но `Экспорт (демо)` не создаёт файл, не скачивает его и не проверяет совместимость с учётной системой.",
+          "evidence": [
+            "README.md:215-220",
+            "components/procurement/order-review-dialog.tsx:25-48",
+            "DEF-EXPORT-001"
+          ]
+        }
+      ],
+      "testData": {
+        "provided": [
+          "cases/5/case-data/HackAlem AI_ Автоматизация формирования заказов поставщикам.docx.md",
+          "cases/5/case-data/IEK/MOQ  ИЭК.xlsx",
+          "cases/5/case-data/IEK/Динамика продаж_2025-2026.xlsx",
+          "cases/5/case-data/IEK/Ежемесячные остатки продукции за последние 2 года  ИЭК.xlsx",
+          "cases/5/case-data/IEK/Ежемесячные продажи в количественном выражении за последние 2 года.xlsx",
+          "cases/5/case-data/IEK/Путь ИЭК 22.09.2026.xlsx",
+          "cases/5/case-data/IEK/Сезонность ИЭК.xlsx",
+          "cases/5/case-data/Systeme electric/MOQ SystemElectric.xlsx",
+          "cases/5/case-data/Systeme electric/Динамика продаж_Syseme Electric_2025-2026.xlsx",
+          "cases/5/case-data/Systeme electric/Ежемесячные остатки SystemElectric 2024-2026.xlsx",
+          "cases/5/case-data/Systeme electric/Ежемесячные продажи в кол-м выражении SystemElectric 2024-2026.xlsx",
+          "cases/5/case-data/Systeme electric/Сезонность SystemElectric 2024-2026.xlsx",
+          "cases/5/case-data/Systeme electric/Товар в пути_SystemElectric на 22.09.2026.xlsx"
+        ],
+        "used": [
+          "Все 12 XLSX из IEK и Systeme electric были переданы в project parser для проверки архива, листов, checksum и заголовков; текст задания использован для сопоставления требований.",
+          "cases/5/case-data/IEK/Ежемесячные остатки продукции за последние 2 года  ИЭК.xlsx",
+          "cases/5/case-data/IEK/Ежемесячные продажи в количественном выражении за последние 2 года.xlsx",
+          "cases/5/case-data/IEK/Путь ИЭК 22.09.2026.xlsx",
+          "cases/5/case-data/IEK/Сезонность ИЭК.xlsx",
+          "cases/5/case-data/Systeme electric/MOQ SystemElectric.xlsx",
+          "cases/5/case-data/Systeme electric/Динамика продаж_Syseme Electric_2025-2026.xlsx",
+          "cases/5/case-data/Systeme electric/Ежемесячные остатки SystemElectric 2024-2026.xlsx",
+          "cases/5/case-data/Systeme electric/Ежемесячные продажи в кол-м выражении SystemElectric 2024-2026.xlsx",
+          "cases/5/case-data/Systeme electric/Сезонность SystemElectric 2024-2026.xlsx",
+          "cases/5/case-data/Systeme electric/Товар в пути_SystemElectric на 22.09.2026.xlsx"
+        ],
+        "checks": [
+          {
+            "input": "12 предоставленных XLSX; для каждого вызван parseImportObject, затем зафиксированы checksum, листы и первые заголовки.",
+            "method": "node --conditions=react-server --import tsx с project parser; без ExcelJS-обхода и без изменения входных файлов.",
+            "result": "10 книг разобраны до структуры листов. `IEK/MOQ ИЭК.xlsx` отклонён кодом ACTIVE_CONTENT: в архиве присутствует xl/externalLinks. `IEK/Динамика продаж_2025-2026.xlsx` отклонён кодом ARCHIVE_SIZE_LIMIT: worksheet XML превышает maxEntryBytes 64 MiB. Остальные книги дали структурные метаданные; полноценный manifest mapping для партнёрского пакета в репозитории не предоставлен.",
+            "conclusion": "Парсер и ограничения безопасности реально применились к данным кейса, но два значимых источника нельзя использовать в полном импортном пути без изменения проекта или предварительной безопасной подготовки файлов."
+          },
+          {
+            "input": "README synthetic XLSX fixture: 12 source roles, 37 rows, explicit stockout, sales anomaly, monthly history, stock and inbound.",
+            "method": "Полный project path generate-import-fixture → parseImportObject → normalizeSources → validateImport и PostgreSQL commit tests.",
+            "result": "Import test suite 24/24 pass; интеграционные import tests дают атомарную публикацию, повторяемость и owner isolation. README-ожидание для dry-run — status ready, 37 checked/accepted, 0 rejected, 0 unresolved.",
+            "conclusion": "Синтетический import pipeline воспроизводим; это не подменяет расчёт на фактических книгах кейса."
+          },
+          {
+            "input": "Synthetic forecast/replenishment fixtures with isolated changes to seasonality, growth, stockout, outlier, inbound, stock and unit step.",
+            "method": "npm run test:forecast и npm run test:replenishment.",
+            "result": "Forecast: 40/40 pass, включая seasonal holdout (model absolute error около 2.5e-7 против naive error около 580.5) и stockout/outlier checks. Replenishment: 70/70 pass, включая exact 100+20-30-40=50, ETA boundaries, urgent-before-inbound, supplier grouping and unavailable evidence.",
+            "conclusion": "Доменная чувствительность к требованиям кейса доказана на синтетических DTO, но не на полном partner XLSX workflow."
+          }
+        ],
+        "limitations": [
+          "Предоставленные книги не содержат готового manifest, совместимого с внутренними UUID/source mappings; поэтому применён parser-level data check, а не выдуманный mapping по названиям колонок.",
+          "Проверка не публикует и не пересказывает полные строки XLSX; приведены только статусы, структура и диагностические коды.",
+          "Реальные Clerk/S3/Trigger/OpenAI credentials не предоставлены; это ограничивает live integration check, но не является основанием для снижения баллов."
+        ]
+      },
+      "runtime": {
+        "status": "partial",
+        "build": "pass: production build завершился успешно; TypeScript и статическая генерация страниц завершились без ошибок.",
+        "start": "pass: production server стартовал; GET /workspace и GET / вернули HTTP 200.",
+        "scenario": "partial: server-side synthetic calculation/import/recommendation path воспроизведён тестами, но основной /workspace остаётся mock UI и не запускает этот path на пользовательском файле.",
+        "environment": "Проверка выполнена на Node 22 в изолированном Docker-окружении; PostgreSQL-тесты запущены под обычным пользователем. Clerk, S3, Trigger, Liveblocks и AI keys не задавались.",
+        "summary": "Проект собирается, стартует и имеет рабочий серверный доменный/персистентный контур. Статус partial относится к сквозному пользовательскому сценарию: runtime HTTP доступен, но UI, реальный импорт и серверный расчёт не соединены в один маршрут.",
+        "checks": [
+          {
+            "command": "npm run build",
+            "result": "Next.js 16.3.6 build pass: compilation, TypeScript, page data, static generation и route listing завершены с кодом 0.",
+            "id": "CHK-BUILD",
+            "stage": "build",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Production build должен завершиться без ошибок TypeScript/Next.js."
+          },
+          {
+            "command": "npm start -- --hostname 0.0.0.0",
+            "result": "Production server запущен; процесс принял HTTP запросы.",
+            "id": "CHK-START",
+            "stage": "start",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Собранное приложение должно стартовать и принимать запросы."
+          },
+          {
+            "command": "GET /workspace",
+            "result": "HTTP 200, HTML response около 51 KiB; проверен только HTTP/CLI ответ, не визуальная раскладка.",
+            "id": "CHK-HTTP-WORKSPACE",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Основная страница workspace должна отдавать успешный HTTP response."
+          },
+          {
+            "command": "GET /api/projects",
+            "result": "HTTP 503 с JSON error.code AUTH_UNAVAILABLE без Clerk keys; приложение не падает и не отдаёт данные без авторизации.",
+            "id": "CHK-HTTP-AUTH",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Защищённый API без настроенной сессии должен вернуть безопасный canonical error response."
+          },
+          {
+            "command": "npm run test:forecast",
+            "result": "40 tests pass; сезонность, trend, stockout, outlier, monthly basis, coverage and immutability.",
+            "id": "CHK-FORECAST",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Forecast должен быть детерминированным и учитывать заявленные факторы либо явно блокировать недостаточные данные."
+          },
+          {
+            "command": "npm run test:replenishment",
+            "result": "70 tests pass; exact calculation, inbound boundaries, urgency, rounding, suppliers, unavailable evidence and determinism.",
+            "id": "CHK-REPLENISHMENT",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Replenishment должен формировать объяснимые количества и не подменять недостаток данных нулём."
+          },
+          {
+            "command": "npm run test:auth; npm run test:workspace; npm run test:ai; npm run test:realtime",
+            "result": "3 + 4 + 11 + 13 tests pass; auth boundary, local review state, AI reference validation and realtime controller.",
+            "id": "CHK-AI",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Поддерживающие пользовательские и интеграционные границы должны проходить локальные проверки без внешних ключей."
+          },
+          {
+            "command": "node --conditions=react-server --import tsx --test --test-concurrency=1 tests/imports/*.test.mjs tests/imports/*.test.ts",
+            "result": "24 tests pass; parser security, normalization, dry-run service и PostgreSQL import commit/idempotency.",
+            "id": "CHK-IMPORTS",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Синтетический XLSX import pipeline и публикация должны быть воспроизводимыми."
+          },
+          {
+            "command": "node --conditions=react-server --import tsx --test --test-concurrency=1 tests/contracts/*.test.ts tests/project-data/*.test.ts tests/server/*.test.ts",
+            "result": "37 tests pass, включая real temporary PostgreSQL migrations, owner isolation, storage boundaries, HTTP factories and schema parity.",
+            "id": "CHK-SERVER",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Серверные контракты, БД, миграции и boundary checks должны пройти."
+          },
+          {
+            "command": "npm run test:jobs",
+            "result": "13 tests pass; synthetic import → durable calculation → recommendations → replay, cancellation and dispatch recovery. Первичный запуск под root был заблокирован embedded-postgres, затем штатно повторён под обычным пользователем согласно README.",
+            "id": "CHK-JOBS",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Trigger/calculation services должны воспроизводить серверный расчёт и повтор без дубликатов."
+          },
+          {
+            "command": "node --conditions=react-server --import tsx <project parser data check>",
+            "result": "Проверены все 12 XLSX кейса: 10 разобраны до sheet/header metadata; IEK MOQ → ACTIVE_CONTENT из-за externalLinks; IEK sales dynamics → ARCHIVE_SIZE_LIMIT из-за worksheet entry >64 MiB.",
+            "id": "CHK-CASE-DATA",
+            "stage": "scenario",
+            "status": "fail",
+            "cause": "project",
+            "expected": "Предоставленные XLSX должны хотя бы пройти безопасный parser stage, чтобы быть сопоставленными manifest и использованными в расчёте."
+          }
+        ],
+        "limitations": [
+          "Визуальная проверка браузера не выполнялась по правилам ревью; HTTP 200 не подтверждает layout, интерактивность или доступность UI.",
+          "Live Clerk/S3/Trigger/Liveblocks/OpenAI не запускались без credentials; соответствующие выводы основаны на коде и локальных тестах адаптеров.",
+          "Настоящий партнёрский пакет не был превращён в полный manifest без догадок о семантике колонок; два parser reject являются наблюдаемым результатом проекта, остальные данные не объявляются полностью импортированными."
+        ]
+      },
+      "liveDemo": {
+        "status": "none",
+        "url": null,
+        "notes": "Публичная live-ссылка в репозитории не заявлена. Локальный production HTTP smoke для /workspace прошёл; визуальное поведение и браузерный сценарий не проверялись."
+      },
+      "fiveHourContext": "Для пятичасового MVP объём серверной работы высокий: есть предметное ядро, строгие контракты, импортный dry-run, PostgreSQL snapshots, Trigger dispatch/recovery и большой набор тестов. Разумно не требовать production AWS/Clerk/Trigger deployment или полноценную аналитику качества на реальных данных. Но для основного кейсового результата принципиальны две границы, которые уже видны в исходниках: UI остаётся синтетическим локальным демо, а фактический пакет содержит два файла, отвергнутых parser security/size limits. Это удерживает оценку результата ниже максимума без требования функций вне кейса.",
+      "strengths": [
+        "Детерминированный forecast/replenishment-движок с сезонностью, ростом, stockout restoration, robust выбросами и числовым evidence.",
+        "Корректная обработка неопределённости: unavailable/null и blocking issues вместо скрытой подстановки нуля.",
+        "Идемпотентный PostgreSQL/Trigger контур с версиями наборов, owner isolation, cancellation, replay и recovery.",
+        "Строгий XLSX parser с checksum, лимитами архива, запретом active content, происхождением строк и privacy checks.",
+        "Честный README: разделены UI demo, import dry-run и server calculation, приведены команды и ожидаемые результаты.",
+        "Ручной review gate в демо требует причины правки, проверки поставщика и explicit approval; заказ не отправляется автоматически."
+      ],
+      "gaps": [
+        "DEF-UI-001: `/workspace` работает на initialProjects/demoRecommendations и локальном React state; пользовательский файл и серверный расчёт в экран не подключены.",
+        "DEF-CASE-DATA-001: project parser отвергает IEK/MOQ ИЭК.xlsx с ACTIVE_CONTENT и IEK/Динамика продаж_2025-2026.xlsx с ARCHIVE_SIZE_LIMIT.",
+        "DEF-MATERIAL-001: writeNormalizedSnapshot безусловно блокирует material_statement, поэтому полный входной пакет не публикуется.",
+        "DEF-EXPORT-001: `Экспорт (демо)` показывает preview, но не создаёт совместимый скачиваемый файл."
+      ],
+      "futureAdvice": [
+        {
+          "principle": "Сначала замкнуть вертикальный срез от входного файла до основной таблицы.",
+          "why": "DEF-UI-001: сильные server services и тесты не видны в `/workspace`; кнопка расчёта меняет только demo state, поэтому главный пользовательский эффект остаётся недоказанным.",
+          "how": "В другом хакатоне выбрать один источник и один склад, добавить в workspace вызовы create run/status/recommendations, отобразить loading/error/unavailable и сохранить approval через API. Только после этого расширять количество источников и сценариев.",
+          "findingIds": [
+            "DEF-UI-001"
+          ],
+          "successCheck": "Загрузка одного manifest/XLSX и запуск из `/workspace` приводят к изменению таблицы на основании сохранённой рекомендации; повтор страницы читает тот же run, а не demoRecommendations.",
+          "timeboxMinutes": 90
+        },
+        {
+          "principle": "Проверять parser на реальном образце до фиксации универсальных security limits.",
+          "why": "DEF-CASE-DATA-001: два предоставленных файла не доходят до mapping из-за externalLinks и размера XML worksheet, хотя один из них содержит основную историю продаж.",
+          "how": "Для следующего кейса добавить fixture из реального архива, отдельно разрешать безопасные relationship parts после проверки target, а большие worksheets читать потоково с теми же row/cell/total limits; лимит на entry должен быть согласован с допустимым входом кейса.",
+          "findingIds": [
+            "DEF-CASE-DATA-001"
+          ],
+          "successCheck": "Два ранее отвергнутых файла проходят parser с сохранением checksum и ограничений, либо получают явный поддержанный preprocessing path; затем один mapped SKU проходит normalize → publish.",
+          "timeboxMinutes": 45
+        },
+        {
+          "principle": "Закрывать обязательные источники и выходной артефакт минимальным вертикальным контрактом.",
+          "why": "DEF-MATERIAL-001 и DEF-EXPORT-001: material statement блокирует публикацию, а export не создаёт файл, поэтому полный вход и заявленный output format не доходят до конечного пользователя.",
+          "how": "Для другого MVP определить минимальные поля ведомости и один CSV/JSON export contract; добавить один end-to-end тест, который публикует material_statement, создаёт recommendation, требует approval и проверяет байты экспортированного файла.",
+          "findingIds": [
+            "DEF-MATERIAL-001",
+            "DEF-EXPORT-001"
+          ],
+          "successCheck": "Полный synthetic manifest с material_statement публикуется без исключения, approval создаёт immutable export artifact, а его структура содержит supplier, SKU, quantity, rationale и urgency.",
+          "timeboxMinutes": 60
+        }
+      ],
+      "uncertainties": [
+        "Визуальная раскладка, клавиатурная навигация и интерактивность браузерного UI не проверялись; это не использовано как штраф.",
+        "Live credentials для Clerk, S3, Trigger, Liveblocks и OpenAI отсутствовали; внешний smoke и облачная конфигурация не подтверждены.",
+        "Для фактических книг кейса не составлен полный manifest mapping, потому что названия и семантика неоднозначны; не делался недоказанный вывод о корректности итоговых количеств по этим книгам.",
+        "Точность прогнозов подтверждена одним synthetic holdout и предметными тестами, но не измерена на реальной истории партнёра."
+      ],
+      "reviewPolicyVersion": 2,
+      "assessmentStatus": "ready",
+      "findings": [
+        {
+          "id": "STR-CORE-001",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Доменное ядро считает объяснимое пополнение по подтверждённым числовым фактам и сохраняет evidence.",
+          "expected": "Изменение forecast, stock, inbound, safety, lead time, seasonality или unit step должно менять результат либо явно менять его coverage/status.",
+          "actual": "Unit/integration tests наблюдают exact numeric chain, чувствительность факторов, ETA/urgency boundaries, unavailable states и deterministic replay.",
+          "evidence": [
+            "lib/domain/replenishment/calculate.ts:130-168",
+            "tests/domain/replenishment/core.test.mjs:46-78",
+            "CHK-REPLENISHMENT",
+            "CHK-JOBS"
+          ],
+          "checkIds": [
+            "CHK-REPLENISHMENT",
+            "CHK-JOBS"
+          ]
+        },
+        {
+          "id": "STR-FORECAST-002",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Forecast учитывает сезонность, рост, stockout и выбросы без превращения неполных данных в нули.",
+          "expected": "Сезонные пики, устойчивый тренд, lost demand и разовые крупные события должны быть отражены в модели и evidence.",
+          "actual": "Forecast tests 40/40 pass; model и prepare сохраняют adjustments/exclusions/warnings, а synthetic holdout существенно лучше naive mean.",
+          "evidence": [
+            "lib/domain/forecast/prepare.ts:85-125",
+            "lib/domain/forecast/prepare.ts:192-286",
+            "lib/domain/forecast/model.ts:24-52",
+            "CHK-FORECAST"
+          ],
+          "checkIds": [
+            "CHK-FORECAST"
+          ]
+        },
+        {
+          "id": "STR-SERVER-003",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Серверный контур сохраняет версии, расчёты и dispatch намерения идемпотентно и изолирует владельцев.",
+          "expected": "Повтор запуска/доставки и чужой owner/project не должны создавать дубликаты или менять состояние.",
+          "actual": "13 job tests и 37 server/project tests pass, включая replay, cancellation, migrations, owner isolation, atomic publication и cursor boundaries.",
+          "evidence": [
+            "lib/server/dispatch.ts:140-234",
+            "trigger/calculate-procurement.ts:20-70",
+            "CHK-JOBS",
+            "CHK-SERVER"
+          ],
+          "checkIds": [
+            "CHK-JOBS",
+            "CHK-SERVER"
+          ]
+        },
+        {
+          "id": "STR-PRIVACY-004",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Импорт и AI boundary не раскрывают очевидные клиентские идентификаторы и валидируют ссылки на исходные факты.",
+          "expected": "Клиентские данные должны быть обезличены, а LLM не должна придумывать ссылки, числа или urgency.",
+          "actual": "Privacy/header checks и AI adapter tests pass; незаполненная customer coverage остаётся unavailable, а не подменяется номером документа.",
+          "evidence": [
+            "lib/server/imports/adapters.ts:130-145",
+            "tests/imports/behavior.test.mjs:52-69",
+            "tests/ai/adapters.test.mjs",
+            "CHK-AI",
+            "CHK-IMPORTS"
+          ],
+          "checkIds": [
+            "CHK-AI",
+            "CHK-IMPORTS"
+          ]
+        },
+        {
+          "id": "STR-REVIEW-005",
+          "kind": "strength",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Демо review flow требует ручной проверки поставщика, причины ручной правки и явного подтверждения.",
+          "expected": "Заказ не должен отправляться без ручного approval.",
+          "actual": "review-state блокирует approval при незаполненной причине/проверке и создаёт frozen local snapshot; UI маркирует результат как demo и не отправляет заказ.",
+          "evidence": [
+            "lib/procurement/review-state.ts:87-121",
+            "components/procurement/order-review-dialog.tsx:25-48",
+            "tests/components/workspace-state.test.mjs"
+          ],
+          "checkIds": [
+            "CHK-AI"
+          ]
+        },
+        {
+          "id": "DEF-UI-001",
+          "kind": "defect",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Основной `/workspace` не подключён к реальному server import/calculation/recommendation path.",
+          "expected": "После выбора scope и запуска расчёта UI должен отправить запрос на серверный run, прочитать сохранённые recommendations и показать результат выбранного dataset.",
+          "actual": "ProcurementWorkspace инициализирует initialProjects, demoRecommendations и локальный React state; startCalculation создаёт id `demo-local-run-*`, переводит сценарий через timeout и не вызывает `/api/*`. README прямо называет интерфейс synthetic demo и отдельным от server calculation.",
+          "evidence": [
+            "components/procurement/procurement-workspace.tsx:40-75",
+            "components/procurement/procurement-workspace.tsx:155-167",
+            "lib/procurement/mock-workspace.ts:138-160",
+            "README.md:40-46",
+            "CHK-HTTP-WORKSPACE",
+            "CHK-JOBS"
+          ],
+          "checkIds": [
+            "CHK-HTTP-WORKSPACE",
+            "CHK-JOBS"
+          ]
+        },
+        {
+          "id": "DEF-CASE-DATA-001",
+          "kind": "defect",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Без подготовки входа parser не принимает два значимых предоставленных файла кейса.",
+          "expected": "Partner XLSX, нужные для MOQ и истории продаж, должны проходить безопасный parser stage либо иметь явно поддержанный preprocessing path.",
+          "actual": "`IEK/MOQ ИЭК.xlsx` содержит `xl/externalLinks/...` и получает ACTIVE_CONTENT по parser.ts:96. `IEK/Динамика продаж_2025-2026.xlsx` имеет worksheet XML больше maxEntryBytes и получает ARCHIVE_SIZE_LIMIT по parser.ts:98-99.",
+          "evidence": [
+            "lib/server/imports/parser.ts:86-100",
+            "CHK-CASE-DATA",
+            "cases/5/case-data/IEK/MOQ  ИЭК.xlsx",
+            "cases/5/case-data/IEK/Динамика продаж_2025-2026.xlsx"
+          ],
+          "checkIds": [
+            "CHK-CASE-DATA"
+          ]
+        },
+        {
+          "id": "DEF-MATERIAL-001",
+          "kind": "defect",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Материальная ведомость объявлена типом источника, но не поддержана при публикации snapshot.",
+          "expected": "Полный validated manifest с material_statement должен атомарно публиковать поддержанные строки или явно возвращать mapping status до запуска расчёта.",
+          "actual": "writeNormalizedSnapshot доходит до `case 'material_statement'` и всегда бросает `Материальная ведомость требует подтверждённой предметной схемы`; README подтверждает, что это только diagnostic draft.",
+          "evidence": [
+            "lib/server/imports/commit.ts:125-199",
+            "README.md:236-238",
+            "CHK-IMPORTS"
+          ],
+          "checkIds": [
+            "CHK-IMPORTS"
+          ]
+        },
+        {
+          "id": "DEF-EXPORT-001",
+          "kind": "defect",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Export в доступном workspace — только preview, не экспортный файл.",
+          "expected": "После approval пользователь должен получить заявленный совместимый экспортируемый артефакт либо явный поддержанный формат.",
+          "actual": "OrderReviewDialog называет действие `Экспорт (демо)` и показывает snapshot preview; README прямо говорит `без скачивания и отправки`, а export artifact route в workspace не вызывается.",
+          "evidence": [
+            "components/procurement/order-review-dialog.tsx:17-48",
+            "components/procurement/procurement-workspace.tsx:223-228",
+            "README.md:215-220"
+          ],
+          "checkIds": [
+            "CHK-HTTP-WORKSPACE"
+          ]
+        },
+        {
+          "id": "LIM-LIVE-001",
+          "kind": "limitation",
+          "verification": "observed",
+          "responsibility": "review_environment",
+          "claim": "Live внешние сервисы не проверены в этом ревью.",
+          "expected": "Для live smoke потребовались бы подготовленные Clerk/S3/Trigger/Liveblocks/OpenAI credentials и ресурсы.",
+          "actual": "Без Clerk `/api/projects` корректно отвечает 503 AUTH_UNAVAILABLE; локальные adapter/server tests проходят без внешнего вызова.",
+          "evidence": [
+            "CHK-HTTP-AUTH",
+            "README.md:164",
+            "README.md:274"
+          ],
+          "checkIds": [
+            "CHK-HTTP-AUTH"
+          ]
+        },
+        {
+          "id": "LIM-VISUAL-002",
+          "kind": "limitation",
+          "verification": "unverified",
+          "responsibility": "review_environment",
+          "claim": "Визуальный и браузерный UX не подтверждён.",
+          "expected": "Для этого требовалась бы отдельная визуальная проверка браузером.",
+          "actual": "Проверены только build, HTTP responses и статические/unit/domain/server tests; visual inspection не выполнялась.",
+          "evidence": [
+            "CHK-START",
+            "CHK-HTTP-WORKSPACE",
+            "runtime.limitations"
+          ],
+          "checkIds": [
+            "CHK-HTTP-WORKSPACE"
+          ]
+        }
+      ],
+      "gapFindingIds": [
+        "DEF-UI-001",
+        "DEF-CASE-DATA-001",
+        "DEF-MATERIAL-001",
+        "DEF-EXPORT-001"
+      ]
+    }
+  ],
+  "score": 80.0,
+  "status": "complete",
+  "expectedJudges": 1
+}

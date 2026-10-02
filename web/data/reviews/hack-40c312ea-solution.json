@@ -1,0 +1,784 @@
+{
+  "methodVersion": 4,
+  "repoId": "hack-40c312ea-solution",
+  "repoUrl": "https://github.com/BAITC-Hacks/hack-40c312ea-solution",
+  "caseId": 10,
+  "snapshot": "4b83d50f20b1ee8c9839d9327c4a7926e4a712ad",
+  "judges": [
+    {
+      "methodVersion": 4,
+      "repoId": "hack-40c312ea-solution",
+      "caseId": 10,
+      "model": "GPT-5.6 Luna",
+      "snapshot": "4b83d50f20b1ee8c9839d9327c4a7926e4a712ad",
+      "overallSummary": "Оценка готова и основана на исходниках, предоставленных материалах кейса, полном наборе из 90 автономных тестов и отдельной HTTP-проверке демо-сценария. Проект представляет целостный и аккуратно ограниченный MVP: он ищет товары по каталогу, показывает проверенные цену, остаток, характеристики и сертификат при наличии ссылки, предлагает объяснимые аналоги, поддерживает файлы и защищает изменения локальной корзины отдельным подтверждением. Главный подтверждённый недостаток — после подтверждения позиции остаются только в локальной корзине сессии: официальный EKT-контракт корзины и перенос позиций в него не реализованы. Поэтому общий балл 93/100, а runtime.status — partial: автономный сценарий воспроизведён, но реальный EKT API и внешний vision/model path не проверялись без переданных credentials.",
+      "global": {
+        "criteria": [
+          {
+            "name": "Ценность решения",
+            "score": 22,
+            "max": 25,
+            "awarded": "Решение адресует конкретную точку потери продаж и времени менеджеров: консультация, проверка наличия, подбор аналога и подготовка покупки собраны в одном сценарии. Польза убедительно показана локальным демо и тестами, но путь до фактической корзины ekt.kz остаётся незавершённым.",
+            "deductions": "Снято 3 балла за подтверждённую границу ценности: подтверждённые позиции не переносятся в официальную корзину EKT, поэтому клиент получает локальную демонстрационную корзину, а не готовый к оформлению заказ на платформе магазина.",
+            "evidence": [
+              "cases/10/case-data/HackAlem AI_ ИИ-ассистент для чата на сайте ekt.kz.md: проблема, пользователь и ключевой сценарий",
+              "README.md:1-3, README.md:42-49",
+              "http-demo-01: lookup 900005, confirmation flow and local cart",
+              "F-05"
+            ],
+            "deductionItems": [
+              {
+                "points": 3,
+                "findingId": "F-05",
+                "reason": "Центральная польза задачи заканчивается на локальном прототипе: пользователь может безопасно собрать состояние корзины, но ссылка на официальный ekt.kz cart не содержит добавленные позиции. Это заметно уменьшает бизнес-эффект сокращения пути до покупки, хотя консультационная часть ценность создаёт."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Понятная боль закупщика и менеджера",
+                "implementation": "В README решение сформулировано как путь от запроса или спецификации к проверенной подборке и подтверждённой корзине; отдельно перечислены каталог, характеристики, остатки, аналоги, условия покупки и помощь менеджера. Это напрямую соответствует проблеме из задания о задержках из-за однотипных вопросов.",
+                "value": "Целевая аудитория и измеримый пользовательский эффект понятны без устной презентации: меньше ручных уточнений и быстрее переход от технического вопроса к решению о покупке.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:1-3",
+                  "cases/10/case-data/HackAlem AI_ ИИ-ассистент для чата на сайте ekt.kz.md:2-5"
+                ]
+              },
+              {
+                "aspect": "Проверенная информация вместо свободного ответа модели",
+                "implementation": "`product_fact` для вопросов о цене, остатке, сертификате и характеристиках повторно получает карточку через `engine.solution`, выбирает только поля карточки и явно сообщает об отсутствующем поле. Основной engine передаёт в карточку цену, остаток, склады, attributes, certificate и source.",
+                "value": "Для закупщика это снижает риск принять решение по выдуманной цене или наличию; ценность не ограничена красивым чат-ответом, а привязана к товарной записи.",
+                "verification": "source",
+                "evidence": [
+                  "app/grounding.py:49-78",
+                  "app/engine.py:356-383",
+                  "legacy-behavior: T01 PASS, exact product, stock, price, attribute and certificate"
+                ]
+              },
+              {
+                "aspect": "Снижение риска неверной покупки",
+                "implementation": "Для аналогов engine требует совпадения обязательных технических полей, повторно проверяет детали и остаток, отбрасывает конфликтные карточки и формирует reason с совпавшими параметрами и непроверенными ограничениями. В корзине цена и stock проверяются перед подготовкой и повторно перед подтверждением.",
+                "value": "Это полезнее простого fuzzy-поиска: клиент получает объяснение, почему вариант предложен, и не получает молча несовместимый или отсутствующий товар.",
+                "verification": "observed",
+                "evidence": [
+                  "app/engine.py:189-241",
+                  "app/cart_actions.py:59-106, app/cart_actions.py:129-162",
+                  "legacy-behavior: T03, T07, T08 PASS"
+                ]
+              },
+              {
+                "aspect": "Граница между консультацией и покупкой",
+                "implementation": "Запрос на добавление создаёт pending confirmation token, а отдельное сообщение подтверждения вызывает `confirm_batch`; до этого локальная корзина не меняется. HTTP-проверка показала пустую корзину после `добавь 2 в корзину` и ровно две позиции после `да, добавь`.",
+                "value": "Явное согласие делает сценарий приемлемым для коммерческого чата: ассистент помогает принять решение, но не совершает незаметное действие от имени клиента.",
+                "verification": "observed",
+                "evidence": [
+                  "app/main.py:393-408, app/main.py:409-439",
+                  "http-demo-01: pending_action=cart_confirmation, before_count=0, confirmed_action=cart_added, after_qty=2",
+                  "legacy-behavior: T05, T06, T10, T11 PASS"
+                ]
+              }
+            ],
+            "scoreReasoning": "22 балла заслужены за ясную коммерческую проблему, реальный каталоговый путь, объяснимый подбор и безопасное подтверждение. До максимума не хватает не абстрактной production-доработки, а именно важной границы данного кейса: локальная корзина не является корзиной текущего ekt.kz и не переносит в неё позиции. Для пятичасового MVP это существенный, но локализованный пробел, поскольку консультационный и подтверждающий сценарии реально работают."
+          },
+          {
+            "name": "Результат и качество решения",
+            "score": 17,
+            "max": 20,
+            "awarded": "Основной локальный пользовательский сценарий работает и хорошо защищён тестами: поиск, аналог, условия, загрузки, подтверждение, recheck остатков, изоляция сессий и отказ от повторного токена. Результат неполон только на границе официального checkout/cart.",
+            "deductions": "Снято 3 балла за то, что фактический результат подтверждения — `local_prototype`, а `official_cart_url` лишь сообщает URL EKT и не переносит туда локальные строки.",
+            "evidence": [
+              "test-suite-01: 90 tests, OK",
+              "http-demo-01: HTTP 200 status and complete offline flow",
+              "legacy-behavior: T12 FAIL",
+              "app/cart_provider.py:12-24, app/main.py:591-595",
+              "F-05"
+            ],
+            "deductionItems": [
+              {
+                "points": 3,
+                "findingId": "F-05",
+                "reason": "Качество реализованного сценария высоко до точки оформления, но требование о ссылке на актуальную корзину магазина выполняется только для локальной сессии. Legacy-проверка T12 зафиксировала, что официальный URL не содержит локальные позиции."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Рабочий offline/demo путь",
+                "implementation": "`run.py --demo` переключает приложение на явно вымышленные товары DEMO и удаляет ключи моделей из окружения. В live HTTP-проверке `/api/status` вернул 200, `demo_mode=true`, шесть товаров и отсутствие активного sync.",
+                "value": "Проект можно воспроизводимо показать без платного ключа и без подмены demo-данных под реальные остатки; граница между synthetic и live обозначена.",
+                "verification": "observed",
+                "evidence": [
+                  "run.py:15-23",
+                  "app/demo.py:1-30",
+                  "http-start-01: GET /api/status -> HTTP 200, demo_mode=true"
+                ]
+              },
+              {
+                "aspect": "Каталоговая выдача и аналоги",
+                "implementation": "EKTClient вызывает страницы каталога и detail endpoint, Engine проверяет точный ID/article, для нулевого остатка запускает `find_alternatives`, а карточка отображает source, attributes, stores, warnings и reason.",
+                "value": "Пользовательский результат содержит не только название товара, но и основания выбора, текущий stock и признаки неопределённости; тесты отдельно проверяют точный товар, артикул, аналог и отсутствие случайной подстановки.",
+                "verification": "source",
+                "evidence": [
+                  "app/ekt.py:8-34",
+                  "app/engine.py:243-307, app/engine.py:356-383",
+                  "legacy-behavior: T01, T02, T03, T15, T16 PASS"
+                ]
+              },
+              {
+                "aspect": "Надёжная транзакционная защита корзины",
+                "implementation": "`cart_actions` нормализует дубли, учитывает уже добавленное количество, проверяет общую и складскую доступность, фиксирует snapshot цены/склада, применяет TTL и повторяет live detail перед commit. Токен принадлежит сессии, повторное подтверждение переводит action из pending и не добавляет строку второй раз.",
+                "value": "Это делает результат устойчивым к изменению stock, цены, параллельным запросам и попытке использовать чужую сессию — особенно важным свойствам именно для корзины.",
+                "verification": "observed",
+                "evidence": [
+                  "app/cart_actions.py:29-106, app/cart_actions.py:110-162",
+                  "test-suite-01: cart_confirmation, grounding and acceptance tests",
+                  "legacy-behavior: T05-T11, T17, T22 PASS"
+                ]
+              },
+              {
+                "aspect": "Файловый вход с редактируемым предпросмотром",
+                "implementation": "Парсер поддерживает CSV, XLSX, XLS, DOCX и текстовый PDF; upload guard ограничивает размер и архивы, а `preview_only` создаёт отдельный токен для подтверждения строк перед подбором. Сценарии XLSX, DOCX, PDF и CSV реально выполнены тестом.",
+                "value": "Это расширяет полезность для корпоративного закупщика: спецификацию можно принести в привычном формате, не превращая её содержимое в инструкции для приложения.",
+                "verification": "observed",
+                "evidence": [
+                  "app/files.py:8-92",
+                  "app/upload_guard.py:13-72",
+                  "app/main.py:483-529",
+                  "legacy-behavior: T13, T14, T18, T19, T20 PASS"
+                ]
+              },
+              {
+                "aspect": "Честно ограниченный checkout",
+                "implementation": "Официальная граница явно возвращается в `/api/integration`, где `official_cart_connected` равно false, а README сообщает, что API партнёра даёт чтение каталога и не меняет штатную корзину. Это предотвращает ложное впечатление, что демо уже оформляет заказ.",
+                "value": "Прозрачность ограничения повышает качество прототипа и позволяет отделить работающую часть от интеграционного долга; одновременно именно эта граница удерживает балл ниже максимума.",
+                "verification": "source",
+                "evidence": [
+                  "app/integration.py:20-26",
+                  "README.md:104-106",
+                  "docs/INTEGRATION.md:21"
+                ]
+              }
+            ],
+            "scoreReasoning": "17 баллов отражают реальный локально воспроизведённый результат, а не только наличие файлов. 90 тестов прошли, HTTP-проверка воспроизвела подтверждение и ограничение количества, а legacy-проверка показала один существенный проектный провал в T12. Пятьчасовой MVP не обязан иметь платёж или production CRM, но для заявленного перехода к покупке отсутствие переноса в официальную корзину остаётся функциональным неполным шагом."
+          },
+          {
+            "name": "Инновационность",
+            "score": 15,
+            "max": 15,
+            "awarded": "Решение использует не просто чат-поиск, а сочетает детерминированную проверку каталога, ограниченный модельный router, объяснимый подбор аналога, подтверждаемый snapshot корзины и безопасную обработку спецификаций. Собственное преимущество — в серверных границах доверия вокруг LLM.",
+            "deductions": "Снятий нет: отсутствие официального cart adapter влияет на завершённость продукта, но не опровергает нестандартный подход к grounding и подтверждению действий.",
+            "evidence": [
+              "app/model_router.py:12-45, app/model_router.py:72-137",
+              "app/advisor.py:28-94",
+              "app/engine.py:189-241",
+              "test-suite-01: grounding and store feature tests"
+            ],
+            "deductionItems": [],
+            "awardedDetails": [
+              {
+                "aspect": "LLM не является источником товарных фактов",
+                "implementation": "ModelRouter нормализует сложный текст и планирует роли компонентов, но `engine.solution` получает детали из каталога, а advisor принимает только ID и поля, существующие в verified shortlist. Невалидные IDs, поля и произвольные model prose отбрасываются.",
+                "value": "Это более содержательный подход, чем обычный prompt-to-answer: модель помогает с языком и ранжированием, но цена, остаток и характеристики остаются под серверным контролем.",
+                "verification": "source",
+                "evidence": [
+                  "app/model_router.py:50-70, app/model_router.py:77-93",
+                  "app/advisor.py:32-41, app/advisor.py:49-72",
+                  "test-suite-01: model plan, injected normalization and grounding tests PASS"
+                ]
+              },
+              {
+                "aspect": "Объяснимый аналог с техническими ограничениями",
+                "implementation": "Для lamp/breaker/rcd/contactor используются разные обязательные и дополнительные поля; после live recheck аналог получает `_alternative_reason` с совпавшими током, полюсами, цоколем или мощностью и предупреждением проверить остальные требования.",
+                "value": "Преимущество перед не объяснённым semantic similarity — пользователь видит причину предложения и границу совместимости, а не только более похожее название.",
+                "verification": "source",
+                "evidence": [
+                  "app/engine.py:189-241",
+                  "test-suite-01: no_verified_analogue, out_of_stock_lamp and advisor grounding tests PASS"
+                ]
+              },
+              {
+                "aspect": "Согласие как серверная state machine",
+                "implementation": "Покупатель проходит стадии prepare → explicit confirmation → live recheck → provider add. Snapshot связывает товар, количество, цену и склад с TTL-токеном, а отдельные cancel/edit flows также требуют подтверждения.",
+                "value": "Это нестандартно для быстрого AI-прототипа и существенно снижает риск того, что свободный текст модели превратится в действие покупки.",
+                "verification": "source",
+                "evidence": [
+                  "app/cart_actions.py:110-201",
+                  "app/main.py:393-439",
+                  "test-suite-01: cart confirmation, replay, stale price/stock and concurrency tests PASS"
+                ]
+              },
+              {
+                "aspect": "Безопасная трактовка вложений как данных",
+                "implementation": "Upload worker получает только имя и байты, не импортирует приложение и не получает API credentials; guard проверяет расширение, сигнатуры, ZIP path traversal, макросы, размеры, а input guard и model prompts явно трактуют текст файлов как untrusted data.",
+                "value": "Для ассистента закупщика это полезное собственное преимущество: спецификация может содержать чужой текст или вредоносные строки, но не должна сама менять корзину или правила.",
+                "verification": "source",
+                "evidence": [
+                  "app/upload_guard.py:16-72",
+                  "app/upload_worker.py:1-48",
+                  "app/grounding.py:17-30",
+                  "legacy-behavior: T14 PASS"
+                ]
+              }
+            ],
+            "scoreReasoning": "Полные 15 баллов заслужены сочетанием grounding, explainable alternatives, серверного consent flow и изолированной обработки вложений. Это не просто UI над поиском: проект явно распределяет ответственность между моделью и проверяемым кодом. Недостаток официального cart adapter не уменьшает новизну реализованной защитной архитектуры, поэтому не используется как штраф в этом критерии."
+          },
+          {
+            "name": "Потенциал развития и масштабирования",
+            "score": 19,
+            "max": 20,
+            "awarded": "Архитектура уже выделяет EKT client, CartProvider, model router, upload worker, security middleware и widget integration, поэтому основные точки расширения обозначены. Для масштабирования остаются конкретные интеграционные шаги: официальный basket contract/session mapping и внешнее хранилище состояния.",
+            "deductions": "Снято 1 балл за подтверждённый незавершённый integration seam: `CartProvider` пока локальный, поэтому масштабирование к реальному ekt.kz checkout требует ещё одного системного контракта и привязки посетителя.",
+            "evidence": [
+              "app/ekt.py:11-54",
+              "app/cart_provider.py:6-24",
+              "app/integration.py:20-26",
+              "FEATURES.md:45-49",
+              "F-05"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "F-05",
+                "reason": "Переход от локального прототипа к нескольким пользователям и реальному оформлению требует не косметической настройки, а разрешённого basket API, mapping сессии EKT и согласованного staging-контурa; этот seam в текущем snapshot не реализован."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Изолированный адаптер внешнего каталога",
+                "implementation": "EKTClient скрывает BasicAuth HTTP-вызовы, retry и endpoints `/api/products` и `/api/products/detail`; Engine отделяет синхронизацию индекса от live detail recheck. Провайдер модели также выбирается конфигурацией OpenAI/NVIDIA с лимитами вызовов и расходов.",
+                "value": "Новые источники каталога, модельные провайдеры и правила обновления можно менять в ограниченных слоях, не переписывая пользовательский сценарий целиком.",
+                "verification": "source",
+                "evidence": [
+                  "app/ekt.py:8-34",
+                  "app/engine.py:153-187",
+                  "app/model_router.py:26-45"
+                ]
+              },
+              {
+                "aspect": "Подготовленный контур интеграции магазина",
+                "implementation": "`/api/integration` прямо перечисляет необходимые для production basket API/session mapping, HTTPS/reverse proxy и staging validation; `CartProvider` является Protocol, а не разрозненным вызовом из UI.",
+                "value": "Команда оставила понятное место для подключения реальной корзины и не замаскировала его под уже работающую интеграцию. Это хороший фундамент для партнёрского пилота.",
+                "verification": "source",
+                "evidence": [
+                  "app/cart_provider.py:6-24",
+                  "app/integration.py:20-26",
+                  "docs/INTEGRATION.md:1-21"
+                ]
+              },
+              {
+                "aspect": "Масштабирование входных каналов",
+                "implementation": "Единый `solve_requirements` принимает нормализованные строки из CSV/XLS/XLSX/DOCX/PDF и ограничивает подбор 12 строками; widget endpoint и allowed origins выделены в отдельные integration/security paths.",
+                "value": "Решение можно применять и в чате магазина, и во встраиваемом виджете, а корпоративные спецификации не требуют отдельной бизнес-логики на каждый формат.",
+                "verification": "source",
+                "evidence": [
+                  "app/files.py:51-92",
+                  "app/main.py:483-551",
+                  "app/security.py:80-90",
+                  "test-suite-01: upload and widget-origin tests PASS"
+                ]
+              },
+              {
+                "aspect": "Осознанные границы MVP",
+                "implementation": "README и FEATURES отдельно указывают in-memory sessions, single-process limitation, отсутствие CRM, отсутствие EKT cart, предварительный характер электрической совместимости и необходимость HTTPS/monitoring/PII review для production.",
+                "value": "Такой список делает дальнейшее развитие планируемым: видны persistence, distributed locking, CRM, platform auth и engineering review, а не только общая фраза о масштабировании.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:104-106",
+                  "FEATURES.md:45-49"
+                ]
+              }
+            ],
+            "scoreReasoning": "19 баллов отражают зрелую декомпозицию для пятичасового прототипа: provider boundary, configurable models, upload worker, widget and security middleware уже вынесены в отдельные слои. Один балл удержан за отсутствие реального cart adapter/session mapping, потому что без него масштабирование заканчивается на локальном состоянии, хотя необходимые точки подключения честно описаны."
+          },
+          {
+            "name": "Презентация, демо и ответы на вопросы",
+            "score": 20,
+            "max": 20,
+            "awarded": "Устного выступления и вопросов в проверке не было; по разрешённой методике оценивается README и воспроизводимое локальное демо. README содержит запуск без ключей, пример диалога, архитектурную схему, API/данные, ограничения и отдельный live/demo сценарий. Это достаточно ясно для повторного показа результата из репозитория.",
+            "deductions": "Снятий нет. Отсутствие публичного URL и визуальной проверки браузером не используется как штраф: локальное демо запускается и проверяется HTTP, а UI-поведение пользователь проверяет отдельно.",
+            "evidence": [
+              "README.md:5-30",
+              "README.md:42-59",
+              "README.md:64-106",
+              "README.md:114-125",
+              "http-start-01, http-demo-01",
+              "test-suite-01"
+            ],
+            "deductionItems": [],
+            "awardedDetails": [
+              {
+                "aspect": "Запуск без секретов",
+                "implementation": "README даёт команды создания окружения и запуска `run.py --demo`, объясняет, что synthetic DEMO data не вызывает EKT и платные модели, и показывает локальный адрес. `run.py` действительно выбирает demo при `--demo`.",
+                "value": "Жюри или организатор может воспроизвести результат без подготовки API credentials, а synthetic данные не выдаются за production catalog.",
+                "verification": "observed",
+                "evidence": [
+                  "README.md:5-30",
+                  "run.py:15-23",
+                  "http-start-01"
+                ]
+              },
+              {
+                "aspect": "Пошаговый демонстрационный сценарий",
+                "implementation": "В README есть конкретные вводы для артикула, количества, подтверждения, отказа, CSV и виджета; отдельно описан сценарий доставки и изменения количества в корзине. HTTP-проверка подтвердила ключевую последовательность для 900005.",
+                "value": "Инструкции позволяют показать не только страницу, но и причинно связанный результат: до согласия корзина пуста, после — содержит указанное количество.",
+                "verification": "observed",
+                "evidence": [
+                  "README.md:50-59",
+                  "README.md:114-125",
+                  "http-demo-01"
+                ]
+              },
+              {
+                "aspect": "Архитектура объяснена на уровне потока данных",
+                "implementation": "README содержит Mermaid flow от витрины и чата через requirements/file parsing, model router, catalog search, live details, alternatives, confirmation и cart provider; далее перечислены маршруты, технологии и папки.",
+                "value": "Такой материал помогает понять, где находятся пользовательский результат и ограничения, без необходимости читать весь 54-файловый репозиторий.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:64-89",
+                  "FEATURES.md:31-43"
+                ]
+              },
+              {
+                "aspect": "Ограничения не скрыты",
+                "implementation": "README явно сообщает, что публичной deploy-версии нет, EKT cart не подключена, заказ не отправляется, сессии in-memory, photo/scan path требует vision model, а сертификат показывается только при наличии ссылки в API.",
+                "value": "Это делает демо убедительнее: участник не обещает то, чего прототип не делает, и заранее отвечает на важные вопросы о реальной эксплуатации.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:29, README.md:46-49",
+                  "README.md:104-106",
+                  "README.md:121"
+                ]
+              }
+            ],
+            "scoreReasoning": "Полные 20 баллов применены именно к разрешённой части критерия: ясности README, объяснению решения и воспроизводимости демо из репозитория. Устная презентация и ответы не выдумывались, а отсутствие public live URL не штрафовалось. Наличие описанного ограничения корзины, наоборот, повышает ясность документации, а не является дефектом презентации."
+          }
+        ],
+        "total": 93
+      },
+      "case": null,
+      "judgeScore": 93,
+      "caseRequirements": [
+        {
+          "requirement": "По существующему артикулу отвечать по каталогу: название, цена, остаток, характеристики и сертификат, если ссылка на сертификат есть в данных.",
+          "status": "partial",
+          "explanation": "Путь реализован: EKTClient получает detail, Engine строит карточку с attributes, stores, price, quantity, certificate и source; синтетическая проверка T01 совпала с тестовым источником. Реальный endpoint из материалов кейса не вызывался, потому что credentials для проверки не переданы, поэтому фактическую текущую карточку EKT здесь не утверждаю.",
+          "evidence": [
+            "app/ekt.py:30-34",
+            "app/engine.py:116-138, app/engine.py:356-383",
+            "legacy-behavior: T01 PASS",
+            "DATA-01"
+          ]
+        },
+        {
+          "requirement": "При нулевом остатке предлагать минимум один релевантный аналог с кратким обоснованием.",
+          "status": "met",
+          "explanation": "Для известных типов товара сравниваются обязательные технические поля, затем найденные кандидаты повторно проверяются live detail и stock; reason включает совпавшие параметры и ограничения. Синтетическая проверка T03 получила аналоги [100001, 100003], а grounding tests проверили отсутствие выдуманной замены.",
+          "evidence": [
+            "app/engine.py:189-241",
+            "legacy-behavior: T03 PASS",
+            "test-suite-01: no_verified_analogue and out_of_stock tests PASS"
+          ]
+        },
+        {
+          "requirement": "Отвечать об условиях покупки: оплате, доставке и минимальной партии без выдумывания неизвестного.",
+          "status": "met",
+          "explanation": "`/api/conditions` возвращает payment, delivery, source и `minimum_order: null`; в сообщениях явно говорится, что индивидуальный ETA API не предоставляет. T04 подтвердил заполненные условия и явную неизвестность минимальной партии.",
+          "evidence": [
+            "app/main.py:179-186",
+            "app/main.py:347-349",
+            "legacy-behavior: T04 PASS",
+            "http-demo-01: GET /api/conditions -> source returned"
+          ]
+        },
+        {
+          "requirement": "Изменять корзину только после явного подтверждения клиента.",
+          "status": "met",
+          "explanation": "Prepare создаёт только pending action и confirmation token; commit вызывается отдельной веткой подтверждения. В HTTP-проверке после запроса количества корзина имела 0 строк, а после отдельного подтверждения — одну строку с двумя единицами.",
+          "evidence": [
+            "app/main.py:393-408",
+            "app/main.py:409-439",
+            "app/cart_actions.py:110-162",
+            "http-demo-01",
+            "legacy-behavior: T05, T10, T11 PASS"
+          ]
+        },
+        {
+          "requirement": "Не превышать остаток и повторно проверить актуальные цену, stock, склад и кратность перед добавлением.",
+          "status": "met",
+          "explanation": "`_snapshot` проверяет общий и складской остаток и цену, а `confirm_action` заново строит snapshot из текущего detail под lock. Тесты подтвердили отказ при количестве 3 из остатка 2, при падении stock, изменении цены, чужом токене и повторном токене.",
+          "evidence": [
+            "app/cart_actions.py:59-106, app/cart_actions.py:129-162",
+            "legacy-behavior: T06, T07, T08, T09, T15, T22 PASS",
+            "test-suite-01: stale stock/price, warehouse, replay and concurrency tests PASS"
+          ]
+        },
+        {
+          "requirement": "После добавления дать прямую ссылку на актуальное состояние корзины/оформления заказа.",
+          "status": "partial",
+          "explanation": "Локальная ссылка `/cart` действительно открывает текущую session-local корзину, что подтверждено HTTP-сценарием и T12 из acceptance suite. Но `/api/cart` возвращает `cart_type: local_prototype`, а `official_cart_url` является только URL EKT без переноса локальных позиций; legacy T12 зафиксировал этот результат как FAIL.",
+          "evidence": [
+            "app/cart_provider.py:12-24",
+            "app/main.py:591-595",
+            "app/main.py:400",
+            "http-demo-01: cart_url=/cart, cart_type=local_prototype",
+            "legacy-behavior: T12 FAIL",
+            "F-05"
+          ]
+        },
+        {
+          "requirement": "Принимать текст и спецификации CSV/Excel/Word/PDF; фото и JPEG обрабатывать через отдельный согласованный vision path.",
+          "status": "partial",
+          "explanation": "CSV, XLSX, DOCX и текстовый PDF реально обработаны и сопоставлены с товарами в T13 и T18-T20; guard и worker поддерживают JPEG/PNG, но валидное изображение требует явного allow_external и настроенного VISION_MODEL. Внешний vision provider без credentials в проверке не запускался.",
+          "evidence": [
+            "app/files.py:51-92",
+            "app/main.py:483-510",
+            "app/upload_worker.py:15-41",
+            "legacy-behavior: T13, T18, T19, T20 PASS; T21 использовал намеренно невалидные bytes и был отвергнут signature guard",
+            "F-06"
+          ]
+        },
+        {
+          "requirement": "Не выдумывать цену, наличие, сертификаты и совместимость; при недостатке данных честно сообщать об ограничении.",
+          "status": "met",
+          "explanation": "Каталоговые факты рендерятся из verified detail, неизвестные цена/stock/сертификат остаются неизвестными, conflict warnings блокируют бездумный выбор, а advisor принимает только поля из shortlist. Grounding tests покрывают stale cache, missing facts, conflicting ratings, unknown certificate и unsafe bypass.",
+          "evidence": [
+            "app/grounding.py:44-78",
+            "app/engine.py:116-138, app/engine.py:314-383",
+            "app/advisor.py:32-72",
+            "test-suite-01: grounding tests PASS"
+          ]
+        },
+        {
+          "requirement": "Не принимать и не хранить платёжные данные; защищать сессии и несанкционированные изменения корзины.",
+          "status": "met",
+          "explanation": "Input guard отказывает на card/CVV/password patterns, history redacts типовые секреты, сессии создаются случайно и изолированы, API имеет rate limit/security headers/origin boundary, а confirmation token не принимается из другой сессии.",
+          "evidence": [
+            "app/grounding.py:17-24",
+            "app/security.py:16-41, app/security.py:47-95",
+            "legacy-behavior: T09, T14, T17 PASS",
+            "test-suite-01: payment privacy, session isolation and security header tests PASS"
+          ]
+        },
+        {
+          "requirement": "Поддерживать опциональные казахский язык, рекомендации сопутствующих товаров и эскалацию к менеджеру.",
+          "status": "met",
+          "explanation": "Код содержит language detection/localization, Kazakh cart confirmations, recommendations без изменения корзины и реальные tel/WhatsApp/email контакты. Это подтверждено acceptance/store tests и отдельными функциями integration/features.",
+          "evidence": [
+            "app/main.py:313-318, app/main.py:352-357",
+            "app/features.py:59-121, app/integration.py:4-18",
+            "test-suite-01: Kazakh, recommendations, manager and handoff tests PASS"
+          ]
+        },
+        {
+          "requirement": "Десктопный и мобильный интерфейс и встраиваемый виджет.",
+          "status": "unverified",
+          "explanation": "В репозитории есть responsive CSS, store interface и widget endpoint, а security policy ограничивает origins. Визуальное поведение браузером намеренно не проверялось по правилам проверки; за это баллы не снимались.",
+          "evidence": [
+            "static/responsive.css",
+            "static/store.html, static/widget.js",
+            "app/security.py:80-90",
+            "test-suite-01: widget-origin API test PASS"
+          ]
+        }
+      ],
+      "testData": {
+        "provided": [
+          "cases/10/task.txt",
+          "cases/10/case-data/HackAlem AI_ ИИ-ассистент для чата на сайте ekt.kz.md",
+          "cases/10/case-data/ИИ-ассистент для чата на сайте ekt.kz ДАННЫЕ.docx.md"
+        ],
+        "used": [
+          "cases/10/task.txt",
+          "cases/10/case-data/HackAlem AI_ ИИ-ассистент для чата на сайте ekt.kz.md",
+          "cases/10/case-data/ИИ-ассистент для чата на сайте ekt.kz ДАННЫЕ.docx.md"
+        ],
+        "checks": [
+          {
+            "input": "Требования из task.txt и case brief: каталоговые факты, нулевой остаток и аналог, условия, явное подтверждение корзины, ограничение количества, ссылка на корзину, вложения и запрет платёжных данных.",
+            "method": "Сопоставил требования с исходниками app/engine.py, app/grounding.py, app/cart_actions.py, app/main.py и tests; затем выполнил полный unittest suite и отдельный HTTP flow.",
+            "result": "Все проверяемые локально требования получили отдельные тестовые или source evidence; подтверждена одна незакрытая граница официальной корзины.",
+            "conclusion": "Локальный MVP покрывает большую часть задания; итоговая оценка снижена только за подтверждённый cart integration defect, а не за отсутствие внешнего ключа."
+          },
+          {
+            "input": "API contract из дополнительного документа: список `/api/products` и detail `/api/products/detail?id=...` с BasicAuth; конкретные credentials в отчёт не переносились.",
+            "method": "Проверил контракт по предоставленному документу и сопоставил его с EKTClient; фактический внешний вызов без переданных credentials не выполнялся.",
+            "result": "Пути и параметры совпадают: `app/ekt.py:8-34` использует страницу каталога и detail с `id`; тестовый suite использует детерминированный fake provider для проверки формата и поведения.",
+            "conclusion": "Статическая интеграционная основа подтверждена, но актуальные записи EKT и реальный BasicAuth response остаются ограничением проверки."
+          },
+          {
+            "input": "Синтетический каталоговый fixture из `tests/test_agent_behavior.py`: существующий товар с сертификатом, нулевой остаток, аналог, условия, подтверждение корзины, файлы и stale data.",
+            "method": "Запустил `python tests/test_agent_behavior.py` внутри изолированного окружения проекта.",
+            "result": "20 из 22 сценариев PASS. T01-T11 и T13-T20, T22 прошли; T12 FAIL подтверждает local cart boundary. T21 передал невалидные JPEG bytes и получил ожидаемый signature-guard 422 до vision stage, поэтому не трактован как дефект vision path.",
+            "conclusion": "Синтетические проверки применены к проекту; единственный относящийся к требованиям кейса failure — официальный cart integration."
+          }
+        ],
+        "limitations": [
+          "Тестовый внешний EKT endpoint не вызывался: credentials для этой сессии не переданы, а случайные ключи на машине не использовались.",
+          "Демо использует явно синтетические DEMO товары и не доказывает актуальность live цен/остатков EKT.",
+          "Валидное изображение с внешним vision provider не прогонялось без ключа; invalid JPEG из legacy T21 проверяет только раннюю signature validation.",
+          "Полные входные документы кейса не публикуются в отчёте; приведены только их роли и результаты проверок."
+        ]
+      },
+      "runtime": {
+        "status": "partial",
+        "build": "Зависимости из requirements.txt установлены в изолированном Python 3.11 окружении; сборка/импорт приложения завершились успешно.",
+        "start": "`run.py --demo --host 0.0.0.0` стартовал без ключей; FastAPI сообщил application startup complete, а GET `/api/status` вернул HTTP 200.",
+        "scenario": "HTTP-сценарий 900005 → `добавь 2 в корзину` → проверка корзины → `да, добавь` воспроизведён: до подтверждения 0 строк, после подтверждения 1 строка с quantity=2 и cart_url `/cart`.",
+        "environment": "Изолированный контейнер с лимитами 3 GB RAM и 2 CPU, без секретов; проверены только локальное demo и автономные fixtures. Визуальная браузерная проверка не выполнялась.",
+        "summary": "Основной offline сценарий реально работает, но статус partial отражает две границы: внешний live EKT/model path не проверен без credentials, а сам проект сообщает, что official cart не подключена и возвращает local_prototype.",
+        "checks": [
+          {
+            "command": "python -m pip install -r requirements.txt",
+            "result": "Все заявленные зависимости установлены; процесс завершился успешно.",
+            "id": "build-01",
+            "stage": "build",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Заявленные зависимости устанавливаются, приложение импортируемо в Python 3.11+."
+          },
+          {
+            "command": "python -m unittest discover -s tests -v",
+            "result": "Ran 90 tests in 65.710s; OK. Пройдены cart confirmation, grounding, acceptance и store feature suites.",
+            "id": "test-suite-01",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Автономные unit/domain/acceptance тесты проекта проходят на детерминированных fixtures без внешних ключей."
+          },
+          {
+            "command": "python run.py --demo --host 0.0.0.0",
+            "result": "Uvicorn запустился; startup завершился; `/api/status` ответил HTTP 200 с `demo_mode=true`, `catalog_items=6`, `syncing=false`.",
+            "id": "http-start-01",
+            "stage": "start",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Приложение стартует без credentials в заявленном demo режиме и принимает HTTP-запросы."
+          },
+          {
+            "command": "GET /api/status",
+            "result": "HTTP 200; demo_mode=true, ekt_configured=false, catalog_items=6.",
+            "id": "http-status-01",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Сервис сообщает доступный offline каталог и не выдаёт demo за live EKT."
+          },
+          {
+            "command": "POST /api/query; GET /api/cart; POST /api/query; GET /api/cart",
+            "result": "Для `900005` получены id=900005 и quantity=20. Запрос `добавь 2 в корзину` вернул `cart_confirmation`; до подтверждения cart был пуст. `да, добавь` вернул `cart_added`; после него quantity=2, `cart_url=/cart`, `cart_type=local_prototype`.",
+            "id": "http-demo-01",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Каталоговый запрос и добавление должны пройти только через отдельное подтверждение, с точным количеством и ссылкой на состояние корзины."
+          },
+          {
+            "command": "GET /api/conditions",
+            "result": "HTTP 200; returned payment, delivery, source and `minimum_order=null`.",
+            "id": "http-conditions-01",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Условия покупки доступны, а неизвестная минимальная партия не превращается в выдуманное число."
+          },
+          {
+            "command": "python tests/test_agent_behavior.py",
+            "result": "Синтетический скрипт завершился с кодом 0, но внутренние результаты: 20 PASS, T12 FAIL (official URL не содержит local cart), T21 FAIL на намеренно невалидных JPEG bytes с signature-guard 422. T12 принят как проектный finding; T21 не принят как defect.",
+            "id": "legacy-behavior",
+            "stage": "scenario",
+            "status": "fail",
+            "cause": "project",
+            "expected": "Все 22 заявленных legacy сценария должны дать ожидаемый результат; для T12 official cart link должен отражать добавленные позиции."
+          },
+          {
+            "command": "GET /api/products; GET /api/products/detail?id=515291",
+            "result": "Не запускался без переданных external credentials; это ограничение внешнего сервиса/окружения, а не failure проекта. Контракт прослежен статически через `app/ekt.py`.",
+            "id": "DATA-01",
+            "stage": "scenario",
+            "status": "blocked",
+            "cause": "external_service",
+            "expected": "Проверить реальный API catalog/detail из материалов кейса и сопоставить актуальные product fields."
+          }
+        ],
+        "limitations": [
+          "Live EKT BasicAuth endpoint не проверялся без специально переданных credentials; demo использует synthetic data.",
+          "OpenAI/NVIDIA/VISION внешние провайдеры не вызывались без ключей; кодовый путь и fallback проверены source/tests.",
+          "Official EKT basket API отсутствует в snapshot проекта; локальная `/cart` проверена, но она не является переносом позиций в магазин.",
+          "Визуальное поведение desktop/mobile не проверялось браузером по установленному запрету; HTTP/API и статические файлы проверены."
+        ]
+      },
+      "liveDemo": {
+        "status": "none",
+        "url": null,
+        "notes": "Публичной live URL в репозитории нет; README описывает локальный запуск. Локальное demo подтверждено HTTP-проверкой, что учитывается в runtime, а отсутствие public URL само по себе не штрафуется."
+      },
+      "fiveHourContext": "Для пятичасового хакатона это сильный, заметно проработанный MVP: команда реализовала не только чатовый happy path, но и live-detail recheck, объяснимые аналоги, multi-format uploads, consent/token state machine, session isolation, Kazakh flow, manager handoff и защитные ограничения. Не требую production payment, CRM, distributed storage или полноценную электротехническую сертификацию. Единственный существенный вычет связан с самим заявленным торговым сценарием: local CartProvider не интегрирован с официальной корзиной EKT. README это честно раскрывает, поэтому недостаток учитывается как ограничение результата, а не как скрытое обещание.",
+      "strengths": [
+        "90 автономных тестов проходят; покрыты grounding, cart confirmation, stale stock/price, session isolation, uploads, Kazakh, recommendations and security.",
+        "Детерминированные серверные проверки не позволяют модели выдумывать цену, наличие, сертификат, ID или техническую совместимость.",
+        "Аналоги объясняются через совпавшие обязательные параметры и повторную проверку live detail/остатка.",
+        "Только явное подтверждение меняет локальную корзину; токены TTL-bound, session-bound, idempotent и повторно проверяются по цене/остатку.",
+        "README воспроизводим без ключей и честно отделяет DEMO synthetic data, live API, vision path и незакрытую официальную корзину."
+      ],
+      "gaps": [
+        "Официальная корзина EKT не подключена: после подтверждения меняется только session-local `local_prototype`, а `official_cart_url` не содержит эти позиции (F-05)."
+      ],
+      "futureAdvice": [
+        {
+          "principle": "Доводите критический внешний контракт до наблюдаемого end-to-end результата, оставляя adapter boundary.",
+          "why": "F-05 показывает, что CartProvider и подтверждение уже аккуратно разделены, но результат нельзя передать в официальный ekt.kz checkout; это единственный повторяющийся проектный failure в T12 и главный остаточный разрыв пользовательского сценария.",
+          "how": "В другом хакатоне сначала зафиксируйте минимальный контракт basket API: visitor/session mapping, add/update response, stock conflict и read-back. Затем замените только реализацию CartProvider, добавьте staging fake с тем же контрактом и проведите один сценарий prepare → confirm → GET official cart, не меняя consent state machine.",
+          "findingIds": [
+            "F-05"
+          ],
+          "successCheck": "После подтверждения read-back официального staging cart показывает тот же product ID, количество, цену и session/visitor scope; повторное подтверждение остаётся idempotent, а конфликт stock возвращается без частичной записи.",
+          "timeboxMinutes": 75
+        }
+      ],
+      "uncertainties": [
+        "Актуальные цены, остатки, сертификаты и формат ответов реального EKT API не подтверждены HTTP-запросом в этой сессии: внешний доступ был credential-gated.",
+        "Фактический ответ OpenAI/NVIDIA/VISION provider и задержка платного model path не измерялись; исходники задают timeout/fallback и проходят deterministic tests.",
+        "Визуальная раскладка, мобильная адаптивность и поведение браузерного виджета не проверялись по пользовательской политике визуальной проверки; статические маршруты и origin API test проверены.",
+        "Полноценное оформление заказа, резервирование и сохранение состояния после перезапуска не заявлялись как готовые и остаются за пределами local prototype."
+      ],
+      "reviewPolicyVersion": 2,
+      "assessmentStatus": "ready",
+      "findings": [
+        {
+          "id": "F-01",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Основной offline пользовательский сценарий запускается и добавляет запрошенное количество только после отдельного подтверждения.",
+          "expected": "До явного подтверждения корзина не меняется; после подтверждения она содержит ровно допустимое количество.",
+          "actual": "HTTP flow для 900005 дал `cart_confirmation`, пустую корзину до подтверждения и `cart_added` с quantity=2 после подтверждения.",
+          "evidence": [
+            "http-start-01",
+            "http-demo-01",
+            "app/main.py:393-439"
+          ],
+          "checkIds": [
+            "http-start-01",
+            "http-demo-01"
+          ]
+        },
+        {
+          "id": "F-02",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Автономный набор из 90 тестов проходит на snapshot и покрывает основные доменные риски.",
+          "expected": "Unit/domain/acceptance/store checks завершаются без failures.",
+          "actual": "`python -m unittest discover -s tests -v` завершился `Ran 90 tests ... OK`.",
+          "evidence": [
+            "test-suite-01",
+            "tests/test_cart_confirmation.py",
+            "tests/test_grounding.py",
+            "tests/test_mvp_acceptance.py",
+            "tests/test_store_features.py"
+          ],
+          "checkIds": [
+            "test-suite-01"
+          ]
+        },
+        {
+          "id": "F-03",
+          "kind": "strength",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Модель ограничена ролью нормализации/ранжирования, а товарные факты и итоговые cart writes контролируются кодом.",
+          "expected": "Нельзя показать непроверенный model prose как цену, stock, ID или характеристику и нельзя совершить cart write без серверной проверки.",
+          "actual": "ModelRouter валидирует ID/числа/категории, advisor использует только verified fields, engine получает live detail, cart_actions повторяет stock/price check.",
+          "evidence": [
+            "app/model_router.py:72-137",
+            "app/advisor.py:28-94",
+            "app/cart_actions.py:59-162",
+            "test-suite-01: grounding and cart tests"
+          ],
+          "checkIds": [
+            "test-suite-01"
+          ]
+        },
+        {
+          "id": "F-04",
+          "kind": "strength",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Вложения проходят отдельную проверку контейнеров и дочерний parser path без передачи application secrets.",
+          "expected": "Поддержанные документы извлекаются, опасные архивные конструкции и несоответствующие сигнатуры отклоняются, а текст файла не управляет корзиной.",
+          "actual": "Guard проверяет extensions/signatures/ZIP limits/path traversal/macros; worker получает ограниченное окружение; CSV injection test не меняет cart.",
+          "evidence": [
+            "app/upload_guard.py:16-72",
+            "app/upload_worker.py:1-48",
+            "legacy-behavior: T13, T14, T18, T19, T20 PASS"
+          ],
+          "checkIds": [
+            "legacy-behavior",
+            "test-suite-01"
+          ]
+        },
+        {
+          "id": "F-05",
+          "kind": "defect",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Официальная корзина EKT не получает позиции после подтверждения.",
+          "expected": "После явного подтверждения ссылка на корзину/оформление показывает актуальные добавленные товары в контуре магазина ekt.kz.",
+          "actual": "`LocalCartProvider.receipt` и GET `/api/cart` возвращают `cart_type=local_prototype`, `cart_url=/cart`; `official_cart_url` только указывает `https://ekt.kz/personal/cart/`. Legacy T12 зафиксировал: `возвращена локальная корзина; ... не содержит её товары`.",
+          "evidence": [
+            "app/cart_provider.py:12-24",
+            "app/main.py:591-595",
+            "app/integration.py:20-26",
+            "README.md:104",
+            "legacy-behavior: T12 FAIL",
+            "http-demo-01"
+          ],
+          "checkIds": [
+            "legacy-behavior",
+            "http-demo-01"
+          ]
+        },
+        {
+          "id": "F-06",
+          "kind": "limitation",
+          "verification": "unverified",
+          "responsibility": "review_environment",
+          "claim": "Live EKT catalog/detail and external model/vision provider responses не были проверены в этой сессии.",
+          "expected": "Разрешённый внешний endpoint возвращает актуальные product fields, а model/vision path отвечает в заданных timeout.",
+          "actual": "Credentials намеренно не переданы; кодовый контракт и fallback прослежены статически, а deterministic fixtures прошли.",
+          "evidence": [
+            "DATA-01",
+            "app/ekt.py:8-34",
+            "app/model_router.py:26-70, app/model_router.py:149-167"
+          ],
+          "checkIds": [
+            "DATA-01"
+          ]
+        },
+        {
+          "id": "F-07",
+          "kind": "limitation",
+          "verification": "unverified",
+          "responsibility": "review_environment",
+          "claim": "Визуальная desktop/mobile проверка не выполнялась.",
+          "expected": "Responsive layout, browser widget and visual confirmation dialogs работают в целевых viewport.",
+          "actual": "Проверены только статические файлы, HTTP routes и API origin behavior; браузерная визуальная проверка запрещена политикой сессии.",
+          "evidence": [
+            "static/responsive.css",
+            "static/store.html",
+            "static/widget.js",
+            "test-suite-01: widget-origin test"
+          ],
+          "checkIds": [
+            "test-suite-01"
+          ]
+        }
+      ],
+      "gapFindingIds": [
+        "F-05"
+      ]
+    }
+  ],
+  "score": 93.0,
+  "status": "complete",
+  "expectedJudges": 1
+}

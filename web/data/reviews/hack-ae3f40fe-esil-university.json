@@ -1,0 +1,805 @@
+{
+  "methodVersion": 4,
+  "repoId": "hack-ae3f40fe-esil-university",
+  "repoUrl": "https://github.com/BAITC-Hacks/hack-ae3f40fe-esil-university",
+  "caseId": 6,
+  "snapshot": "5eb07fbd0e5daad03f4674ee54a1e59a2875fa5c",
+  "judges": [
+    {
+      "methodVersion": 4,
+      "repoId": "hack-ae3f40fe-esil-university",
+      "caseId": 6,
+      "model": "GPT-5.6 Luna",
+      "snapshot": "5eb07fbd0e5daad03f4674ee54a1e59a2875fa5c",
+      "overallSummary": "Решение уверенно закрывает основной сценарий кейса как воспроизводимый backend/API: принимает город, дату, формат, категорию, бюджет и опциональные язык/длительность, сначала применяет детерминированные фильтры, затем возвращает не более трёх карточек с фактологичными объяснениями. На шести UTF-8 сценариях подтверждены плотная и редкая категории, отсутствие результатов из-за фильтров, отсутствие категории в городе, изменение выдачи при смене даты и совместная фильтрация языка и длительности. Внешняя LLM подключена через валидируемый OpenAI-совместимый контракт и локальный fallback, но реальные провайдеры не вызывались: credentialsProvided=false. Основной установленный недостаток — команда `python -m pytest -q` на Windows падает в одном тесте из-за чтения UTF-8 fixture без явной кодировки; с `python -X utf8 -m pytest -q` проходят все 100 тестов.",
+      "global": {
+        "criteria": [
+          {
+            "name": "Ценность решения",
+            "score": 25,
+            "max": 25,
+            "awarded": "Практическая ценность высокая: длинный каталог превращается в короткий список применимых исполнителей, а причины выбора и отказа видны пользователю.",
+            "deductions": "Существенных продуктовых дефектов в пределах MVP не установлено; два балла не присвоены за отсутствие доказанной ценности реального внешнего LLM-текста и пользовательского интерфейса, которые не входили в проверенный локальный путь.",
+            "evidence": [
+              "README.md:3-6",
+              "src/filter_engine.py:110-187",
+              "demo.py:9-18",
+              "test-utf8-suite"
+            ],
+            "deductionItems": [],
+            "awardedDetails": [
+              {
+                "aspect": "Понятная пользовательская проблема",
+                "implementation": "README описывает заказчика мероприятий в Казахстане, которому нужно сократить каталог с учётом города, даты, формата, категории и бюджета; `FilterEngine.search` выполняет этот отбор до стадии объяснений.",
+                "value": "Результат соответствует реальной операции выбора подрядчика и не превращает задачу в простой показ исходного каталога.",
+                "verification": "observed",
+                "evidence": [
+                  "README.md:3-6",
+                  "src/filter_engine.py:110-127",
+                  "demo-six-scenarios"
+                ]
+              },
+              {
+                "aspect": "Объяснимость результата",
+                "implementation": "Для карточек формируются факты о цене, бюджете, формате, языках и описании; для пустого результата строится сообщение с причиной и применёнными ограничениями.",
+                "value": "Пользователь получает основание для решения и понимает, почему результатов меньше трёх или нет вовсе.",
+                "verification": "observed",
+                "evidence": [
+                  "src/filter_engine.py:53-83",
+                  "src/filter_engine.py:137-166",
+                  "demo-six-scenarios"
+                ]
+              },
+              {
+                "aspect": "Прикладной интерфейс интеграции",
+                "implementation": "FastAPI предоставляет `/health`, `/options` и `POST /recommendations`; CLI и шесть готовых JSON-запросов дают воспроизводимый путь без UI.",
+                "value": "Backend можно подключить к интерфейсу или другому клиенту без изменения правил отбора.",
+                "verification": "observed",
+                "evidence": [
+                  "api.py:54-74",
+                  "main.py:12-45",
+                  "BACKEND_README.md:151-160"
+                ]
+              }
+            ],
+            "scoreReasoning": "Решение адресует конкретную боль и даёт полезный результат уже без внешней модели. До максимума не дотягивает, потому что пользовательская ценность внешнего LLM-пути и конечного интерфейса не подтверждена в этом прогоне, хотя для пятичасового MVP это разумное ограничение."
+          },
+          {
+            "name": "Результат и качество решения",
+            "score": 19,
+            "max": 20,
+            "awarded": "Основной сценарий работает целостно: строгая валидация, загрузка данных, фильтрация, стабильное ранжирование, карточки, пустые состояния и fallback соединены в API.",
+            "deductions": "Один балл удержан за платформозависимую проверку воспроизводимости: обычная команда тестов на Windows завершается ошибкой в fixture-тесте.",
+            "evidence": [
+              "api.py:17-74",
+              "src/recommendation_service.py:24-68",
+              "src/llm_explainer.py:191-234",
+              "pytest-default",
+              "pytest-utf8"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "DEF-001",
+                "reason": "`python -m pytest -q` дал 99 passed и 1 failed в `test_languages_and_duration_are_forwarded_to_model`; тест читает UTF-8 JSON без `encoding` и на Windows получает неверные строки."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Полный локальный pipeline",
+                "implementation": "`RecommendationService` вызывает фильтр, выбирает только отображаемые карточки, передаёт их explainer-у с общим таймаутом и безопасно сохраняет исходные карточки при fallback или ошибке.",
+                "value": "Сбой внешней зависимости не ломает основной результат и не позволяет модели поменять состав или порядок выдачи.",
+                "verification": "observed",
+                "evidence": [
+                  "src/recommendation_service.py:24-68",
+                  "src/llm_contract.py:25-40",
+                  "test-utf8-suite"
+                ]
+              },
+              {
+                "aspect": "Корректные крайние состояния",
+                "implementation": "Фильтр различает `ok`, `no_category_in_city` и `no_matches`, считает пересекающиеся причины исключения и возвращает понятное сообщение вместо пустого экрана.",
+                "value": "Редкие категории, занятые даты и слишком жёсткий бюджет остаются честно диагностируемыми.",
+                "verification": "observed",
+                "evidence": [
+                  "src/filter_engine.py:137-166",
+                  "examples/03_no_matches_request.json",
+                  "examples/04_no_category_request.json",
+                  "demo-six-scenarios"
+                ]
+              },
+              {
+                "aspect": "Контракт объяснений",
+                "implementation": "Ответ LLM проверяется по outcome, точному множеству ID, длине, числу предложений, клише и взаимозаменяемости текстов; ошибки не кэшируются как успешные.",
+                "value": "Интеграция AI ограничена ролью объяснителя и защищена от перестановки или подмены кандидатов.",
+                "verification": "observed",
+                "evidence": [
+                  "src/llm_explainer.py:374-455",
+                  "tests/test_pipeline.py:103-141",
+                  "tests/test_pipeline.py:160-182"
+                ]
+              }
+            ],
+            "scoreReasoning": "Функциональный результат подтверждён локальными HTTP/domain тестами и ручным запуском demo. Снижение связано не с бизнес-логикой, а с тем, что заявленная стандартная команда тестов не переносима на текущую Windows-кодировку без флага UTF-8."
+          },
+          {
+            "name": "Инновационность",
+            "score": 15,
+            "max": 15,
+            "awarded": "Гибридный подход удачно разделяет детерминированное решение о допуске и LLM-генерацию короткого объяснения, вместо того чтобы отдавать модели выбор подрядчиков.",
+            "deductions": "Подход хорошо обоснован, но сам по себе остаётся инженерно стандартным сочетанием hard filters, API и LLM contract; уникального алгоритмического или агентного механизма не показано.",
+            "evidence": [
+              "src/filter_engine.py:1",
+              "README.md:24-29",
+              "src/llm_explainer.py:124-149",
+              "BACKEND_README.md:89-92"
+            ],
+            "deductionItems": [],
+            "awardedDetails": [
+              {
+                "aspect": "Разделение ответственности",
+                "implementation": "`FilterEngine` фиксирует допуск, причины отказа и сортировку, а `LLMExplainer` получает только выбранные профили и пишет объяснение.",
+                "value": "Такой дизайн снижает риск галлюцинаций в критичной части подбора и делает AI полезным там, где он действительно нужен — в коммуникации результата.",
+                "verification": "observed",
+                "evidence": [
+                  "src/filter_engine.py:110-187",
+                  "src/recommendation_service.py:39-62"
+                ]
+              },
+              {
+                "aspect": "Безопасный fallback",
+                "implementation": "При отсутствии ключа, таймауте, плохом JSON или неверном контракте остаются локальные фактологичные тексты с явной меткой источника.",
+                "value": "Демонстрация не зависит от доступности модели, а пользователь не получает непроверенный ответ как будто он сгенерирован LLM.",
+                "verification": "observed",
+                "evidence": [
+                  "src/llm_explainer.py:191-234",
+                  "tests/test_pipeline.py:103-182"
+                ]
+              }
+            ],
+            "scoreReasoning": "Инновационность проявляется в дисциплине границ AI и контрактной защите, но не в новом методе поиска или оригинальной агентной архитектуре, поэтому оценка выше средней, но не максимальная."
+          },
+          {
+            "name": "Потенциал развития и масштабирования",
+            "score": 20,
+            "max": 20,
+            "awarded": "Компоненты разделены на загрузчик, модели, фильтр, сервис, LLM-адаптер и HTTP API; поддержаны CSV/JSONL, провайдеры OpenAI/NVIDIA, версия датасета и ограниченный кэш.",
+            "deductions": "Промышленное масштабирование и пользовательский frontend остаются следующим этапом; в репозитории нет `app.py`, а внешний провайдер в реальной сети не проверен.",
+            "evidence": [
+              "src/data_loader.py:15-68",
+              "src/models.py:71-154",
+              "api.py:28-74",
+              "BACKEND_README.md:151-166",
+              "docs/VALIDATION.md:49-52"
+            ],
+            "deductionItems": [],
+            "awardedDetails": [
+              {
+                "aspect": "Модульная архитектура",
+                "implementation": "Сервис создаётся поверх `FilterEngine`, принимает explainer через dependency injection и поддерживает выбор провайдера через `.env`.",
+                "value": "Компоненты можно отдельно тестировать, заменять и подключать к будущему интерфейсу.",
+                "verification": "source",
+                "evidence": [
+                  "api.py:28-39",
+                  "src/recommendation_service.py:14-22"
+                ]
+              },
+              {
+                "aspect": "Расширяемый контракт данных",
+                "implementation": "Модели нормализуют списки, даты, числовые поля, флаги synthetic/imputed; loader проверяет схему и дубликаты ID, а dataset_version вычисляется по нормализованным данным.",
+                "value": "Добавление профилей и перенос между CSV/JSONL не требует переписывать бизнес-логику и остаётся проверяемым.",
+                "verification": "observed",
+                "evidence": [
+                  "src/data_loader.py:22-57",
+                  "src/filter_engine.py:86-107",
+                  "test-utf8-suite"
+                ]
+              },
+              {
+                "aspect": "Путь к будущему UI",
+                "implementation": "`/options` отдаёт города, категории, форматы, языки и границы календаря, а TEAM_INTEGRATION описывает подключение клиента к общему API.",
+                "value": "Frontend можно строить поверх стабильного backend-контракта, не дублируя фильтры.",
+                "verification": "source",
+                "evidence": [
+                  "api.py:60-63",
+                  "docs/TEAM_INTEGRATION.md:1-20",
+                  "BACKEND_README.md:128-160"
+                ]
+              }
+            ],
+            "scoreReasoning": "Для MVP основу масштабирования заложили хорошо. До максимума не хватает проверенного пользовательского приложения, живой интеграционной телеметрии и подтверждения поведения внешнего провайдера под нагрузкой; это ограничения доказательств и объёма MVP, а не заявленные как готовые функции."
+          },
+          {
+            "name": "Презентация, демо и ответы на вопросы",
+            "score": 19,
+            "max": 20,
+            "awarded": "README, BACKEND_README, demo, примеры запросов, validation и integration-results образуют понятный воспроизводимый рассказ о решении и его ограничениях.",
+            "deductions": "Один балл удержан за то, что рекомендуемая команда тестов без `-X utf8` не проходит на Windows; ещё два — за отсутствие фактического UI/live demo, при том что README это честно раскрывает.",
+            "evidence": [
+              "README.md:1-29",
+              "BACKEND_README.md:174-208",
+              "docs/VALIDATION.md:1-52",
+              "demo.py:9-18",
+              "pytest-default"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "DEF-001",
+                "reason": "Команда воспроизводимости из README требует явной UTF-8 настройки на Windows, иначе один pipeline-тест падает."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Воспроизводимое демо",
+                "implementation": "`demo.py` читает шесть примеров в UTF-8 и печатает карточки, статусы, сообщения и объяснения; наблюдались все шесть ожидаемых исходов.",
+                "value": "Жюри может увидеть не только happy path, но и редкую категорию, пустую выдачу, смену даты и дополнительные фильтры.",
+                "verification": "observed",
+                "evidence": [
+                  "demo.py:9-18",
+                  "demo-six-scenarios"
+                ]
+              },
+              {
+                "aspect": "Документированная архитектура",
+                "implementation": "README содержит поток данных, компоненты, запуск API, ограничения и явное предупреждение, что UI пока нет; backend README добавляет интеграционный контракт.",
+                "value": "Описание достаточно конкретно для повторного запуска и обсуждения границ MVP.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:6-29",
+                  "README.md:67-107",
+                  "BACKEND_README.md:151-166"
+                ]
+              }
+            ],
+            "scoreReasoning": "Материалы заметно сильнее минимального README и честно разделяют подтверждённое и непроверенное. Снижение отражает отсутствие готового пользовательского интерфейса/live URL и Windows-нюанс в тестовой команде, а не отсутствие описания backend-а."
+          }
+        ],
+        "total": 98
+      },
+      "case": {
+        "criteria": [
+          {
+            "name": "Соответствие задаче и работоспособность",
+            "score": 23,
+            "max": 25,
+            "awarded": "Все существенные требования подборочного сценария реализованы и подтверждены: входные поля, до трёх карточек, исключение занятых, три исхода, причины малого результата и детерминированность.",
+            "deductions": "Два балла не присвоены из-за единственного воспроизводимого дефекта окружения тестов проекта на Windows, который ухудшает запуск заявленной проверки, хотя runtime API проходит.",
+            "evidence": [
+              "cases/6/task.txt",
+              "src/models.py:117-154",
+              "src/filter_engine.py:19-33",
+              "demo-six-scenarios",
+              "pytest-default"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "DEF-001",
+                "reason": "Стандартный `python -m pytest -q` не является полностью воспроизводимым на Windows без флага кодировки: падает тест передачи языка и длительности."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Вход и обязательные ограничения",
+                "implementation": "`SearchBody` и `SearchRequest` принимают город, дату, формат, категорию, бюджет, языки и длительность; даты и числа валидируются, лишние поля запрещены.",
+                "value": "Запрос соответствует формату кейса, а некорректный ввод не маскируется под бизнес-результат.",
+                "verification": "observed",
+                "evidence": [
+                  "api.py:17-25",
+                  "src/models.py:117-154",
+                  "http-invalid-input"
+                ]
+              },
+              {
+                "aspect": "Фильтрация и лимиты выдачи",
+                "implementation": "После города и категории проверяются busy_dates, цена, event_format, требуемые языки и max_hours; результат сортируется по цене и ID, кандидатов не более пяти, карточек не более трёх.",
+                "value": "Основная бизнес-логика не оставляет занятого или неподходящего подрядчика в выдаче и даёт стабильный порядок.",
+                "verification": "observed",
+                "evidence": [
+                  "src/filter_engine.py:19-33",
+                  "src/filter_engine.py:110-135",
+                  "tests/test_backend.py:1-200"
+                ]
+              },
+              {
+                "aspect": "Крайние исходы",
+                "implementation": "Отдельно возвращаются `no_category_in_city` и `no_matches`; сообщение содержит число профилей и пересекающиеся причины исключения.",
+                "value": "Пользователь видит различие между отсутствием категории и слишком строгими параметрами.",
+                "verification": "observed",
+                "evidence": [
+                  "src/filter_engine.py:137-153",
+                  "examples/03_no_matches_request.json",
+                  "examples/04_no_category_request.json",
+                  "demo-six-scenarios"
+                ]
+              },
+              {
+                "aspect": "Стабильность и влияние даты",
+                "implementation": "Одинаковые запросы дали идентичные ответы, а замена даты 2026-10-10 на 2026-10-11 изменила выдачу с HK-88430/HK-29829/HK-27222 на HK-44923/HK-27222/HK-44733.",
+                "value": "Подтверждено, что календарь реально участвует в подборе, а не является декоративным полем.",
+                "verification": "observed",
+                "evidence": [
+                  "src/filter_engine.py:126-127",
+                  "src/filter_engine.py:185",
+                  "http-six-scenarios"
+                ]
+              }
+            ],
+            "scoreReasoning": "Предметные требования кейса покрыты почти полностью и работают через API/CLI. Остаток связан с воспроизводимостью именно тестового запуска на Windows, а не с провалом подборочного сценария."
+          },
+          {
+            "name": "Техническая реализация",
+            "score": 23,
+            "max": 25,
+            "awarded": "Реализация хорошо разделена, валидирует данные, изолирует AI, имеет таймаут, кэш успешных ответов, fallback и тестирует OpenAI/NVIDIA SDK через HTTP mock.",
+            "deductions": "Два балла удержаны за платформозависимую fixture-проверку; реальные внешние вызовы намеренно не выполнялись и поэтому не служат доказательством доступности конкретной модели.",
+            "evidence": [
+              "src/data_loader.py:15-68",
+              "src/recommendation_service.py:14-68",
+              "src/llm_explainer.py:103-234",
+              "tests/test_pipeline.py:53-87",
+              "tests/test_pipeline.py:103-230"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "DEF-001",
+                "reason": "В Windows default-locale запуске один интеграционный тест не доходит до LLM-пути из-за неверно декодированного JSON fixture."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Нормализованный loader",
+                "implementation": "Loader явно читает UTF-8-sig, поддерживает CSV и JSONL, проверяет поля, дубликаты ID, списки, даты, числа и флаги.",
+                "value": "Ошибки каталога обнаруживаются на старте, а не превращаются в тихо неполные рекомендации.",
+                "verification": "source",
+                "evidence": [
+                  "src/data_loader.py:15-57",
+                  "src/models.py:71-113"
+                ]
+              },
+              {
+                "aspect": "Безопасная интеграция LLM",
+                "implementation": "В OpenAI-compatible client передаются только выбранные профили; response валидируется, ошибки дают deterministic fallback, а `RecommendationService` ограничивает общее ожидание восьмью секундами.",
+                "value": "AI улучшает объяснение, но не получает контроль над фильтрацией и порядком карточек.",
+                "verification": "observed",
+                "evidence": [
+                  "src/recommendation_service.py:39-68",
+                  "src/llm_explainer.py:197-234",
+                  "src/llm_explainer.py:374-431"
+                ]
+              },
+              {
+                "aspect": "Проверяемость провайдеров",
+                "implementation": "Тесты проверяют адреса OpenAI/NVIDIA, параметры temperature/max_tokens, передаваемые дату, бюджет, языки и длительность, а также отказоустойчивость.",
+                "value": "Контракт интеграции проверен без утечки ключей и без подмены mock-ответом реального результата в отчёте.",
+                "verification": "observed",
+                "evidence": [
+                  "tests/test_pipeline.py:53-87",
+                  "tests/test_pipeline.py:185-202",
+                  "BACKEND_README.md:162-166"
+                ]
+              }
+            ],
+            "scoreReasoning": "Архитектура и критический путь качественные для MVP, а доказательная база сильная благодаря 100 тестам при UTF-8 режиме. Снижение оставлено за реальный Windows-дефект тестового harness и за непроверенную внешнюю сеть, которую нельзя объявлять рабочей по mock-тестам."
+          },
+          {
+            "name": "README и воспроизводимость",
+            "score": 23,
+            "max": 25,
+            "awarded": "Документация объясняет задачу, архитектуру, установку, API, примеры, ограничения, провайдеров, fallback и команду проверки; `demo.py` воспроизводит шесть сценариев.",
+            "deductions": "Три балла удержаны: рекомендуемая команда без `-X utf8` не проходит на Windows, а documentation-based live path ограничен API без готового UI.",
+            "evidence": [
+              "README.md:1-29",
+              "README.md:67-107",
+              "BACKEND_README.md:151-208",
+              "docs/VALIDATION.md:40-52",
+              "pytest-default"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "DEF-001",
+                "reason": "Документированная `python -m pytest -q` команда даёт 99/100 на Windows из-за отсутствия encoding в тестовом чтении fixture; рабочий обход `python -X utf8 -m pytest -q` не указан как обязательный."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Запуск и структура",
+                "implementation": "README описывает Python/FastAPI/OpenAI SDK, `.env`, dataset, архитектурные компоненты и последовательность клиент → валидация → фильтр → объяснения → карточки.",
+                "value": "Новый разработчик может понять границы MVP и способ подключить backend.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:67-107",
+                  "README.md:112-139",
+                  "BACKEND_README.md:1-90"
+                ]
+              },
+              {
+                "aspect": "Сценарии и ожидаемые результаты",
+                "implementation": "В репозитории есть шесть JSON request-файлов, `demo.py`, `docs/demo-results.json` и `docs/integration-results.json` с карточками, статусами и причинами.",
+                "value": "Проверяющий может повторить не только успешную выдачу, но и крайние состояния кейса.",
+                "verification": "observed",
+                "evidence": [
+                  "examples/01_dense_request.json",
+                  "examples/02_rare_request.json",
+                  "examples/03_no_matches_request.json",
+                  "examples/04_no_category_request.json",
+                  "examples/05_other_date_request.json",
+                  "examples/06_languages_duration_request.json",
+                  "demo-six-scenarios"
+                ]
+              },
+              {
+                "aspect": "Честное описание границ",
+                "implementation": "Документы прямо говорят об отсутствии `app.py`, отсутствии реальных ключей и том, что mock не доказывает доступность внешней модели.",
+                "value": "Описание не выдаёт backend-прототип за полностью собранный production-продукт.",
+                "verification": "source",
+                "evidence": [
+                  "docs/VALIDATION.md:49-52",
+                  "BACKEND_README.md:164-166",
+                  ".env.example:1-14"
+                ]
+              }
+            ],
+            "scoreReasoning": "Документация существенно облегчает воспроизведение и особенно хорошо фиксирует ограничения. Основной недочёт — расхождение между нейтральной командой тестов и платформенным поведением тестового чтения на Windows; отсутствие UI явно обозначено и не трактуется как скрытая функция."
+          },
+          {
+            "name": "Ценность и применимость решения",
+            "score": 15,
+            "max": 15,
+            "awarded": "API применим как backend для каталога event-подрядчиков: он сокращает выбор, показывает цену «от», предупреждает о датасетной доступности и не обещает бронирование.",
+            "deductions": "Один балл не присвоен за отсутствие готового конечного пользовательского экрана, хотя сам кейс ставит качество объяснений выше UI и backend-контракт уже пригоден для интеграции.",
+            "evidence": [
+              "README.md:3-6",
+              "README.md:104-107",
+              "src/filter_engine.py:155-160",
+              "BACKEND_README.md:151-160"
+            ],
+            "deductionItems": [],
+            "awardedDetails": [
+              {
+                "aspect": "Рабочий результат для заказчика",
+                "implementation": "Карточки содержат ID, имя, категорию, город, цену, synthetic/imputed flags, match_facts и объяснение; empty states сообщают причины.",
+                "value": "Это полезный shortlist, а не только демонстрация алгоритма фильтрации.",
+                "verification": "observed",
+                "evidence": [
+                  "src/filter_engine.py:127-135",
+                  "demo-six-scenarios"
+                ]
+              },
+              {
+                "aspect": "Честные ограничения каталога",
+                "implementation": "Warnings сообщают, что цена является стартовой, доступность известна только по календарю датасета, а imputed-поля помечаются.",
+                "value": "Снижается риск того, что пользователь примет синтетическую или неполную информацию за подтверждённую бронь.",
+                "verification": "observed",
+                "evidence": [
+                  "src/filter_engine.py:155-160",
+                  "README.md:107"
+                ]
+              }
+            ],
+            "scoreReasoning": "Практическая польза убедительна в пределах заданного recommendation-only MVP. Небольшое снижение связано только с тем, что пользовательский путь пока требует отдельного клиента поверх API."
+          },
+          {
+            "name": "Потенциал развития и оригинальность подхода",
+            "score": 10,
+            "max": 10,
+            "awarded": "Есть ясная основа для расширения каталога, провайдеров и интерфейса; оригинальная часть — в удержании LLM в роли объяснителя с жёстким контрактом.",
+            "deductions": "Подход не выходит далеко за хорошо выполненный стандартный hybrid backend; конкретные метрики качества объяснений, ранжирование по дополнительным бизнес-сигналам и готовый UI оставлены на следующий этап.",
+            "evidence": [
+              "src/filter_engine.py:168-180",
+              "src/llm_explainer.py:433-455",
+              "BACKEND_README.md:196-208",
+              "docs/VALIDATION.md:49-52"
+            ],
+            "deductionItems": [],
+            "awardedDetails": [
+              {
+                "aspect": "Расширение каталога",
+                "implementation": "Схема профиля и загрузка поддерживают дополнительные записи в том же формате, а нормализованный dataset_version помогает отслеживать изменение данных.",
+                "value": "Решение можно переносить на более крупный каталог без изменения клиентского контракта.",
+                "verification": "source",
+                "evidence": [
+                  "src/data_loader.py:60-68",
+                  "src/filter_engine.py:86-107"
+                ]
+              },
+              {
+                "aspect": "Граница AI",
+                "implementation": "Модель не участвует в hard filtering, а контракт проверяет ID и тексты до присоединения объяснений к карточкам.",
+                "value": "Это переносимый паттерн для других кейсов, где генеративный слой должен объяснять, но не принимать критичное решение.",
+                "verification": "observed",
+                "evidence": [
+                  "src/llm_contract.py:25-40",
+                  "src/llm_explainer.py:374-421"
+                ]
+              }
+            ],
+            "scoreReasoning": "Потенциал выше среднего благодаря чистому seam между backend и объяснителем, но оригинальность ограничена инженерной компоновкой известных компонентов."
+          }
+        ],
+        "total": 94
+      },
+      "judgeScore": 96,
+      "caseRequirements": [
+        {
+          "requirement": "Принимать город, дату, формат мероприятия, категорию, бюджет и опциональные язык и длительность.",
+          "status": "met",
+          "explanation": "FastAPI-модель и доменная SearchRequest покрывают все обязательные и опциональные поля, запрещают лишние поля и валидируют даты, числа и диапазон календаря.",
+          "evidence": [
+            "api.py:17-25",
+            "src/models.py:117-154",
+            "tests/test_api.py:35-48"
+          ]
+        },
+        {
+          "requirement": "Возвращать до трёх карточек с именем, категорией, городом, ценой и конкретным объяснением совпадений.",
+          "status": "met",
+          "explanation": "FilterEngine возвращает до пяти кандидатов и до трёх cards; fallback и LLM contract добавляют объяснение по цене, бюджету, формату, языкам и/или описанию.",
+          "evidence": [
+            "src/filter_engine.py:127-135",
+            "src/filter_engine.py:53-83",
+            "src/llm_explainer.py:278-336",
+            "demo-six-scenarios"
+          ]
+        },
+        {
+          "requirement": "Исключать подрядчиков, занятых на выбранную дату, а также не проходящих бюджет, формат, язык или длительность.",
+          "status": "met",
+          "explanation": "rejection_reasons применяет все пять проверок; busy_dates исключает профиль, max_hours=null трактуется как отсутствие привязки к длительности, а причины считаются отдельно с разрешённым перекрытием.",
+          "evidence": [
+            "src/filter_engine.py:19-33",
+            "tests/test_backend.py:1-200",
+            "examples/06_languages_duration_request.json",
+            "demo-six-scenarios"
+          ]
+        },
+        {
+          "requirement": "Различать найденные результаты, отсутствие категории в городе и наличие кандидатов без единого проходящего фильтры.",
+          "status": "met",
+          "explanation": "Код возвращает статусы `ok`, `no_category_in_city` и `no_matches`; проверены сценарии 01/02/05/06, 04 и 03 соответственно.",
+          "evidence": [
+            "src/filter_engine.py:137-146",
+            "examples/03_no_matches_request.json",
+            "examples/04_no_category_request.json",
+            "demo-six-scenarios"
+          ]
+        },
+        {
+          "requirement": "При меньшем или пустом результате сообщать количество и конкретные причины, а не показывать пустой экран или HTTP-ошибку.",
+          "status": "met",
+          "explanation": "Сообщение содержит количество профилей, количество оставшихся карточек и агрегированные причины; бизнес-исходы возвращаются HTTP 200, невалидный ввод — 422.",
+          "evidence": [
+            "src/filter_engine.py:147-153",
+            "api.py:65-72",
+            "tests/test_api.py:26-32",
+            "demo-six-scenarios"
+          ]
+        },
+        {
+          "requirement": "Один и тот же запрос должен сохранять порядок, а изменение даты может менять выдачу.",
+          "status": "met",
+          "explanation": "Сортировка фиксирована по цене и ID; повторные HTTP-запросы идентичны, а сценарии с датами 2026-10-10 и 2026-10-11 дали разные карточки.",
+          "evidence": [
+            "src/filter_engine.py:126-127",
+            "tests/test_api.py:50-55",
+            "http-six-scenarios"
+          ]
+        },
+        {
+          "requirement": "Не требовать бронирование и честно отделять локальный fallback от внешнего LLM.",
+          "status": "met",
+          "explanation": "В коде нет бронирования; при отсутствии ключа ответ явно маркируется `deterministic_template`, а документация не выдаёт mock-проверку за реальный вызов провайдера.",
+          "evidence": [
+            "src/recommendation_service.py:27-37",
+            "src/llm_explainer.py:191-195",
+            "BACKEND_README.md:164-166",
+            ".env.example:1-14"
+          ]
+        }
+      ],
+      "testData": {
+        "provided": [
+          "cases/6/task.txt",
+          "cases/6/case-data/HackAlem AI_ Хакатон-задача_ умный подбор подрядчиков.md",
+          "cases/6/case-data/hackathon dataset anonymized .csv",
+          "cases/6/case-data/hackathon dataset preview.html"
+        ],
+        "used": [
+          "cases/6/task.txt",
+          "cases/6/case-data/HackAlem AI_ Хакатон-задача_ умный подбор подрядчиков.md",
+          "cases/6/case-data/hackathon dataset anonymized .csv",
+          "luna56/data/hackathon-dataset-anonymized.jsonl",
+          "luna56/examples/01_dense_request.json",
+          "luna56/examples/02_rare_request.json",
+          "luna56/examples/03_no_matches_request.json",
+          "luna56/examples/04_no_category_request.json",
+          "luna56/examples/05_other_date_request.json",
+          "luna56/examples/06_languages_duration_request.json"
+        ],
+        "checks": [
+          {
+            "input": "Шесть UTF-8 example-запросов из 01_dense_request.json, 02_rare_request.json, 03_no_matches_request.json, 04_no_category_request.json, 05_other_date_request.json и 06_languages_duration_request.json.",
+            "method": "python -X utf8 demo.py и повторные POST через FastAPI TestClient",
+            "result": "Все шесть запросов вернули HTTP 200; результаты: A/3 карточки, A/1, C/0, B/0, A/3, A/1. Повтор каждого запроса дал идентичный ответ. Объяснения были deterministic_template с reason=missing_api_key для непустых результатов и empty_result для пустых.",
+            "conclusion": "Основные данные кейса применены к проекту; happy path, редкая категория, пустой результат, отсутствующая категория, смена даты и язык+длительность работают."
+          },
+          {
+            "input": "Одинаковый dense-запрос с датами 2026-10-10 и 2026-10-11.",
+            "method": "HTTP TestClient smoke check; сравнение card IDs и повторных ответов",
+            "result": "Для 2026-10-10 получены HK-88430, HK-29829, HK-27222; для 2026-10-11 — HK-44923, HK-27222, HK-44733.",
+            "conclusion": "Дата реально влияет на календарный фильтр, а сортировка и порядок внутри каждого запроса стабильны."
+          },
+          {
+            "input": "Невалидный запрос с budget_kzt=-1 и пустой обязательный body.",
+            "method": "tests/test_api.py через `python -X utf8 -m pytest -q`",
+            "result": "Оба класса ошибок возвращают HTTP 422; бизнес-исходы при корректном вводе остаются HTTP 200.",
+            "conclusion": "Граница между ошибкой ввода и валидным отсутствием рекомендаций выдержана."
+          },
+          {
+            "input": "CSV и JSONL из репозитория с 66 профилями.",
+            "method": "Загрузка обоих файлов через load_profiles и сравнение FilterEngine.dataset_version",
+            "result": "Оба формата загрузились; dataset_version совпал, количество профилей — 66, synthetic_profiles — 13.",
+            "conclusion": "Поставленные табличные тестовые данные используются консистентно в обоих поддержанных форматах."
+          }
+        ],
+        "limitations": [
+          "Набор является синтетическим/анонимизированным датасетом кейса и не подтверждает качество на реальном каталоге или реальной доступности подрядчиков.",
+          "Реальные OpenAI/NVIDIA credentials не предоставлены; внешние модели проверены только по исходникам и HTTP mock-тестам, не по живому провайдеру.",
+          "HTML preview прочитан как предоставленный материал кейса, но браузерная визуальная проверка не выполнялась; в репозитории нет app.py пользовательского UI."
+        ]
+      },
+      "runtime": {
+        "status": "working",
+        "build": "Импорты и локальная сборка проходят; `python -X utf8 -m pytest -q` завершился как 100 passed, 1 warning.",
+        "start": "FastAPI-приложение создаётся через `create_app`, dataset загружается в lifespan; HTTP smoke checks через TestClient проходят без API-ключей.",
+        "scenario": "Проверены шесть examples через demo/API, повторяемость, смена даты, HTTP 422 и все три бизнес-исхода; локальный fallback объяснений активирован явно.",
+        "environment": "Windows, Python 3.10.11; для корректного чтения UTF-8 fixtures использован режим `-X utf8`. Внешние credentials отсутствуют по условиям проверки.",
+        "summary": "Основной локальный runtime рабочий. Один запуск стандартной команды без UTF-8 флага выявил дефект portability в тестовом коде, но тот же проект при явном UTF-8 режиме проходит весь suite и демонстрирует требуемое поведение.",
+        "checks": [
+          {
+            "command": "python -m pytest -q",
+            "result": "99 passed, 1 failed; упал tests/test_pipeline.py::test_languages_and_duration_are_forwarded_to_model.",
+            "id": "pytest-default",
+            "stage": "scenario",
+            "status": "fail",
+            "cause": "project",
+            "expected": "Все тесты проекта должны пройти штатной командой из документации."
+          },
+          {
+            "command": "python -X utf8 -m pytest -q",
+            "result": "100 passed, 1 warning in 3.22s.",
+            "id": "pytest-utf8",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Полный unit/domain/API/integration suite проходит и не обращается к реальному провайдеру."
+          },
+          {
+            "command": "python -X utf8 demo.py",
+            "result": "Все шесть сценариев напечатали ожидаемые статусы, карточки, причины и локальные объяснения; диапазон наблюдаемого ответа после старта — миллисекунды.",
+            "id": "demo-six-scenarios",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Демо должно покрыть плотную и редкую категории, пустой результат, отсутствие категории, смену даты и язык+длительность."
+          },
+          {
+            "command": "HTTP TestClient: GET /health, GET /options, POST /recommendations",
+            "result": "health сообщил 66 профилей и 13 synthetic; options доступен; POST вернул HTTP 200 для A/B/C и 422 для невалидного ввода.",
+            "id": "http-business-contract",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "HTTP-контракт должен отделять валидные бизнес-исходы от ошибок валидации."
+          }
+        ],
+        "limitations": [
+          "Внешние OpenAI/NVIDIA вызовы не выполнялись без намеренно отсутствующих ключей; это не заменено mock-ответом в оценке live-доступности.",
+          "Визуальный/browser UI не проверялся; документация подтверждает отсутствие app.py, поэтому liveDemo не заявляется.",
+          "Обычная команда pytest требует явного UTF-8 режима на текущем Windows из-за DEF-001."
+        ]
+      },
+      "liveDemo": {
+        "status": "none",
+        "url": null,
+        "notes": "Публичный или локальный live URL не предоставлен, а пользовательского app.py в snapshot нет. Локальный FastAPI/TestClient и demo.py проверены программно; визуальное поведение интерфейса не заявляется."
+      },
+      "fiveHourContext": "Для пятичасового MVP команда выбрала правильный приоритет кейса: сначала детерминированно и быстро отфильтровать каталог, затем объяснить только выбранные карточки. Наличие строгой схемы данных, трёх явных исходов, пересекающихся причин, UTF-8 локального demo, таймаута и fallback показывает хороший контроль объёма. Отсутствие бронирования, production-деплоя, live-провайдера и UI не штрафуется само по себе, потому что бронирование и красивый UI не являются обязательными частями задания, а ключи намеренно не выданы. Реальный минус MVP — только неустойчивость штатного тестового запуска к кодировке Windows.",
+      "strengths": [
+        "Детерминированный hard-filter не отдаёт LLM право выбирать, исключать или переставлять подрядчиков.",
+        "Шесть сценариев дают хорошее покрытие обязательного happy path и крайних состояний, включая отсутствие категории и смену даты.",
+        "Fallback-объяснения остаются фактологичными и явно маркируются как локальные при отсутствии ключа.",
+        "Контракт LLM проверяет outcome, точные ID, длину, предложения, запрещённые клише и не кэширует ошибки как успешные.",
+        "README и backend-документация честно описывают отсутствие UI, отсутствие ключей и пределы mock-проверок."
+      ],
+      "gaps": [
+        "Стандартная команда `python -m pytest -q` на Windows не проходит полностью: tests/test_pipeline.py читает UTF-8 example без явной encoding и получает неверные строки, из-за чего test_languages_and_duration_are_forwarded_to_model завершается fallback-ответом вместо внешнего mock-path."
+      ],
+      "futureAdvice": [
+        {
+          "principle": "Делайте воспроизводимость независимой от локали",
+          "why": "DEF-001 показывает, что функциональный проект может выглядеть сломанным только из-за platform-default encoding: штатная команда дала 99/100, хотя явный UTF-8 режим дал 100/100.",
+          "how": "В tests/test_pipeline.py задайте `read_text(encoding=\"utf-8\")` для всех fixtures, добавьте UTF-8 настройку pytest/CI и оставьте отдельную Windows-проверку без ручного флага.",
+          "findingIds": [
+            "DEF-001"
+          ],
+          "successCheck": "На Windows и Linux команда `python -m pytest -q` проходит 100 тестов, а сценарий 06 действительно доходит до mock LLM и проверяет language/duration forwarding.",
+          "timeboxMinutes": 30
+        }
+      ],
+      "uncertainties": [
+        "Реальная скорость, доступность модели, стоимость и качество свободного текста OpenAI/NVIDIA не подтверждены без credentials; подтверждён только код пути и mock-контракт.",
+        "Визуальный пользовательский интерфейс отсутствует в snapshot, поэтому UX и визуальное отображение карточек не оценивались.",
+        "Локальный датасет анонимизирован и синтетичен в части профилей/импутаций; это не доказательство качества на production-каталоге."
+      ],
+      "reviewPolicyVersion": 2,
+      "assessmentStatus": "ready",
+      "findings": [
+        {
+          "id": "DEF-001",
+          "kind": "defect",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Штатная команда тестов не является переносимой на Windows без внешней настройки UTF-8.",
+          "expected": "`python -m pytest -q` должен пройти все тесты и проверить forwarding языка и длительности из UTF-8 example.",
+          "actual": "Наблюдалось 99 passed и 1 failed: tests/test_pipeline.py::test_languages_and_duration_are_forwarded_to_model. В тесте на строке 193 используется `read_text()` без encoding; на Windows JSON декодируется системной кодировкой, поэтому город и категория не совпадают с UTF-8 датасетом и API получает no_category_in_city.",
+          "evidence": [
+            "tests/test_pipeline.py:90-100",
+            "tests/test_pipeline.py:185-200",
+            "pytest-default",
+            "pytest-utf8"
+          ],
+          "checkIds": [
+            "pytest-default",
+            "pytest-utf8"
+          ]
+        },
+        {
+          "id": "LIM-001",
+          "kind": "limitation",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "В snapshot нет готового пользовательского `app.py`/Streamlit UI и публичного live URL.",
+          "expected": "Визуальный путь мог бы позволить проверить отображение карточек и сообщений поверх API.",
+          "actual": "README и docs/VALIDATION прямо фиксируют, что app.py отсутствует; доступен backend/API и demo.py.",
+          "evidence": [
+            "README.md:6",
+            "docs/VALIDATION.md:49-52",
+            "liveDemo:none"
+          ],
+          "checkIds": [
+            "demo-six-scenarios"
+          ]
+        },
+        {
+          "id": "LIM-002",
+          "kind": "limitation",
+          "verification": "source",
+          "responsibility": "external_service",
+          "claim": "Живой внешний LLM-провайдер не был доступен для проверки.",
+          "expected": "При наличии credentials можно подтвердить реальный network path, latency и текст объяснений конкретной модели.",
+          "actual": "`.env.example` содержит пустые OPENAI/NVIDIA keys, а локальный runtime использовал deterministic fallback; SDK и OpenAI/NVIDIA HTTP contract проверены mock-тестами.",
+          "evidence": [
+            ".env.example:1-14",
+            "src/llm_explainer.py:103-121",
+            "BACKEND_README.md:164-166",
+            "api_requirements:credentialsProvided=false"
+          ],
+          "checkIds": [
+            "pytest-utf8",
+            "http-business-contract"
+          ]
+        }
+      ],
+      "gapFindingIds": [
+        "DEF-001"
+      ]
+    }
+  ],
+  "score": 96.0,
+  "status": "complete",
+  "expectedJudges": 1
+}

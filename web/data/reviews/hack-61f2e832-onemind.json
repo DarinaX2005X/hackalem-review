@@ -1,0 +1,1027 @@
+{
+  "methodVersion": 4,
+  "repoId": "hack-61f2e832-onemind",
+  "repoUrl": "https://github.com/BAITC-Hacks/hack-61f2e832-onemind",
+  "caseId": 6,
+  "snapshot": "8c9804a26ffe0bdb2dcb024764bcedd25896131b",
+  "judges": [
+    {
+      "methodVersion": 4,
+      "repoId": "hack-61f2e832-onemind",
+      "caseId": 6,
+      "model": "GPT-5.6 Luna",
+      "snapshot": "8c9804a26ffe0bdb2dcb024764bcedd25896131b",
+      "overallSummary": "Проект представляет собой воспроизводимый MVP подбора event-подрядчиков из официального каталога: Python-код сначала детерминированно фильтрует и ранжирует кандидатов, затем формирует доказательные объяснения через OpenAI либо полностью рабочий детерминированный fallback. На организаторском CSV из 66 профилей воспроизведены плотный запрос, редкая категория, пустой результат, различие дат и повторяемость порядка; 19 из 19 тестов прошли, Streamlit стартовал и health endpoint ответил 200. Основные ограничения оценки — не проверялся визуальный UI и не выполнялся живой OpenAI-вызов без предоставленного ключа; это не снижает баллы само по себе. Подтверждённый недостаток реализации — проверка AI-текста требует лишь наличия одного из нескольких маркеров и не выполняет заявленную на уровне спецификации проверку каждой фактической фразы по evidence.",
+      "global": {
+        "criteria": [
+          {
+            "name": "Ценность решения",
+            "score": 25,
+            "max": 25,
+            "awarded": "Ценность убедительно показана на реальной для кейса проблеме сокращения каталога до короткого объяснимого shortlist.",
+            "deductions": "Подтверждённых project-дефектов по этому критерию не установлено; ограничения фиксированного датасета и отсутствия booking относятся к scope MVP и не штрафуются.",
+            "evidence": [
+              "README.md:5",
+              "README.md:23",
+              "README.md:268",
+              "scenario-killer"
+            ],
+            "deductionItems": [],
+            "awardedDetails": [
+              {
+                "aspect": "Сформулированная пользовательская боль",
+                "implementation": "README описывает заказчика, у которого уже есть городской каталог и задача не расширить его, а выбрать подходящих подрядчиков из длинного списка. На входе используются город, дата, формат, категория и бюджет, а на выходе — до трёх карточек.",
+                "value": "Это непосредственно уменьшает ручной перебор и связывает продукт с ясным решением задачи кейса, а не с абстрактным чат-ботом.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:5",
+                  "README.md:7",
+                  "README.md:48"
+                ]
+              },
+              {
+                "aspect": "Объяснимый shortlist вместо непрозрачного ответа",
+                "implementation": "Детерминированный слой сохраняет конкретные цену, формат, язык, дату доступности и вместимость в evidence; fallback строит для каждой карточки предложение с ценой, бюджетом, форматом и свободной датой.",
+                "value": "Пользователь может понять, почему карточка попала в выдачу, и отличить подходящего подрядчика от общей рекомендации без фактической опоры.",
+                "verification": "observed",
+                "evidence": [
+                  "src/agent.py:329",
+                  "src/tools.py:57",
+                  "scenario-killer"
+                ]
+              },
+              {
+                "aspect": "Честное поведение на крайних случаях",
+                "implementation": "Пайплайн различает MATCHED, CATEGORY_NOT_FOUND и NO_MATCH; для малого результата выводит число прошедших, а для пустого — first-failure counts. Проверенный запрос по банкетному залу в Астане вернул NO_MATCH с budget=1, а отсутствующая категория вернула CATEGORY_NOT_FOUND.",
+                "value": "Такой результат не оставляет пользователя перед пустым экраном и делает отказ полезным для принятия следующего решения.",
+                "verification": "observed",
+                "evidence": [
+                  "src/recommender.py:63",
+                  "src/recommender.py:123",
+                  "captures/20261001T223831218032-scenario.stdout.log"
+                ]
+              }
+            ],
+            "scoreReasoning": "25/25 заслужены за точное попадание в проблему кейса, evidence-based карточки и полезные объяснения отказов. Отсутствие live availability, booking и коммуникации явно относится к non-goals и scope пятичасового MVP, поэтому не используется как штраф."
+          },
+          {
+            "name": "Результат и качество решения",
+            "score": 19,
+            "max": 20,
+            "awarded": "Основной пользовательский сценарий работает локально и воспроизводится на всех заданных killer-сценариях.",
+            "deductions": "1 балл снят за неполную защиту качества внешнего AI-текста: валидатор может пропустить утверждение, не подтверждённое конкретным полем evidence.",
+            "evidence": [
+              "tests/test_recommender.py:48",
+              "tests/test_agent.py:89",
+              "runtime-scenario",
+              "start-health"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "F4",
+                "reason": "При доступном OpenAI-провайдере _valid_draft проверяет структуру, порядок ID и наличие любого маркера, но не проверяет claim-level соответствие всего текста evidence; это оставляет риск unsupported statement в карточке."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Полный детерминированный путь данных",
+                "implementation": "catalog.py читает CSV с utf-8-sig, проверяет обязательные поля и нормализует pipe-delimited collections; recommender.py последовательно применяет availability, event_format, budget, language и duration.",
+                "value": "Ключевые условия задачи находятся в обычном проверяемом Python-коде и не зависят от вероятностного решения модели.",
+                "verification": "source",
+                "evidence": [
+                  "src/catalog.py:68",
+                  "src/catalog.py:81",
+                  "src/recommender.py:82",
+                  "src/recommender.py:113"
+                ]
+              },
+              {
+                "aspect": "Реально проверенный результат",
+                "implementation": "Изолированный прогон unittest обнаружил 19 тестов и завершился OK. Отдельный прогон на CSV дал dense: HK-88430, HK-29829, HK-44733; rare: HK-90009, HK-35846; no-match с budget=1; date23 и date24 дали разные списки.",
+                "value": "Это доказывает не только наличие файлов, но и целостность основного сценария на данных организатора.",
+                "verification": "observed",
+                "evidence": [
+                  "captures/20261001T223808049217-test.stderr.log",
+                  "captures/20261001T223831218032-scenario.stdout.log"
+                ]
+              },
+              {
+                "aspect": "Защита результата от вмешательства модели",
+                "implementation": "Agent сначала получает deterministic_result, передаёт провайдеру только evidence выбранных кандидатов, затем требует exact expected IDs and order через validate_recommendations; вредоносный или переставленный draft переводится в fallback.",
+                "value": "AI не может добавить заблокированного подрядчика, поменять детерминированный порядок или превратить объяснение в новый механизм отбора.",
+                "verification": "source",
+                "evidence": [
+                  "src/agent.py:188",
+                  "src/agent.py:213",
+                  "src/tools.py:70",
+                  "tests/test_agent.py:89"
+                ]
+              },
+              {
+                "aspect": "Работа без внешнего ключа",
+                "implementation": "При отсутствии OPENAI_API_KEY провайдер равен None, а deterministic fallback создаёт заполненные объяснения; обработка исключений API также сохраняет fallback.",
+                "value": "Локальный demo-flow не превращается в ошибку из-за внешней интеграции, что особенно уместно для пятичасового прототипа.",
+                "verification": "observed",
+                "evidence": [
+                  "src/agent.py:176",
+                  "src/agent.py:194",
+                  "tests/test_agent.py:169",
+                  "runtime-scenario"
+                ]
+              }
+            ],
+            "scoreReasoning": "19/20 — почти полный балл: доменный путь, крайние состояния, лимит трёх карточек, датозависимость и fallback подтверждены кодом и запуском. Единственное существенное удержание — F4: в OpenAI-ветке защита от unsupported claims заявлена шире, чем фактически реализована. Основной результат при этом остаётся детерминированным и рабочим."
+          },
+          {
+            "name": "Инновационность",
+            "score": 12,
+            "max": 15,
+            "awarded": "Нестандартная для простого каталожного поиска граница ответственности между deterministic eligibility и AI explanation реализована последовательно.",
+            "deductions": "3 балла сняты за то, что AI не участвует в semantic relevance/ranking, а фактический интеллект проекта сосредоточен в хорошо сделанном rule-based пайплайне и шаблонных объяснениях.",
+            "evidence": [
+              "README.md:36",
+              "README.md:71",
+              "src/agent.py:65",
+              "src/recommender.py:198"
+            ],
+            "deductionItems": [
+              {
+                "points": 3,
+                "findingId": "F4",
+                "reason": "Спецификация допускает AI для semantic relevance и просит валидировать unsupported explanations, но реализация использует OpenAI только для генерации текста, а локальный валидатор не проверяет claims по description; инновационная часть поэтому уже, чем заявленная концепция."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "AI как advisory layer",
+                "implementation": "RecommendationAgent не просит модель выбрать кандидатов: сначала вызывает search_contractors, получает evidence и только потом передаёт уже eligible rows провайдеру объяснений.",
+                "value": "Это осмысленно применяет AI там, где он полезен для естественного языка, и не отдаёт модели критические решения по занятости или бюджету.",
+                "verification": "source",
+                "evidence": [
+                  "src/agent.py:188",
+                  "src/agent.py:190",
+                  "README.md:32"
+                ]
+              },
+              {
+                "aspect": "Инструментная оркестрация",
+                "implementation": "Проект выделяет search_contractors, get_contractor_details и validate_recommendations как три маленьких инструмента с typed dataclasses и единым каталогом.",
+                "value": "Для хакатонного MVP это понятнее и безопаснее одного свободного prompt-to-answer, а границы легко расширить новыми источниками.",
+                "verification": "source",
+                "evidence": [
+                  "src/tools.py:34",
+                  "src/tools.py:44",
+                  "README.md:40"
+                ]
+              },
+              {
+                "aspect": "Точная воспроизводимая сортировка",
+                "implementation": "Рейтинг использует Fraction, явные компоненты budget_headroom/language_match/duration_fit и tie-break по цене, casefolded имени и ID.",
+                "value": "Пользователь получает стабильный порядок, а судья может объяснить результат числами, а не скрытым состоянием модели.",
+                "verification": "source",
+                "evidence": [
+                  "src/recommender.py:148",
+                  "src/recommender.py:198",
+                  "README.md:71"
+                ]
+              }
+            ],
+            "scoreReasoning": "12/15 отражают сильную архитектурную идею deterministic-first и аккуратную оркестрацию. Снижение связано не с отсутствием сложной модели, а с фактическим объёмом AI: description не используется для semantic ranking, а проверка его claims недостаточно строгая. Для задачи с приоритетом честных объяснений это заметно, но не разрушает MVP."
+          },
+          {
+            "name": "Потенциал развития и масштабирования",
+            "score": 18,
+            "max": 20,
+            "awarded": "Код организован так, что каталог, deterministic core, provider и UI можно заменять независимо; README содержит конкретные направления продолжения.",
+            "deductions": "2 балла сняты за ограниченный semantic слой и неполную проверку AI claims; отсутствие production catalog/live availability является scope-ограничением MVP и не штрафуется.",
+            "evidence": [
+              "src/catalog.py:68",
+              "src/tools.py:37",
+              "README.md:276",
+              "README.md:280"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "F4",
+                "reason": "Description не используется для semantic relevance, а claim-level validation свободного AI-текста неполна; это ограничивает доказанную глубину расширения интеллектуального слоя."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Разделение доменного ядра и интерфейса",
+                "implementation": "RecommendationQuery, Contractor, RecommendationResult и Diagnostics находятся в models.py; catalog loader, recommender, tools, agent и Streamlit UI разделены по модулям.",
+                "value": "Такую структуру можно переносить на API или другой frontend без переписывания правил отбора.",
+                "verification": "source",
+                "evidence": [
+                  "src/models.py:18",
+                  "src/models.py:35",
+                  "src/recommender.py:27",
+                  "app.py:36"
+                ]
+              },
+              {
+                "aspect": "Расширяемые evidence-поля",
+                "implementation": "ContractorEvidence уже включает category, city, price, formats, languages, max_hours, busy_dates и description; OpenAI payload формируется отдельно от внутренней модели.",
+                "value": "Можно добавлять рейтинг, расстояние или новые пользовательские предпочтения, сохраняя принцип: hard constraints остаются в deterministic layer.",
+                "verification": "source",
+                "evidence": [
+                  "src/tools.py:12",
+                  "src/agent.py:258",
+                  "README.md:278"
+                ]
+              },
+              {
+                "aspect": "Зафиксированные следующие шаги",
+                "implementation": "README предлагает production catalog/live availability, embeddings для richer description matching, дополнительные предпочтения и booking/communication workflows.",
+                "value": "Направления привязаны к фактическим ограничениям MVP, а не являются случайным списком технологий.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:268",
+                  "README.md:276",
+                  "README.md:280"
+                ]
+              }
+            ],
+            "scoreReasoning": "18/20 — хорошая модульность и ясный путь от CSV-прототипа к сервису. Два балла удержаны только за ограниченный semantic/claim-validation слой. Live catalog, calendar и booking прямо относятся к non-goals кейса, поэтому отсутствие этих функций не превращено в штраф."
+          },
+          {
+            "name": "Презентация, демо и ответы на вопросы",
+            "score": 19,
+            "max": 20,
+            "awarded": "В рамках доступных материалов README даёт ясное объяснение архитектуры, запуска, тестов и пяти демонстрационных сценариев; локальное демо воспроизводится.",
+            "deductions": "1 балл снят за плавающие диапазоны зависимостей, которые ухудшают долгосрочную воспроизводимость README-инструкции.",
+            "evidence": [
+              "README.md:88",
+              "README.md:124",
+              "README.md:138",
+              "README.md:244",
+              "build-static",
+              "start-health"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "F5",
+                "reason": "requirements.txt задаёт совместимые диапазоны без lock-файла; установка на дату проверки подтянула актуальные версии, поэтому повторяемость среды со временем менее строгая, чем повторяемость доменного результата."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Документированная архитектура",
+                "implementation": "README содержит схему User Request → Agent → deterministic tools → evidence → AI/fallback → validation и поясняет, что именно остаётся source of truth.",
+                "value": "Жюри может быстро понять ответственность компонентов и почему LLM не выбирает занятых подрядчиков.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:13",
+                  "README.md:23",
+                  "README.md:36"
+                ]
+              },
+              {
+                "aspect": "Воспроизводимые инструкции",
+                "implementation": "Есть требования Python, установка requirements, настройка optional OPENAI_API_KEY, команда streamlit run app.py и команда unittest discover.",
+                "value": "Репозиторий самодостаточен для локального запуска без устной презентации и без обязательного внешнего ключа.",
+                "verification": "observed",
+                "evidence": [
+                  "README.md:88",
+                  "README.md:101",
+                  "README.md:124",
+                  "README.md:130",
+                  "build-static",
+                  "start-health"
+                ]
+              },
+              {
+                "aspect": "Подготовленный demo narrative",
+                "implementation": "README перечисляет dense, rare, no-result, date-sensitivity и determinism с конкретными входами и ожидаемыми ID; отдельный прогон на том же CSV подтвердил состояния и порядок.",
+                "value": "Демо можно показать по данным репозитория и объяснить не только счастливый путь, но и отказ.",
+                "verification": "observed",
+                "evidence": [
+                  "README.md:138",
+                  "README.md:185",
+                  "README.md:201",
+                  "README.md:212",
+                  "captures/20261001T223831218032-scenario.stdout.log"
+                ]
+              }
+            ],
+            "scoreReasoning": "19/20 — README существенно выше минимальной инструкции: он описывает решения, крайние случаи, тесты и ограничения, а не только запуск UI. Один балл удержан исключительно за requirements без точной фиксации версий; отсутствие публичного URL и визуальной проверки не используется как штраф, поскольку это не требование оценки и визуальную часть выполняет пользователь."
+          }
+        ],
+        "total": 93
+      },
+      "case": {
+        "criteria": [
+          {
+            "name": "Соответствие задаче и работоспособность",
+            "score": 24,
+            "max": 25,
+            "awarded": "Основные функциональные требования кейса выполнены и проверены на организаторском датасете.",
+            "deductions": "1 балл снят за то, что корректность AI-generated free-form claims не гарантируется так же строго, как корректность eligibility и порядка.",
+            "evidence": [
+              "src/recommender.py:33",
+              "tests/test_recommender.py:48",
+              "captures/20261001T223831218032-scenario.stdout.log"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "F4",
+                "reason": "Основной сценарий соответствует задаче, но при живом OpenAI-тексте claim-level проверка описаний неполная; это напрямую относится к требованию конкретных честных объяснений карточек."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Входной контракт",
+                "implementation": "RecommendationQuery принимает и валидирует city, ISO event_date, event_format, contractor_category, integer budget и optional duration/language.",
+                "value": "Все обязательные и опциональные параметры кейса представлены в одном типизированном контракте.",
+                "verification": "source",
+                "evidence": [
+                  "src/models.py:35",
+                  "src/models.py:45"
+                ]
+              },
+              {
+                "aspect": "Hard filters",
+                "implementation": "Город и категория проверяются membership/casefold, availability исключает дату из busy_dates, затем применяются формат, бюджет, язык и длительность.",
+                "value": "Занятый или неподходящий по условиям подрядчик не попадает в shortlist.",
+                "verification": "observed",
+                "evidence": [
+                  "src/recommender.py:33",
+                  "src/recommender.py:82",
+                  "tests/test_recommender.py:48",
+                  "runtime-scenario"
+                ]
+              },
+              {
+                "aspect": "Три результата и малый ответ",
+                "implementation": "CATEGORY_NOT_FOUND возвращается до фильтров, NO_MATCH содержит first-failure counts, MATCHED ограничен ranked[:3] и сообщает, если прошли меньше трёх.",
+                "value": "Кейс требует явного различения причин, и это поведение реально видно в проверенных ответах.",
+                "verification": "observed",
+                "evidence": [
+                  "src/recommender.py:63",
+                  "src/recommender.py:123",
+                  "captures/20261001T223831218032-scenario.stdout.log"
+                ]
+              },
+              {
+                "aspect": "Дата влияет на выдачу",
+                "implementation": "Одинаковый плотный запрос на 2026-09-23 вернул HK-29829, HK-44923, HK-27222, а на 2026-09-24 — HK-35215, HK-44733; только дата была изменена.",
+                "value": "Это подтверждает не декоративный date field, а фактическую работу календаря доступности.",
+                "verification": "observed",
+                "evidence": [
+                  "tests/test_recommender.py:109",
+                  "captures/20261001T223831218032-scenario.stdout.log"
+                ]
+              }
+            ],
+            "scoreReasoning": "24/25: requirement coverage почти полная, а основной путь подтверждён запуском. Единственное удержание — F4, ограниченное внешней OpenAI-веткой; deterministic fallback и выбор кандидатов остаются корректными."
+          },
+          {
+            "name": "Техническая реализация",
+            "score": 23,
+            "max": 25,
+            "awarded": "Архитектура аккуратная для MVP: typed models, нормализация CSV, deterministic recommender, отдельные tools и защищённая оркестрация объяснений.",
+            "deductions": "2 балла сняты за недостаточно строгую верификацию свободного AI-текста и за то, что description не используется для semantic relevance, хотя это предусмотрено контрактом спецификации как возможный AI-слой.",
+            "evidence": [
+              "src/catalog.py:12",
+              "src/tools.py:34",
+              "src/agent.py:65",
+              "src/agent.py:277"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "F4",
+                "reason": "_contains_concrete_evidence принимает любой один маркер из цены/даты/формата/языка/длительности и не сопоставляет утверждения с полями; OpenAI provider получает description, но реализует только генерацию текста, не semantic ranking."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Нормализация официального CSV",
+                "implementation": "Loader проверяет REQUIRED_COLUMNS, сохраняет флаги synthetic/city_imputed/price_imputed, разбивает pipe-delimited поля и парсит ISO busy dates.",
+                "value": "Входной формат кейса обработан без подмены схемы и без скрытого обогащения.",
+                "verification": "source",
+                "evidence": [
+                  "src/catalog.py:12",
+                  "src/catalog.py:29",
+                  "src/catalog.py:68"
+                ]
+              },
+              {
+                "aspect": "Детерминированное ранжирование",
+                "implementation": "Fraction arithmetic считает budget headroom, language match и duration fit; сортировка использует score, цену, casefolded имя и ID.",
+                "value": "Одинаковые запросы имеют стабильный порядок и объяснимые tie-breaks.",
+                "verification": "source",
+                "evidence": [
+                  "src/recommender.py:148",
+                  "src/recommender.py:198",
+                  "tests/test_recommender.py:102"
+                ]
+              },
+              {
+                "aspect": "Tool boundary и валидация",
+                "implementation": "RecommendationTools запрещает неизвестные/дублированные ID, более трёх элементов и любой порядок, отличный от повторного deterministic search.",
+                "value": "Даже некорректный ответ провайдера не может изменить результат фильтрации.",
+                "verification": "observed",
+                "evidence": [
+                  "src/tools.py:70",
+                  "tests/test_agent.py:89",
+                  "tests/test_agent.py:105",
+                  "captures/20261001T223808049217-test.stderr.log"
+                ]
+              },
+              {
+                "aspect": "Обработка внешнего сервиса",
+                "implementation": "OpenAI Responses API вызывается с strict JSON schema, timeout 8 секунд и max_retries=0; import/API/schema/refusal ошибки перехватываются и ведут в fallback.",
+                "value": "Интеграция имеет ограниченный и понятный failure boundary, а локальный путь не требует ключа.",
+                "verification": "source",
+                "evidence": [
+                  "src/agent.py:87",
+                  "src/agent.py:92",
+                  "src/agent.py:205"
+                ]
+              }
+            ],
+            "scoreReasoning": "23/25 — техническая основа сильная и подтверждена 19 тестами. F4 удерживает два балла: проверка свободного текста слабее заявленной гарантии, а description фактически не участвует в semantic relevance/ranking. Для core eligibility это не приводит к ошибке, но важно для полного технического соответствия SPEC."
+          },
+          {
+            "name": "README и воспроизводимость",
+            "score": 24,
+            "max": 25,
+            "awarded": "README позволяет понять код, запустить Streamlit, выполнить тесты и повторить конкретные сценарии на включённом CSV.",
+            "deductions": "1 балл снят за отсутствие lock-файла и точных версий зависимостей.",
+            "evidence": [
+              "README.md:88",
+              "README.md:124",
+              "README.md:222",
+              "README.md:244",
+              "build-static",
+              "start-health"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "F5",
+                "reason": "requirements.txt использует диапазоны openai>=1.40,<4, python-dotenv>=1.0,<2 и streamlit>=1.40,<2; это допускает изменения SDK и менее строгую воспроизводимость будущего запуска."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Понятная карта проекта",
+                "implementation": "README перечисляет app.py, SPEC.md, catalog/recommender/tools/agent/models и оба тестовых модуля с их ответственностями.",
+                "value": "Проверяющий может перейти от пользовательского сценария к соответствующему файлу без восстановления архитектуры по догадкам.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:222",
+                  "README.md:232"
+                ]
+              },
+              {
+                "aspect": "Демонстрационные входы и ожидаемые ответы",
+                "implementation": "Пять сценариев содержат конкретные параметры, ID и ожидаемые состояния; фактический CSV совпадает с case-data по SHA-256 и содержит 66 строк.",
+                "value": "Репозиторий предоставляет не только описание, но и детерминированные fixtures для проверки результата.",
+                "verification": "observed",
+                "evidence": [
+                  "README.md:138",
+                  "README.md:201",
+                  "README.md:212",
+                  "testData-csv-hash",
+                  "captures/20261001T223831218032-scenario.stdout.log"
+                ]
+              },
+              {
+                "aspect": "Проверка fallback и тестовый охват",
+                "implementation": "README связывает 19 тестов с нормализацией, фильтрами, состояниями, детерминизмом, безопасностью агента и отсутствием API key; запуск действительно завершился 19/19 OK.",
+                "value": "Документация и фактический тестовый результат согласованы.",
+                "verification": "observed",
+                "evidence": [
+                  "README.md:244",
+                  "captures/20261001T223808049217-test.stderr.log"
+                ]
+              },
+              {
+                "aspect": "Старт приложения",
+                "implementation": "Команда streamlit run app.py описана в README; в изолированном окружении зависимости установились, приложение запустилось, а GET /_stcore/health вернул 200 и ok.",
+                "value": "Основная runnable surface подтверждена без визуальной автоматизации.",
+                "verification": "observed",
+                "evidence": [
+                  "README.md:124",
+                  "start-health"
+                ]
+              }
+            ],
+            "scoreReasoning": "24/25: документация unusually complete для MVP и согласована с observed test/scenario outputs. Снижение только за плавающие версии requirements, а не за отсутствие публичного демо, ключа или визуальной проверки."
+          },
+          {
+            "name": "Ценность и применимость решения",
+            "score": 15,
+            "max": 15,
+            "awarded": "Решение практически применимо как быстрый explainable shortlist для event-менеджера и честно обрабатывает ситуацию, когда вариантов нет.",
+            "deductions": "Подтверждённых project-дефектов по этому критерию не установлено; фиксированный каталог и отсутствие booking явно относятся к scope кейса.",
+            "evidence": [
+              "README.md:48",
+              "README.md:268",
+              "captures/20261001T223831218032-scenario.stdout.log"
+            ],
+            "deductionItems": [],
+            "awardedDetails": [
+              {
+                "aspect": "Сокращение ручного выбора",
+                "implementation": "Из каталога 66 профилей возвращаются максимум три кандидата после городских, категорийных и заказных ограничений.",
+                "value": "Это прямо уменьшает когнитивную нагрузку пользователя и соответствует бизнес-сценарию выбора подрядчика.",
+                "verification": "observed",
+                "evidence": [
+                  "src/recommender.py:157",
+                  "README.md:56",
+                  "runtime-scenario"
+                ]
+              },
+              {
+                "aspect": "Карточка с проверяемыми совпадениями",
+                "implementation": "UI показывает имя, категории, город, цену, форматы, языки, max_hours, availability и explanation; fallback объяснение связывает эти значения с запросом.",
+                "value": "Практическая ценность не сводится к списку ID: заказчик видит причину соответствия.",
+                "verification": "source",
+                "evidence": [
+                  "app.py:111",
+                  "app.py:124",
+                  "src/agent.py:329"
+                ]
+              },
+              {
+                "aspect": "Полезный отказ",
+                "implementation": "Для no-match UI показывает метрики причин первого отказа, а для missing category доступные категории города.",
+                "value": "Пользователь понимает, нужно ли поднять бюджет, выбрать другую дату или искать другую категорию.",
+                "verification": "source",
+                "evidence": [
+                  "app.py:93",
+                  "app.py:100",
+                  "app.py:139",
+                  "src/recommender.py:56"
+                ]
+              }
+            ],
+            "scoreReasoning": "15/15 — задача выбора и объяснения решена практически, включая отрицательные сценарии. Итогом является shortlist без бронирования или live-calendar workflow, но это явно non-goal кейса и не является дефектом для данной оценки."
+          },
+          {
+            "name": "Потенциал развития и оригинальность подхода",
+            "score": 8,
+            "max": 10,
+            "awarded": "Оригинальность есть в дисциплинированном deterministic-first agentic workflow и в защите порядка/eligibility от LLM.",
+            "deductions": "2 балла сняты за ограниченный AI-слой и отсутствие уже работающего расширения за пределы фиксированного CSV.",
+            "evidence": [
+              "README.md:36",
+              "README.md:260",
+              "README.md:276",
+              "src/tools.py:75"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "F4",
+                "reason": "AI используется преимущественно как генератор объяснений с шаблонными evidence markers; semantic description matching, строгая claim validation и production source adapter ещё не реализованы."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Оригинальная safety boundary",
+                "implementation": "Модель не получает право выбирать IDs: deterministic result строится до провайдера, а итоговая валидация сравнивает submitted IDs с повторным поиском.",
+                "value": "Этот паттерн переносим на другие каталожные кейсы, где AI должен помогать объяснять, но не нарушать бизнес-ограничения.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:36",
+                  "src/agent.py:213",
+                  "src/tools.py:77"
+                ]
+              },
+              {
+                "aspect": "Модульность для расширения",
+                "implementation": "Typed catalog/evidence/tools позволяют подключить другой источник данных и сохранить recommender contract; README отдельно называет live availability и embeddings.",
+                "value": "Потенциал роста привязан к конкретным seams в коде, а не только к обещанию сделать production позже.",
+                "verification": "source",
+                "evidence": [
+                  "src/tools.py:34",
+                  "README.md:276",
+                  "README.md:278"
+                ]
+              },
+              {
+                "aspect": "Переносимый урок",
+                "implementation": "Команда отделила hard constraints от probabilistic explanation и проверила это тестами на malicious injection/reordering.",
+                "value": "Для аналогичного хакатона это редкая полезная комбинация простоты, аудируемости и AI-использования по назначению.",
+                "verification": "observed",
+                "evidence": [
+                  "tests/test_agent.py:89",
+                  "tests/test_agent.py:105",
+                  "captures/20261001T223808049217-test.stderr.log"
+                ]
+              }
+            ],
+            "scoreReasoning": "8/10: архитектурный принцип хорошо выбран и имеет переносимую ценность. Потенциал не максимальный, потому что semantic relevance и production integrations пока только намечены, а не реализованы; F4 отражает именно эту границу, без штрафа за отсутствие функций вне кейса."
+          }
+        ],
+        "total": 94
+      },
+      "judgeScore": 93.5,
+      "caseRequirements": [
+        {
+          "requirement": "Принимать город, дату, формат, категорию и бюджет; длительность и язык должны быть опциональными.",
+          "status": "met",
+          "explanation": "RecommendationQuery валидирует обязательные поля и принимает duration_hours/language как optional; Streamlit даёт соответствующие controls.",
+          "evidence": [
+            "src/models.py:35",
+            "src/models.py:45",
+            "app.py:227"
+          ]
+        },
+        {
+          "requirement": "Возвращать не более трёх карточек из официального каталога.",
+          "status": "met",
+          "explanation": "Рекомендации берутся только из загруженного CSV и обрезаются до ranked[:3]; тест проверяет лимит.",
+          "evidence": [
+            "src/recommender.py:148",
+            "src/recommender.py:166",
+            "tests/test_recommender.py:97"
+          ]
+        },
+        {
+          "requirement": "Исключать подрядчиков, занятых на выбранную дату.",
+          "status": "met",
+          "explanation": "Дата сравнивается с frozenset busy_dates до ранжирования; dense-проверка на 2026-09-23 исключила HK-44733, а явный сценарий подтвердил разные списки по датам.",
+          "evidence": [
+            "src/recommender.py:86",
+            "tests/test_recommender.py:48",
+            "captures/20261001T223831218032-scenario.stdout.log"
+          ]
+        },
+        {
+          "requirement": "Объяснять каждую карточку конкретными совпадениями.",
+          "status": "partial",
+          "explanation": "Fallback реально указывает цену, бюджет, формат, дату и при наличии язык/длительность. Для OpenAI-ветки prompt требует evidence, но claim-level validator допускает текст с одним маркером и не сверяет каждое утверждение с source fields.",
+          "evidence": [
+            "src/agent.py:99",
+            "src/agent.py:277",
+            "src/agent.py:329",
+            "F4"
+          ]
+        },
+        {
+          "requirement": "Один и тот же запрос должен давать один порядок.",
+          "status": "met",
+          "explanation": "Fraction-based score и явные tie-breaks детерминированы; тест повторяет запрос, а отдельный сценарий использует одинаковый датасет без случайности.",
+          "evidence": [
+            "src/recommender.py:148",
+            "tests/test_recommender.py:102",
+            "README.md:212"
+          ]
+        },
+        {
+          "requirement": "Разная дата может менять выдачу.",
+          "status": "met",
+          "explanation": "Проверенный dense запрос меняет выдачу с HK-29829/HK-44923/HK-27222 на 2026-09-23 до HK-35215/HK-44733 на 2026-09-24.",
+          "evidence": [
+            "tests/test_recommender.py:109",
+            "captures/20261001T223831218032-scenario.stdout.log"
+          ]
+        },
+        {
+          "requirement": "Явно различать подходящие результаты, отсутствие категории в городе и наличие кандидатов без прохождения фильтров.",
+          "status": "met",
+          "explanation": "ResultState содержит MATCHED, CATEGORY_NOT_FOUND и NO_MATCH; все три ветки покрыты кодом и тестами/сценарием.",
+          "evidence": [
+            "src/models.py:12",
+            "src/recommender.py:63",
+            "tests/test_agent.py:144",
+            "captures/20261001T223831218032-scenario.stdout.log"
+          ]
+        },
+        {
+          "requirement": "При малом результате объяснять, почему вернулось меньше трёх.",
+          "status": "met",
+          "explanation": "MATCHED с двумя rare-кандидатами возвращает текст Only 2 contractor(s) passed all constraints; UI также показывает число найденных и показанных.",
+          "evidence": [
+            "src/recommender.py:169",
+            "app.py:60",
+            "captures/20261001T223831218032-scenario.stdout.log"
+          ]
+        },
+        {
+          "requirement": "При пустом результате объяснять причину, а не показывать пустой экран.",
+          "status": "met",
+          "explanation": "NO_MATCH формирует first-failure counts, а UI рендерит rejection metrics; фактический no-match сообщил budget=1.",
+          "evidence": [
+            "src/recommender.py:123",
+            "app.py:100",
+            "captures/20261001T223831218032-scenario.stdout.log"
+          ]
+        },
+        {
+          "requirement": "Работать на предоставленном 66-профильном CSV и учитывать pipe-delimited поля.",
+          "status": "met",
+          "explanation": "SHA-256 CSV в репозитории совпал с case-data; loader загрузил 66 строк, а тест проверил multi-category HK-35846.",
+          "evidence": [
+            "src/catalog.py:29",
+            "tests/test_recommender.py:39",
+            "testData-csv-hash"
+          ]
+        },
+        {
+          "requirement": "Отвечать за разумное время на малом датасете.",
+          "status": "met",
+          "explanation": "Сценарий шести запросов на 66 строк без внешнего API выполнился примерно за 2.2 ms внутри контейнера; Streamlit health также отвечает после запуска.",
+          "evidence": [
+            "captures/20261001T223831218032-scenario.stdout.log",
+            "start-health"
+          ]
+        }
+      ],
+      "testData": {
+        "provided": [
+          "cases/6/case-data/HackAlem AI_ Хакатон-задача_ умный подбор подрядчиков.md",
+          "cases/6/case-data/hackathon dataset anonymized .csv",
+          "cases/6/case-data/hackathon dataset preview.html"
+        ],
+        "used": [
+          "cases/6/case-data/HackAlem AI_ Хакатон-задача_ умный подбор подрядчиков.md",
+          "cases/6/case-data/hackathon dataset anonymized .csv",
+          "cases/6/case-data/hackathon dataset preview.html"
+        ],
+        "checks": [
+          {
+            "input": "Организаторский CSV из case-data и data/hackathon_dataset_anonymized.csv",
+            "method": "Сравнение SHA-256 и загрузка через load_catalog",
+            "result": "Хэши совпали; load_catalog загрузил 66 профилей и pipe-delimited поля.",
+            "conclusion": "Фактический сценарий проверен на том же датасете, что выдан для кейса."
+          },
+          {
+            "input": "Алматы, 2026-11-10, корпоратив, Ведущий, 1 000 000 ₸, 6 ч, русский",
+            "method": "RecommendationAgent без OPENAI_API_KEY",
+            "result": "MATCHED; HK-88430, HK-29829, HK-44733; найдено 4, показано 3.",
+            "conclusion": "Плотная категория и детерминированное ранжирование работают."
+          },
+          {
+            "input": "Алматы, 2026-09-24, корпоратив, Фото и видеобудки, 500 000 ₸, 6 ч, русский",
+            "method": "RecommendationAgent без OPENAI_API_KEY",
+            "result": "MATCHED; HK-90009, HK-35846; сообщение объясняет, что прошли только 2.",
+            "conclusion": "Редкая/multi-category ветка работает и не дополняется лишними карточками."
+          },
+          {
+            "input": "Астана, 2026-09-24, корпоратив, Банкетный зал, 1 000 000 ₸, 6 ч, русский",
+            "method": "RecommendationAgent без OPENAI_API_KEY",
+            "result": "NO_MATCH; 1 category candidate, first-failure budget=1.",
+            "conclusion": "Пустой результат отличён от отсутствия категории и объяснён причиной."
+          },
+          {
+            "input": "Один dense запрос с датами 2026-09-23 и 2026-09-24",
+            "method": "Два вызова с идентичными остальными параметрами",
+            "result": "date23: HK-29829, HK-44923, HK-27222; date24: HK-35215, HK-44733.",
+            "conclusion": "Занятость из busy_dates реально меняет результат."
+          },
+          {
+            "input": "Повторный dense запрос и тесты агента",
+            "method": "19 unit/domain тестов в изолированном Python 3.11 контейнере",
+            "result": "19 tests passed; тест повторяемого порядка и fallback без ключа прошли.",
+            "conclusion": "Детерминизм, крайние состояния и защита порядка подтверждены."
+          }
+        ],
+        "limitations": [
+          "Живой OpenAI Responses API не вызывался, потому что тестовый OPENAI_API_KEY намеренно не предоставлен; fallback и статический путь проверены отдельно.",
+          "HTML preview использован для сверки размера/идентификаторов данных, но браузерная визуальная проверка запрещена пользовательской политикой."
+        ]
+      },
+      "runtime": {
+        "status": "working",
+        "build": "Все 9 Python-файлов app.py/src/tests успешно скомпилированы в изолированном окружении без записи в read-only checkout.",
+        "start": "Streamlit установился из requirements.txt и процесс запустился; GET /_stcore/health вернул HTTP 200 с body ok.",
+        "scenario": "Основной доменный сценарий воспроизведён на 66-профильном CSV; 19/19 unit/domain тестов прошли, все пять killer-проверок дали ожидаемые состояния/ID.",
+        "environment": "Изолированный Docker-контейнер на Python 3.11-slim, зависимости проекта установлены; OPENAI_API_KEY не предоставлялся. Визуальный UI не инспектировался.",
+        "summary": "Рабочий статус относится к локальному основному сценарию и fallback-режиму. Внешняя OpenAI-ветка проверена по исходникам, но не по живому ответу провайдера.",
+        "checks": [
+          {
+            "command": "python -c \"compile all project Python files\"",
+            "result": "exitCode=0; compiled_files=9.",
+            "id": "build-static",
+            "stage": "build",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Исходники проекта синтаксически компилируются в окружении Python 3.11."
+          },
+          {
+            "command": "python -B -m unittest discover -s tests -v",
+            "result": "exitCode=0; Ran 19 tests; OK.",
+            "id": "test-suite",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Все заявленные unit/domain проверки проходят без API-ключа."
+          },
+          {
+            "command": "streamlit run app.py --server.headless true --server.address 0.0.0.0 --server.port 8501",
+            "result": "Процесс остаётся running после установки requirements; логи сообщают Uvicorn server started on 0.0.0.0:8501.",
+            "id": "start-streamlit",
+            "stage": "start",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Приложение стартует из корня репозитория без обязательного OPENAI_API_KEY."
+          },
+          {
+            "command": "GET /_stcore/health",
+            "result": "HTTP 200; body: ok.",
+            "id": "start-health",
+            "stage": "start",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Запущенный Streamlit отвечает на health endpoint."
+          },
+          {
+            "command": "python -c \"run RecommendationAgent against supplied CSV killer scenarios\"",
+            "result": "exitCode=0; dense/rare/no-match/category-missing/date23/date24 outputs match expected; elapsed_ms=2.2 for six domain calls.",
+            "id": "runtime-scenario",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Основной сценарий выдаёт до 3 допустимых карточек, корректные состояния и объяснения без API."
+          }
+        ],
+        "limitations": [
+          "Визуальное поведение Streamlit не проверялось: пользователь выполняет визуальную/browser-проверку самостоятельно.",
+          "Живой вызов OpenAI не выполнялся без предоставленного ключа; это ограничивает только подтверждение внешнего текста, а не запуск и deterministic fallback."
+        ]
+      },
+      "liveDemo": {
+        "status": "none",
+        "url": null,
+        "notes": "Публичная Live-ссылка в материалах не предоставлена. Локальный запуск подтверждён через HTTP health check; отсутствие публичного URL не использовано как основание для снижения баллов."
+      },
+      "fiveHourContext": "Для пятичасового MVP объём выбран разумно: статический каталог, детерминированные hard constraints, три состояния, объяснения, fallback и минимальный Streamlit UI. Production booking, live calendar и полный semantic search не требуются условиями кейса; отмеченные удержания относятся только к уже заявленной строгости AI-валидации и воспроизводимости зависимостей.",
+      "strengths": [
+        "Детерминированный core отделён от AI и не позволяет модели выбирать занятых/неподходящих подрядчиков.",
+        "На официальном датасете реально подтверждены dense, rare, no-match, date-sensitive и repeated-query сценарии.",
+        "Без API-ключа сохраняется рабочий fallback с конкретными объяснениями.",
+        "README, SPEC и тесты образуют согласованный путь воспроизведения локального MVP."
+      ],
+      "gaps": [
+        "В OpenAI-ветке проверка объяснения не является claim-level: наличие одного маркера может пропустить другое неподтверждённое утверждение.",
+        "Зависимости не зафиксированы точными версиями, что снижает строгую воспроизводимость среды."
+      ],
+      "futureAdvice": [
+        {
+          "principle": "Проверяйте каждое утверждение AI по структурированному evidence, а не только наличие маркера.",
+          "why": "F4: _contains_concrete_evidence возвращает true при любом одном маркере и не проверяет остальные claims; это ослабляет гарантию честного объяснения.",
+          "how": "В следующем хакатоне ограничьте ответ схемой атомарных claims (price, format, language, availability, duration), детерминированно сопоставьте каждый claim с полем evidence и отклоняйте неизвестные claims до рендера.",
+          "findingIds": [
+            "F4"
+          ],
+          "successCheck": "Тест с AI-текстом, содержащим правильную цену, но выдуманную услугу или возможность, отклоняется в fallback; валидный текст проходит по всем атомарным claims.",
+          "timeboxMinutes": 35
+        },
+        {
+          "principle": "Фиксируйте runtime-зависимости после первого успешного запуска.",
+          "why": "F5: requirements задаёт широкие диапазоны, поэтому будущая установка может получить другую версию SDK/UI, даже если доменный код не менялся.",
+          "how": "Для другого хакатона после smoke-run сохраните lock/constraints с версией Python и ключевых SDK, а README укажите команду установки именно этого набора.",
+          "findingIds": [
+            "F5"
+          ],
+          "successCheck": "Чистый контейнер устанавливает зафиксированный набор и повторно проходит build, 19 тестов и health check без изменения отчёта.",
+          "timeboxMinutes": 20
+        }
+      ],
+      "uncertainties": [
+        "Визуальная компоновка, доступность элементов формы и фактический внешний вид карточек не проверялись по прямому запрету на browser/CUA automation.",
+        "OpenAI Responses API с реальным ключом не выполнялся; статический путь запроса, strict schema, timeout и fallback проверены по исходникам.",
+        "Содержимое публичного live demo не оценивалось, поскольку URL отсутствует; локальный Streamlit health подтверждён отдельно."
+      ],
+      "reviewPolicyVersion": 2,
+      "assessmentStatus": "ready",
+      "findings": [
+        {
+          "id": "F1",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Основной deterministic recommendation flow работает на официальном CSV и возвращает корректные состояния, ограничения и порядок.",
+          "expected": "До трёх допустимых карточек, правильное исключение busy dates, различение MATCHED/CATEGORY_NOT_FOUND/NO_MATCH и стабильный порядок.",
+          "actual": "19 тестов прошли; killer-сценарии дали dense HK-88430/HK-29829/HK-44733, rare HK-90009/HK-35846, no-match budget=1 и разные списки для двух дат.",
+          "evidence": [
+            "captures/20261001T223808049217-test.stderr.log",
+            "captures/20261001T223831218032-scenario.stdout.log",
+            "src/recommender.py:33"
+          ],
+          "checkIds": [
+            "test-suite",
+            "runtime-scenario"
+          ]
+        },
+        {
+          "id": "F2",
+          "kind": "strength",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "AI ограничен оркестрацией evidence-grounded explanations и не может изменить deterministic IDs/order.",
+          "expected": "Модель не выбирает кандидатов и не добавляет неизвестные/переставленные карточки.",
+          "actual": "Agent сначала получает deterministic_result, а validate_recommendations сравнивает submitted IDs с повторным deterministic search; malicious/reordered provider cases покрыты тестами.",
+          "evidence": [
+            "src/agent.py:188",
+            "src/agent.py:213",
+            "src/tools.py:70",
+            "tests/test_agent.py:89"
+          ],
+          "checkIds": [
+            "test-suite"
+          ]
+        },
+        {
+          "id": "F3",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "MVP работает без OpenAI API key за счёт deterministic fallback.",
+          "expected": "Отсутствие внешнего ключа не ломает локальный основной сценарий.",
+          "actual": "Тест missing_api_key прошёл, сценарий вернул заполненные объяснения с mode=deterministic_fallback, а Streamlit стартовал без ключа.",
+          "evidence": [
+            "src/agent.py:194",
+            "tests/test_agent.py:169",
+            "captures/20261001T223831218032-scenario.stdout.log",
+            "start-health"
+          ],
+          "checkIds": [
+            "test-suite",
+            "runtime-scenario",
+            "start-health"
+          ]
+        },
+        {
+          "id": "F4",
+          "kind": "defect",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Валидатор OpenAI explanations не выполняет полную проверку каждого фактического утверждения по evidence.",
+          "expected": "Текст карточки должен содержать только подтверждённые claims и быть конкретным для соответствующего подрядчика.",
+          "actual": "_valid_draft проверяет summary, sequence IDs и _contains_concrete_evidence; последняя функция принимает любой один marker из цены, даты, формата, языка или duration и не анализирует прочие claims. README сам отмечает, что claim-level verification не implemented.",
+          "evidence": [
+            "src/agent.py:277",
+            "src/agent.py:294",
+            "README.md:34"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "F5",
+          "kind": "defect",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Зависимости проекта не зафиксированы точными версиями, поэтому среда запуска не является строго воспроизводимой во времени.",
+          "expected": "Повторный чистый запуск должен получать зафиксированные версии runtime-зависимостей или lock/constraints-файл.",
+          "actual": "requirements.txt использует диапазоны openai>=1.40,<4, python-dotenv>=1.0,<2 и streamlit>=1.40,<2; lock-файла в репозитории нет.",
+          "evidence": [
+            "requirements.txt:1",
+            "requirements.txt:2",
+            "requirements.txt:3"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "F7",
+          "kind": "limitation",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Текущий MVP работает с локальным 66-профильным CSV и не подключает live availability, booking или messaging.",
+          "expected": "Production workflow потребует отдельного каталога/календаря и следующих действий после shortlist.",
+          "actual": "catalog.py читает локальный CSV, а README перечисляет live calendar, booking и messaging как отсутствующие функции и будущие направления.",
+          "evidence": [
+            "src/catalog.py:68",
+            "README.md:268",
+            "README.md:276"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "F6",
+          "kind": "limitation",
+          "verification": "unverified",
+          "responsibility": "review_environment",
+          "claim": "Живой OpenAI provider и визуальный UI не были непосредственно подтверждены в рамках этой проверки.",
+          "expected": "Полная внешняя ветка требует предоставленный API key; визуальная проверка выполняется пользователем.",
+          "actual": "Ключ намеренно отсутствовал, поэтому проверены исходники и fallback; Streamlit подтверждён только HTTP health, без browser/CUA инспекции.",
+          "evidence": [
+            "api_requirements",
+            "start-health",
+            "runtime.limitations"
+          ],
+          "checkIds": [
+            "start-health"
+          ]
+        }
+      ],
+      "gapFindingIds": [
+        "F4",
+        "F5"
+      ]
+    }
+  ],
+  "score": 93.5,
+  "status": "complete",
+  "expectedJudges": 1
+}

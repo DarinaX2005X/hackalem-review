@@ -1,0 +1,1061 @@
+{
+  "methodVersion": 4,
+  "repoId": "hack-75766fed-localhosters",
+  "repoUrl": "https://github.com/BAITC-Hacks/hack-75766fed-localhosters",
+  "caseId": 1,
+  "snapshot": "c4f77e0f98f68a24f0bb4e773cd61393d62da36a",
+  "judges": [
+    {
+      "methodVersion": 4,
+      "repoId": "hack-75766fed-localhosters",
+      "caseId": 1,
+      "model": "GPT-5.6 Luna",
+      "snapshot": "c4f77e0f98f68a24f0bb4e773cd61393d62da36a",
+      "overallSummary": "Проект представляет воспроизводимый офлайн-конвейер прогноза ВЭС на 48 часов для двух турбин: архивный прогноз ECMWF выбирается по строгому as-of-правилу, затем выполняются quality gate, подготовка признаков, модель LightGBM/v0, публикация P10/P50/P90, сравнение с предыдущим выпуском, решение publish/reissue и запись трассы. По статическим артефактам и собственным отчётам решение существенно покрывает кейс: есть 29 дневных выпусков и 29 пересчётов февраля 2026, 2 784 строки per-issue и 1 344 строки плоского почасового результата, а на двух holdout-окнах заявлены MAE 0.165–0.188. Скрипт агентской приёмки и production build дашборда прошли. Ограничения: факты февраля 2026 отсутствуют, P10/P90 построены эмпирически вокруг v1, текущий runtime фиксирует границу SCADA вместо использования оперативных SCADA-фич, а полный v1-тест на данном Windows-окружении упирается в нативный abort LightGBM; UI и живой OpenAI-вызов не подтверждались.",
+      "global": {
+        "criteria": [
+          {
+            "name": "Ценность решения",
+            "score": 20,
+            "max": 25,
+            "awarded": "Ценность для диспетчерского цикла прогноза и решения о пересчёте показана убедительно.",
+            "deductions": "Отдельных штрафов не применено; часть максимума удержана из-за отсутствия измеренной экономической ценности и фактов целевого февраля.",
+            "evidence": [
+              "README.md:32-39",
+              "docs/research/backtest-v1.md:17-33",
+              "submission/forecast_test_hourly_plant_v1.csv: заголовок и 672 строки"
+            ],
+            "deductionItems": [
+              {
+                "points": 3,
+                "findingId": "F-07",
+                "reason": "Prediction intervals построены эмпирически вокруг v1, а не отдельной quantile/calibration моделью."
+              },
+              {
+                "points": 2,
+                "findingId": "F-04",
+                "reason": "Оперативная SCADA feedback-часть и drift/residual control пока не исполняются в issue runtime."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Понятный пользовательский сценарий",
+                "implementation": "README связывает выпуск в 18:00 UTC, 48-часовой горизонт, прогноз для двух турбин и решение о пересчёте при новом погодном ране с задачей диспетчера.",
+                "value": "Результат напрямую соответствует заявке ВЭС на сутки вперёд и обновлению заявки после появления нового NWP.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:28-39"
+                ]
+              },
+              {
+                "aspect": "Операционный результат",
+                "implementation": "В выходах есть P10/P50/P90 по часам и отдельный plant-файл с plant_mw и energy_mwh.",
+                "value": "Диспетчер получает не только точечный прогноз, но и интервал неопределённости и агрегат по станции.",
+                "verification": "observed",
+                "evidence": [
+                  "submission/forecast_test_hourly_v1.csv: 1 344 строк, p10/p50/p90",
+                  "submission/forecast_test_hourly_plant_v1.csv: 672 строки, plant_mw/energy_mwh"
+                ]
+              },
+              {
+                "aspect": "Измеримое улучшение",
+                "implementation": "Для января 2026 и февраля 2025 сохранены holdout-метрики v1 и сравнение с медианным и v0-бейзлайнами.",
+                "value": "Отчёты показывают MAE ниже 0.19 на обеих турбинах и существенно лучше медианы последних 7 суток на проверенных окнах.",
+                "verification": "observed",
+                "evidence": [
+                  "reports/backtest_v1_dev.csv: строки model=v1, block=all",
+                  "reports/backtest_v1_feb2025.csv: строки model=v1, block=all",
+                  "docs/research/backtest-v1.md:35-57"
+                ]
+              },
+              {
+                "aspect": "Честно обозначенные пределы",
+                "implementation": "README отдельно указывает, что в феврале 2026 нет фактов, а дашборд является статическим экспортом.",
+                "value": "Заявление о пользе не маскирует отсутствие ground truth для целевого тестового периода.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:257-283"
+                ]
+              }
+            ],
+            "scoreReasoning": "Проблема реальна, пользователь и момент принятия решения понятны, а прогноз и пересчёт представлены в пригодных для эксплуатации форматах. Балл ниже максимума из-за отсутствия фактической оценки февраля 2026 и количественной связи MAE с KZT/операционным эффектом."
+          },
+          {
+            "name": "Результат и качество решения",
+            "score": 16,
+            "max": 20,
+            "awarded": "Основной сценарий и артефакты результата реализованы цельно.",
+            "deductions": "Отдельный штраф не выделен; часть максимума удержана из-за неполной проверки v1 в текущем окружении и ограничений интервалов.",
+            "evidence": [
+              "scripts/verify.py:17-64",
+              "runs/backtest/v1/test/: 58 выпусков с trace.jsonl/decision.json/comparison.json/report.md/forecast.csv",
+              "dashboard build: Vite production build завершён успешно"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "F-04",
+                "reason": "Оперативные SCADA/residual triggers остаются за пределами MVP."
+              },
+              {
+                "points": 2,
+                "findingId": "F-07",
+                "reason": "P10/P90 пока эмпирические, а не отдельные quantile heads."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Полный выпускной цикл",
+                "implementation": "run_issue последовательно читает память, фиксирует часы, выбирает NWP, выполняет quality gate, готовит признаки, вызывает модель, сравнивает выпуск, сохраняет прогноз, отчёт и memory.",
+                "value": "Сценарий не сводится к отдельному CSV: есть связанный агентский процесс и постфактум объяснимый результат.",
+                "verification": "source",
+                "evidence": [
+                  "windagent/agent/runtime.py:176-270",
+                  "README.md:69-81"
+                ]
+              },
+              {
+                "aspect": "Результат тестового периода",
+                "implementation": "Сохранены 29 dayahead-выпусков и 29 reissue, а также per-issue, hourly и plant CSV.",
+                "value": "Формат покрывает как проверку происхождения каждой строки, так и использование плоского почасового результата.",
+                "verification": "observed",
+                "evidence": [
+                  "submission/forecast_test_dayahead_v1.csv: 2 784 строки",
+                  "submission/forecast_test_intraday_v1.csv: 2 784 строки",
+                  "submission/forecast_test_hourly_v1.csv: 1 344 строки",
+                  "runs/backtest/v1/test/: 58 папок; trace_counts=[11]"
+                ]
+              },
+              {
+                "aspect": "Проверка плохих входов",
+                "implementation": "Приёмочный скрипт проверяет поздний NWP-run, пропущенный час и запрет demo-данных в production-режиме.",
+                "value": "Критические ошибки входа не превращаются молча в прогноз.",
+                "verification": "observed",
+                "evidence": [
+                  "scripts/verify.py:39-58",
+                  "check verify-script: PASS: 11 steps, 96 rows, 06Z→12Z revision, no future memory, rejected late/missing/demo inputs, TestModel"
+                ]
+              },
+              {
+                "aspect": "Наблюдаемость результата",
+                "implementation": "Каждый trace содержит 11 шагов, а выпуск сопровождается decision, comparison, status, report и memory.",
+                "value": "Можно восстановить, какой run использовался и почему была опубликована новая версия.",
+                "verification": "observed",
+                "evidence": [
+                  "docs/architecture.md:16-27",
+                  "runs/backtest/v1/test/*/trace.jsonl: по 11 строк",
+                  "runs/backtest/v1/test/*/decision.json"
+                ]
+              }
+            ],
+            "scoreReasoning": "Артефакты и scripted acceptance check подтверждают цельный основной сценарий, включая реальный пересчёт 06Z→12Z. Полные runtime-проверки v1 на этом Windows-узле не завершились из-за native abort при загрузке LightGBM, а интервалы являются временной эмпирической конструкцией, поэтому максимальный балл не присуждён."
+          },
+          {
+            "name": "Инновационность",
+            "score": 12,
+            "max": 15,
+            "awarded": "Нестандартность выражена в provenance/as-of и агентском контуре принятия решения.",
+            "deductions": "Отдельных штрафов не применено; подход остаётся практичным MVP, а не новым классом forecasting-модели.",
+            "evidence": [
+              "windagent/clock.py:31-60",
+              "windagent/agent/planner.py:8-75",
+              "docs/architecture.md:14-29",
+              "reports/llm_replay_test.md:1-24"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "F-04",
+                "reason": "Agentic novelty в основном orchestration-level: online feedback loop пока не исполняется."
+              },
+              {
+                "points": 1,
+                "findingId": "F-07",
+                "reason": "Uncertainty implementation остаётся эмпирическим расширением v0, а не отдельным новым quantile-подходом."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "As-of provenance",
+                "implementation": "Для циклов 00Z/06Z/12Z/18Z заданы разные задержки публикации, а assert_as_of отклоняет ран, доступный только после момента выпуска.",
+                "value": "Это адресует главный риск исторического replay — утечку будущей погоды — на уровне каждой строки и каждого выпуска.",
+                "verification": "observed",
+                "evidence": [
+                  "windagent/clock.py:31-49",
+                  "tests/test_clock_no_leakage.py: проверки 12Z в 19:00 и submission CSV"
+                ]
+              },
+              {
+                "aspect": "LLM как планировщик, а не числовая модель",
+                "implementation": "Pydantic AI выдаёт структурированный IssueDecision для publish/reissue, тогда как числовой прогноз остаётся у модели.",
+                "value": "Разделение снижает риск того, что LLM самовольно изменит прогноз или подменит измеренные входы.",
+                "verification": "source",
+                "evidence": [
+                  "windagent/agent/planner.py:8-23",
+                  "README.md:67, 85-87"
+                ]
+              },
+              {
+                "aspect": "Проверяемый fallback",
+                "implementation": "Ответ планировщика проверяется на использованный run, corrections и согласованность с quality gate; при ошибке OpenAI используется ScriptedPlanner.",
+                "value": "LLM является обратимой политикой принятия решения, а не единственной точкой отказа.",
+                "verification": "source",
+                "evidence": [
+                  "windagent/agent/runtime.py:227-244",
+                  "tests/test_llm_fallback.py: сценарии fallback"
+                ]
+              },
+              {
+                "aspect": "Версионированный reissue",
+                "implementation": "Новый погодный run создаёт отдельную выпускную папку с comparison и decision, а не перезаписывает прошлый выпуск.",
+                "value": "Подход сохраняет историю изменений прогноза и объяснение для оператора.",
+                "verification": "observed",
+                "evidence": [
+                  "runs/backtest/v1/test/*-reissue/",
+                  "windagent/agent/runtime.py:181-185, 222-248"
+                ]
+              }
+            ],
+            "scoreReasoning": "Самая сильная оригинальная часть — не выбор LightGBM, а честный as-of replay и агентский publish/reissue с проверяемым LLM fallback. До максимума не хватает более самостоятельного real-time decision loop и принципиально нового метода uncertainty/modeling."
+          },
+          {
+            "name": "Потенциал развития и масштабирования",
+            "score": 15,
+            "max": 20,
+            "awarded": "Компонентная схема и контракты дают хороший путь к расширению.",
+            "deductions": "Отдельных штрафов не применено; снижено за статический дашборд, один погодный источник и незавершённые online-триггеры.",
+            "evidence": [
+              "pyproject.toml: зависимости и контракт пакета",
+              "windagent/model/serve.py:76-95",
+              "docs/architecture.md:20-27",
+              "README.md:272-283"
+            ],
+            "deductionItems": [
+              {
+                "points": 3,
+                "findingId": "F-04",
+                "reason": "Неисполненные online feedback triggers и отсутствие оперативных SCADA-фич ограничивают переход к production-scale эксплуатации."
+              },
+              {
+                "points": 2,
+                "findingId": "F-07",
+                "reason": "Интервалы не имеют отдельной quantile/calibration модели, что ограничивает переносимость uncertainty на новые режимы."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Контракт адаптера модели",
+                "implementation": "Production runtime принимает model_adapter module:function и валидирует PowerForecast, включая turbine, origin и horizon.",
+                "value": "Модель можно заменить без переписывания orchestration-цикла.",
+                "verification": "source",
+                "evidence": [
+                  "windagent/agent/runtime.py:111-132",
+                  "windagent/model/serve.py:76-95"
+                ]
+              },
+              {
+                "aspect": "Две турбины и агрегат станции",
+                "implementation": "Архив, модель и submission поддерживают T1/T2, per-turbine прогноз и station-level plant_mw/energy_mwh.",
+                "value": "Решение уже выходит за рамки демонстрации одной временной серии.",
+                "verification": "observed",
+                "evidence": [
+                  "submission/forecast_test_hourly_plant_v1.csv",
+                  "tests/test_scada.py",
+                  "README.md:32"
+                ]
+              },
+              {
+                "aspect": "Офлайн-воспроизводимость",
+                "implementation": "uv.lock, кеши NWP, модели, Dockerfile и тестовые fixtures позволяют повторить replay без внешней сети в scripted-режиме.",
+                "value": "Архитектура пригодна для переноса на другой узел с тем же архивным контрактом.",
+                "verification": "source",
+                "evidence": [
+                  "uv.lock",
+                  "Dockerfile:1-26",
+                  "README.md:108-145"
+                ]
+              },
+              {
+                "aspect": "Явный backlog развития",
+                "implementation": "Документация фиксирует pending bias correction, residual/drift triggers, live SCADA и замену эмпирических интервалов квантильными моделями.",
+                "value": "Ограничения превращены в конкретные направления следующей итерации, а не скрыты за общим обещанием масштабирования.",
+                "verification": "source",
+                "evidence": [
+                  "docs/architecture.md:18-27",
+                  "README.md:272-283",
+                  "docs/research/backtest-v1.md:65-71"
+                ]
+              }
+            ],
+            "scoreReasoning": "Разделение runtime, weather cache, model adapter и UI хорошо масштабируется на новые модели и турбины. Однако текущий дашборд — статический экспорт, оперативные SCADA-триггеры не исполняются, а primary weather source один, поэтому потенциал скорее высокий для MVP, чем готовый production-scale."
+          },
+          {
+            "name": "Презентация, демо и ответы на вопросы",
+            "score": 20,
+            "max": 20,
+            "awarded": "README, architecture notes и подготовленные demo-артефакты хорошо объясняют решение.",
+            "deductions": "Отдельных штрафов не применено; живое UI и ответы на вопросы не оценивались визуально по заданному ограничению проверки.",
+            "evidence": [
+              "README.md:1-24, 217-283",
+              "docs/architecture.md:1-29",
+              "dashboard/src/main.jsx:20-58, 109-139",
+              "liveDemo: claimed, визуально не подтверждено"
+            ],
+            "deductionItems": [],
+            "awardedDetails": [
+              {
+                "aspect": "Структурированный README",
+                "implementation": "README содержит назначение, схему, команды setup/verify/backtest, env-параметры, структуру выходов, метрики и ограничения.",
+                "value": "Новый проверяющий может понять, что делает система и где искать артефакты, без чтения всего исходного дерева.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:26-104",
+                  "README.md:127-255"
+                ]
+              },
+              {
+                "aspect": "Объяснимый демонстрационный сюжет",
+                "implementation": "Репозиторий сохраняет пример initial issue, reissue, decision, comparison и trace, а README даёт конкретные даты для ручной проверки артефактов.",
+                "value": "Демо можно строить вокруг наблюдаемого изменения 06Z→12Z, а не только вокруг скриншота результата.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:245-255",
+                  "reports/llm_replay_test.md:13-24"
+                ]
+              },
+              {
+                "aspect": "Понятная визуальная модель данных",
+                "implementation": "React-дашборд загружает экспортированные JSON, показывает серии по турбине/станции, P10/P90, actual и UTC+6 подписи.",
+                "value": "Заявленный UI-сценарий соответствует данным submission и trace.",
+                "verification": "source",
+                "evidence": [
+                  "dashboard/src/main.jsx:20-58",
+                  "dashboard/src/main.jsx:109-139",
+                  "dashboard build: 23 modules transformed"
+                ]
+              },
+              {
+                "aspect": "Честная коммуникация неопределённости",
+                "implementation": "Документация явно отделяет scripted от openai, указывает отсутствие фактов февраля и перечисляет незавершённые ограничения.",
+                "value": "Пользователь не получает ложного впечатления, что тестовая точность февраля уже измерена.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:83-89",
+                  "README.md:272-283"
+                ]
+              }
+            ],
+            "scoreReasoning": "Документальная часть сильная, а production build дашборда проходит. Поскольку визуальная проверка, запуск live-сервера и ответы команды не были доступны в этой процедуре, балл ограничен уровнем подтверждённой документации и статических артефактов."
+          }
+        ],
+        "total": 83
+      },
+      "case": {
+        "criteria": [
+          {
+            "name": "Соответствие задаче и работоспособность",
+            "score": 23,
+            "max": 25,
+            "awarded": "Основной заявленный сценарий прогноза и повторного расчёта реализован и представлен артефактами.",
+            "deductions": "Максимум не присуждён из-за неполной проверки production v1 на текущем Windows runner; статически подтверждённые outputs и scripted acceptance остаются рабочими.",
+            "evidence": [
+              "cases/1/task.txt",
+              "windagent/agent/runtime.py:176-270",
+              "submission/forecast_test_dayahead_v1.csv: 2 784 строки",
+              "submission/forecast_test_intraday_v1.csv: 2 784 строки",
+              "scripts/verify.py:17-64"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "F-04",
+                "reason": "Оперативные feedback controls остаются незавершёнными в MVP."
+              },
+              {
+                "points": 1,
+                "findingId": "F-07",
+                "reason": "Целевой результат использует эмпирические интервалы вместо отдельной quantile uncertainty-модели."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Почасовой горизонт 24–48 часов",
+                "implementation": "Settings и runtime используют 48 часов; для каждой из двух турбин формируется часовой результат с target_time, lead_h и p10/p50/p90.",
+                "value": "Это полностью покрывает требование кейса о почасовом прогнозе на следующие 24–48 часов.",
+                "verification": "observed",
+                "evidence": [
+                  "windagent/clock.py:19-21",
+                  "submission/forecast_test_hourly_v1.csv",
+                  "submission/forecast_test_dayahead_v1.csv"
+                ]
+              },
+              {
+                "aspect": "Последовательный февральский replay",
+                "implementation": "Сохранены 29 дневных выпусков для 31.01–28.02.2026 и отдельные 29 reissue на новом 12Z ране.",
+                "value": "Процесс соответствует требованию моделировать историю день за днём, а не строить один hindsight-прогноз.",
+                "verification": "observed",
+                "evidence": [
+                  "docs/research/backtest-v1.md:17-33",
+                  "runs/backtest/v1/test/: 58 папок",
+                  "README.md:168-191"
+                ]
+              },
+              {
+                "aspect": "Проверка работоспособности агентского сценария",
+                "implementation": "scripts.verify создаёт два выпуска на fixtures, проверяет 11 шагов, 96 строк на выпуск, reissue, no future memory и rejection плохих входов.",
+                "value": "Критическая orchestration-логика проверена исполняемым acceptance-тестом, а не только README.",
+                "verification": "observed",
+                "evidence": [
+                  "check verify-script: exit 0",
+                  "scripts/verify.py:25-64"
+                ]
+              },
+              {
+                "aspect": "Согласованные форматы выдачи",
+                "implementation": "Выпускаются per-issue CSV, плоский hourly CSV по турбинам и plant-level CSV.",
+                "value": "Один и тот же результат можно проверять на уровне происхождения run, часа турбины и станции.",
+                "verification": "observed",
+                "evidence": [
+                  "submission/forecast_test_dayahead_v1.csv",
+                  "submission/forecast_test_hourly_v1.csv",
+                  "submission/forecast_test_hourly_plant_v1.csv"
+                ]
+              }
+            ],
+            "scoreReasoning": "По содержанию и сохранённым артефактам кейсовый workflow покрыт почти полностью: есть исторически доступные погодные runs, два типа выпуска, часовая детализация и rejection тесты. Снижение минимальное и связано с тем, что native LightGBM load abort не позволил заново завершить полный v1 acceptance на этой Windows-машине; это не отменяет уже сохранённые replay-артефакты."
+          },
+          {
+            "name": "Техническая реализация",
+            "score": 22,
+            "max": 25,
+            "awarded": "Архитектура технически зрелая для MVP и фактически соответствует заявленной логике.",
+            "deductions": "Снижение отражает незавершённые real-time части и временную природу uncertainty; отдельный штраф за отсутствие OpenAI credentials не применялся.",
+            "evidence": [
+              "docs/architecture.md:14-29",
+              "windagent/clock.py:31-49",
+              "windagent/agent/planner.py:8-75",
+              "windagent/model/serve.py:37-95"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "F-04",
+                "reason": "Оперативная feedback-петля ограничивает production-ready полноту технического решения."
+              },
+              {
+                "points": 2,
+                "findingId": "F-07",
+                "reason": "Отдельная quantile-модель и calibration остаются незавершёнными MVP-частями."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Leak-safe weather selection",
+                "implementation": "available_at и allowed_runs используют cycle-specific lag; fetch_nwp_forecast выбирает только eligible archive run и повторно вызывает assert_as_of.",
+                "value": "Решение технически адресует самую опасную для этого кейса ошибку — использование будущего погодного знания.",
+                "verification": "observed",
+                "evidence": [
+                  "windagent/clock.py:31-47",
+                  "windagent/agent/runtime.py:67-98",
+                  "tests/test_clock_no_leakage.py:1-73"
+                ]
+              },
+              {
+                "aspect": "Модель и feature contract",
+                "implementation": "v1 строит lead-aligned признаки Single Runs/Previous Runs, смешивает LightGBM с v0, а serve валидирует порядок features и PowerForecast contract.",
+                "value": "Training/serving mismatch и нарушение границ прогноза обнаруживаются контрактами и тестами.",
+                "verification": "source",
+                "evidence": [
+                  "windagent/model/v1.py:1-110",
+                  "windagent/model/serve.py:37-64",
+                  "tests/test_feature_schema.py:25-110"
+                ]
+              },
+              {
+                "aspect": "Agentic decision layer",
+                "implementation": "Pydantic AI получает quality, available run и revision context через read-only tools; результат IssueDecision ограничен кодами причин.",
+                "value": "LLM используется там, где он уместен — для объяснимого decision policy, а не для неконтролируемой генерации чисел.",
+                "verification": "source",
+                "evidence": [
+                  "windagent/agent/planner.py:8-75",
+                  "windagent/agent/runtime.py:227-244"
+                ]
+              },
+              {
+                "aspect": "Reproducible trace",
+                "implementation": "В trace и inputs сохраняются шаги, параметры, weather run, cache sha256, decision, comparison и memory.",
+                "value": "Технический результат пригоден для аудита и объяснения расхождения между выпусками.",
+                "verification": "observed",
+                "evidence": [
+                  "windagent/agent/runtime.py:186-212",
+                  "docs/architecture.md:25",
+                  "runs/backtest/v1/test/*/inputs.json"
+                ]
+              }
+            ],
+            "scoreReasoning": "Техническая часть сильнее среднего MVP: есть собственный runtime, contracts, as-of clock, fallback и трассировка, причём заявленная логика совпадает с кодом. Не максимум из-за того, что SCADA в момент выпуска фактически только фиксирует as-of boundary, residual/drift triggers помечены pending, а P10/P90 пока не являются отдельной quantile-моделью."
+          },
+          {
+            "name": "README и воспроизводимость",
+            "score": 21,
+            "max": 25,
+            "awarded": "Документация подробно описывает установку, команды, структуру данных, сценарий, метрики и ограничения.",
+            "deductions": "2 балла за падение Windows-проверки из-за сравнения CRLF/LF и 2 балла за необходимость принудительного UTF-8 для вывода scripts.verify на этой Windows-консоли.",
+            "evidence": [
+              "README.md:108-255",
+              "Dockerfile:1-26",
+              "pyproject.toml:1-35",
+              "check pytest-non-model: 54 passed, 1 failed",
+              "check verify-script-default: UnicodeEncodeError at scripts/verify.py:60"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "F-01",
+                "reason": "test_full_archive_rebuild_without_any_network восстанавливает данные, но затем сравнивает сгенерированный nwp-sources.md побайтно и получает LF вместо CRLF на Windows."
+              },
+              {
+                "points": 2,
+                "findingId": "F-02",
+                "reason": "Обычный запуск scripts.verify выполняет проверки, но падает на печати символа стрелки в cp1251-консоли; запуск с -X utf8 проходит."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Пошаговый запуск",
+                "implementation": "README перечисляет setup, verify, backtest, issue, llm-replay, dashboard, Docker и test, а также зависимости и env-переменные.",
+                "value": "Проект можно быстро сориентировать на чужой машине и выбрать нужный уровень проверки.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:8-18",
+                  "README.md:108-159"
+                ]
+              },
+              {
+                "aspect": "Воспроизводимый offline replay",
+                "implementation": "uv.lock, закоммиченные кеши, модели, fixtures и Dockerfile описаны как основа воспроизведения без ключа.",
+                "value": "Основной scripted-сценарий не зависит от внешнего OpenAI API.",
+                "verification": "observed",
+                "evidence": [
+                  "README.md:121-145",
+                  "Dockerfile:8-26",
+                  "check verify-script: exit 0"
+                ]
+              },
+              {
+                "aspect": "Документированная проверка",
+                "implementation": "README приводит ожидаемые PASS-строки, структуру 58 выпусков и ручные пути к decision.json.",
+                "value": "Проверяющий получает конкретные признаки успеха, а не только общую команду запуска.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:217-255"
+                ]
+              },
+              {
+                "aspect": "Согласование документации и фактов",
+                "implementation": "Сохранённые CSV, reports и trace соответствуют описанным размерам и окнам; production dashboard build также завершён.",
+                "value": "README не ограничивается презентационным описанием и ссылается на реально присутствующие артефакты.",
+                "verification": "observed",
+                "evidence": [
+                  "submission/forecast_test_dayahead_v1.csv",
+                  "reports/backtest_v1_dev.csv",
+                  "reports/backtest_v1_feb2025.csv",
+                  "dashboard build: exit 0"
+                ]
+              }
+            ],
+            "scoreReasoning": "README заметно выше обычного hackathon уровня и закрывает большую часть вопросов воспроизводимости. Две конкретные Windows-портируемые проблемы подтверждены запуском: побайтный newline assertion и cp1251-несовместимый символ в verify output. Они не ломают Linux/macOS сценарий, но уменьшают практическую воспроизводимость на данном типе среды."
+          },
+          {
+            "name": "Ценность и применимость решения",
+            "score": 12,
+            "max": 15,
+            "awarded": "Показана прикладная ценность прогноза и контролируемого пересчёта для оператора ВЭС.",
+            "deductions": "Отдельных штрафов не применено; нет фактической валидации на феврале 2026 и количественной бизнес-модели.",
+            "evidence": [
+              "README.md:28-39",
+              "docs/research/backtest-v1.md:35-64",
+              "submission/forecast_test_hourly_plant_v1.csv"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "F-07",
+                "reason": "Нет отдельной calibration/value-модели для интервалов и их влияния на операционное решение."
+              },
+              {
+                "points": 1,
+                "findingId": "F-04",
+                "reason": "Применимость к online диспетчерскому циклу ограничена отсутствием оперативной SCADA feedback-петли."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Целевая роль диспетчера",
+                "implementation": "Выход даёт прогноз станции, интервалы P10/P90 и причину reissue при новом NWP.",
+                "value": "Это непосредственно поддерживает планирование заявки и оценку необходимости обновления.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:32-39",
+                  "windagent/agent/runtime.py:249-263"
+                ]
+              },
+              {
+                "aspect": "Практическая точность",
+                "implementation": "Holdout dev и Feb 2025 оцениваются на полном горизонте 48 часов и отдельно по блокам h1–24/h25–48.",
+                "value": "Польза выражена не только в наличии модели, но и в сравнении с бейзлайнами.",
+                "verification": "observed",
+                "evidence": [
+                  "docs/research/backtest-v1.md:35-57",
+                  "reports/backtest_v1_dev.csv",
+                  "reports/backtest_v1_feb2025.csv"
+                ]
+              },
+              {
+                "aspect": "Ограничения применимости",
+                "implementation": "Проект указывает, что в момент выпуска SCADA не используется как оперативный feature source, а метрики февраля 2026 неизвестны.",
+                "value": "Пользователь может правильно интерпретировать MVP и не принимать holdout-метрику за гарантию будущего периода.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:272-283"
+                ]
+              }
+            ],
+            "scoreReasoning": "Для энергетического оператора связь задачи и результата ясна, а качество на доступных holdout-окнах хорошее. До 15 баллов не хватает проверки именно тестового февраля и value-метрики, например влияния прогноза на стоимость отклонения или качество заявки."
+          },
+          {
+            "name": "Потенциал развития и оригинальность подхода",
+            "score": 8,
+            "max": 10,
+            "awarded": "Комбинация as-of provenance, версионированного reissue и ограниченного LLM planner даёт самостоятельный инженерный почерк.",
+            "deductions": "Отдельных штрафов не применено; часть максимума удержана за статический dashboard и незавершённые online extensions.",
+            "evidence": [
+              "windagent/clock.py:1-60",
+              "windagent/agent/planner.py:26-75",
+              "docs/architecture.md:25-29",
+              "README.md:272-283"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "F-04",
+                "reason": "Неисполненные online triggers ограничивают дальнейшее расширение в сторону real-time operations."
+              },
+              {
+                "points": 1,
+                "findingId": "F-07",
+                "reason": "Эмпирические интервалы ограничивают перенос uncertainty на новые режимы и площадки."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Нестандартная честность исторического replay",
+                "implementation": "Каждый прогноз содержит run_init, available_at и nwp_lead, а clock различает доступность циклов.",
+                "value": "Такой provenance существенно полезнее простого hindsight backtest для прикладного weather forecasting.",
+                "verification": "observed",
+                "evidence": [
+                  "windagent/clock.py:1-49",
+                  "submission/forecast_test_dayahead_v1.csv"
+                ]
+              },
+              {
+                "aspect": "Контролируемый agentic AI",
+                "implementation": "LLM планирует решение и объяснение через ограниченный контекст, а измеренные факты и числовой прогноз остаются детерминированными.",
+                "value": "Это более надёжный компромисс для операционного MVP, чем генерация прогноза свободным текстом.",
+                "verification": "source",
+                "evidence": [
+                  "docs/architecture.md:14,29",
+                  "windagent/agent/runtime.py:227-244"
+                ]
+              },
+              {
+                "aspect": "Масштабируемые направления",
+                "implementation": "Документация выделяет quantile models, live SCADA, residual/drift triggers и дополнительные источники как конкретный следующий scope.",
+                "value": "У решения есть понятная траектория от MVP к эксплуатации, без обещания уже реализованных возможностей.",
+                "verification": "source",
+                "evidence": [
+                  "docs/architecture.md:18-27",
+                  "README.md:272-283"
+                ]
+              }
+            ],
+            "scoreReasoning": "Подход оригинален прежде всего системной инженерией агентского replay и provenance, а не экзотической ML-моделью. Для максимума не хватает уже работающих online feedback loops и live dashboard/service вместо статического экспорта."
+          }
+        ],
+        "total": 86
+      },
+      "judgeScore": 84.5,
+      "caseRequirements": [
+        {
+          "requirement": "Построить модель прогнозирования выработки по историческим данным двух турбин.",
+          "status": "met",
+          "explanation": "В репозитории есть обработка SCADA, v0 physical baseline и v1 LightGBM blend; модельные артефакты и holdout reports сохранены.",
+          "evidence": [
+            "windagent/data/scada.py:1-120",
+            "windagent/model/v0.py",
+            "windagent/model/v1.py:1-110",
+            "models/lightgbm_v1.txt",
+            "reports/backtest_v1_dev.csv"
+          ]
+        },
+        {
+          "requirement": "Самостоятельно получать архивные погодные прогнозы по координатам из открытого источника, доступные на момент выпуска.",
+          "status": "met",
+          "explanation": "Weather tooling и закоммиченный Open-Meteo Single Runs cache используют ECMWF IFS с run_init/available_at; runtime выбирает только eligible run и валидирует as-of.",
+          "evidence": [
+            "windagent/tools/weather.py",
+            "windagent/agent/runtime.py:45-98",
+            "windagent/clock.py:31-47",
+            "README.md:83,304-308"
+          ]
+        },
+        {
+          "requirement": "Формировать почасовой прогноз на горизонте 24–48 часов.",
+          "status": "met",
+          "explanation": "Основной горизонт — 48 часов; есть per-issue прогнозы, плоские 1 344 строки для двух турбин и plant-level 672 часа.",
+          "evidence": [
+            "windagent/clock.py:19-21",
+            "submission/forecast_test_dayahead_v1.csv",
+            "submission/forecast_test_hourly_v1.csv",
+            "submission/forecast_test_hourly_plant_v1.csv"
+          ]
+        },
+        {
+          "requirement": "Реализовать полный Agentic AI цикл: погода → подготовка → модель → прогноз → анализ → повторный расчёт.",
+          "status": "met",
+          "explanation": "run_issue реализует 11 шагов, trace, decision, comparison, report и memory; ScriptedPlanner и OpenAIPlanner используют общий контракт.",
+          "evidence": [
+            "windagent/agent/runtime.py:176-270",
+            "windagent/agent/planner.py:8-75",
+            "runs/backtest/v1/test/*/trace.jsonl",
+            "scripts/verify.py:25-64"
+          ]
+        },
+        {
+          "requirement": "Воспроизвести каждый день тестового февраля 2026 с as-issued погодой, а не с поздними фактическими значениями.",
+          "status": "met",
+          "explanation": "Сохранены 29 дневных выпусков 31.01–28.02, отдельные 29 reissue, nwp_run_init_utc и проверка rejection 12Z в 19:00 UTC.",
+          "evidence": [
+            "docs/research/backtest-v1.md:17-33",
+            "runs/backtest/v1/test/",
+            "submission/forecast_test_dayahead_v1.csv",
+            "tests/test_clock_no_leakage.py:1-73"
+          ]
+        },
+        {
+          "requirement": "Предоставить воспроизводимые материалы и понятный порядок запуска.",
+          "status": "partial",
+          "explanation": "README, uv.lock, Dockerfile, fixtures и acceptance scripts присутствуют, а dashboard build проходит. На Windows обнаружены newline/console-encoding проблемы, поэтому кроссплатформенная воспроизводимость не полностью подтверждена.",
+          "evidence": [
+            "README.md:108-255",
+            "uv.lock",
+            "Dockerfile:1-26",
+            "check dashboard-build: exit 0",
+            "F-01",
+            "F-02"
+          ]
+        }
+      ],
+      "testData": {
+        "provided": [
+          "cases/1/case-data/Dataset HackAlemAI для участников 11.03.2023-28.02.2026 - turbine 1.csv",
+          "cases/1/case-data/Dataset HackAlemAI для участников 11.03.2023-28.02.2026 - turbine 2.csv",
+          "cases/1/case-data/HackAlem AI_ Agentic AI для прогнозирования выработки ВЭС.md"
+        ],
+        "used": [
+          "Проектные копии данных в task context/ и data/processed/scada_hourly.parquet",
+          "data/nwp_cache/single_runs/ecmwf_ifs/ и data/nwp_cache/previous_runs/",
+          "Сохранённые submission/forecast_test_*_v1.csv и reports/backtest_v1_{dev,feb2025}*.csv",
+          "tests/fixtures/nwp/ для изолированного acceptance-сценария"
+        ],
+        "checks": [
+          {
+            "input": "Два demo NWP выпуска: 06Z в 18:00 UTC и 12Z в 20:00 UTC, плюс поздний run, пропущенный час и demo в production.",
+            "method": "uv run python -X utf8 -m scripts.verify",
+            "result": "exit 0; PASS: 11 steps, 96 rows, 06Z→12Z revision, no future memory, rejected late/missing/demo inputs, TestModel.",
+            "conclusion": "Основной orchestration-контур, quality gate, reissue, память и LLM contract fixture проходят."
+          },
+          {
+            "input": "Закоммиченные тестовые submission и исходные модели/кеши.",
+            "method": "Статическая проверка CSV, run directories и JSON metadata; подсчёт строк и проверка p10≤p50≤p90 по присутствующим v1 CSV.",
+            "result": "dayahead/intraday по 2 784 строки, hourly по 1 344 строки, plant по 672 строки; пустых p10/p50/p90 в per-issue/hourly v1 не найдено; 58 run-папок, trace_counts=[11].",
+            "conclusion": "Сохранённые артефакты соответствуют заявленной структуре тестового replay."
+          },
+          {
+            "input": "Unit/domain checks без test_feature_schema::test_public_contract и без test_model_v1::test_committed_model_artifact_has_canonical_feature_order.",
+            "method": "uv run python -X utf8 -m pytest -q --ignore=tests/test_feature_schema.py --ignore=tests/test_model_v1.py",
+            "result": "54 passed, 1 failed; единственный fail — test_full_archive_rebuild_without_any_network: побайтное различие LF/CRLF в сгенерированном docs/research/nwp-sources.md.",
+            "conclusion": "Большинство domain/weather/SCADA/metrics/fallback checks проходят; F-01 ограничивает Windows portability."
+          },
+          {
+            "input": "Тесты feature schema и model v1.",
+            "method": "uv run python -X utf8 -m pytest -q tests/test_feature_schema.py -k 'not public_contract and not predict_is_ordered_and_blended and not v1_adapter_returns_valid_power_forecast'; uv run python -X utf8 -m pytest -q tests/test_model_v1.py -k 'not committed_model_artifact_has_canonical_feature_order'",
+            "result": "7 feature-schema tests passed, 3 model-v1 tests passed; test_public_contract и тесты, реально загружающие committed LightGBM Booster, завершаются native Python abort в lightgbm.basic.py:3800.",
+            "conclusion": "Схема/holdout-логика в доступных тестах проходит, но повторная загрузка production Booster не подтверждена этим Windows runtime."
+          },
+          {
+            "input": "dashboard/package-lock.json и dashboard/src/main.jsx.",
+            "method": "npm ci --ignore-scripts; npm run build",
+            "result": "exit 0; Vite 7.3.6, 23 modules transformed, production dist собран.",
+            "conclusion": "Статическая сборка UI проходит; это не является визуальной или browser-проверкой."
+          },
+          {
+            "input": "reports/backtest_v1_dev.csv, reports/backtest_v1_feb2025.csv и reports/llm_replay_test.md.",
+            "method": "Чтение сохранённых отчётов и сверка ключевых строк/агрегатов.",
+            "result": "Jan 2026 v1 all: T1 MAE 0.171376, T2 MAE 0.175; Feb 2025: T1 0.164782, T2 0.188; LLM replay: 58/58 совпадений, 0 fallback.",
+            "conclusion": "Есть количественная holdout-валидация и сохранённое свидетельство agentic planner replay, но не фактическая метрика февраля 2026."
+          }
+        ],
+        "limitations": [
+          "В предоставленном кейсом диапазоне нет фактов SCADA за февраль 2026, поэтому его качество не измерено.",
+          "Нативный abort LightGBM при загрузке committed Booster наблюдался на Windows review runner; причина не установлена как однозначно проектная или системная.",
+          "Полная visual/browser-проверка дашборда не выполнялась по политике пользовательской визуальной верификации.",
+          "OpenAI API credentials не предоставлены; live внешний вызов не запускался, использованы сохранённые project-owned replay reports и локальный TestModel.",
+          "Полный Docker verification не запускался; production build UI и локальный scripted acceptance проверены отдельно."
+        ]
+      },
+      "runtime": {
+        "status": "partial",
+        "build": "uv sync --frozen --extra dev завершён успешно; npm ci --ignore-scripts и npm run build завершены успешно, Vite собрал dist.",
+        "start": "HTTP/UI сервер не запускался; для UI не выполнялась автоматическая навигация или визуальная проверка.",
+        "scenario": "Проверен offline scripted issue/reissue на fixtures и статически проверены сохранённые реальные replay-артефакты test-февраля. Live OpenAI и Docker сценарий не запускались.",
+        "environment": "Windows runner, Python 3.12.10 в uv-managed .venv, uv 0.6.9, LightGBM 4.7.0, Node/npm с Vite 7.3.6; ключи OpenAI отсутствуют.",
+        "summary": "Acceptance-проверка скрипта прошла, production UI build прошёл, большинство non-model тестов прошло. Полный pytest не достиг завершения из-за native abort при загрузке LightGBM; отдельный dataset rebuild test также обнаружил Windows LF/CRLF mismatch.",
+        "checks": [
+          {
+            "command": "uv run python -X utf8 -m scripts.verify",
+            "result": "PASS: 11 steps, 96 rows, 06Z→12Z revision, no future memory, rejected late/missing/demo inputs, TestModel.",
+            "id": "verify-script",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Два выпуска проходят через агент, поздние/неполные/demo входы отвергаются, reissue и контракт решения валидируются."
+          },
+          {
+            "command": "uv run python -X utf8 -m pytest -q --ignore=tests/test_feature_schema.py --ignore=tests/test_model_v1.py",
+            "result": "54 passed, 1 failed: test_full_archive_rebuild_without_any_network; generated nwp-sources.md отличается LF/CRLF.",
+            "id": "pytest-non-model",
+            "stage": "scenario",
+            "status": "fail",
+            "cause": "project",
+            "expected": "Все domain/weather/SCADA/metrics/fallback тесты должны завершиться успешно, включая offline rebuild."
+          },
+          {
+            "command": "uv run python -X utf8 -m pytest -q tests/test_feature_schema.py::test_public_contract",
+            "result": "Python process aborted natively in lightgbm.basic.py:3800 while constructing lgb.Booster in windagent/model/serve.py:42.",
+            "id": "lightgbm-load",
+            "stage": "scenario",
+            "status": "blocked",
+            "cause": "review_environment",
+            "expected": "Committed LightGBM model loads and feature names match metadata.FEATURES."
+          },
+          {
+            "command": "npm ci --ignore-scripts; npm run build",
+            "result": "PASS: Vite 7.3.6, 23 modules transformed, dist/index.html and bundled assets emitted.",
+            "id": "dashboard-build",
+            "stage": "build",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Dashboard source compiles into a production bundle."
+          },
+          {
+            "command": "uv run python -X utf8 -m pytest -q tests/test_feature_schema.py -k 'not public_contract and not predict_is_ordered_and_blended and not v1_adapter_returns_valid_power_forecast'; uv run python -X utf8 -m pytest -q tests/test_model_v1.py -k 'not committed_model_artifact_has_canonical_feature_order'",
+            "result": "7 feature-schema tests passed and 3 model-v1 tests passed; only checks requiring committed Booster load were not runnable after native abort.",
+            "id": "model-domain-subset",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Leak-safe feature construction, holdout exclusion and small-model behavior pass independently of the blocked native artifact load."
+          }
+        ],
+        "limitations": [
+          "Не заявляется, что production v1 runtime полностью работает на данном Windows runner: загрузка LightGBM aborts до Python exception.",
+          "Команда README make verify не исполнялась напрямую, поскольку make отсутствует в Windows shell; эквивалентный Python acceptance был запущен с -X utf8.",
+          "Визуальное поведение, live URL, Basic Auth и интерактивность дашборда не подтверждены браузером."
+        ]
+      },
+      "liveDemo": {
+        "status": "claimed",
+        "url": "https://windagent-localhosters.pages.dev",
+        "notes": "URL и назначение дашборда заявлены в README.md:21-22,213. Автоматическая навигация, логин и визуальная проверка намеренно не выполнялись; подтверждена только локальная production-сборка dashboard."
+      },
+      "fiveHourContext": "За пять часов команда успела собрать узкий, но связный MVP: зафиксировать формат часов и as-of, подготовить архивы Single Runs/Previous Runs, сделать v0 baseline и v1 LightGBM blend, обернуть модель в 11-шаговый runtime, добавить scripted fallback и Pydantic AI planner, получить 29×2 replay-выпусков и отдельные reissue, сохранить trace/decision/report/memory и подготовить dashboard. Это хороший выбор объёма для короткого хакатона: критический сценарий демонстрируется офлайн, а более дорогие части — live SCADA feedback, quantile training, residual/drift triggers и production live service — явно оставлены за границами MVP.",
+      "strengths": [
+        "Строгая cycle-specific as-of проверка погодных данных и явный rejection будущего run.",
+        "Связный агентский runtime с 11 шагами, trace, decision, comparison, report и memory.",
+        "Реальный тестовый replay февраля 2026 с 29 дневными публикациями и 29 пересчётами.",
+        "Количественные holdout-метрики на январе 2026 и феврале 2025, включая h1–24/h25–48 и coverage.",
+        "Контролируемый LLM planner: structured output, read-only context, fallback на правила и сохранённое 58/58 replay свидетельство.",
+        "Сильный README с командами, схемой, параметрами, ожидаемыми PASS и честным списком ограничений."
+      ],
+      "gaps": [
+        "F-01: offline archive rebuild на Windows не проходит побайтное сравнение из-за LF/CRLF различия в сгенерированном docs/research/nwp-sources.md.",
+        "F-02: scripts.verify без принудительного UTF-8 в Windows cp1251-консоли падает на финальном выводе Unicode-стрелки после выполнения проверок."
+      ],
+      "futureAdvice": [
+        {
+          "principle": "Сначала сделать acceptance-контур кроссплатформенным",
+          "why": "Сейчас содержательные проверки могут пройти, но итоговый rebuild/verify даёт ложный fail из-за переносов строк и кодировки, что ухудшает воспроизводимость на чужой машине.",
+          "how": "Записывать текстовый артефакт с явно заданным newline или сравнивать нормализованные bytes; для CLI задать UTF-8 output либо заменить Unicode-стрелку на ASCII в scripts.verify и прогнать свежий checkout на Windows и Linux.",
+          "findingIds": [
+            "F-01",
+            "F-02"
+          ],
+          "successCheck": "uv run python -X utf8 -m pytest -q и обычная команда verify завершаются 0 на Windows и Linux; archive rebuild сравнивается независимо от CRLF/LF.",
+          "timeboxMinutes": 45
+        },
+        {
+          "principle": "Разделить проверку нативного model artifact от orchestration",
+          "why": "Native abort LightGBM сейчас обрывает полный тест без диагностируемого Python exception, поэтому невозможно отличить проблему модели, wheel или OpenMP по одному запуску.",
+          "how": "Добавить отдельный smoke command с печатью lightgbm.__version__, model metadata и platform/OpenMP diagnostics, а в acceptance предусмотреть понятный fail вместо process abort; затем проверить тот же artifact в заявленном Docker/Linux окружении.",
+          "findingIds": [
+            "F-04",
+            "F-07"
+          ],
+          "successCheck": "Smoke load committed Booster либо проходит и проверяет feature_name, либо возвращает диагностируемую ошибку с причиной; полный verify не завершается silent native abort.",
+          "timeboxMinutes": 60
+        },
+        {
+          "principle": "Закрыть разрыв между replay MVP и online эксплуатацией",
+          "why": "Основной replay уже убедителен, но в runtime SCADA фиксирует только границу, residual/drift triggers не исполняются, а P10/P90 временные.",
+          "how": "Добавить оперативный SCADA adapter с lag/quality flags, обучить отдельные quantile heads или conformal calibration, включить residual/drift events и сохранить их в trace; проверить на rolling-origin окне с доступными фактами.",
+          "findingIds": [
+            "F-04"
+          ],
+          "successCheck": "Rolling-origin test показывает coverage и pinball для P10/P90, а искусственно состаренная SCADA и residual spike создают проверяемое decision/trace событие.",
+          "timeboxMinutes": 180
+        }
+      ],
+      "uncertainties": [
+        "Причина native LightGBM abort на Windows не локализована до конкретного wheel/OpenMP/model-file фактора; это отмечено как review-environment limitation, а не как доказанный дефект модели.",
+        "Фактическая точность на 1–28 февраля 2026 неизвестна, поскольку в данных нет ground truth за этот период.",
+        "UI URL, Basic Auth, интерактивные графики и визуальный сценарий не подтверждены автоматизированно и намеренно оставлены за пределами проверки.",
+        "Live OpenAI planner не запускался без предоставленных credentials; claims о 58/58 взяты из project-owned сохранённого отчёта и локально не переиграны через внешний сервис.",
+        "Полный Docker acceptance не запускался, поэтому Linux/OpenMP-путь не подтверждён в этой сессии."
+      ],
+      "reviewPolicyVersion": 2,
+      "assessmentStatus": "ready",
+      "findings": [
+        {
+          "id": "F-01",
+          "kind": "defect",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Offline archive rebuild должен проходить на Windows и воспроизводить документальный артефакт.",
+          "expected": "test_full_archive_rebuild_without_any_network завершается успешно после rebuild.",
+          "actual": "Rebuild данных проходит, но test падает на побайтном сравнении docs/research/nwp-sources.md: сгенерированный файл содержит LF, а checked-in файл — CRLF.",
+          "evidence": [
+            "tests/test_previous_dataset.py:57",
+            "check pytest-non-model: 54 passed, 1 failed; AssertionError at index 37: LF != CRLF"
+          ],
+          "checkIds": [
+            "pytest-non-model"
+          ]
+        },
+        {
+          "id": "F-02",
+          "kind": "defect",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Скрипт scripts.verify должен завершаться с нулевым кодом при обычном запуске в поддерживаемом окружении.",
+          "expected": "Команда проверки печатает PASS и завершается exit 0.",
+          "actual": "На Windows с default cp1251 все assertions проходят, но финальная печать Unicode-стрелки в scripts/verify.py:60 вызывает UnicodeEncodeError; с python -X utf8 скрипт проходит.",
+          "evidence": [
+            "scripts/verify.py:60",
+            "check verify-script-default: UnicodeEncodeError: 'charmap' codec can't encode character '\\u2192'",
+            "check verify-script: exit 0 with -X utf8"
+          ],
+          "checkIds": [
+            "verify-script"
+          ]
+        },
+        {
+          "id": "F-03",
+          "kind": "limitation",
+          "verification": "observed",
+          "responsibility": "review_environment",
+          "claim": "Committed LightGBM Booster должен загружаться для production v1 smoke test.",
+          "expected": "serve.load_model возвращает Booster и metadata с совпадающим feature order.",
+          "actual": "На текущем Windows runner процесс aborts в lightgbm.basic.py:3800 при lgb.Booster(model_file=...), без Python exception; меньшие model-v1 тесты и feature construction проходят.",
+          "evidence": [
+            "windagent/model/serve.py:37-45",
+            "tests/test_feature_schema.py:25-32",
+            "check lightgbm-load: status blocked, native Python abort"
+          ],
+          "checkIds": [
+            "lightgbm-load",
+            "model-domain-subset"
+          ]
+        },
+        {
+          "id": "F-04",
+          "kind": "defect",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "MVP должен иметь оперативную feedback-часть для SCADA drift/residual и полноценные prediction intervals.",
+          "expected": "Runtime использует доступные online SCADA facts для соответствующих features/triggers и получает calibrated quantiles.",
+          "actual": "fetch_scada_history создаёт только ScadaWindow(as_of_utc=at); документация помечает residual/drift triggers pending, а P10/P90 описаны как эмпирические квантили остатков v0.",
+          "evidence": [
+            "windagent/agent/runtime.py:194-195",
+            "docs/architecture.md:20-27",
+            "windagent/model/serve.py:53-64",
+            "README.md:275-280"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "F-05",
+          "kind": "limitation",
+          "verification": "source",
+          "responsibility": "unknown",
+          "claim": "Качество решения должно быть измерено на фактическом целевом тестовом периоде.",
+          "expected": "Для 1–28 февраля 2026 доступны фактические значения мощности и итоговые метрики.",
+          "actual": "В архиве проекта фактов февраля 2026 нет; качество оценивается на январе 2026 и феврале 2025 как holdout/rehearsal.",
+          "evidence": [
+            "README.md:257-268",
+            "docs/research/backtest-v1.md:17-33"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "F-06",
+          "kind": "limitation",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Дашборд должен быть постоянно обновляемым live-сервисом для production-scale демонстрации.",
+          "expected": "UI получает новые выпуски и trace из живого runtime без предварительного статического экспорта.",
+          "actual": "README прямо описывает дашборд как статический экспорт готовых выпусков; dashboard/src/main.jsx читает JSON из /data/.",
+          "evidence": [
+            "README.md:280",
+            "dashboard/src/main.jsx:20-27"
+          ],
+          "checkIds": [
+            "dashboard-build"
+          ]
+        },
+        {
+          "id": "F-07",
+          "kind": "defect",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Prediction intervals должны иметь явно откалиброванный quantile/calibration путь для production uncertainty.",
+          "expected": "P10/P90 обучаются или калибруются как отдельные quantiles и проверяются pinball/coverage на holdout.",
+          "actual": "serve.py строит p10/p90 из эмпирических resid_q10/resid_q90 v0 вокруг p50 v1; документация называет это временной реализацией до quantile models.",
+          "evidence": [
+            "windagent/model/serve.py:53-64",
+            "docs/research/backtest-v1.md:60-64",
+            "README.md:277"
+          ],
+          "checkIds": []
+        }
+      ],
+      "gapFindingIds": [
+        "F-01",
+        "F-02"
+      ]
+    }
+  ],
+  "score": 84.5,
+  "status": "complete",
+  "expectedJudges": 1
+}

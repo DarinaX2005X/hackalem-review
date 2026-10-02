@@ -1,0 +1,1145 @@
+{
+  "methodVersion": 4,
+  "repoId": "hack-c0c67068-qwertys",
+  "repoUrl": "https://github.com/BAITC-Hacks/hack-c0c67068-qwertys",
+  "caseId": 1,
+  "snapshot": "3e6da45e0c5b3447de44418e7b4c37014ffaad51",
+  "judges": [
+    {
+      "methodVersion": 4,
+      "repoId": "hack-c0c67068-qwertys",
+      "caseId": 1,
+      "model": "GPT-5.6 Luna",
+      "snapshot": "3e6da45e0c5b3447de44418e7b4c37014ffaad51",
+      "overallSummary": "SAMAL — зрелый локальный MVP для почасового прогноза двух турбин: численная модель, архивный погодный вход, последовательность инструментов агента, FastAPI-контракт, CSV-экспорт, журнал событий и фронтенд собраны в единый сценарий. В изолированном запуске проверены готовность, 48-часовой прогноз на две турбины, 96 строк результата, 14 событий, CSV и повторный выпуск на следующий день с новым погодным циклом. Оценка снижена не за отсутствие ключа или визуального осмотра, а за два подтверждённых содержательных ограничения самого решения: историческая публикация погодного выпуска не доказана — код использует явно помеченное допущение run+9 часов — и опубликованные январские метрики относятся к процедуре/оценочному варианту до 01.01.2026, а не непосредственно к финальному production manifest, переобученному до 31.01.2026. В феврале нет фактических меток, поэтому проект корректно не выдаёт февральскую точность.",
+      "global": {
+        "criteria": [
+          {
+            "name": "Ценность решения",
+            "score": 23,
+            "max": 25,
+            "awarded": "Практическая ценность высокая: диспетчер получает прогноз по двум турбинам, происхождение входов, журнал действий, сравнение выпусков и CSV. До максимума не хватает полностью подтверждённой исторической применимости погодного входа и прямой связи production-модели с измеренной метрикой.",
+            "deductions": "Снято 2 балла за F-006 и F-007: неопределённость исторической доступности NWP ограничивает доверие к ретроспективной операционной ценности, а опубликованные метрики не измеряют непосредственно тот же production manifest, который используется в API.",
+            "evidence": [
+              "README.md:1-6 — проблема сформулирована как прогноз мощности двух ветротурбин на 24 и 48 часов для диспетчера.",
+              "README.md:32-39 — заявлены прогноз, обновление погоды, журнал, сравнение и февральский replay.",
+              "src/api/main.py:146-195 — API принимает запрос, сохраняет запуск, публикует проверенный прогноз и экспорт CSV.",
+              "runtime.check:api-main — в реальном HTTP-проходе получены 96 строк для двух турбин и 98 строк CSV с заголовком.",
+              "docs/verification/independent-metrics.json:1-6 — сами метрики ограничены условием inferred UTC+6 и inferred run+9h."
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "F-006",
+                "reason": "Операционная ценность прогноза зависит от того, действительно ли выбранный архивный выпуск был доступен в момент выпуска; проект сам обозначает это как неподтверждённое допущение, а не как доказанный факт."
+              },
+              {
+                "points": 1,
+                "findingId": "F-007",
+                "reason": "Качество решения показано сильными январскими метриками, но README и отчёт прямо предупреждают, что они относятся к оценочной процедуре, тогда как production V1 переобучена отдельно; перенос чисел на текущий production artifact не измерен."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Понятный потребительский результат",
+                "implementation": "Система выдаёт отдельные ряды turbine_1 и turbine_2, почасовые valid_time и lead_hours, единицу normalized_power, сводку, журнал действий и экспортируемый CSV. В UI предусмотрены прогноз, таблица, KPI, происхождение входа и история выпусков.",
+                "value": "Это напрямую переводит модельный расчёт в артефакт, пригодный для диспетчерского просмотра и дальнейшей передачи: пользователь видит не только число, но и выпуск погоды, версию модели и предупреждения.",
+                "verification": "observed",
+                "evidence": [
+                  "src/contracts/schemas.py:55-95",
+                  "src/api/main.py:173-195",
+                  "runtime.check:api-main"
+                ]
+              },
+              {
+                "aspect": "Польза обновления входа",
+                "implementation": "Каждый запуск включает weather, prepare, forecast, validate и export; input_version строится из модели, погодных строк и запроса. Второй HTTP-запрос на 01.02.2026 использовал другой погодный цикл и сформировал новый 96-строчный результат.",
+                "value": "Сценарий не заканчивается одноразовым прогнозом: обновлённый NWP-вход можно выпускать снова, а сохранённые результаты позволяют сравнивать версии расчёта.",
+                "verification": "observed",
+                "evidence": [
+                  "src/agent/runner.py:16-18,62-102,134-139",
+                  "runtime.check:api-main — первый выпуск 31.01.2026 12Z и второй выпуск 01.02.2026 12Z завершены.",
+                  "coordination/research/C2/replay-v1-manifest.json:12-25"
+                ]
+              },
+              {
+                "aspect": "Честная трактовка результата",
+                "implementation": "Интерфейс и API называют мощность нормализованной, не подменяют её МВт/МВт·ч, выводят предупреждения о часовом поясе и provenance, а replay хранит february_metrics=null.",
+                "value": "Для энергетического пользователя это снижает риск принять иллюстративный ряд за коммерческий измеренный прогноз. Отсутствие февральских labels не скрыто и не превращено в фиктивную точность.",
+                "verification": "source",
+                "evidence": [
+                  "src/ml/forecast.py:133-139",
+                  "coordination/research/C2/replay-v1-manifest.json:1-11",
+                  "README.md:186-194"
+                ]
+              }
+            ],
+            "scoreReasoning": "23/25 заслужены за очень конкретный путь от погодного выпуска к диспетчерскому результату и за аккуратную маркировку нормализованных единиц и отсутствующих февральских labels. Два балла удержаны за два влияющих на доверие факта: +9 часов — safety-margin гипотеза, не журнал исторической публикации, а опубликованные январские числа не являются прямым измерением production-весов текущего manifest. Это заметные, но локализованные ограничения пятичасового MVP, поскольку основной численный сценарий и его экспорт действительно работают."
+          },
+          {
+            "name": "Результат и качество решения",
+            "score": 18,
+            "max": 20,
+            "awarded": "Целостность результата подтверждена HTTP/API-проходом, Python-набором и фронтенд-сборкой. Прогнозы полные, конечные значения числовые, временная связность и экспорт проверяются. Не максимум из-за F-006 и F-007: качество временного weather-as-of утверждения и перенос опубликованных метрик на production artifact не закрыты.",
+            "deductions": "Снято 2 балла: 1 за F-006 и 1 за F-007.",
+            "evidence": [
+              "src/contracts/schemas.py:130-160 — fail-closed проверки идентичности, дубликатов, времени доступности, происхождения и полноты по каждой турбине.",
+              "src/agent/runner.py:84-98 — проверка ожидаемого количества строк, уникальности target и finite y_pred перед публикацией.",
+              "captures/20261002T211346393309-test.stdout.log — 86 passed, 2 skipped, 15 subtests passed.",
+              "captures/20261002T211413385811-build.stdout.log — Vite build, lint с 0 errors и 2/2 Node-теста прошли.",
+              "runtime.check:api-main — health_ready=true, completed, rows=96, event_count=14, csv_lines=98."
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "F-006",
+                "reason": "Результат может быть полным и технически корректным, но его ретроспективная временная валидность остаётся условной, потому что фактический timestamp публикации upstream не подтверждён."
+              },
+              {
+                "points": 1,
+                "findingId": "F-007",
+                "reason": "Январские MAE/RMSE проверены для frozen evaluation procedure, но в отчёте явно сказано, что production refit имеет другую границу; качество именно обслуживаемого артефакта не показано отдельным измерением."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Рабочий сквозной API-сценарий",
+                "implementation": "run_local.py подключает src.agent.runner:run_forecast, создаёт FastAPI, а POST /api/runs запускает вычисление в одном worker. GET маршруты возвращают статус, rows, events и export.csv.",
+                "value": "Пользовательский результат не является только библиотечным вызовом: есть живой lifecycle queued/running/completed, сохраняемый SQLite-run и проверяемый HTTP-контракт.",
+                "verification": "observed",
+                "evidence": [
+                  "scripts/run_local.py:19-37",
+                  "src/api/main.py:48-70,97-163",
+                  "runtime.check:api-main"
+                ]
+              },
+              {
+                "aspect": "Проверки результата до публикации",
+                "implementation": "Pydantic-контракт связывает valid_time с issue_time и lead_hours; check_payload запрещает чужую турбину, лишний горизонт, дубли и weather_available_at после issue_time. ForecastTools дополнительно проверяет полноту по двум турбинам.",
+                "value": "Ошибочный или неполный численный ответ не маскируется как успешный прогноз. Это повышает качество результата сильнее, чем простое наличие endpoint.",
+                "verification": "source",
+                "evidence": [
+                  "src/contracts/schemas.py:55-65,130-160",
+                  "src/agent/runner.py:84-102",
+                  "tests/integration/test_api.py:90-116"
+                ]
+              },
+              {
+                "aspect": "Воспроизводимая численная база",
+                "implementation": "В репозитории сохранены evaluation-v1, independent-metrics, model-manifest-v1 и replay-v1-manifest. В январской проверке зафиксированы 1390 пар на турбину, 707 уникальных target hours и RMSE baseline 0.243279/0.243430.",
+                "value": "Есть количественная опора для выбора V1 вместо CatBoost, а не только демонстрация интерфейса; отдельный independent report повторяет метрики и раскрывает ограничения.",
+                "verification": "source",
+                "evidence": [
+                  "docs/verification/independent-metrics.json:1-28,59-79",
+                  "docs/REPRODUCIBILITY.md:43-52",
+                  "coordination/research/C2/evaluation-v1.json:1-17,68,520,972"
+                ]
+              }
+            ],
+            "scoreReasoning": "18/20 отражают проверенный рабочий результат: endpoint, агентный журнал, 96 строк, CSV, валидация и тесты образуют целое. До 20 не хватает именно доказательной связки, а не функций интерфейса: код не может превратить inferred run+9h в исторически подтверждённое время публикации, а таблица January metrics сама предупреждает, что не является измерением финального production refit."
+          },
+          {
+            "name": "Инновационность",
+            "score": 14,
+            "max": 15,
+            "awarded": "Нестандартность проявляется в сочетании численной NWP-модели, инструментального agent loop, provenance, последовательного replay и сравнения выпусков. Основа прогноза при этом намеренно простая и объяснимая, а LLM не подменяет числа.",
+            "deductions": "Снято 1 балл за F-006: наиболее оригинальная часть — доверительный контур исторического NWP — остаётся частично гипотетической из-за неподтверждённого времени публикации.",
+            "evidence": [
+              "src/agent/runner.py:62-102 — пять именованных стадий с зависимостями и журналом.",
+              "src/agent/runner.py:105-147 — отдельный live Responses tool-calling loop с ограничением шагов, времени, контекста и стоимости.",
+              "src/ml/forecast.py:47-74,101-139 — выбор доступного daily run и fingerprint входов.",
+              "src/cli/replay.py:20-41 — сохранение всех issue/target строк и выбор самого нового допустимого выпуска.",
+              "README.md:32-39 — описано, что LLM управляет инструментами, а численные значения даёт модель."
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "F-006",
+                "reason": "Provenance-aware архитектура оригинальна и полезна, но строгий claim historical-as-issued пока не отделён от operational safety-margin предположения на уровне источника."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Агент как управляемые инструменты",
+                "implementation": "ForecastTools ограничивает переходы порядком weather → prepare → forecast → validate → export; пропущенный prerequisite возвращается как ошибка, повторная стадия не выполняется молча. В live-режиме Responses API выбирает эти функции, а числа остаются в predict_from_inputs.",
+                "value": "Это более содержательная agentic-идея, чем добавление LLM в подпись: агент управляет наблюдаемым процессом и не получает права выдумывать прогнозные значения.",
+                "verification": "source",
+                "evidence": [
+                  "src/agent/runner.py:16,62-102",
+                  "src/agent/runner.py:105-147"
+                ]
+              },
+              {
+                "aspect": "Проверяемое происхождение входа",
+                "implementation": "Погодная строка несёт provider, model, run_time, available_at, source_reference, units и provenance_status; load_weather отбрасывает смешанные циклы, дубли и неполное покрытие, а input_version хеширует model/weather/request.",
+                "value": "Такой дизайн делает обновление объяснимым и позволяет заметить, что два выпуска реально используют разные входы, вместо иллюзии пересчёта поверх того же payload.",
+                "verification": "source",
+                "evidence": [
+                  "src/weather/open_meteo.py:79-123,152-222",
+                  "src/ml/forecast.py:47-74,134-139",
+                  "coordination/research/C2/replay-v1-manifest.json:12-32"
+                ]
+              },
+              {
+                "aspect": "Объяснимая модель вместо непрозрачной гонки архитектур",
+                "implementation": "Production V1 — отдельная для каждой турбины кривая wind→power, выбранная по pre-test сравнениям; CatBoost и нейросетевые исследования сохранены как сравнение, но не объявлены рабочей моделью без устойчивого преимущества.",
+                "value": "Для пятичасового MVP это оригинально именно как инженерное решение: простую модель легче аудировать, пересчитывать и объяснять диспетчеру, чем неподтверждённый тяжёлый кандидат.",
+                "verification": "source",
+                "evidence": [
+                  "coordination/research/C2/model-manifest-v1.json:2-15,52-87",
+                  "README.md:94-108",
+                  "docs/verification/independent-metrics.json:10-57"
+                ]
+              }
+            ],
+            "scoreReasoning": "14/15 — сильная оригинальность в наблюдаемом процессе, provenance и replay, а не в необязательном брендинге LLM. Один балл удержан потому, что ключевая историческая гарантия, которая должна была сделать provenance-подход особенно сильным, в материалах осталась допущением."
+          },
+          {
+            "name": "Потенциал развития и масштабирования",
+            "score": 19,
+            "max": 20,
+            "awarded": "Архитектура хорошо разделена на data/weather/ml/agent/api/web, модельный manifest допускает замену вида модели, а API и replay отделены от UI. Снижение на 1 балл связано с F-007: масштабирование требований к качеству потребует связать production releases с непосредственно измеренными метриками.",
+            "deductions": "Снято 1 балл за F-007: перед расширением на новые площадки и модели нужен более строгий release-to-evaluation traceability.",
+            "evidence": [
+              "README.md:141-161 — схема слоёв, назначение каталогов и API-маршруты.",
+              "src/ml/forecast.py:77-98,101-139 — загрузчик принимает manifest с curve или catboost и проверяет его структуру.",
+              "src/api/main.py:48-70,146-205 — transport отделён от численного runner и допускает readiness-проверку.",
+              "src/cli/replay.py:13-54 — пакетный replay хранит полный журнал и финальную выборку.",
+              "README.md:186-194 — ограничения промышленного SLA и локального развёртывания явно обозначены."
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "F-007",
+                "reason": "При масштабировании на новые модели/площадки нельзя автоматически переносить текущие январские метрики на production artifact: границы fit и версия оценочного результата должны быть сведены в единый release report."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Модульная замена модели и провайдера",
+                "implementation": "weather adapter, numerical forecast, agent runner и API имеют отдельные интерфейсы; manifest описывает модель и две турбины, а Open-Meteo адаптер централизует URL, units и availability gate.",
+                "value": "Новые площадки, модели или погодные провайдеры можно добавлять через ограниченные контракты, не переписывая весь UI и хранение запусков.",
+                "verification": "source",
+                "evidence": [
+                  "src/weather/open_meteo.py:41-55,126-149",
+                  "src/ml/forecast.py:77-98",
+                  "src/api/main.py:28-49"
+                ]
+              },
+              {
+                "aspect": "Наращивание с несколькими объектами",
+                "implementation": "TurbineId ограничен двумя известными объектами в кейсе, но rows, manifest и replay уже несут turbine_id, а модельные кривые хранятся отдельно по каждой турбине. SQLite хранит запуски и события независимо от UI.",
+                "value": "Перенос на дополнительные турбины или ВЭС имеет понятную точку расширения — данные/manifest и конфигурация, а не копирование сценария экрана.",
+                "verification": "source",
+                "evidence": [
+                  "src/contracts/schemas.py:7,21-31,55-65",
+                  "coordination/research/C2/model-manifest-v1.json:13-89",
+                  "src/api/store.py:1-220"
+                ]
+              },
+              {
+                "aspect": "Безопасная эксплуатационная эволюция",
+                "implementation": "API проверяет readiness, ограничивает очередь четырьмя слотами при одном worker, восстанавливает незавершённые runs, очищает секреты в событиях и не публикует failed payload. Live agent имеет budget/time/context guards.",
+                "value": "Для перехода от хакатонного демо к пилоту уже заложены границы отказа и наблюдаемость, которые обычно пришлось бы добавлять позже.",
+                "verification": "source",
+                "evidence": [
+                  "src/api/main.py:52-57,97-120,146-163",
+                  "src/agent/safety.py:7-40",
+                  "src/agent/runner.py:113-147"
+                ]
+              }
+            ],
+            "scoreReasoning": "19/20 заслужены за чистое разделение слоёв, заменяемый manifest, API-контракт, replay и защитные лимиты. Один балл снят не за отсутствие production deployment — он не требовался, — а за доказательный долг вокруг версии модели: при масштабировании релиз должен публиковать метрику именно того артефакта, который обслуживает API."
+          },
+          {
+            "name": "Презентация, демо и ответы на вопросы",
+            "score": 20,
+            "max": 20,
+            "awarded": "В рамках этой проверки устной презентации и вопросов не было; оценены ясность README, сценарий воспроизведения и объяснение ограничений. README содержит быстрый запуск, архитектуру, API, модель, результаты, replay, ограничения и конкретные команды. Визуальное поведение браузера по пользовательской политике не проверялось и баллы за это не менялись.",
+            "deductions": "Нет снятий: отсутствие публичного URL и самостоятельного визуального осмотра не являются дефектами участника в данной методике.",
+            "evidence": [
+              "README.md:7,41-73 — быстрый запуск и сценарий 24/48 часов.",
+              "README.md:141-184 — архитектура, endpoints, команды проверок и ограничения.",
+              "docs/REPRODUCIBILITY.md:1-58 — отдельная подробная инструкция с данными, обучением, оценкой и replay.",
+              "captures/20261002T211413385811-build.stdout.log — сборка и lint выполнены без ошибок.",
+              "uncertainty F-009 — браузерная визуальная проверка оставлена пользователю."
+            ],
+            "deductionItems": [],
+            "awardedDetails": [
+              {
+                "aspect": "Быстрый путь к демо",
+                "implementation": "README последовательно описывает установку pinned dependencies, копирование manifest, получение двух погодных выпусков, build web, readiness check, запуск сервера и действия для 48-часового сценария.",
+                "value": "Читатель понимает, что нужно подготовить и какой конкретный результат ожидать, а не получает только маркетинговое описание.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:41-73",
+                  "scripts/run_local.py:1-37"
+                ]
+              },
+              {
+                "aspect": "Объяснение качества и ограничений",
+                "implementation": "Документация различает V1 и post-test V2, January evaluation и February replay, normalized power и энергию, inferred timezone и подтверждённую provenance. Команды независимого пересчёта приведены рядом с результатами.",
+                "value": "Это даёт жюри и пользователю материал для правильной интерпретации чисел и не маскирует неизвестность под точность.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:94-132,163-194",
+                  "docs/REPRODUCIBILITY.md:43-58",
+                  "coordination/research/C2/replay-v1-manifest.json:1-11"
+                ]
+              },
+              {
+                "aspect": "Воспроизводимое подтверждение результата",
+                "implementation": "Скрипты verify_data, pytest, frontend build/lint, API health и HTTP run образуют проверяемый маршрут, а не только набор скриншотов или ссылку на hosting.",
+                "value": "Даже без устной защиты решение можно предметно показать по репозиторию и получить одинаковый тип результата через API.",
+                "verification": "observed",
+                "evidence": [
+                  "captures/20261002T211314833749-test.stdout.log",
+                  "captures/20261002T211346393309-test.stdout.log",
+                  "runtime.check:api-main"
+                ]
+              }
+            ],
+            "scoreReasoning": "Полные 20/20 применены именно к оговорённой части критерия — README, объяснения и воспроизводимое демо. Визуальная приёмка запрещена отдельной политикой пользователя, а устного выступления не было; ни один из этих фактов не превращён в штраф. Текстовая документация при этом достаточна и подтверждена работой API и сборки."
+          }
+        ],
+        "total": 94
+      },
+      "case": {
+        "criteria": [
+          {
+            "name": "Соответствие задаче и работоспособность",
+            "score": 20,
+            "max": 25,
+            "awarded": "Основной сценарий кейса реализован: две турбины, горизонт 24/48 часов, hourly rows, архивный weather input, полный agent workflow, пересчёт и февральский replay-артефакт. Пять баллов удержаны за F-006 и F-007: requirement о доступности именно as-of weather выполнен только условно, а качество рабочего production refit не измерено тем же отчётом.",
+            "deductions": "Снято 5 баллов: 4 за F-006 и 1 за F-007.",
+            "evidence": [
+              "cases/1/task.txt:1-3 и cases/1/case-data/HackAlem AI_ Agentic AI для прогнозирования выработки ВЭС:1-48 — исходные требования 24–48 часов, координаты, история, архивные прогнозы и последовательный цикл.",
+              "runtime.check:api-main — реально выполнены два 48-часовых выпуска, по 96 строк на выпуск.",
+              "src/cli/replay.py:13-41 — предусмотрены 29 ежедневных issue, сохранение overlap и выбор последнего выпуска для каждого target.",
+              "coordination/research/C2/replay-v1-manifest.json:1-11 — source artifact сообщает completed, 29 runs, 1344 выбранных строк и отсутствие февральских metrics.",
+              "coordination/research/C1/weather-20260131-report.json:6-10 — доступность явно обозначена как ASSUMED/unconfirmed."
+            ],
+            "deductionItems": [
+              {
+                "points": 4,
+                "findingId": "F-006",
+                "reason": "Ключевое требование кейса требует архивный прогноз, доступный в соответствующий момент. Реализация проверяет run+9h, но этот момент не подтверждён историческим журналом публикации; поэтому соответствие as-of weather только partial."
+              },
+              {
+                "points": 1,
+                "findingId": "F-007",
+                "reason": "Заявленная работающая V1 обслуживается production manifest, но опубликованные январские metrics относятся к оценочной процедуре с другой fit boundary; прямое доказательство качества именно рабочего refit отсутствует."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Два объекта и два горизонта",
+                "implementation": "ForecastRequest допускает turbine_1/turbine_2 и только 24/48; ForecastRow связывает issue_time, valid_time и lead_hours. Реальный 48-часовой запуск с двумя turbine_ids дал 96 строк.",
+                "value": "Это закрывает минимальный предметный результат кейса без подмены многотурбинного прогноза одним агрегатом.",
+                "verification": "observed",
+                "evidence": [
+                  "src/contracts/schemas.py:7-31,55-65",
+                  "runtime.check:api-main"
+                ]
+              },
+              {
+                "aspect": "Почасовой архивный вход",
+                "implementation": "batch_archive получает daily ECMWF IFS Single Runs, отбирает 48 часов через select_horizon и хранит JSONL rows с источником, units, valid_time и run_time. load_weather выбирает цикл по issue и проверяет его целостность.",
+                "value": "Вместо фактической будущей погоды в прогнозный путь подаётся погодный выпуск с явной временной provenance и fail-closed gate.",
+                "verification": "source",
+                "evidence": [
+                  "src/weather/batch_archive.py:49-162",
+                  "src/weather/open_meteo.py:152-222",
+                  "src/ml/forecast.py:47-74"
+                ]
+              },
+              {
+                "aspect": "Полный agentic-цикл и пересчёт",
+                "implementation": "Пять стадий проходят от weather до export, а второй запуск с issue 01.02.2026 использует следующий daily cycle и новый input fingerprint. Replay сохраняет исходные overlap rows до выбора финального target.",
+                "value": "Система соответствует не только требованию выдать ряд, но и процессу получения данных, подготовки, расчёта, проверки, экспорта и повторного расчёта.",
+                "verification": "observed",
+                "evidence": [
+                  "src/agent/runner.py:62-102,150-178",
+                  "src/cli/replay.py:20-41",
+                  "runtime.check:api-main"
+                ]
+              },
+              {
+                "aspect": "Отсутствие подмешивания февральских labels",
+                "implementation": "Два предоставленных CSV заканчиваются 31.01.2026 23:50 local; production forecast принимает weather rows, а February replay manifest оставляет february_metrics=null. Код не принимает будущую SCADA как feature.",
+                "value": "Для данного набора данных это правильная граница: февральские прогнозы не выдаются за измеренную точность.",
+                "verification": "observed",
+                "evidence": [
+                  "testData.check:scada-structure",
+                  "src/agent/runner.py:74-79",
+                  "coordination/research/C2/replay-v1-manifest.json:1-11"
+                ]
+              }
+            ],
+            "scoreReasoning": "20/25: все функциональные части кейса присутствуют и основной 48-часовой путь реально завершён. Главная недостача — не отсутствие внешнего ключа, а невозможность доказать исторический timestamp публикации архива; это прямо признаётся проектом. Ещё один балл удержан за отсутствие измерения финального production refit тем же протоколом, хотя выбор модели и январская процедура подробно документированы."
+          },
+          {
+            "name": "Техническая реализация",
+            "score": 23,
+            "max": 25,
+            "awarded": "Техническая реализация сильная: контракты Pydantic, отдельные слои, два режима агента, погодный валидатор, fingerprints, SQLite и экспорт работают согласованно. Снятие только за F-007 — техническая цепочка model release → metric report пока не полностью замкнута на production artifact.",
+            "deductions": "Снято 2 балла за F-007.",
+            "evidence": [
+              "src/contracts/schemas.py:12-18,21-25,55-87,130-160",
+              "src/ml/forecast.py:25-44,47-74,77-139",
+              "src/agent/runner.py:33-102,105-189",
+              "tests/test_data_weather.py:1-180 и tests/integration/test_api.py:37-192 — проверены ошибки входа, weather gate, экспорт, restart, readiness и секреты.",
+              "captures/20261002T211346393309-test.stdout.log — 86 passed, 2 skipped, 15 subtests."
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "F-007",
+                "reason": "Production manifest V1 и frozen January evaluation намеренно различаются по fit boundary; это честно описано, но для технического quality claim остаётся незамкнутый release/evaluation traceability."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Контрактная целостность данных",
+                "implementation": "Модели запрещают лишние поля и NaN, приводят aware datetime к UTC, проверяют точный час, уникальность турбин и связь valid_time = issue_time + lead_hours. check_payload дополнительно проверяет weather availability и provenance.",
+                "value": "Это снижает вероятность тихого смещения часового пояса, дубликатов и неполного прогноза — критичных ошибок именно для временного энергетического кейса.",
+                "verification": "source",
+                "evidence": [
+                  "src/contracts/schemas.py:12-18,21-46,55-65,130-160",
+                  "tests/integration/test_api.py:46-108"
+                ]
+              },
+              {
+                "aspect": "Weather validation и fail-closed поведение",
+                "implementation": "open_meteo проверяет provider units, последовательность часов, физические границы, source identity, цикл и +9h gate. При отсутствии manifest/cache readiness не выдаёт фиктивную готовность, а API публикует 503/not_ready.",
+                "value": "Внешний источник не считается доверенным только потому, что HTTP ответ пришёл; его структура и временная доступность проверяются до модели.",
+                "verification": "source",
+                "evidence": [
+                  "src/weather/open_meteo.py:58-123,152-222",
+                  "src/agent/runner.py:19-30",
+                  "tests/test_data_weather.py:48-180"
+                ]
+              },
+              {
+                "aspect": "Два уровня agent orchestration",
+                "implementation": "Deterministic mode проходит все пять стадий по фиксированному порядку и доступен без ключа. Live mode реализован через OpenAI Responses tool calling с 12 шагами, 180-секундным лимитом, ограничением контекста и проверкой стоимости; numerical forecast выполняется тем же кодом.",
+                "value": "MVP получает воспроизводимость без LLM-зависимости и при наличии ключа сохраняет настоящий tool-calling путь, не подменяя его mock-ответом.",
+                "verification": "source",
+                "evidence": [
+                  "src/agent/runner.py:105-147,150-178",
+                  "README.md:75-93",
+                  "runtime.check:api-main — deterministic path completed without credentials."
+                ]
+              },
+              {
+                "aspect": "Хранение и безопасный экспорт",
+                "implementation": "RunStore фиксирует статусы и события, API сериализует forecast metadata, CSV имеет BOM и защищает строковые spreadsheet formulas, а safe_summary редактирует token/api-key/authorization значения.",
+                "value": "Результат можно проверять и передавать дальше, не раскрывая секреты в журнале и не превращая экспорт в источник формульной инъекции.",
+                "verification": "source",
+                "evidence": [
+                  "src/api/main.py:97-120,182-195",
+                  "src/agent/safety.py:7-40",
+                  "tests/integration/test_api.py:108-116"
+                ]
+              }
+            ],
+            "scoreReasoning": "23/25 — техническое ядро заметно выше минимального прототипа и подтверждено тестами и HTTP-проходом. Два балла не связаны с отсутствующим OpenAI key: deterministic путь специально предусмотрен. Они отражают только то, что финальный production refit и независимый quality report пока не являются одним и тем же измеренным release artifact."
+          },
+          {
+            "name": "README и воспроизводимость",
+            "score": 25,
+            "max": 25,
+            "awarded": "README и docs/REPRODUCIBILITY дают полный маршрут: зависимости, официальные CSV, SHA-проверку, генерацию hourly SCADA, weather archive, обучение, evaluation, replay, API/UI запуск и ограничения. Команды соответствуют фактическим скриптам, а локальная воспроизводимость основного сценария подтверждена.",
+            "deductions": "Нет снятий. Необходимость получить официальные CSV и повторно скачать открытый weather archive документирована и соответствует границам выданных данных; это не объявлено дефектом проекта.",
+            "evidence": [
+              "README.md:41-73 — быстрый запуск и ожидаемые действия пользователя.",
+              "docs/REPRODUCIBILITY.md:5-40 — данные, env, обучение, evaluation и replay.",
+              "scripts/verify_data.py:1-29 — проверка SHA/размера без публикации raw data.",
+              "captures/20261002T211314833749-test.stdout.log — обе официальные контрольные суммы OK.",
+              "captures/20261002T211718437583-start.stdout.log — после подготовки manifest/cache readiness вернул Ready."
+            ],
+            "deductionItems": [],
+            "awardedDetails": [
+              {
+                "aspect": "Инструкция от чистого clone до API",
+                "implementation": "README задаёт Python 3.12, Node.js 24, pinned requirements, копирование model manifest, batch_archive, npm build, run_local --check и run_local; отдельно показаны PowerShell и Linux/macOS варианты.",
+                "value": "Порядок действий операционно понятен, а промежуточный readiness check позволяет отличить отсутствие артефактов от ошибки API.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:41-73",
+                  "scripts/run_local.py:1-37",
+                  "docs/REPRODUCIBILITY.md:15-29"
+                ]
+              },
+              {
+                "aspect": "Воспроизводимость исходных данных",
+                "implementation": "DATA_MANIFEST фиксирует размер и SHA двух официальных CSV; verify_data сравнивает их локально, а README не встраивает raw data в Git.",
+                "value": "Это одновременно воспроизводимо и корректно с точки зрения размера репозитория/данных организаторов: проверяющий может подтвердить, что применил именно требуемую выдачу.",
+                "verification": "observed",
+                "evidence": [
+                  "coordination/DATA_MANIFEST.json:1-16",
+                  "scripts/verify_data.py:9-25",
+                  "testData.check:data-hash"
+                ]
+              },
+              {
+                "aspect": "Путь повторной оценки и replay",
+                "implementation": "Документация даёт команды scada adapter → batch archive → verify archive → train → verify_evaluation → src.cli.replay и объясняет, что February output не является measured accuracy.",
+                "value": "Репозиторий описывает не только запуск сервера, но и происхождение model artifact и тестовый протокол, что особенно важно для кейса с историческими временными срезами.",
+                "verification": "source",
+                "evidence": [
+                  "docs/REPRODUCIBILITY.md:31-58",
+                  "src/cli/replay.py:13-54",
+                  "coordination/research/C2/replay-v1-manifest.json:1-11"
+                ]
+              },
+              {
+                "aspect": "Реальная воспроизводимость, а не только описание",
+                "implementation": "В проверке был создан model manifest из опубликованного V1, получены два weather runs командой проекта, readiness прошёл, server обработал 48 часов, экспортировал CSV и принял второй issue.",
+                "value": "Это подтверждает, что инструкции состыкованы с реализацией и что основной сценарий можно поднять локально без OpenAI credentials.",
+                "verification": "observed",
+                "evidence": [
+                  "captures/20261002T211659051393-start.stdout.log",
+                  "captures/20261002T211718437583-start.stdout.log",
+                  "runtime.check:api-main"
+                ]
+              }
+            ],
+            "scoreReasoning": "25/25: документация подробно покрывает именно то, что оценивает критерий, и её команды совпали с фактическим запуском. Скачивание официальных CSV и архивной погоды не считается дефектом: эти данные предоставляются отдельно или берутся из открытого источника, а проект даёт проверяющие команды и явно описывает границу."
+          },
+          {
+            "name": "Ценность и применимость решения",
+            "score": 13,
+            "max": 15,
+            "awarded": "Решение практически применимо как локальный диспетчерский прототип: оно показывает горизонт, две турбины, provenance, обновление и экспорт. До максимума не хватает подтверждённого as-of weather и production-specific quality evidence, отражённых в F-006 и F-007.",
+            "deductions": "Снято 2 балла: 1 за F-006 и 1 за F-007.",
+            "evidence": [
+              "cases/1/task.txt:1-3 — целевая проблема прогнозирования ВЭС и владелец задачи.",
+              "README.md:1-6,32-39 — пользователь и полезный результат.",
+              "runtime.check:api-main — рабочий численный и экспортный сценарий.",
+              "README.md:186-194 — нормализованная единица, отсутствие February labels и ограничения SLA.",
+              "docs/verification/independent-metrics.json:10-28,59-79 — измеренные January metrics с явной provenance caveat."
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "F-006",
+                "reason": "Для реального диспетчерского применения важно знать, что входной прогноз был доступен до расчёта; +9h assumption оставляет риск неправильной ретроспективной интерпретации."
+              },
+              {
+                "points": 1,
+                "findingId": "F-007",
+                "reason": "Практический пользователь получает production forecast, но опубликованная точность относится к другой fit boundary; это ограничивает силу обещания качества, хотя February actuals объективно отсутствуют."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Адресат и рабочее решение проблемы",
+                "implementation": "README прямо описывает диспетчера, который выбирает issue date/horizon, запускает агент, видит график/таблицу/события, обновляет погоду и скачивает CSV.",
+                "value": "Связь задачи и результата очевидна: не абстрактная ML-метрика, а выпуск, который можно передать в следующий операционный шаг.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:1-6,41-73",
+                  "web/src/App.tsx:631-743"
+                ]
+              },
+              {
+                "aspect": "Польза прозрачности",
+                "implementation": "Каждый ForecastResponse содержит model_version, input_version, weather provider/model/run/available time, timezone и provenance; events показывают стадии и итог проверки.",
+                "value": "Пользователь может понять, откуда взялся выпуск и почему два расчёта отличаются, что особенно важно для энергетических решений с внешним NWP.",
+                "verification": "observed",
+                "evidence": [
+                  "src/contracts/schemas.py:69-95,120-160",
+                  "runtime.check:api-main",
+                  "web/src/components/ProvenanceCard.tsx:1-220"
+                ]
+              },
+              {
+                "aspect": "Ограничения применимости раскрыты",
+                "implementation": "Документация предупреждает о normalized_power вместо MW, inferred UTC+6, unconfirmed weather publication, отсутствии февральских labels и отсутствии промышленного SLA.",
+                "value": "Решение не обещает коммерческую точность там, где датасет её не позволяет измерить; это повышает пригодность прототипа для пилотного обсуждения.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:186-194",
+                  "src/ml/forecast.py:139",
+                  "coordination/research/C2/replay-v1-manifest.json:1-11"
+                ]
+              }
+            ],
+            "scoreReasoning": "13/15 — проблема реальная, адресат и результат понятны, а прототип даёт полезный рабочий цикл. Два балла удержаны за ограничения доверия к историческому weather-as-of и к прямому переносу измеренных January metrics на production release. Отсутствие февральских фактов не является виной команды и отдельно не штрафовалось сверх этой границы доказанности."
+          },
+          {
+            "name": "Потенциал развития и оригинальность подхода",
+            "score": 9,
+            "max": 10,
+            "awarded": "Подход имеет хороший потенциал: сменяемые модели, провайдерный адаптер, replay, сохранение выпусков и два agent режима дают основу для новых ВЭС и более строгого MLOps. Один балл удержан за F-007 — прежде чем расширять model families, нужно замкнуть versioned evaluation на production artifact.",
+            "deductions": "Снято 1 балл за F-007.",
+            "evidence": [
+              "README.md:141-161 — архитектурная схема и разделение каталогов.",
+              "src/ml/forecast.py:77-139 — manifest-driven model adapter.",
+              "src/weather/open_meteo.py:41-55,126-149 — выделенный погодный provider adapter.",
+              "src/cli/replay.py:20-54 — механизм полного февральского воспроизведения и финального выбора.",
+              "src/agent/runner.py:105-147 — расширяемый live tool-calling loop с budget guards."
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "F-007",
+                "reason": "Оригинальный workflow легко расширяется, но доказательное качество новых model variants нельзя надёжно сравнивать с рабочим выпуском, пока fit boundary и production manifest не публикуются в одном проверяемом отчёте."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Расширение на новые ВЭС",
+                "implementation": "Координаты, model manifest и turbine_id отделены от orchestration; погодный адаптер формирует унифицированные rows, а forecast adapter принимает curve/catboost.",
+                "value": "Новая площадка может сохранить тот же API и agent workflow, заменив данные, координаты и модельный manifest.",
+                "verification": "source",
+                "evidence": [
+                  "src/weather/batch_archive.py:20-22,49-83",
+                  "src/ml/forecast.py:77-139",
+                  "src/contracts/schemas.py:7-25"
+                ]
+              },
+              {
+                "aspect": "Оригинальность через проверяемый replay",
+                "implementation": "Replay не перезаписывает overlap: хранит все issue/target rows, затем выбирает самый новый issue с минимальным lead и проверяет 672 часа на каждую турбину.",
+                "value": "Это задаёт переносимый шаблон для временных forecast products, где обновление входа является частью сценария, а не ручным повторным запуском.",
+                "verification": "source",
+                "evidence": [
+                  "src/cli/replay.py:20-41",
+                  "coordination/research/C2/replay-v1-manifest.json:1-11"
+                ]
+              },
+              {
+                "aspect": "Путь к агентному пилоту",
+                "implementation": "Deterministic orchestration даёт контрольный baseline без расходов, live OpenAI mode добавляет выбор tool calls и русское объяснение ограничений, а token/time/cost guards ограничивают пилот.",
+                "value": "Команда может сначала проверять численный pipeline локально, а затем подключить LLM только как управляющий слой для операторских сценариев.",
+                "verification": "source",
+                "evidence": [
+                  "src/agent/runner.py:105-147,150-178",
+                  "src/agent/budget.py:1-120",
+                  "README.md:75-93"
+                ]
+              }
+            ],
+            "scoreReasoning": "9/10: расширяемость и оригинальность хорошо обоснованы архитектурой и replay, а не обещанием нейросети. Один балл удержан за доказательный release gap F-007; это исправимый вопрос следующего quality cycle, не фундаментальная ошибка выбранного подхода."
+          }
+        ],
+        "total": 90
+      },
+      "judgeScore": 92,
+      "caseRequirements": [
+        {
+          "requirement": "На основании истории двух предоставленных CSV строится почасовая модель выработки для turbine_1 и turbine_2.",
+          "status": "met",
+          "explanation": "Оба официальных CSV совпали с DATA_MANIFEST по размеру и SHA; scada adapter агрегирует 10-минутные строки в почасовые наблюдения, а production manifest содержит отдельную кривую для каждой турбины.",
+          "evidence": [
+            "coordination/DATA_MANIFEST.json:1-16",
+            "src/data/scada.py:37-126",
+            "coordination/research/C2/model-manifest-v1.json:13-89",
+            "testData.check:data-hash",
+            "testData.check:scada-structure"
+          ]
+        },
+        {
+          "requirement": "Используется история до границы 31.01.2026 без подмешивания февральской целевой выработки в обучение/признаки.",
+          "status": "partial",
+          "explanation": "Входные CSV фактически заканчиваются 31.01.2026 23:50 local и будущих февральских labels не содержат. Production manifest фиксирует training_end_exclusive=2026-01-31T00:00:00Z, то есть рабочая refit-грань консервативно не включает остаток 31 января; это не утечка, но не буквальное использование всей истории до конца дня.",
+          "evidence": [
+            "coordination/research/C2/model-manifest-v1.json:2",
+            "docs/REPRODUCIBILITY.md:7,43-54",
+            "testData.check:scada-structure",
+            "src/agent/runner.py:74-79"
+          ]
+        },
+        {
+          "requirement": "Погодный прогноз получается по координатам ВЭС из открытого источника.",
+          "status": "met",
+          "explanation": "Код формирует Open-Meteo Single Runs URL для ECMWF IFS с координатами 43.645150, 78.535604, забирает wind speed/direction и temperature, сохраняет исходный SHA и нормализованные JSONL rows.",
+          "evidence": [
+            "src/weather/open_meteo.py:18-55,126-149",
+            "src/weather/batch_archive.py:20-22,113-143",
+            "coordination/research/C1/weather-20260131-report.json:1-15",
+            "runtime.check:weather-fetch"
+          ]
+        },
+        {
+          "requirement": "Для каждого issue используется архивный прогноз, доступный на соответствующий момент, а не фактическая будущая погода.",
+          "status": "partial",
+          "explanation": "Временной gate реализован: selected_horizon требует run+9h <= issue_time, проверяет source cycle и запрещает weather_available_at после issue. Но +9 часов — собственная safety-margin гипотеза; проект прямо помечает availability_status ASSUMED и provenance_status unconfirmed, поэтому историческая as-issued доступность не доказана.",
+          "evidence": [
+            "src/weather/open_meteo.py:3-5,76-123,191-197",
+            "src/ml/forecast.py:34-44,47-74",
+            "src/contracts/schemas.py:143-159",
+            "coordination/research/C1/weather-20260131-report.json:6-10",
+            "F-006"
+          ]
+        },
+        {
+          "requirement": "Формируется почасовой прогноз на 24–48 часов для обеих ВЭС/турбин.",
+          "status": "met",
+          "explanation": "Контракт принимает только горизонты 24 и 48, а наблюдаемый 48-часовой HTTP-запуск с двумя турбинами завершился с 96 строками, lead_hours 1..48 и valid_time до 2026-02-02T12:00Z.",
+          "evidence": [
+            "src/contracts/schemas.py:21-25,55-65",
+            "src/ml/forecast.py:101-139",
+            "runtime.check:api-main"
+          ]
+        },
+        {
+          "requirement": "Полный agentic-цикл выполняет получение погоды, подготовку, модель, прогноз, анализ/валидацию и экспорт.",
+          "status": "met",
+          "explanation": "ForecastTools реализует пять зависимых стадий; deterministic mode прошёл их последовательно в наблюдаемом запросе, а live OpenAI tool-calling путь присутствует в исходниках. В API были получены 14 событий журнала, включая стадии и transport validation/persist.",
+          "evidence": [
+            "src/agent/runner.py:16,62-102,150-178",
+            "src/api/main.py:97-120",
+            "runtime.check:api-main"
+          ]
+        },
+        {
+          "requirement": "После обновления погодного входа выполняется повторный расчёт и сохраняется возможность сравнить выпуски.",
+          "status": "met",
+          "explanation": "Второй HTTP-запуск на 01.02.2026 использовал новый daily weather cycle и завершился отдельно с 96 строками; input_version строится из входов. UI/source также предусматривают comparison, хотя визуальный экран не инспектировался по пользовательской политике.",
+          "evidence": [
+            "runtime.check:api-main",
+            "src/ml/forecast.py:134-139",
+            "src/cli/replay.py:28-37",
+            "web/src/App.tsx:691-739"
+          ]
+        },
+        {
+          "requirement": "Прогнозирование последовательно повторяется с 31 января по весь февраль 2026 года.",
+          "status": "met",
+          "explanation": "В проекте есть отдельный CLI replay с 29 daily origins, сохранением полного журнала и проверкой 672 часов на каждую турбину; committed replay manifest сообщает completed, 2784 full-journal rows и 1344 selected February rows. В этом ревью реально выполнены первые два issue как HTTP smoke, а полный 29-дневный replay принят по source artifact, не выдан за новый локальный прогон.",
+          "evidence": [
+            "src/cli/replay.py:13-54",
+            "coordination/research/C2/replay-v1-manifest.json:1-12",
+            "README.md:32-39",
+            "runtime.limitations"
+          ]
+        },
+        {
+          "requirement": "Фактическая выработка февраля не подмешивается и не выдаётся за измеренную точность.",
+          "status": "met",
+          "explanation": "Предоставленные CSV не содержат февральских фактов; replay и evaluation используют null для February metrics, а README явно называет 1344 строки прогнозным покрытием, а не точностью.",
+          "evidence": [
+            "testData.check:scada-structure",
+            "coordination/research/C2/replay-v1-manifest.json:3-11",
+            "README.md:186-194",
+            "src/ml/train.py:103"
+          ]
+        },
+        {
+          "requirement": "Результат можно выгрузить и проверить по provenance/версии модели.",
+          "status": "met",
+          "explanation": "API возвращает metadata, events и CSV; observed export содержал 96 data rows плюс header и совпал по числу строк с ForecastResponse. input_version и model_version сохраняются в ответе.",
+          "evidence": [
+            "src/api/main.py:173-195",
+            "src/contracts/schemas.py:69-95",
+            "runtime.check:api-main"
+          ]
+        }
+      ],
+      "testData": {
+        "provided": [
+          "cases/1/task.txt",
+          "cases/1/case-data/Dataset HackAlemAI для участников 11.03.2023-28.02.2026 - turbine 1.csv",
+          "cases/1/case-data/Dataset HackAlemAI для участников 11.03.2023-28.02.2026 - turbine 2.csv",
+          "cases/1/case-data/HackAlem AI_ Agentic AI для прогнозирования выработки ВЭС.md"
+        ],
+        "used": [
+          "cases/1/case-data/Dataset HackAlemAI для участников 11.03.2023-28.02.2026 - turbine 1.csv",
+          "cases/1/case-data/Dataset HackAlemAI для участников 11.03.2023-28.02.2026 - turbine 2.csv",
+          "cases/1/case-data/HackAlem AI_ Agentic AI для прогнозирования выработки ВЭС.md",
+          "cases/1/task.txt"
+        ],
+        "checks": [
+          {
+            "input": "Оба предоставленных CSV из cases/1/case-data",
+            "method": "Запущен scripts/verify_data.py против официальных CSV; сравнивались размер и SHA-256 из coordination/DATA_MANIFEST.json.",
+            "result": "Оба файла получили OK: turbine 1 — 6049266 байт, SHA c4c341582fb2dd348b7187f0128cff265fe055f469413871ebb5db50eef58b5b; turbine 2 — 6354725 байт, SHA 820578cd18bb557cd30c2e102f3ae5a386DFC6C489A5A15743339C2B017305E5.",
+            "conclusion": "Применены именно предоставленные организаторами входы, а не синтетическая замена. Evidence: testData.check:data-hash и captures/20261002T211314833749-test.stdout.log."
+          },
+          {
+            "input": "turbine 1 CSV и turbine 2 CSV",
+            "method": "Через src.data.scada.prepare_hourly проверены русские поля, парсинг времени, почасовая агрегация и границы по всему файлу.",
+            "result": "T1: 142360 raw rows, 23763 hourly rows, first 2023-03-10T18:00:00Z, last 2026-01-31T17:00:00Z, 23667 complete hours и 96 partial hours. T2: 149499 raw rows, 25004 hourly rows, тот же первый/последний час, 24785 complete hours и 219 partial hours.",
+            "conclusion": "Структура и временной диапазон подходят для заявленного training path; адаптер явно отмечает неполные часы, не добавляет февральские строки и делает UTC+6 гипотезой. Evidence: testData.check:scada-structure и src/data/scada.py:37-126."
+          },
+          {
+            "input": "Последние строки обоих официальных CSV",
+            "method": "Проверены tail и результат prepare_hourly; дата/время последней raw строки — 2026-01-31 23:50:00 local.",
+            "result": "В обоих файлах после 31 января строк нет; последняя почасовая граница после интерпретации UTC+6 — 2026-01-31T17:00:00Z.",
+            "conclusion": "Февральские фактические labels отсутствуют, поэтому February accuracy не вычислялась и не использовалась как якобы подтверждённая метрика."
+          },
+          {
+            "input": "Weather fixtures в tests/test_data_weather.py и реальные два weather run, полученные для smoke",
+            "method": "Запущен pytest; дополнительно batch_archive получил runs 2026-01-31 и 2026-02-01, после чего API использовал их в forecast.",
+            "result": "Python suite: 86 passed, 2 skipped, 15 subtests passed. batch_archive: requested=2, ready=2, failed=0; HTTP forecast completed на обоих issue.",
+            "conclusion": "Проектный weather gate и реальный weather-to-forecast путь применены; skipped относятся к optional зависимостям, не к заявленному deterministic core. Evidence: captures/20261002T211346393309-test.stdout.log и captures/20261002T211659051393-start.stdout.log."
+          },
+          {
+            "input": "Предоставленная задача и markdown-описание кейса",
+            "method": "Сверены требования 24–48 часов, две турбины, архивные forecast runs, полный agentic cycle и февральский sequential replay с фактической реализацией.",
+            "result": "Требования покрыты отдельными status-элементами caseRequirements; один пункт historical as-of weather отмечен partial из-за собственного unconfirmed +9h допущения.",
+            "conclusion": "Оценка отделяет соответствие требованиям от отсутствия внешнего ключа и от невозможности визуального теста."
+          }
+        ],
+        "limitations": [
+          "Официальные CSV выданы отдельно от Git и не копируются в отчёт; использованы их локальные файлы и SHA, raw содержимое не публикуется.",
+          "Февральских фактических значений в предоставленных CSV нет, поэтому точность февраля не проверялась и не заявлялась.",
+          "В полном 29-дневном replay этого ревью реально выполнены два первых issue для HTTP smoke; остальные 27 приняты по committed replay-v1-manifest и исходному CLI, без выдачи source claim за новый запуск.",
+          "Историческая публикация Open-Meteo as-issued не подтверждается самим HTTP response; это отдельно отражено в F-006."
+        ]
+      },
+      "runtime": {
+        "status": "working",
+        "build": "PASS: requirements-lock.txt установлены в изолированном Python 3.12 окружении; frontend npm ci, Vite/TypeScript build, oxlint и Node tests завершились без ошибок. Lint сообщил 10 предупреждений и 0 ошибок.",
+        "start": "PASS: после подготовки опубликованного model-manifest-v1.json и двух погодных JSONL runs scripts/run_local.py --check вернул Ready: nwp-tabular-7f1b4f31e9bb / mode=deterministic.",
+        "scenario": "PASS: локальный FastAPI server обработал POST /api/runs для issue 2026-01-31T12:00:00Z и horizon 48 с двумя турбинами; статус completed, 96 forecast rows, 14 events, CSV 98 lines. Повторный issue 2026-02-01T12:00:00Z также completed с 96 rows и новым weather cycle/input version.",
+        "environment": "Проверка выполнялась в изолированных Docker-контейнерах с Python 3.12 и Node 22, без API keys, без browser/CUA automation и без визуальной проверки. Все созданные контейнеры имели префикс luna56-c0c67068 и удалены после проверки.",
+        "summary": "Основной deterministic сценарий воспроизведён end-to-end. Это достаточная база для status=working; live OpenAI path оценён по исходникам, потому что credentials намеренно не предоставлены.",
+        "checks": [
+          {
+            "command": "python -m pip install -r requirements-lock.txt pytest",
+            "result": "Пакеты из requirements-lock.txt и pytest установлены успешно в Python 3.12 окружении.",
+            "id": "runtime-build-python-deps",
+            "stage": "build",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Все pinned Python dependencies устанавливаются без ошибки, чтобы можно было запустить core и tests."
+          },
+          {
+            "command": "python -X utf8 -m pytest -q",
+            "result": "86 passed, 2 skipped, 15 subtests passed in 7.32s; один deprecation warning внешней библиотеки.",
+            "id": "runtime-python-tests",
+            "stage": "build",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Проектные unit/domain/integration tests проходят, а негативные weather/API checks fail closed."
+          },
+          {
+            "command": "npm ci --ignore-scripts && npm run build && npm run lint && node --test tests/*.test.mjs",
+            "result": "Vite build PASS; oxlint завершён с 0 errors и 10 warnings; Node test runner: 2/2 pass.",
+            "id": "runtime-frontend-build",
+            "stage": "build",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Frontend собирается из lockfile, статический lint не имеет ошибок, а поддерживаемые issue origins проходят Node tests."
+          },
+          {
+            "command": "python -X utf8 scripts/verify_data.py CASE_DATA_DIR",
+            "result": "Для двух файлов из CASE_DATA_DIR: обе контрольные суммы и размеры OK; T1 142360 raw rows, T2 149499 raw rows; последние raw timestamps 2026-01-31 23:50:00.",
+            "id": "runtime-case-data",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Официальные case CSV совпадают с coordination/DATA_MANIFEST.json и могут быть прочитаны проектным data adapter."
+          },
+          {
+            "command": "python -X utf8 -m src.weather.batch_archive --start-date 2026-01-31 --end-date 2026-02-01 --sleep-seconds 1",
+            "result": "requested=2, ready=2, failed=0; обе JSONL записи получили provider/unit/coverage checks.",
+            "id": "runtime-weather-fetch",
+            "stage": "start",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Для демонстрационного issue window создаются два валидных погодных цикла, пригодных для deterministic run."
+          },
+          {
+            "command": "python -X utf8 scripts/run_local.py --check",
+            "result": "Ready: nwp-tabular-7f1b4f31e9bb / mode=deterministic; date coverage checked per request.",
+            "id": "runtime-readiness",
+            "stage": "start",
+            "status": "pass",
+            "cause": "none",
+            "expected": "После подготовки manifest и weather cache readiness признаёт model/cache валидными без OpenAI key."
+          },
+          {
+            "command": "GET /api/health; POST /api/runs; GET /api/runs/{id}; GET /api/runs/{id}/forecast; GET /api/runs/{id}/events; GET /api/runs/{id}/export.csv",
+            "result": "health_ready=true; first run completed, 96 rows, first issue 2026-01-31T12:00:00Z, last valid 2026-02-02T12:00:00Z, 14 events, CSV 98 lines. Second run at 2026-02-01T12:00:00Z completed with 96 rows and separate run/input/weather cycle.",
+            "id": "runtime-api-main",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Основной пользовательский API-сценарий выдаёт полный почасовой forecast для двух турбин, журнал и CSV, затем допускает новый выпуск после обновления issue/weather."
+          }
+        ],
+        "limitations": [
+          "OPENAI_API_KEY, OPENAI_MODEL и внешний бюджет намеренно не предоставлялись; live tool-calling не запускался, а deterministic path не требует ключа.",
+          "Визуальный браузерный сценарий не инспектировался по явной пользовательской политике; UI build, static source и HTTP/API проверены отдельно.",
+          "Полный 29-дневный replay не запускался заново в этом ревью, потому что smoke-подготовка загрузила только два погодных цикла; committed replay artifact и CLI проанализированы как source evidence.",
+          "Frontend lint имеет 10 предупреждений, но 0 ошибок; они не блокируют сборку или наблюдаемый API сценарий."
+        ]
+      },
+      "liveDemo": {
+        "status": "none",
+        "url": null,
+        "notes": "Публичной deployed-версии в README нет; проект заявляет локальный сервер. Локальный HTTP/API smoke подтверждён отдельно, а визуальная browser-проверка намеренно оставлена пользователю и не влияет на баллы."
+      },
+      "fiveHourContext": "Для пятичасового хакатона это целостный MVP, а не production-система: команда успела собрать data adapter, погодный архив с provenance, измеренное сравнение моделей, production curve manifest, agentic orchestration, API, replay, UI и подробную воспроизводимость. Не требовались GPU, публичный hosting, промышленный SLA или февральская accuracy без февральских labels; эти отсутствующие элементы не штрафовались. Существенные удержания ограничены двумя фактами, которые важны уже для качества MVP: историческое время публикации погоды остаётся unconfirmed и January metrics не измеряют напрямую финальный production refit.",
+      "strengths": [
+        "F-001: наблюдаемый deterministic end-to-end сценарий с 96 строками, журналом и CSV.",
+        "F-002: официальные CSV применены напрямую, их SHA/размеры совпали, а data adapter явно фиксирует агрегацию, покрытие и timezone hypothesis.",
+        "F-003: weather/API контракты fail closed на дубликатах, неверных units, будущем available_at, смешанных циклах, неполном forecast и нечисловых значениях.",
+        "F-004: five-stage agent workflow и отдельный live Responses tool-calling path не дают LLM выдумывать числовой прогноз.",
+        "F-005: README и REPRODUCIBILITY связывают зависимости, данные, обучение, evaluation, replay, запуск и ограничения.",
+        "F-012: replay сохраняет полный overlap journal и формирует отдельную февральскую выборку без фиктивной February accuracy."
+      ],
+      "gaps": [
+        "Историческая доступность каждого NWP выпуска на соответствующий issue не доказана: реализация использует run+9h safety-margin и сама ставит provenance_status=unconfirmed.",
+        "Published January evaluation и production model manifest имеют разные fit boundaries; отчёт честно это раскрывает, но прямого quality report для финального production artifact нет."
+      ],
+      "futureAdvice": [
+        {
+          "principle": "Закрывайте temporal provenance отдельным проверяемым артефактом.",
+          "why": "F-006: проект правильно поставил +9h gate и маркировку unconfirmed, но это не доказывает as-issued publication. Для энергетического кейса именно эта граница определяет, можно ли считать retrospective forecast честным.",
+          "how": "В следующем хакатоне заранее выберите один архивный endpoint с журналом доступности или сохраните для каждого issue подписанный snapshot: run timestamp, retrieval timestamp, publication evidence, SHA и отрицательный тест с недоступным выпуском. В README разделите safety margin и доказанный provider fact.",
+          "findingIds": [
+            "F-006"
+          ],
+          "successCheck": "Для каждого из 29 issue есть машиночитаемая запись, где publication evidence <= issue_time, SHA входа воспроизводится, а тест намеренно отклоняет выпуск, появившийся позже.",
+          "timeboxMinutes": 45
+        },
+        {
+          "principle": "Связывайте evaluation report с тем же immutable artifact, который обслуживает API.",
+          "why": "F-007: README различает frozen January metrics и production refit, но пользователь всё равно видит production model_version, а численная таблица описывает другую fit boundary.",
+          "how": "После выбора модели сохраняйте в одном release report model manifest SHA, training_end_exclusive, evaluation fit cutoff, prediction SHA, dataset/weather SHAs и команду независимого пересчёта; endpoint evaluation должен возвращать именно этот release report.",
+          "findingIds": [
+            "F-007"
+          ],
+          "successCheck": "Независимый скрипт по опубликованному report и тому же manifest воспроизводит prediction SHA и MAE/RMSE без пояснения о несоответствии production-весов.",
+          "timeboxMinutes": 40
+        },
+        {
+          "principle": "Делайте один проверяемый bundle для demo path, сохраняя большие данные вне Git.",
+          "why": "F-005: команда уже описала зависимости, data setup, readiness и demo commands так, что основной сценарий удалось воспроизвести; следующий шаг — превратить этот удачный документированный путь в один короткий setup entrypoint.",
+          "how": "Добавьте небольшой setup/check script, который проверяет case-data, копирует versioned model manifest, скачивает только два demo runs, сверяет SHA и печатает один следующий API сценарий. Полный replay оставьте отдельной командой.",
+          "findingIds": [
+            "F-005"
+          ],
+          "successCheck": "После установки зависимостей одна команда с переданным CASE_DATA_DIR создаёт только demo artifacts, печатает Ready и получает 96 rows без ручного редактирования env.",
+          "timeboxMinutes": 30
+        }
+      ],
+      "uncertainties": [
+        "OPENAI credentials намеренно не предоставлялись: live LLM tool-calling подтверждён по исходникам, но не запускался в этой сессии.",
+        "Визуальное поведение браузера, адаптивная раскладка и отсутствие JS-ошибок не проверялись агентом; пользователь выполняет эту проверку самостоятельно.",
+        "Историческая публикация Open-Meteo Single Runs в момент каждого issue не подтверждена независимым as-issued журналом; project source labels it unconfirmed.",
+        "Официальные CSV не содержат фактов февраля 2026, поэтому February forecast coverage нельзя превратить в February accuracy.",
+        "Полный 29-run replay в этой сессии не повторён локально; его статус принят из committed replay-v1-manifest и проверенной структуры CLI, тогда как два начала периода реально прошли через HTTP."
+      ],
+      "reviewPolicyVersion": 2,
+      "assessmentStatus": "ready",
+      "findings": [
+        {
+          "id": "F-001",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Детерминированный основной сценарий проходит от readiness до forecast, events и CSV для двух турбин.",
+          "expected": "Запрос 48 часов должен завершиться completed с 2*48 hourly rows и доступными журналом/экспортом.",
+          "actual": "HTTP smoke: health_ready=true, completed, 96 rows, 14 events и CSV 98 lines; второй issue также completed с 96 rows.",
+          "evidence": [
+            "runtime.check:api-main",
+            "src/api/main.py:146-195",
+            "src/agent/runner.py:150-178"
+          ],
+          "checkIds": [
+            "runtime-api-main"
+          ]
+        },
+        {
+          "id": "F-002",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Официальные test CSV проверяются по manifest и реально проходят через project SCADA adapter.",
+          "expected": "SHA/размер должны совпасть, обязательные поля должны читаться, временной диапазон — закончиться 31 января.",
+          "actual": "Обе SHA и размеры совпали; T1/T2 прочитаны с 142360/149499 raw rows и последней raw строкой 2026-01-31 23:50:00.",
+          "evidence": [
+            "captures/20261002T211314833749-test.stdout.log",
+            "testData.check:scada-structure",
+            "src/data/scada.py:52-126"
+          ],
+          "checkIds": [
+            "runtime-case-data"
+          ]
+        },
+        {
+          "id": "F-003",
+          "kind": "strength",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Weather and forecast contracts fail closed на структурных, физических и временных нарушениях.",
+          "expected": "Неверные units, дубли, смешанные run cycles, future weather, incomplete rows и nonfinite predictions должны остановить публикацию.",
+          "actual": "Такие проверки реализованы в open_meteo, forecast и API schemas и покрыты unit/integration tests.",
+          "evidence": [
+            "src/weather/open_meteo.py:58-75,184-222",
+            "src/contracts/schemas.py:130-160",
+            "tests/test_data_weather.py:48-180",
+            "tests/integration/test_api.py:90-116"
+          ],
+          "checkIds": [
+            "runtime-python-tests"
+          ]
+        },
+        {
+          "id": "F-004",
+          "kind": "strength",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Agentic слой разделён на deterministic workflow и реальный live tool-calling loop, а числовые значения вычисляются numerical adapter.",
+          "expected": "LLM/оркестратор должен вызывать ограниченные инструменты, не выдавая текстовый ответ вместо проверенного численного результата.",
+          "actual": "Пять стадий и live Responses loop присутствуют; deterministic mode проходит те же стадии без ключа.",
+          "evidence": [
+            "src/agent/runner.py:62-102,105-147,150-178",
+            "README.md:75-93"
+          ],
+          "checkIds": [
+            "runtime-api-main"
+          ]
+        },
+        {
+          "id": "F-005",
+          "kind": "strength",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "README, reproduction guide и committed reports дают воспроизводимый путь и честно отделяют replay от February accuracy.",
+          "expected": "Пользователь должен понимать data setup, run commands, model/evaluation boundary и ограничения.",
+          "actual": "Команды, manifest/metrics/replay files и ограничения перечислены; локальный путь readiness/API подтверждён.",
+          "evidence": [
+            "README.md:41-73,141-194",
+            "docs/REPRODUCIBILITY.md:1-58",
+            "captures/20261002T211718437583-start.stdout.log"
+          ],
+          "checkIds": [
+            "runtime-readiness"
+          ]
+        },
+        {
+          "id": "F-006",
+          "kind": "defect",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Историческая доступность выбранного weather run на момент issue не доказана; фактическая проверка опирается на run+9h safety-margin.",
+          "expected": "Для каждого февраля/holdout issue должен быть подтверждён архивный forecast, опубликованный не позднее issue_time, а не только предположен по циклу run.",
+          "actual": "Код требует available_at=run_time+9h и отклоняет более поздний ряд, но weather report содержит availability_status=ASSUMED, provenance_status=unconfirmed и прямо указывает, что HTTP response не доказывает as-issued operational field.",
+          "evidence": [
+            "src/weather/open_meteo.py:1-5,76-123,191-197",
+            "coordination/research/C1/weather-20260131-report.json:6-10,29",
+            "README.md:188",
+            "src/contracts/schemas.py:143-159"
+          ],
+          "checkIds": [
+            "runtime-weather-fetch",
+            "runtime-api-main"
+          ]
+        },
+        {
+          "id": "F-007",
+          "kind": "defect",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Published January quality metrics do not measure directly the final production model manifest used by the API.",
+          "expected": "Release report should use the same immutable production artifact and fit boundary as the deployed forecast, or expose a directly reproducible mapping between them.",
+          "actual": "evaluation-v1 reports January procedure with validation/test split ending 2026-01-31 and production manifest separately fixes training_end_exclusive=2026-01-31T00:00:00Z; README explicitly says displayed metrics are not measurement of final production weights.",
+          "evidence": [
+            "coordination/research/C2/evaluation-v1.json:1-17,68,520",
+            "coordination/research/C2/model-manifest-v1.json:1-15",
+            "docs/REPRODUCIBILITY.md:43-52",
+            "README.md:103"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "F-008",
+          "kind": "limitation",
+          "verification": "unverified",
+          "responsibility": "review_environment",
+          "claim": "Live OpenAI tool-calling path не запускался в этой сессии.",
+          "expected": "Для runtime-проверки live mode нужен предоставленный OPENAI_API_KEY и доступный внешний provider.",
+          "actual": "Credentials намеренно не предоставлялись; deterministic mode успешно работает без них, а live path проверен только чтением исходников.",
+          "evidence": [
+            "api_requirements.credentialsProvided=false",
+            "src/agent/runner.py:105-147",
+            "runtime.limitations"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "F-009",
+          "kind": "limitation",
+          "verification": "unverified",
+          "responsibility": "review_environment",
+          "claim": "Визуальное/браузерное поведение не проверялось агентом.",
+          "expected": "Визуальная приёмка выполняется пользователем по явному правилу задачи.",
+          "actual": "Проверены только static source, frontend build/lint/Node tests и HTTP/API; browser automation, screenshots и CUA не использовались.",
+          "evidence": [
+            "runtime.limitations",
+            "README.md:163-184"
+          ],
+          "checkIds": [
+            "runtime-frontend-build"
+          ]
+        },
+        {
+          "id": "F-010",
+          "kind": "limitation",
+          "verification": "observed",
+          "responsibility": "unknown",
+          "claim": "В официальной выдаче отсутствуют фактические February 2026 labels.",
+          "expected": "Для измерения February accuracy нужны фактические target values, которых нет в предоставленном кейсе.",
+          "actual": "Оба CSV заканчиваются 31.01.2026, replay manifest сохраняет february_metrics=null.",
+          "evidence": [
+            "testData.check:scada-structure",
+            "coordination/research/C2/replay-v1-manifest.json:3-11",
+            "README.md:188-194"
+          ],
+          "checkIds": [
+            "runtime-case-data"
+          ]
+        },
+        {
+          "id": "F-011",
+          "kind": "limitation",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Свежий clone не содержит локально готовые model/weather artifacts и требует documented setup шагов.",
+          "expected": "Для максимально короткого demo path достаточно было бы одной setup-команды с проверяемыми artifacts.",
+          "actual": "README требует вручную скопировать model manifest и скачать demo/full weather cache; это воспроизводимо и честно описано, но не self-contained из одного clone.",
+          "evidence": [
+            "README.md:41-73",
+            "docs/REPRODUCIBILITY.md:3-29",
+            "src/ml/forecast.py:77-81",
+            "src/agent/runner.py:19-30"
+          ],
+          "checkIds": [
+            "runtime-readiness",
+            "runtime-weather-fetch"
+          ]
+        },
+        {
+          "id": "F-012",
+          "kind": "strength",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Sequential February replay сохраняет 29 origins, overlap journal и selected output без выдуманной February accuracy.",
+          "expected": "Каждый issue должен быть выполнен последовательно, target selection должна быть детерминированной и покрывать 672 часа на турбину.",
+          "actual": "CLI реализует этот цикл и checks missing target; committed manifest сообщает completed, 2784 full journal rows и 1344 selected rows.",
+          "evidence": [
+            "src/cli/replay.py:20-54",
+            "coordination/research/C2/replay-v1-manifest.json:1-12",
+            "README.md:38"
+          ],
+          "checkIds": []
+        }
+      ],
+      "gapFindingIds": [
+        "F-006",
+        "F-007"
+      ]
+    }
+  ],
+  "score": 92.0,
+  "status": "complete",
+  "expectedJudges": 1
+}

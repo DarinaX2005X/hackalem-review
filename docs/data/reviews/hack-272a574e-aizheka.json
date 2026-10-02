@@ -1,0 +1,990 @@
+{
+  "methodVersion": 4,
+  "repoId": "hack-272a574e-aizheka",
+  "repoUrl": "https://github.com/BAITC-Hacks/hack-272a574e-aizheka",
+  "caseId": 4,
+  "snapshot": "3c42cc307c40f49238f610449f01ce5b2230711b",
+  "judges": [
+    {
+      "methodVersion": 4,
+      "repoId": "hack-272a574e-aizheka",
+      "caseId": 4,
+      "model": "GPT-5.6 Luna",
+      "snapshot": "3c42cc307c40f49238f610449f01ce5b2230711b",
+      "overallSummary": "Подтверждён цельный офлайн-прототип агента управления тарифными кампаниями. Agent.act загружает воспроизводимый shortlist, проводит адаптивные пилоты через публичный env.run_pilot, обновляет байесовские убеждения и выбирает финальные кампании с резервированием бюджета и охвата. Локальный сценарий и воспроизводимый submission.csv работают: 20/20 тестов прошли, десять прогонов local_eval дали положительный результат. Основные ограничения — экспериментальные AI-модули не подключены к Agent.act, а изолированная проверка минимального submission-архива в репозитории не выполнена; это удерживает оценку ниже максимума, но не блокирует основной MVP.",
+      "global": {
+        "criteria": [
+          {
+            "name": "Ценность решения",
+            "score": 25,
+            "max": 25,
+            "awarded": "Практическая ценность для аналитика маркетинга доказана хорошо: агент превращает исторические переходы и текущий профиль абонентов в проверяемый план кампаний, учитывая стоимость контактов и риск ошибочного решения.",
+            "deductions": "Подтверждённых project-дефектов, допускающих снятие баллов по этому критерию, не установлено. Ограничение hidden-проверки вынесено отдельно в uncertainties.",
+            "evidence": [
+              "README.md:101-120",
+              "README.md:145-166",
+              "adaptive_pilots.py:140-199",
+              "local_eval.py:34-68"
+            ],
+            "deductionItems": [],
+            "awardedDetails": [
+              {
+                "aspect": "Сценарий аналитика от данных к плану",
+                "implementation": "Agent.act загружает analysis/candidate_shortlist.csv, строит CandidateBelief по группам текущего тарифа и ARPU-сегмента, затем возвращает словари кампаний с сегментом, целевым тарифом и каналом. Это соответствует роли аналитика, который хочет получить готовый план, а не только таблицу исторических переходов.",
+                "value": "Решение автоматизирует наиболее трудоёмкую часть задачи: перебор вариантов перехода и распределение ограниченных ресурсов. Пользователь получает непосредственно исполнимый список кампаний.",
+                "verification": "observed",
+                "evidence": [
+                  "agent.py:10-19",
+                  "adaptive_pilots.py:140-199",
+                  "adaptive_pilots.py:380-388",
+                  "captures/20260930T085053893033-build.stdout.log"
+                ]
+              },
+              {
+                "aspect": "Оптимизация чистого результата",
+                "implementation": "В выборе пилотов и кампаний учитываются ожидаемый ARPU, стоимость контакта, размер аудитории, оставшийся бюджет и охват. Финальный conservative_net вычитает стоимость контактов из ARPU-прироста и применяет штраф за неопределённость через z-оценку.",
+                "value": "Это напрямую отражает целевую формулу кейса и снижает риск выбрать формально прибыльный, но дорогой или ненадёжный сегмент.",
+                "verification": "source",
+                "evidence": [
+                  "adaptive_pilots.py:203-227",
+                  "adaptive_pilots.py:307-321",
+                  "adaptive_pilots.py:390-415",
+                  "scoring_core.py:1-7"
+                ]
+              },
+              {
+                "aspect": "Ориентация на неопределённость",
+                "implementation": "Исторический сигнал масштабируется в слабый prior, задаются нижняя и верхняя границы prior_std, а после каждого пилота выполняется normal-normal update. Финальная сортировка использует conservative_net, а не только posterior_mean.",
+                "value": "Подход соответствует главной сложности задачи: данные прошлых переходов не считаются прямым прогнозом целевого эффекта. Это делает решение более полезным для принятия решения в условиях неполной информации.",
+                "verification": "source",
+                "evidence": [
+                  "adaptive_pilots.py:15-19",
+                  "adaptive_pilots.py:165-195",
+                  "adaptive_pilots.py:116-131",
+                  "README.md:104-112"
+                ]
+              },
+              {
+                "aspect": "Проверенная механика и устойчивость mock-сценария",
+                "implementation": "Проведены десять фиксированных прогонов с разными seed. Все десять дали положительный net_arpu_gain; медиана составила 488485, минимум 28584. Это не доказывает hidden-качество, но подтверждает, что опубликованный сценарий не разваливается от одной неудачной серии пилотов.",
+                "value": "Для пятичасового прототипа это сильное практическое свидетельство того, что агент действительно управляет ресурсами и не полагается на единичный удачный запуск.",
+                "verification": "observed",
+                "evidence": [
+                  "captures/20260930T085053893033-scenario.stdout.log",
+                  "local_eval.py:72-98"
+                ]
+              }
+            ],
+            "scoreReasoning": "25/25: точное соответствие бизнес-сценарию, явная работа с затратами и неопределённостью и устойчиво воспроизводимая локальная механика подтверждены. Отсутствие независимого hidden-прогона оставлено как uncertainty и не использовано как штраф по политике доказательств."
+          },
+          {
+            "name": "Результат и качество решения",
+            "score": 20,
+            "max": 20,
+            "awarded": "Основной пользовательский результат воспроизводится: Agent.act возвращает корректную кампанию, пилоты учитываются в scoring, а лимиты соблюдаются.",
+            "deductions": "Подтверждённых project-дефектов, допускающих снятие баллов по этому критерию, не установлено. Ограничение hidden-проверки вынесено отдельно в runtime и uncertainties.",
+            "evidence": [
+              "agent.py:10-19",
+              "local_eval.py:34-68",
+              "captures/20260930T085044617497-test.stderr.log",
+              "captures/20260930T085053893033-build.stdout.log"
+            ],
+            "deductionItems": [],
+            "awardedDetails": [
+              {
+                "aspect": "Рабочая точка входа",
+                "implementation": "Класс Agent имеет act(env), создаёт AdaptivePilotStrategy из CSV-shortlist и запускает strategy.run(env). В коде нет обращения к внутренностям среды или к приватным данным пилотов.",
+                "value": "Соблюдён обязательный контракт кейса, поэтому решение можно запускать тем же интерфейсом, который предоставляет организатор.",
+                "verification": "observed",
+                "evidence": [
+                  "agent.py:1-19",
+                  "adaptive_pilots.py:454-456",
+                  "captures/20260930T085044617497-test.stderr.log"
+                ]
+              },
+              {
+                "aspect": "Адаптивная разведка",
+                "implementation": "run_pilots выбирает следующий эксперимент по utility, проверяет его через validate_pilot, вызывает env.run_pilot и обновляет belief по observed_lift_ratio и n_customers. Ошибочный кандидат блокируется, а стратегия продолжает работу.",
+                "value": "Это целостный сценарий обучения, а не заранее зашитый список кампаний; полученная информация влияет на последующий выбор.",
+                "verification": "source",
+                "evidence": [
+                  "adaptive_pilots.py:323-378",
+                  "action_gate.py:6-31",
+                  "tests/test_adaptive_pilots.py:1-200"
+                ]
+              },
+              {
+                "aspect": "Соблюдение ресурсов",
+                "implementation": "Есть отдельные лимиты для пилотов, контактов и бюджета, резервы под deployment и проверка вместимости кампании. Финальный выбор вычитает расходы по каждой выбранной аудитории и не допускает повторного финального audience_key.",
+                "value": "Решение не жертвует бюджетом финальных кампаний ради разведки и не рассчитывает на постфактум-санитизацию.",
+                "verification": "source",
+                "evidence": [
+                  "adaptive_pilots.py:20-35",
+                  "adaptive_pilots.py:252-305",
+                  "adaptive_pilots.py:417-430",
+                  "action_gate.py:16-31"
+                ]
+              },
+              {
+                "aspect": "Воспроизводимый результат",
+                "implementation": "make_submission.py запускает Agent на seed=42 и отбирает фиксированный порядок колонок; фактический запуск создал одну строку adaptive_1_tariff_8_tariff_10 с target_tariff=tariff_10 и channel=sms.",
+                "value": "Артефакт можно повторно получить из сданного кода, что снижает риск ручного расхождения между CSV и агентом.",
+                "verification": "observed",
+                "evidence": [
+                  "make_submission.py:18-49",
+                  "captures/20260930T085053893033-build.stdout.log",
+                  "README.md:84-98"
+                ]
+              }
+            ],
+            "scoreReasoning": "20/20: обязательный runtime-контракт, адаптивные пилоты, ограничения и воспроизводимый CSV подтверждены кодом и запуском. Независимый hidden-прогон не доступен и потому не превращён в штраф."
+          },
+          {
+            "name": "Инновационность",
+            "score": 13,
+            "max": 15,
+            "awarded": "Нестандартная часть решения — связка слабых исторических priors, value-of-information, байесовского обновления и conservative portfolio selection.",
+            "deductions": "Снято 2 балла, поскольку экспериментальные AI/LLM-модули и overlap-aware portfolio selector явно не входят в основной Agent.act; инновационный контур остаётся преимущественно статистическим и не расширяет рабочий сценарий.",
+            "evidence": [
+              "README.md:12-18",
+              "README.md:185-209",
+              "adaptive_pilots.py:203-227",
+              "verified_cascade.py:1-90"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "F-EXPERIMENTAL-AI-DISCONNECTED",
+                "reason": "README и код подтверждают, что ai_provider.py, semantic_features.py и verified_cascade.py не подключены к Agent.act; заявленные экспериментальные AI-контракты не влияют на итоговый план."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Value-of-information вместо фиксированного числа пилотов",
+                "implementation": "expected_value_of_information оценивает, как наблюдение может изменить будущую ценность решения; choose_next_pilot ранжирует кандидатов по этой величине плюс ожидаемому net от пилота и прекращает разведку при utility ниже MIN_DECISION_BENEFIT.",
+                "value": "Это содержательно отличается от простого перебора и связывает цену эксперимента с потенциальным улучшением решения.",
+                "verification": "source",
+                "evidence": [
+                  "adaptive_pilots.py:203-227",
+                  "adaptive_pilots.py:307-342",
+                  "tests/test_adaptive_pilots.py:92-145"
+                ]
+              },
+              {
+                "aspect": "Консервативная байесовская селекция",
+                "implementation": "После наблюдений стратегия строит conservative_net через posterior_mean минус 1.64 или 1.96 стандартных отклонения; дорогие кампании получают более строгий порог.",
+                "value": "Неопределённость не просто выводится пользователю, а реально меняет порядок и возможность финального запуска.",
+                "verification": "source",
+                "evidence": [
+                  "adaptive_pilots.py:390-415",
+                  "tests/test_adaptive_pilots.py:35-91"
+                ]
+              },
+              {
+                "aspect": "Честное отделение экспериментов от release",
+                "implementation": "README прямо помечает portfolio.py и AI-модули как experimental и оставляет default policy только после проверки регрессий на seed-наборе.",
+                "value": "Для hackathon MVP это полезная инженерная дисциплина: неподтверждённый компонент не маскируется под рабочее преимущество.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:12-18",
+                  "README.md:145-166",
+                  "README.md:185-209"
+                ]
+              }
+            ],
+            "scoreReasoning": "13/15: рабочая статистическая стратегия действительно нестандартна и проверена контрактными тестами. Два балла сняты за подтверждённое расхождение между экспериментальными AI/portfolio-компонентами и фактическим release-контуром; это ограничивает заявленную широту инновации, но не обесценивает основной подход."
+          },
+          {
+            "name": "Потенциал развития и масштабирования",
+            "score": 17,
+            "max": 20,
+            "awarded": "Архитектура достаточно модульна для расширения: shortlist, belief update, action gate и portfolio selection разделены, а ресурсы параметризованы через env.",
+            "deductions": "Снято 3 балла за не подтверждённую изолированную упаковку submission и за отсутствие доказанного рабочего пути к внешнему AI-провайдеру в текущем срезе.",
+            "evidence": [
+              "agent.py:10-19",
+              "adaptive_pilots.py:134-242",
+              "action_gate.py:1-31",
+              "README.md:74-98",
+              "README.md:185-209"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "F-UNTESTED-SUBMISSION-ARCHIVE",
+                "reason": "README прямо указывает, что isolated submission archive ещё не тестировался; это оставляет риск воспроизводимости при переносе только минимального набора файлов."
+              },
+              {
+                "points": 1,
+                "findingId": "F-EXPERIMENTAL-AI-DISCONNECTED",
+                "reason": "Внешний AI-контур описан и имеет offline contract tests, но не подключён к рабочему агенту, поэтому масштабирование через semantic features/LLM пока не подтверждено."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Разделение компонентов",
+                "implementation": "Agent остаётся тонким entry point; построение beliefs и адаптивная политика находятся в adaptive_pilots.py, проверка пилота — в action_gate.py, scoring и mock harness — в отдельных файлах.",
+                "value": "Такое разделение позволяет менять стратегию или проверку ресурсов без переписывания интерфейса участника.",
+                "verification": "source",
+                "evidence": [
+                  "agent.py:1-19",
+                  "adaptive_pilots.py:134-242",
+                  "action_gate.py:1-31"
+                ]
+              },
+              {
+                "aspect": "Параметризация под среду",
+                "implementation": "Размеры и стоимость кампании берутся из env и belief, а total_budget, max_total_contacts и pilots_left учитываются динамически; это лучше переносится на среды с иными лимитами.",
+                "value": "Компонент не зашит только под один seed и может быть повторно использован при изменении доступного бюджета или каналов.",
+                "verification": "source",
+                "evidence": [
+                  "adaptive_pilots.py:252-305",
+                  "adaptive_pilots.py:344-378",
+                  "environment.py:55-72"
+                ]
+              },
+              {
+                "aspect": "Основа для последующих исследований",
+                "implementation": "В репозитории отдельно оставлены overlap-aware beam search, semantic features и verified cascade с контрактными тестами и описанием незавершённых шагов.",
+                "value": "Есть конкретная траектория развития, а не только общая декларация: ablation, калибровка моделей, labeled fixtures и изолированная упаковка перечислены явно.",
+                "verification": "source",
+                "evidence": [
+                  "portfolio.py:1-106",
+                  "verified_cascade.py:18-90",
+                  "README.md:211-219"
+                ]
+              }
+            ],
+            "scoreReasoning": "17/20: структура хорошо подходит для расширения политики и замены источников priors. Три балла удержаны за фактически не проверенную минимальную упаковку и за то, что внешний AI-путь остаётся экспериментальным и не включён в release."
+          },
+          {
+            "name": "Презентация, демо и ответы на вопросы",
+            "score": 18,
+            "max": 20,
+            "awarded": "В рамках данного разбора README подробно описывает запуск, ограничения mock-оценки, архитектуру и результаты; CLI-демо воспроизводится.",
+            "deductions": "Снято 2 балла за отсутствие подтверждённой изолированной демонстрации именно минимального submission-архива, а не за отсутствие публичной ссылки или устного выступления.",
+            "evidence": [
+              "README.md:20-98",
+              "README.md:101-180",
+              "captures/20260930T085044617497-test.stderr.log",
+              "captures/20260930T085053893033-build.stdout.log"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "F-UNTESTED-SUBMISSION-ARCHIVE",
+                "reason": "Документация сама сообщает, что изолированный архив ещё не тестировался; это снижает полноту воспроизводимого демо при переносе, хотя полное checkout-демо прошло."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Понятный путь запуска",
+                "implementation": "README содержит команды установки, unittest, local_eval, multi-seed проверки и make_submission для Windows и Linux/WSL, а также список файлов для judging upload.",
+                "value": "Новый проверяющий может понять, как перейти от клона к результату, и знает, какие команды проверяют механику и воспроизводимость.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:20-98"
+                ]
+              },
+              {
+                "aspect": "Честное описание границ",
+                "implementation": "README отделяет mock-score от будущей судейской оценки, указывает, что AI-модули не wired into Agent.act, и перечисляет незавершённую работу.",
+                "value": "Это повышает доверие к демо: локальные цифры не выдаются за доказательство hidden quality.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:12-18",
+                  "README.md:120-124",
+                  "README.md:167-180",
+                  "README.md:211-219"
+                ]
+              },
+              {
+                "aspect": "Наблюдаемый CLI-результат",
+                "implementation": "Запуски дали 20/20 OK, 10/10 положительных seed-прогонов и строку итоговой кампании в make_submission.",
+                "value": "Демо доступно без UI и без внешнего ключа, поэтому основной результат можно воспроизвести в локальном окружении.",
+                "verification": "observed",
+                "evidence": [
+                  "captures/20260930T085044617497-test.stderr.log",
+                  "captures/20260930T085053893033-scenario.stdout.log",
+                  "captures/20260930T085053893033-build.stdout.log"
+                ]
+              }
+            ],
+            "scoreReasoning": "18/20: документация и локальное CLI-демо заметно выше минимального уровня. Два балла сняты за подтверждённо незавершённую проверку минимального submission-пакета; публичная Live-ссылка и отсутствие устной презентации штрафом не считались."
+          }
+        ],
+        "total": 93
+      },
+      "case": {
+        "criteria": [
+          {
+            "name": "Соответствие задаче и работоспособность",
+            "score": 25,
+            "max": 25,
+            "awarded": "Основной сценарий кейса реализован: агент исследует эффекты пилотами и возвращает корректный план кампаний под лимитами.",
+            "deductions": "Подтверждённых project-дефектов, допускающих снятие баллов по этому критерию, не установлено. Ограничение hidden-проверки вынесено отдельно.",
+            "evidence": [
+              "agent.py:10-19",
+              "adaptive_pilots.py:344-456",
+              "captures/20260930T085053893033-scenario.stdout.log"
+            ],
+            "deductionItems": [],
+            "awardedDetails": [
+              {
+                "aspect": "Контракт Agent.act",
+                "implementation": "Agent.act(env) принимает среду, строит стратегию по env.customer_profile и возвращает список campaign dictionaries.",
+                "value": "Это точно совпадает с обязательным входом и выходом кейса.",
+                "verification": "observed",
+                "evidence": [
+                  "agent.py:10-19",
+                  "captures/20260930T085044617497-test.stderr.log"
+                ]
+              },
+              {
+                "aspect": "Пилоты влияют на решение",
+                "implementation": "run_pilots вызывает env.run_pilot, передаёт target tariff, channel и фильтры, затем обновляет конкретный CandidateBelief наблюдаемым ratio.",
+                "value": "Требование не действовать по зашитым константам выполнено по исходникам и поддержано тестом изменения наблюдения, меняющего финальное решение.",
+                "verification": "source",
+                "evidence": [
+                  "adaptive_pilots.py:359-373",
+                  "tests/test_adaptive_pilots.py:35-91"
+                ]
+              },
+              {
+                "aspect": "Кампании и лимиты",
+                "implementation": "Финальные кампании ограничены MAX_FINAL_CAMPAIGNS=6, каждая capacity ограничена 5000, а пилоты ограничены 8 попытками, 1600 контактами и 20000 бюджета с резервом под deployment.",
+                "value": "Ограничения строже, чем максимум кейса, и проходят интеграционный тест на фиксированных seed.",
+                "verification": "observed",
+                "evidence": [
+                  "adaptive_pilots.py:20-35",
+                  "adaptive_pilots.py:390-430",
+                  "captures/20260930T085044617497-test.stderr.log"
+                ]
+              },
+              {
+                "aspect": "Запрет обхода среды",
+                "implementation": "Стратегия использует только публичные поля env и env.run_pilot; в просмотренных рабочих модулях нет чтения closure, приватных internals или sampled IDs.",
+                "value": "Это соответствует честной модели частичной наблюдаемости.",
+                "verification": "source",
+                "evidence": [
+                  "agent.py:10-19",
+                  "adaptive_pilots.py:344-378",
+                  "environment.py:199-206"
+                ]
+              }
+            ],
+            "scoreReasoning": "25/25: все обязательные механики и рабочий CLI-сценарий подтверждены. Граница hidden scoring отражена как uncertainty, а не как подтверждённый дефект проекта."
+          },
+          {
+            "name": "Техническая реализация",
+            "score": 23,
+            "max": 25,
+            "awarded": "Реализация качественная для MVP: модульная, типизированная на ключевых границах, с нормальной обработкой ошибок пилотов и ресурсными gate-проверками.",
+            "deductions": "Снято 2 балла за разрыв между экспериментальными AI-компонентами и фактически используемым release-контуром.",
+            "evidence": [
+              "adaptive_pilots.py:69-131",
+              "adaptive_pilots.py:323-378",
+              "action_gate.py:1-31",
+              "tests/test_ai_contracts.py:1-220"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "F-EXPERIMENTAL-AI-DISCONNECTED",
+                "reason": "AI-контрактные тесты существуют, но Agent.act их не вызывает; поэтому заявленная agentic/LLM часть не участвует в рабочем техническом сценарии."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Байесовская модель наблюдений",
+                "implementation": "CandidateBelief хранит prior/posterior mean и variance; update объединяет prior precision с дисперсией наблюдения, зависящей от размера пилота.",
+                "value": "Техническая реализация учитывает, что более крупный пилот даёт более точное наблюдение, вместо простого присваивания последнего результата.",
+                "verification": "source",
+                "evidence": [
+                  "adaptive_pilots.py:69-131",
+                  "tests/test_adaptive_pilots.py:35-91"
+                ]
+              },
+              {
+                "aspect": "Планирование ресурсов",
+                "implementation": "Пилотный размер рассчитывается через доступные контакты и бюджет, максимальный spend на пилот, лимит попыток и резервы; validate_pilot повторно проверяет фактическую стоимость канала и лимиты.",
+                "value": "Две независимые линии контроля уменьшают вероятность случайно превысить ограничения.",
+                "verification": "source",
+                "evidence": [
+                  "adaptive_pilots.py:264-305",
+                  "action_gate.py:6-31",
+                  "tests/test_adaptive_pilots.py:146-220"
+                ]
+              },
+              {
+                "aspect": "Обработка отказов",
+                "implementation": "RuntimeError, ValueError, KeyError и TypeError от пилота блокируют только кандидата и позволяют стратегии продолжить; при отсутствии подходящего решения есть fallback.",
+                "value": "Одиночная ошибка среды не превращает весь запуск в исключение, что важно при шумном пилотировании.",
+                "verification": "source",
+                "evidence": [
+                  "adaptive_pilots.py:359-378",
+                  "adaptive_pilots.py:432-452",
+                  "tests/test_adaptive_pilots.py:146-220"
+                ]
+              },
+              {
+                "aspect": "Контрактные тесты экспериментальных интеграций",
+                "implementation": "Отдельный tests/test_ai_contracts.py проверяет формы score-запросов/ответов, budget accounting, cache key, outage и stale evidence rejection.",
+                "value": "Даже не подключённая интеграционная часть имеет проверяемые границы и не представлена как непроверенный произвольный код.",
+                "verification": "observed",
+                "evidence": [
+                  "tests/test_ai_contracts.py:1-220",
+                  "captures/20260930T085044617497-test.stderr.log"
+                ]
+              }
+            ],
+            "scoreReasoning": "23/25: рабочая core-архитектура и тесты сильны. Два балла сняты за то, что AI/agentic слой остаётся экспериментальным и не влияет на Agent.act; это реальное отличие заявленной широты от фактического release, но не дефект базового алгоритма."
+          },
+          {
+            "name": "README и воспроизводимость",
+            "score": 23,
+            "max": 25,
+            "awarded": "README позволяет понять архитектуру, запуск, лимиты, mock-ограничения и состав submission; полный checkout успешно воспроизводится.",
+            "deductions": "Снято 2 балла за подтверждённо непроверенную изолированную упаковку submission.",
+            "evidence": [
+              "README.md:20-98",
+              "README.md:120-124",
+              "README.md:211-219",
+              "captures/20260930T085044617497-test.stderr.log",
+              "captures/20260930T085053893033-build.stdout.log"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "F-UNTESTED-SUBMISSION-ARCHIVE",
+                "reason": "В README сказано, что isolated submission archive не тестировался; значит, воспроизводимость полного checkout доказана, а минимальный переносимый пакет — нет."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Инструкция от установки до проверки",
+                "implementation": "README даёт команды venv/pip, unittest discover, local_eval с одним и десятью seed и make_submission для двух сред.",
+                "value": "Документация покрывает путь, необходимый для повторения основного сценария без ручного чтения всех модулей.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:20-72"
+                ]
+              },
+              {
+                "aspect": "Документированный submission-контракт",
+                "implementation": "Перечислены agent.py, adaptive_pilots.py, action_gate.py, shortlist CSV, requirements и submission.csv, а также указана необходимость сохранить analysis/ и harness при локальном запуске.",
+                "value": "Это снижает риск неправильной упаковки и явно отделяет judging upload от локального набора данных.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:74-98"
+                ]
+              },
+              {
+                "aspect": "Результаты не скрыты за заявлением",
+                "implementation": "README приводит ограничения mock-score, seed-таблицу, текущую default policy и незавершённые пункты; фактические текущие команды были запущены отдельно.",
+                "value": "Проверяющий может сопоставить заявленные свойства с observed CLI-выводом, не принимая исторические цифры на доверии.",
+                "verification": "observed",
+                "evidence": [
+                  "README.md:101-180",
+                  "captures/20260930T085053893033-scenario.stdout.log",
+                  "captures/20260930T085053893033-build.stdout.log"
+                ]
+              },
+              {
+                "aspect": "Сопоставление организаторских данных",
+                "implementation": "Предоставленные customer_profile.csv, четыре data/*.csv, feature_dictionary.csv и tariff_dictionary.csv были прочитаны и сопоставлены с checkout-копиями; для всех семи файлов совпали размеры таблиц и последовательности столбцов.",
+                "value": "Это подтверждает, что локальный сценарий применён к структуре входа кейса, а не к произвольному упрощённому fixture.",
+                "verification": "observed",
+                "evidence": [
+                  "testData:case-input-schema-check",
+                  "customer_profile.csv",
+                  "data/arpu_monthly.csv",
+                  "data/change_tariff.csv",
+                  "data/traffic.csv",
+                  "data/dict_tariff.csv",
+                  "feature_dictionary.csv",
+                  "tariff_dictionary.csv"
+                ]
+              }
+            ],
+            "scoreReasoning": "23/25: README unusually explicit для короткого прототипа, а полный checkout воспроизводится. Два балла удержаны только за собственное признание, что минимальный изолированный архив не запускался; это не превращено в failure основного сценария."
+          },
+          {
+            "name": "Ценность и применимость решения",
+            "score": 14,
+            "max": 15,
+            "awarded": "Решение практически применимо как офлайн-движок подготовки кампаний: оно выбирает сегмент, тариф и канал, считает стоимость и ограничивает риск.",
+            "deductions": "Снят 1 балл за то, что текущий release опирается на ARPU/current-tariff сегменты и не подключает более богатые data/call/semantic признаки, хотя архитектура кейса их допускает.",
+            "evidence": [
+              "adaptive_pilots.py:149-199",
+              "adaptive_pilots.py:381-388",
+              "README.md:101-120",
+              "analysis/candidate_shortlist.csv"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "F-CORE-FEATURE-SCOPE",
+                "reason": "Фактический рабочий shortlist и belief строятся по current_tariff и arpu_segment; data_segment/call_segment и experimental semantic features не входят в default campaign path, поэтому покрытие применимых аудиторных сигналов уже, чем полный вход кейса."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Исполнимое решение для маркетингового планирования",
+                "implementation": "Финальная кампания содержит target_tariff и channel, а фильтры current tariff и ARPU segment соответствуют реальным полям профиля и применяются в pilot environment.",
+                "value": "Результат можно непосредственно передать в следующий слой кампаний, не превращая аналитический вывод в ручную интерпретацию.",
+                "verification": "observed",
+                "evidence": [
+                  "adaptive_pilots.py:380-388",
+                  "environment.py:150-160",
+                  "captures/20260930T085053893033-build.stdout.log"
+                ]
+              },
+              {
+                "aspect": "Экономическая осмотрительность",
+                "implementation": "Кандидаты с отрицательной conservative_net отбрасываются; выбор канала входит в candidate_id и стоимость контакта участвует в pilot utility и final net.",
+                "value": "Это защищает прикладную ценность: дорогой call не выбирается только потому, что его raw effect выше.",
+                "verification": "source",
+                "evidence": [
+                  "adaptive_pilots.py:307-321",
+                  "adaptive_pilots.py:400-430",
+                  "action_gate.py:16-31"
+                ]
+              },
+              {
+                "aspect": "Контроль уникального покрытия",
+                "implementation": "Финальный selector не выбирает более одной кампании для одного current tariff + ARPU segment audience_key; scoring harness отдельно учитывает уникальных абонентов.",
+                "value": "Подход не пытается искусственно умножить эффект пересекающимися финальными предложениями.",
+                "verification": "source",
+                "evidence": [
+                  "adaptive_pilots.py:417-430",
+                  "scoring_core.py:70-150"
+                ]
+              }
+            ],
+            "scoreReasoning": "14/15: для MVP ценность ясно привязана к задаче и подтверждена рабочим выводом. Один балл снят за более узкое покрытие признаков в default policy: дополнительные data/call/semantic сигналы присутствуют в данных или экспериментах, но не участвуют в итоговом рабочем агенте."
+          },
+          {
+            "name": "Потенциал развития и оригинальность подхода",
+            "score": 8,
+            "max": 10,
+            "awarded": "Потенциал выше среднего благодаря отдельным модулям shortlist, Bayesian pilots, portfolio и verified cascade; оригинальность основного решения — в выборе пилотов по информационной ценности.",
+            "deductions": "Снято 2 балла за то, что самые широкие расширения явно оставлены experimental и не прошли end-to-end подключение.",
+            "evidence": [
+              "adaptive_pilots.py:203-227",
+              "portfolio.py:1-106",
+              "verified_cascade.py:18-90",
+              "README.md:211-219"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "F-EXPERIMENTAL-AI-DISCONNECTED",
+                "reason": "Потенциал AI/semantic/overlap-расширений описан, но в текущем default Agent.act не реализован end-to-end; оценён именно достигнутый срез, а не обещанный roadmap."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Расширяемая стратегия экспериментов",
+                "implementation": "CandidateBelief и AdaptivePilotStrategy отделяют представление гипотезы от механики выбора, запуска и обновления; число/размер пилотов можно менять через константы и env.",
+                "value": "Такой слой можно адаптировать к другим каналам, тарифам и бюджетам без изменения контракта агента.",
+                "verification": "source",
+                "evidence": [
+                  "adaptive_pilots.py:69-131",
+                  "adaptive_pilots.py:230-378"
+                ]
+              },
+              {
+                "aspect": "Оригинальная идея verified cascade",
+                "implementation": "verified_cascade.py строит evidence packet, проверяет schema/evidence claims и предусматривает одну эскалацию с ограничением бюджета.",
+                "value": "Это осмысленный путь к безопасному добавлению LLM, где модель не получает права напрямую выполнять действия.",
+                "verification": "source",
+                "evidence": [
+                  "verified_cascade.py:18-90",
+                  "tests/test_ai_contracts.py:70-220"
+                ]
+              },
+              {
+                "aspect": "Конкретный roadmap",
+                "implementation": "README перечисляет paired ablations, новые evaluation seeds, успешный Gateway contract test, labeled fixtures, pinning моделей и isolated package reproduction.",
+                "value": "Следующие шаги сформулированы как проверяемые эксперименты, а не как абстрактное обещание масштабирования.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:211-219"
+                ]
+              }
+            ],
+            "scoreReasoning": "8/10: достигнутый core-подход оригинален и имеет понятные точки расширения. Два балла сняты потому, что AI и overlap-aware варианты не подключены к рабочему end-to-end сценарию и потому оцениваются как потенциал, а не как уже достигнутый результат."
+          }
+        ],
+        "total": 93
+      },
+      "judgeScore": 93,
+      "caseRequirements": [
+        {
+          "requirement": "agent.py содержит Agent.act(env) и возвращает список кампаний",
+          "status": "met",
+          "explanation": "Контракт реализован; observed unit/integration запуск завершился без исключений.",
+          "evidence": [
+            "agent.py:10-19",
+            "captures/20260930T085044617497-test.stderr.log"
+          ]
+        },
+        {
+          "requirement": "Агент проводит пилоты через env.run_pilot и учитывает результаты",
+          "status": "met",
+          "explanation": "run_pilots вызывает публичный env.run_pilot и передаёт observed_lift_ratio в Bayesian update; тест изменения наблюдения меняет финальное решение.",
+          "evidence": [
+            "adaptive_pilots.py:344-378",
+            "tests/test_adaptive_pilots.py:35-91"
+          ]
+        },
+        {
+          "requirement": "Финальный план содержит от 1 до 10 корректных кампаний с существующими тарифами и каналами",
+          "status": "met",
+          "explanation": "make_submission создал одну кампанию adaptive_1_tariff_8_tariff_10 с tariff_10 и sms; local_eval и sanitize_campaigns завершились успешно.",
+          "evidence": [
+            "make_submission.py:28-45",
+            "captures/20260930T085053893033-build.stdout.log",
+            "scoring_core.py:35-68"
+          ]
+        },
+        {
+          "requirement": "Соблюдены максимум 5000 на кампанию, 15000 контактов, бюджет 100000 и 20 пилотов",
+          "status": "met",
+          "explanation": "Код использует более строгие лимиты для пилотов и capacity, gate проверяет фактический бюджет/охват, а 20/20 тестов подтверждают bounded behavior.",
+          "evidence": [
+            "adaptive_pilots.py:20-35",
+            "adaptive_pilots.py:264-305",
+            "action_gate.py:16-31",
+            "captures/20260930T085044617497-test.stderr.log"
+          ]
+        },
+        {
+          "requirement": "Учитывается неопределённость и агент не подгоняется к mock-эффектам",
+          "status": "partial",
+          "explanation": "Prior специально ослабляется и обновляется только пилотами, а README честно отделяет mock score от hidden score. Однако независимого запуска на судейских эффектах в доступном срезе нет, поэтому перенос качества не доказан.",
+          "evidence": [
+            "adaptive_pilots.py:165-195",
+            "adaptive_pilots.py:203-227",
+            "README.md:120-124",
+            "F-LIMITED-HIDDEN-EVIDENCE"
+          ]
+        },
+        {
+          "requirement": "Время выполнения укладывается в 10 минут",
+          "status": "met",
+          "explanation": "Локальные тесты заняли 2.2 секунды, десять сценариев — 3.6 секунды; default release не делает внешних AI-вызовов.",
+          "evidence": [
+            "captures/20260930T085044617497-test.stdout.log",
+            "captures/20260930T085053893033-scenario.stdout.log",
+            "README.md:12-18"
+          ]
+        },
+        {
+          "requirement": "Воспроизводимый submission.csv",
+          "status": "met",
+          "explanation": "Команда make_submission.py завершилась с кодом 0 и записала CSV из Agent.act; порядок колонок фиксирован, seed=42 задан в коде.",
+          "evidence": [
+            "make_submission.py:18-49",
+            "captures/20260930T085053893033-build.stdout.log"
+          ]
+        },
+        {
+          "requirement": "Не обходить внутренности среды",
+          "status": "met",
+          "explanation": "В рабочем агенте обнаружены только публичные поля env и env.run_pilot; organizer-only internals используются только в harness local_eval, не передаются Agent.",
+          "evidence": [
+            "adaptive_pilots.py:344-378",
+            "environment.py:199-206",
+            "local_eval.py:46-61"
+          ]
+        },
+        {
+          "requirement": "Поддерживается fallback при ошибках внешней интеграции",
+          "status": "unverified",
+          "explanation": "В рабочем default Agent.act внешняя интеграция не используется. Экспериментальные AI helpers имеют outage tests, но end-to-end provider run без ключа не выполнялся и не нужен для offline release.",
+          "evidence": [
+            "README.md:12-18",
+            "ai_provider.py:1-180",
+            "tests/test_ai_contracts.py:70-220"
+          ]
+        }
+      ],
+      "testData": {
+        "provided": [
+          "customer_profile.csv",
+          "data/arpu_monthly.csv",
+          "data/change_tariff.csv",
+          "data/dict_tariff.csv",
+          "data/traffic.csv",
+          "feature_dictionary.csv",
+          "tariff_dictionary.csv",
+          "environment.py",
+          "mock_environment.py",
+          "local_eval.py",
+          "make_submission.py",
+          "scoring_core.py"
+        ],
+        "used": [
+          "customer_profile.csv",
+          "data/arpu_monthly.csv",
+          "data/change_tariff.csv",
+          "data/dict_tariff.csv",
+          "data/traffic.csv",
+          "feature_dictionary.csv",
+          "tariff_dictionary.csv",
+          "mock_environment.py",
+          "local_eval.py",
+          "make_submission.py",
+          "scoring_core.py"
+        ],
+        "checks": [
+          {
+            "input": "Организаторские CSV из case-data и одноимённые файлы checkout",
+            "method": "Прочитаны обе стороны и сопоставлены pandas-формы и последовательности колонок; совпали customer_profile 23441x29, arpu_monthly 78798x3, change_tariff 14823x6, dict_tariff 21x5, traffic 75736x30, feature_dictionary 38x3, tariff_dictionary 21x6.",
+            "result": "Все семь структурных сравнений прошли; формы и колонки совпали. Полные датасеты в отчёт не выводились.",
+            "conclusion": "Проектный harness применён к той же структуре входных данных кейса; различия SHA-256 не трактовались как дефект, поскольку проверялись содержимое формы и запуск сценария."
+          },
+          {
+            "input": "customer_profile.csv, data/change_tariff.csv, data/dict_tariff.csv и локальный mock_environment",
+            "method": "python local_eval.py --runs 10 через предоставленный scoring/local harness.",
+            "result": "10/10 прогонов дали положительный net_arpu_gain; медиана 488485, минимум 28584, максимум 489719.",
+            "conclusion": "Механика и устойчивость mock-сценария подтверждены; результат не является прогнозом judge-score."
+          },
+          {
+            "input": "Все предоставленные тестовые модули проекта",
+            "method": "python -m unittest discover -s tests -v.",
+            "result": "20 тестов, 20 OK, exit code 0.",
+            "conclusion": "Пройдены тесты Bayesian update, resource bounds, rejection fallback, shortlist, mock integration и AI contracts."
+          },
+          {
+            "input": "customer_profile.csv и generated shortlist",
+            "method": "python make_submission.py.",
+            "result": "exit code 0; одна строка adaptive_1_tariff_8_tariff_10, current tariff tariff_8, target tariff tariff_10, channel sms.",
+            "conclusion": "submission.csv генерируется из агента, а не читается как единственный источник результата."
+          }
+        ],
+        "limitations": [
+          "Запускался локальный офлайн harness checkout; внешние судейские эффекты и внешние API не подменялись mock-ответами.",
+          "Файлы case-data были использованы для структурного сопоставления; runtime запуск выполнялся на одноимённых файлах checkout, имеющих совпадающие формы и колонки.",
+          "Визуальная проверка не выполнялась по правилам задания; у проекта нет обязательного UI-сценария."
+        ]
+      },
+      "runtime": {
+        "status": "working",
+        "build": "Unit/domain build passed: 20 tests OK, exit code 0.",
+        "start": "CLI entry points started successfully; no HTTP server is required by this project.",
+        "scenario": "local_eval.py --runs 10 completed successfully and make_submission.py produced a valid one-row submission.csv.",
+        "environment": "Локальный Python runtime с зависимостями из requirements.txt в checkout; внешние API-ключи не предоставлялись и default offline release их не требует.",
+        "summary": "Основной сценарий воспроизведён end-to-end в offline mock environment. Runtime working относится к локальному release-сценарию; hidden judge effects не проверялись.",
+        "checks": [
+          {
+            "id": "C-UNIT-20",
+            "stage": "build",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Все unit/domain тесты завершаются без ошибок.",
+            "command": "python -m unittest discover -s tests -v",
+            "result": "20 tests ran, 20 OK, exit code 0; capture: captures/20260930T085044617497-test.stderr.log"
+          },
+          {
+            "id": "C-MOCK-10",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Агент завершает 10 seed-прогонов, соблюдает лимиты и выдаёт положительный mock net result.",
+            "command": "python local_eval.py --runs 10",
+            "result": "10/10 positive; median 488485, minimum 28584, maximum 489719; exit code 0; capture: captures/20260930T085053893033-scenario.stdout.log"
+          },
+          {
+            "id": "C-SUBMISSION-42",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "make_submission генерирует CSV с 1-10 корректными кампаниями из Agent.act.",
+            "command": "python make_submission.py",
+            "result": "exit code 0; one campaign row with tariff_10 and sms; capture: captures/20260930T085053893033-build.stdout.log"
+          },
+          {
+            "id": "C-HIDDEN-EFFECTS",
+            "stage": "scenario",
+            "status": "blocked",
+            "cause": "external_service",
+            "expected": "Проверить перенос результата на независимые judge effects.",
+            "command": "external judge scenario (template; credentials not provided)",
+            "result": "Не запускался: API/судейские эффекты и credentials не предоставлены. Это ограничение проверки, не дефект проекта."
+          }
+        ],
+        "limitations": [
+          "Нет доступа к независимой судейской impact-модели и внешним API credentials.",
+          "Не выполнялась визуальная проверка; это CLI-проект без заявленного UI.",
+          "Изолированный submission archive проектом заявлен, но в данном ревью не воспроизводился."
+        ]
+      },
+      "liveDemo": {
+        "status": "none",
+        "url": null,
+        "notes": "Публичная Live demo-ссылка не заявлена; проект поставляется как CLI/Agent.act. По правилам разбора отсутствие URL само по себе не снижало оценку."
+      },
+      "fiveHourContext": "Для пятичасового MVP объём core-решения существенный: подготовлен shortlist из публичных данных, добавлены адаптивные пилоты, байесовское обновление, resource gates, mock integration tests и воспроизводимый submission. Оценка не требует production-инфраструктуры, полноценного LLM-контура или UI. Незавершённые AI/portfolio-эксперименты учтены только как ограничения достигнутого среза, а не как требование достроить их задним числом.",
+      "strengths": [
+        "Основной Agent.act и полный offline-сценарий реально запускаются.",
+        "Пилоты выбираются адаптивно и влияют на posterior, а не являются декоративным вызовом.",
+        "Ресурсные ограничения и стоимость каналов проверяются до и во время действий.",
+        "README явно разделяет подтверждённый mock-result, экспериментальные модули и неизвестность hidden scoring.",
+        "20/20 тестов и 10/10 положительных seed-прогонов дают хорошую доказательность локальной механики."
+      ],
+      "gaps": [
+        "Экспериментальные AI/semantic/verified-cascade модули не подключены к Agent.act; это ограничивает фактически достигнутую agentic AI часть.",
+        "Изолированная минимальная упаковка submission не тестировалась, поэтому переносимость только перечисленного набора файлов не доказана.",
+        "Default policy использует current tariff и ARPU segment; богатые data/call признаки и semantic features не входят в рабочий путь."
+      ],
+      "futureAdvice": [
+        {
+          "principle": "Проверяй минимальный артефакт поставки тем же способом, каким его будет импортировать организатор.",
+          "why": "F-UNTESTED-SUBMISSION-ARCHIVE: README признаёт, что isolated submission archive не запускался; риск относится к упаковке, а не к алгоритму.",
+          "how": "В следующем кейсе собрать временную директорию только из перечисленных submission-файлов и предоставленных harness/data, запустить fresh Python process для make_submission и local_eval, затем сверить число колонок, допустимые значения и повторный hash CSV.",
+          "findingIds": [
+            "F-UNTESTED-SUBMISSION-ARCHIVE"
+          ],
+          "successCheck": "Чистая минимальная директория без лишних файлов генерирует тот же валидный submission и проходит smoke/local evaluation.",
+          "timeboxMinutes": 25
+        },
+        {
+          "principle": "Подключай экспериментальный компонент только после end-to-end ablation на рабочем сценарии.",
+          "why": "F-EXPERIMENTAL-AI-DISCONNECTED: AI-модули имеют контрактные тесты, но не участвуют в Agent.act, поэтому их прикладной вклад пока не измерен.",
+          "how": "Для другого хакатона зафиксировать offline deterministic adapter, пропустить через него тот же evidence packet, сравнить default и AI-enabled решения на одинаковых seed/fixtures и включить новый путь только при отсутствии регрессии и понятной схеме отказа.",
+          "findingIds": [
+            "F-EXPERIMENTAL-AI-DISCONNECTED"
+          ],
+          "successCheck": "Один end-to-end запуск явно показывает вход в provider adapter, валидированный ответ, fallback/abstain при outage и сравнимый или улучшенный результат на holdout fixtures.",
+          "timeboxMinutes": 45
+        }
+      ],
+      "uncertainties": [
+        "Качество на скрытой judge impact-модели не наблюдалось; локальные mock-эффекты намеренно не считаются эквивалентом судейства.",
+        "Из-за отсутствия credentials не выполнялась внешняя AI Gateway/LLM inference; статический путь и offline contract tests проверены.",
+        "Визуальное поведение не проверялось, поскольку проект не заявляет UI и визуальная проверка запрещена политикой ревью.",
+        "Исторические числа в README для ранее известных seed не принимались как новые независимые измерения; текущие 10 прогонов были запущены отдельно."
+      ],
+      "reviewPolicyVersion": 2,
+      "assessmentStatus": "ready",
+      "findings": [
+        {
+          "id": "F-LIMITED-HIDDEN-EVIDENCE",
+          "kind": "limitation",
+          "verification": "observed",
+          "responsibility": "external_service",
+          "claim": "Итоговая эффективность на независимых судейских эффектах не наблюдалась.",
+          "expected": "Иметь независимую impact-модель или судейский прогон для подтверждения переноса качества.",
+          "actual": "Доступный runtime подтвердил только mock local_eval; внешний сценарий не запускался без предоставленного ресурса.",
+          "evidence": [
+            "captures/20260930T085053893033-scenario.stdout.log",
+            "runtime.check C-HIDDEN-EFFECTS",
+            "README.md:120-124"
+          ],
+          "checkIds": [
+            "C-MOCK-10",
+            "C-HIDDEN-EFFECTS"
+          ]
+        },
+        {
+          "id": "F-EXPERIMENTAL-AI-DISCONNECTED",
+          "kind": "defect",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Экспериментальные AI/semantic/verified-cascade модули не входят в рабочий Agent.act.",
+          "expected": "Если заявляется AI-контур release, его путь должен быть подключён к основному сценарию с валидированным ответом и fallback.",
+          "actual": "agent.py вызывает только AdaptivePilotStrategy; README прямо говорит, что ai_provider.py, semantic_features.py и verified_cascade.py не wired into Agent.act.",
+          "evidence": [
+            "agent.py:10-19",
+            "README.md:12-18",
+            "ai_provider.py:1-180",
+            "verified_cascade.py:18-90"
+          ],
+          "checkIds": [
+            "C-UNIT-20"
+          ]
+        },
+        {
+          "id": "F-UNTESTED-SUBMISSION-ARCHIVE",
+          "kind": "defect",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Изолированная минимальная упаковка submission не была проверена.",
+          "expected": "Перечисленный в README набор файлов должен запускаться в чистой директории с предоставленным harness/data.",
+          "actual": "README прямо сообщает: isolated submission archive has not yet been tested; в ревью проверен полный checkout, но не минимальный переносимый архив.",
+          "evidence": [
+            "README.md:74-98",
+            "runtime.limitations"
+          ],
+          "checkIds": [
+            "C-SUBMISSION-42"
+          ]
+        },
+        {
+          "id": "F-CORE-FEATURE-SCOPE",
+          "kind": "defect",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Default policy использует более узкий набор признаков, чем полный вход кейса.",
+          "expected": "При необходимости использовать доступные data/call признаки либо явно обосновать их исключение.",
+          "actual": "build_beliefs группирует по current_tariff и arpu_segment; _campaign возвращает только ARPU/current-tariff фильтры, а semantic_features не подключены.",
+          "evidence": [
+            "adaptive_pilots.py:149-199",
+            "adaptive_pilots.py:381-388",
+            "README.md:12-18"
+          ],
+          "checkIds": [
+            "C-UNIT-20"
+          ]
+        },
+        {
+          "id": "F-TESTED-OFFLINE-CORE",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Основной офлайн-контур и reproducible submission работают.",
+          "expected": "Тесты, local evaluation и make_submission завершаются успешно и дают корректный результат.",
+          "actual": "20/20 tests OK; 10/10 seed runs positive; make_submission exit code 0 и одна корректная строка.",
+          "evidence": [
+            "captures/20260930T085044617497-test.stderr.log",
+            "captures/20260930T085053893033-scenario.stdout.log",
+            "captures/20260930T085053893033-build.stdout.log"
+          ],
+          "checkIds": [
+            "C-UNIT-20",
+            "C-MOCK-10",
+            "C-SUBMISSION-42"
+          ]
+        },
+        {
+          "id": "F-ADAPTIVE-RESOURCE-GATES",
+          "kind": "strength",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Пилоты и финальные кампании выбираются с учётом стоимости, uncertainty и оставшихся ресурсов.",
+          "expected": "Не превышать лимиты и использовать наблюдения для изменения решения.",
+          "actual": "Есть action gate, resource reserves, Bayesian update и conservative_net; unit tests покрывают bounds/rejection/update.",
+          "evidence": [
+            "adaptive_pilots.py:116-131",
+            "adaptive_pilots.py:264-305",
+            "adaptive_pilots.py:390-430",
+            "action_gate.py:6-31"
+          ],
+          "checkIds": [
+            "C-UNIT-20"
+          ]
+        }
+      ],
+      "gapFindingIds": [
+        "F-EXPERIMENTAL-AI-DISCONNECTED",
+        "F-UNTESTED-SUBMISSION-ARCHIVE",
+        "F-CORE-FEATURE-SCOPE"
+      ]
+    }
+  ],
+  "score": 93.0,
+  "status": "complete",
+  "expectedJudges": 1
+}

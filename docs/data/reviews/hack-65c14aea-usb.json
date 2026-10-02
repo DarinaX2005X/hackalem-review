@@ -1,0 +1,1155 @@
+{
+  "methodVersion": 4,
+  "repoId": "hack-65c14aea-usb",
+  "repoUrl": "https://github.com/BAITC-Hacks/hack-65c14aea-usb",
+  "caseId": 6,
+  "snapshot": "7bb6435311a91187c340116dfe2dbc8de40af829",
+  "judges": [
+    {
+      "methodVersion": 4,
+      "repoId": "hack-65c14aea-usb",
+      "caseId": 6,
+      "model": "GPT-5.6 Luna",
+      "snapshot": "7bb6435311a91187c340116dfe2dbc8de40af829",
+      "overallSummary": "Команда собрала воспроизводимый локальный сервис подбора event-подрядчиков: CSV на 66 профилей импортируется в PostgreSQL и Elasticsearch, FastAPI фильтрует занятость, бюджет, формат, язык и длительность, а Vue-клиент показывает до трёх карточек с объяснениями. Полный production-путь был запущен в изолированном стеке: импорт завершился успешно, /ready вернул 200, а UTF-8 HTTP-клиент подтвердил подбор, повторяемый порядок, редкую категорию, отсутствие категории и пустой результат. Оценку немного удерживают одна неверная команда в публичном README и расхождение между заявленной формулой гибридного ранжирования и финальным max() в сервисе.",
+      "global": {
+        "criteria": [
+          {
+            "name": "Ценность решения",
+            "score": 25,
+            "max": 25,
+            "awarded": "Полный балл: продукт решает понятную операционную проблему заказчика события и показывает практический результат, а не просто каталог.",
+            "deductions": "Подтверждённых дефектов, требующих снятия баллов по этому критерию, не установлено.",
+            "evidence": [
+              "README.md:5-35",
+              "cases/6/case-data/HackAlem AI_ Хакатон-задача_ умный подбор подрядчиков.md:7-12",
+              "runtime check scenario-production-http"
+            ],
+            "deductionItems": [],
+            "awardedDetails": [
+              {
+                "aspect": "Сформулированная пользовательская боль",
+                "implementation": "README описывает выбор подрядчика из уже полученного городского каталога: сервис должен ответить, кто действительно подходит на дату и почему. В форме задаются город, дата, формат, категория и бюджет, а язык и длительность остаются дополнительными параметрами.",
+                "value": "Это напрямую сокращает ручное сравнение десятков профилей и соответствует легенде кейса: ценность находится в объяснимом выборе, а не в расширении списка.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:5-35",
+                  "frontend/src/App.vue:301-389"
+                ]
+              },
+              {
+                "aspect": "Результат пригоден для решения заказа",
+                "implementation": "Ответ содержит не более трёх подрядчиков, цену, город, категории, флаг synthetic и текст причины; фронтенд дополнительно показывает параметры текущего запроса и раскрывает подробности профиля.",
+                "value": "Заказчик получает короткий список, который можно сравнить и проверить по фактам профиля, вместо необработанного каталога.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/app/schemas/recommendation.py:52-67",
+                  "frontend/src/components/ContractorCard.vue:1-120",
+                  "runtime check scenario-production-http"
+                ]
+              },
+              {
+                "aspect": "Реальные данные кейса",
+                "implementation": "Импортёр прочитал предоставленный CSV и в production-проверке загрузил 66 профилей, включая 13 synthetic, в PostgreSQL и Elasticsearch.",
+                "value": "Результат опирается на заявленный каталог и реальные календари занятости, а не на зашитые демонстрационные карточки.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/scripts/import_dataset.py:33-72",
+                  "backend/data/hackathon-dataset-anonymized.csv:2-67",
+                  "runtime check production-import"
+                ]
+              },
+              {
+                "aspect": "Понятный эффект от дат и ограничений",
+                "implementation": "Для Алматы/Фотографа/свадьбы с бюджетом 6000000 на 2026-10-10 production API вернул matched и три id; на 2026-11-14 состав изменился, а число занятых профилей изменилось с 4 до 5.",
+                "value": "Это демонстрирует именно полезный для заказчика эффект календаря, а не статический рейтинг.",
+                "verification": "observed",
+                "evidence": [
+                  "runtime check scenario-production-http",
+                  "runtime check scenario-date-http",
+                  "backend/app/services/recommendations.py:128-151"
+                ]
+              }
+            ],
+            "scoreReasoning": "Проблема конкретна, аудитория понятна, а полная цепочка от CSV до HTTP-ответа доказана. Продуктовый результат соответствует пятичасовому MVP и не требует необоснованных enterprise-функций, поэтому критерий получает 25/25."
+          },
+          {
+            "name": "Результат и качество решения",
+            "score": 19,
+            "max": 20,
+            "awarded": "Почти полный балл: сценарий целостный и проверен от импорта до HTTP-ответа, но финальная формула ранжирования не полностью совпадает с описанным гибридным подходом.",
+            "deductions": "Минус 1 балл за подтверждённое расхождение между заявленной весовой формулой и фактическим финальным score.",
+            "evidence": [
+              "backend/app/services/recommendations.py:68-82",
+              "backend/app/services/recommendations.py:154-167",
+              "backend/README.md:85",
+              "runtime check scenario-production-http"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "F-RANK-FORMULA",
+                "reason": "В заявленной логике 70/30 гибридный score должен определять релевантность, но RecommendationService берёт max() между lexical_relevance, hybrid_relevance и semantic_relevance. Это делает фактический вклад компонентов отличным от описанного и удерживает критерий от максимума."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Целостный production-сценарий",
+                "implementation": "Dockerfile собирает Python 3.12 образ, предварительно загружает FastEmbed-модель и копирует app, scripts и data. Отдельный importer создаёт записи и индекс, затем API стартует после готовности зависимостей.",
+                "value": "У решения есть воспроизводимый путь запуска, а не только набор функций в тестах.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/Dockerfile:1-22",
+                  "backend/docker-compose.yml:16-56",
+                  "runtime check backend-build",
+                  "runtime check production-import"
+                ]
+              },
+              {
+                "aspect": "Корректная бизнес-фильтрация",
+                "implementation": "exclusion_reasons проверяет busy_dates, цену, формат, язык и max_hours, причём null для max_hours не исключается. Результат отдельно считает причины исключения и различает matched, category_not_found и no_eligible_candidates.",
+                "value": "Крайние случаи объясняются пользователю, а занятые подрядчики не просачиваются в выдачу.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/app/services/recommendations.py:37-125",
+                  "backend/app/services/recommendations.py:128-151",
+                  "runtime check scenario-production-http",
+                  "backend/tests/test_recommendations.py:24-94"
+                ]
+              },
+              {
+                "aspect": "Детерминированность и кэш",
+                "implementation": "Сортировка использует score и нормализованный id как tie-breaker; Redis-ключ строится из канонического JSON запроса с сортировкой ключей и SHA-256.",
+                "value": "Одинаковый запрос даёт тот же порядок, а повторный вызов может обслуживаться из Redis без изменения контракта.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/app/services/recommendations.py:99-103",
+                  "backend/app/services/cache.py:128-136",
+                  "runtime check scenario-production-http",
+                  "backend/tests/test_data_pipeline.py:23-51"
+                ]
+              },
+              {
+                "aspect": "Контракт фронтенда и API",
+                "implementation": "Vue-клиент запрашивает реальные options, отправляет типизированный payload, принимает структурированные ошибки FastAPI, ограничивает ожидание запроса десятью секундами и отображает бизнес-статусы.",
+                "value": "Пользовательский сценарий не разрывается на границе компонентов: ошибки и отсутствие результатов получают понятное состояние интерфейса.",
+                "verification": "observed",
+                "evidence": [
+                  "frontend/src/api/client.ts:1-44",
+                  "frontend/src/App.vue:108-205",
+                  "frontend/tests/app.test.ts:21-117",
+                  "runtime check test-frontend"
+                ]
+              }
+            ],
+            "scoreReasoning": "Работоспособность подтверждена сборкой, импортом, readiness и реальными HTTP-запросами в полном стеке. Снятие ограничено одной конкретной реализационной неточностью: финальный сервисный score фактически использует max() поверх гибридного score, поэтому документация о 70/30 не описывает весь путь ранжирования."
+          },
+          {
+            "name": "Инновационность",
+            "score": 15,
+            "max": 15,
+            "awarded": "Полный балл: локальный мультиязычный embedding-поиск вместе с жёсткими бизнес-фильтрами и доказательными объяснениями образует обоснованный нестандартный для простого каталога подход.",
+            "deductions": "Подтверждённых дефектов, требующих снятия баллов по этому критерию, не установлено.",
+            "evidence": [
+              "backend/app/services/embeddings.py:15-78",
+              "backend/app/repositories/elasticsearch.py:51-111",
+              "backend/tests/test_embeddings.py:1-42"
+            ],
+            "deductionItems": [],
+            "awardedDetails": [
+              {
+                "aspect": "Локальный multilingual AI без ключа",
+                "implementation": "EmbeddingService использует FastEmbed/ONNX Runtime, нормализует векторы, кэширует их по тексту и загружает модель на этапе сборки образа.",
+                "value": "Для пятичасового прототипа это даёт AI-релевантность без платного внешнего LLM/API и делает основной путь воспроизводимым в локальном окружении.",
+                "verification": "source",
+                "evidence": [
+                  "backend/app/services/embeddings.py:15-47",
+                  "backend/Dockerfile:4-14",
+                  "backend/requirements.txt:4"
+                ]
+              },
+              {
+                "aspect": "Гибрид профиля и описания",
+                "implementation": "Elasticsearch строит semantic/lexical score, а отдельный проход выбирает наиболее релевантное предложение описания через cosine similarity; это предложение передаётся в объяснение карточки.",
+                "value": "Поиск учитывает не только точное совпадение категории, но и смысл свободного текста, сохраняя проверяемый текстовый фрагмент.",
+                "verification": "source",
+                "evidence": [
+                  "backend/app/repositories/elasticsearch.py:51-109",
+                  "backend/app/services/embeddings.py:52-78"
+                ]
+              },
+              {
+                "aspect": "Смысловой слой не заменяет ограничения",
+                "implementation": "Сначала выбираются город и категория, затем сервис применяет жёсткие ограничения запроса и только после этого ранжирует eligible-кандидатов.",
+                "value": "AI не может поднять занятого или неподходящего по бюджету подрядчика; это разумное сочетание нестандартного поиска и безопасной бизнес-логики.",
+                "verification": "source",
+                "evidence": [
+                  "backend/app/services/recommendations.py:41-84",
+                  "backend/app/services/recommendations.py:128-151"
+                ]
+              },
+              {
+                "aspect": "Доказательное объяснение",
+                "implementation": "build_explanation формирует дату, цену и запас бюджета, формат, язык, длительность и предложение из профиля; fallback берёт другие факты профиля.",
+                "value": "Инновационная часть не превращается в непрозрачный AI-ответ: причина выбора собирается из полей данных и пригодна для проверки.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/app/services/explanations.py:64-107",
+                  "backend/tests/test_recommendations.py:96-134",
+                  "runtime check scenario-production-http"
+                ]
+              }
+            ],
+            "scoreReasoning": "Для данного кейса нестандартность оправдана: локальные embeddings применяются к описаниям, но фильтры и объяснения остаются детерминированными. Ограничение формулы отражено в критерии качества результата, но не отменяет оригинальность самого подхода."
+          },
+          {
+            "name": "Потенциал развития и масштабирования",
+            "score": 20,
+            "max": 20,
+            "awarded": "Полный балл: архитектура уже разделяет API, репозитории, импорт, кэш, поиск и клиент, поэтому расширение каталога и правил имеет понятные точки подключения.",
+            "deductions": "Подтверждённых дефектов, требующих снятия баллов по этому критерию, не установлено.",
+            "evidence": [
+              "backend/app/repositories/hybrid.py:10-45",
+              "backend/app/api/routes.py:12-53",
+              "backend/docker-compose.yml:16-103",
+              "frontend/src/App.vue:260-552"
+            ],
+            "deductionItems": [],
+            "awardedDetails": [
+              {
+                "aspect": "Разделение хранилищ и поиска",
+                "implementation": "HybridContractorRepository оставляет каталог PostgreSQL, а Elasticsearch отвечает за ранжированный поиск; importer синхронно загружает оба представления.",
+                "value": "Схема позволяет масштабировать чтение, менять индекс или добавлять новые поля без переписывания UI-контракта.",
+                "verification": "source",
+                "evidence": [
+                  "backend/app/repositories/hybrid.py:10-45",
+                  "backend/scripts/import_dataset.py:75-137"
+                ]
+              },
+              {
+                "aspect": "Расширяемая модель данных",
+                "implementation": "Contractor и RecommendationRequest формализованы Pydantic-моделями, включая необязательные язык/длительность, флаги synthetic и imputed, календарь и описание.",
+                "value": "Новые фильтры и поля можно добавлять через явный контракт и валидатор, не полагаясь на неструктурированные словари.",
+                "verification": "source",
+                "evidence": [
+                  "backend/app/schemas/contractor.py:8-40",
+                  "backend/app/schemas/recommendation.py:16-73"
+                ]
+              },
+              {
+                "aspect": "Деградация Redis и наблюдаемость готовности",
+                "implementation": "Кэш перехватывает RedisError и позволяет продолжить подбор без кэша; /ready отдельно сообщает состояние каталога и кэша, а фронтенд показывает ready/degraded/offline.",
+                "value": "Для следующей итерации можно масштабировать кэш независимо от бизнес-сценария и видеть частичную деградацию вместо непонятного сбоя.",
+                "verification": "source",
+                "evidence": [
+                  "backend/app/services/cache.py:36-81",
+                  "backend/app/main.py:64-81",
+                  "frontend/src/App.vue:119-151",
+                  "frontend/tests/app.test.ts:100-106"
+                ]
+              },
+              {
+                "aspect": "Проверяемый слой данных",
+                "implementation": "Импорт проверяет обязательные CSV-колонки, boolean-значения, Pydantic-профиль, пустой датасет и дубликаты id; индекс имеет strict mapping.",
+                "value": "Такой входной барьер пригоден для замены 66-профильного набора более крупным каталогом без тихого повреждения данных.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/scripts/import_dataset.py:33-72",
+                  "backend/scripts/index_dataset.py:31-49",
+                  "backend/scripts/index_dataset.py:69-92",
+                  "backend/tests/test_data_pipeline.py:13-20",
+                  "backend/tests/test_index_dataset.py:8-45"
+                ]
+              }
+            ],
+            "scoreReasoning": "Это аккуратно собранный MVP с отдельными границами домена, инфраструктуры и клиента. В отчёте не требуется production-план сверх кейса; уже имеющиеся точки расширения достаточно убедительны для полного балла."
+          },
+          {
+            "name": "Презентация, демо и ответы на вопросы",
+            "score": 18,
+            "max": 20,
+            "awarded": "Высокий балл за ясный README и воспроизводимое локальное демо. Удержаны два балла из-за ошибочного примера пограничного запроса в корневой документации.",
+            "deductions": "README подробно описывает запуск, архитектуру и проверки, но одна команда обещает category_not_found для категории, которая реально есть в выбранном городе.",
+            "evidence": [
+              "README.md:65-145",
+              "backend/README.md:250-329",
+              "runtime check production-import",
+              "runtime check scenario-production-http"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "F-README-WRONG-CATEGORY",
+                "reason": "В публичном README пользователь получает воспроизводимый, но неверный ожидаемый результат: для Алматы/Отель указан category_not_found, тогда как CSV содержит два таких профиля и фактический API проходит в ветку no_eligible_candidates при бюджетном запросе. Это мешает честно повторить демо по инструкции."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Пошаговый запуск",
+                "implementation": "README описывает Compose, health/readiness, импорт, frontend dev server, proxy и порядок проверки; backend README отдельно раскрывает переменные окружения и шаги Definition of Done.",
+                "value": "Участнику или проверяющему понятно, какие компоненты нужны и в какой последовательности запускать сценарий.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:65-105",
+                  "backend/README.md:196-252",
+                  "frontend/README.md:1-24"
+                ]
+              },
+              {
+                "aspect": "Документация объясняет не только happy path",
+                "implementation": "В README есть плотная и редкая категория, пустой результат, смена даты, readiness и повтор запроса; backend README приводит конкретные JSON-поля и ожидаемые статусы.",
+                "value": "Это хорошо поддерживает демонстрацию требований кейса и снижает риск показать только удачную выдачу.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:107-138",
+                  "backend/README.md:262-354"
+                ]
+              },
+              {
+                "aspect": "README соответствует реально проверенному запуску",
+                "implementation": "Dockerfile был собран, importer действительно завершил импорт 66 профилей, production API сообщил ready и обработал UTF-8 запросы через полный стек.",
+                "value": "Документация не ограничивается декларацией: основной сценарий можно воспроизвести из репозитория.",
+                "verification": "observed",
+                "evidence": [
+                  "runtime check backend-build",
+                  "runtime check production-import",
+                  "runtime check ready-production",
+                  "runtime check scenario-production-http"
+                ]
+              },
+              {
+                "aspect": "Автоматическая проверяемость",
+                "implementation": "Backend содержит 20 прошедших тестов, frontend — сборку и 11 тестов; тесты покрывают статусы, фильтры, детерминизм, синтетические профили, API-контракт и UI-состояния.",
+                "value": "Проверяющий получает быстрый способ подтвердить значимую часть обещаний без устной презентации.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/tests/test_api.py:1-71",
+                  "backend/tests/test_recommendations.py:24-183",
+                  "frontend/tests/app.test.ts:21-117",
+                  "runtime check test-backend",
+                  "runtime check test-frontend"
+                ]
+              }
+            ],
+            "scoreReasoning": "README заметно сильнее минимальной инструкции и даёт полноценный сценарий демонстрации, что заслуживает 18/20. Снятие касается только одного проверяемого несоответствия между примером и данными; отсутствие публичной Live-ссылки или устного выступления баллы не уменьшает."
+          }
+        ],
+        "total": 97
+      },
+      "case": {
+        "criteria": [
+          {
+            "name": "Соответствие задаче и работоспособность",
+            "score": 25,
+            "max": 25,
+            "awarded": "Полный балл: основной сценарий кейса работает в полном стеке и покрывает фильтры, календарь, до трёх результатов, объяснения и три бизнес-исхода.",
+            "deductions": "Подтверждённых дефектов по требованиям кейса не установлено.",
+            "evidence": [
+              "backend/app/services/recommendations.py:37-125",
+              "runtime check ready-production",
+              "runtime check scenario-production-http",
+              "runtime check scenario-edge-http"
+            ],
+            "deductionItems": [],
+            "awardedDetails": [
+              {
+                "aspect": "Поля запроса",
+                "implementation": "RecommendationRequest требует city, event_date, event_format, category и положительный budget_kzt; duration_hours и language валидируются как необязательные поля.",
+                "value": "Контракт покрывает все обязательные и опциональные параметры постановки, включая окно дат 23.09–31.12.2026.",
+                "verification": "source",
+                "evidence": [
+                  "backend/app/schemas/recommendation.py:6-35",
+                  "frontend/src/App.vue:177-205"
+                ]
+              },
+              {
+                "aspect": "Исключение занятых и бизнес-фильтры",
+                "implementation": "Каждый профиль проверяется на busy_dates, цену, формат, язык и длительность до попадания в eligible; причины считаются в meta.exclusions.",
+                "value": "Главное требование кейса — не показывать занятых и объяснять дефицит — реализовано не только на UI, но и на сервере.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/app/services/recommendations.py:61-90",
+                  "runtime check scenario-production-http",
+                  "runtime check scenario-date-http"
+                ]
+              },
+              {
+                "aspect": "До трёх карточек с объяснением",
+                "implementation": "Response schema ограничивает items длиной 3, сервис выбирает ranked[:3], а build_explanation включает дату, цену, формат и факты профиля.",
+                "value": "Ответ остаётся компактным и отвечает на вопрос, почему выбран каждый подрядчик.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/app/schemas/recommendation.py:52-67",
+                  "backend/app/services/recommendations.py:99-124",
+                  "backend/app/services/explanations.py:64-97",
+                  "runtime check scenario-production-http"
+                ]
+              },
+              {
+                "aspect": "Честные крайние случаи",
+                "implementation": "Production HTTP-клиент получил matched для плотной категории, matched с одним результатом для Алматы/Флорист, category_not_found для Зарубежье/Флорист и no_eligible_candidates для бюджета 1.",
+                "value": "Система различает отсутствие категории и отсутствие подходящих кандидатов и не подменяет пустой результат ошибкой.",
+                "verification": "observed",
+                "evidence": [
+                  "runtime check scenario-edge-http",
+                  "backend/app/services/recommendations.py:46-59",
+                  "backend/app/services/recommendations.py:91-97"
+                ]
+              },
+              {
+                "aspect": "Стабильность порядка и дата",
+                "implementation": "Повтор одинакового production-запроса сохранил order, а запрос на другую дату изменил ids и число занятых профилей.",
+                "value": "Это подтверждает требование о повторяемости и влиянии календаря на выдачу.",
+                "verification": "observed",
+                "evidence": [
+                  "runtime check scenario-production-http",
+                  "runtime check scenario-date-http",
+                  "backend/tests/test_recommendations.py:36-57"
+                ]
+              }
+            ],
+            "scoreReasoning": "Все существенные требования кейса воспроизведены на предоставленном CSV и через полный PostgreSQL/Redis/Elasticsearch путь. Отдельно проверены edge cases и повторяемость; полный балл соответствует уровню пятичасового MVP."
+          },
+          {
+            "name": "Техническая реализация",
+            "score": 23,
+            "max": 25,
+            "awarded": "Сильная реализация с рабочей архитектурой и локальным AI, но заявленная гибридная формула не является единственным финальным фактором ранжирования.",
+            "deductions": "Минус 2 балла за подтверждённое расхождение между 70/30-описанием и max() в сервисном score.",
+            "evidence": [
+              "backend/app/repositories/hybrid.py:10-45",
+              "backend/app/repositories/elasticsearch.py:51-111",
+              "backend/app/services/recommendations.py:68-82",
+              "backend/README.md:85"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "F-RANK-FORMULA",
+                "reason": "Elasticsearch действительно строит weighted semantic/lexical score, но RecommendationService передаёт в score_candidate max() из трёх разных релевантностей. Поэтому фактическое ранжирование не равно задокументированной формуле 70% cosine + 30% BM25; это влияет на техническую точность подхода, хотя фильтры и основной сценарий работают."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Слои и зависимости",
+                "implementation": "FastAPI-маршруты зависят от репозитория и кэша через request.app.state; HybridRepository связывает PostgreSQL и Elasticsearch, а сервис рекомендаций отделён от транспортного слоя.",
+                "value": "Компоненты имеют понятные границы и могут тестироваться memory-репозиторием без подмены бизнес-логики.",
+                "verification": "source",
+                "evidence": [
+                  "backend/app/main.py:20-58",
+                  "backend/app/api/routes.py:15-53",
+                  "backend/app/repositories/hybrid.py:10-45"
+                ]
+              },
+              {
+                "aspect": "Индексирование и локальные embeddings",
+                "implementation": "Импорт строит 384-мерные нормализованные embeddings, создаёт strict Elasticsearch mapping, индексирует документы bulk-операцией и проверяет ошибки bulk-ответа.",
+                "value": "Выбранный стек соответствует задаче смыслового поиска по русским описаниям и был реально запущен в образе.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/scripts/index_dataset.py:52-132",
+                  "backend/app/services/embeddings.py:15-47",
+                  "runtime check backend-build",
+                  "runtime check production-import"
+                ]
+              },
+              {
+                "aspect": "Защита доменных ограничений",
+                "implementation": "Жёсткие условия применяются после получения city/category-пула и до сортировки; null max_hours трактуется как отсутствие ограничения, а результат сохраняет счётчики исключений.",
+                "value": "Интеграция AI не нарушает ключевые правила кейса, и при пустом результате сохраняется объяснение причины.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/app/services/recommendations.py:61-97",
+                  "runtime check scenario-edge-http",
+                  "backend/tests/test_recommendations.py:71-94"
+                ]
+              },
+              {
+                "aspect": "Надёжность внешних компонентов",
+                "implementation": "API имеет readiness-проверку каталога и кэша, Redis-кэш деградирует в no-cache режим, а RepositoryUnavailableError переводится в понятный HTTP 503.",
+                "value": "Для MVP это разумная обработка инфраструктурных сбоев без утечки внутренних исключений в пользовательский ответ.",
+                "verification": "source",
+                "evidence": [
+                  "backend/app/main.py:64-81",
+                  "backend/app/api/routes.py:23-53",
+                  "backend/app/services/cache.py:46-81"
+                ]
+              },
+              {
+                "aspect": "Фактическая сборка и интеграция",
+                "implementation": "Docker-образ собран, три зависимости подняты, importer завершён кодом 0, /ready сообщил catalog=true и cache=true, а API обработал UTF-8 запрос без ключей.",
+                "value": "Это подтверждает не только статическую архитектуру, но и совместимость выбранных версий и сетевых границ.",
+                "verification": "observed",
+                "evidence": [
+                  "runtime check backend-build",
+                  "runtime check production-import",
+                  "runtime check ready-production",
+                  "runtime check scenario-production-http"
+                ]
+              }
+            ],
+            "scoreReasoning": "Технический стек сложнее минимального, но он не декоративен: индексирование, импорт, embeddings и API реально взаимодействуют. Два балла сняты только за конкретную несогласованность описанного weighted hybrid score с финальным max() в коде; это не блокирует кейс, но снижает точность технического контракта."
+          },
+          {
+            "name": "README и воспроизводимость",
+            "score": 22,
+            "max": 25,
+            "awarded": "Документация в целом воспроизводима и подтверждена реальным запуском, но один публичный пример пограничного запроса фактически неверен.",
+            "deductions": "Минус 3 балла за неверный ожидаемый статус в корневом README; это единственный установленный дефект воспроизводимой инструкции.",
+            "evidence": [
+              "README.md:65-145",
+              "backend/README.md:250-354",
+              "backend/data/hackathon-dataset-anonymized.csv:49",
+              "backend/data/hackathon-dataset-anonymized.csv:65",
+              "runtime check scenario-isolated-http"
+            ],
+            "deductionItems": [
+              {
+                "points": 3,
+                "findingId": "F-README-WRONG-CATEGORY",
+                "reason": "README.md:136 рекомендует Алматы/Отель как category_not_found, но строки 49 и 65 CSV содержат категорию Отель для Алматы; при фактическом запросе с этим параметром API возвращает no_eligible_candidates, а не обещанный статус. Ошибка ломает именно воспроизводимость этой инструкции."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Документированная архитектура",
+                "implementation": "README и backend/README описывают frontend, FastAPI, PostgreSQL, Redis, Elasticsearch, importer, embeddings, API routes, переменные окружения и последовательность запуска.",
+                "value": "Проверяющий может понять устройство решения до запуска и сопоставить компоненты с кодом.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:139-216",
+                  "backend/README.md:48-100",
+                  "backend/README.md:429-468"
+                ]
+              },
+              {
+                "aspect": "Воспроизводимый backend-путь",
+                "implementation": "Документация даёт команды Compose, curl-запросы для плотной, редкой и пустой категорий, проверку /ready и pytest; production image и importer были выполнены по этому пути.",
+                "value": "Большая часть Definition of Done проверяется без устного объяснения команды.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/README.md:250-413",
+                  "runtime check backend-build",
+                  "runtime check production-import",
+                  "runtime check ready-production"
+                ]
+              },
+              {
+                "aspect": "Прозрачный frontend-путь",
+                "implementation": "frontend/README объясняет Node/Vite, proxy, API base URL, команды build/test и назначение ключевых Vue-компонентов.",
+                "value": "Клиент можно собрать отдельно и связать с backend без поиска скрытых настроек.",
+                "verification": "source",
+                "evidence": [
+                  "frontend/README.md:1-24",
+                  "frontend/README.md:44-79",
+                  "frontend/src/api/client.ts:21-44"
+                ]
+              },
+              {
+                "aspect": "Документы кейса сопоставлены с реализацией",
+                "implementation": "Оригинальный Markdown кейса задаёт 66 профилей, окно дат, nullable max_hours и synthetic-флаги; HTML preview подтверждает набор и визуальную структуру профилей. CSV был загружен самим importer.",
+                "value": "Проверка опирается на предоставленные материалы организатора, а не только на заявления README.",
+                "verification": "observed",
+                "evidence": [
+                  "cases/6/case-data/HackAlem AI_ Хакатон-задача_ умный подбор подрядчиков.md:13-32",
+                  "cases/6/case-data/hackathon dataset preview.html:1-35",
+                  "runtime check production-import"
+                ]
+              }
+            ],
+            "scoreReasoning": "Документация достаточно полна для сборки и демонстрации, что подтверждено полным стеком. Но ошибка в конкретном примере category_not_found — не косметика: проверяющий, буквально следуя корневому README, получает другой бизнес-статус. Поэтому 22/25."
+          },
+          {
+            "name": "Ценность и применимость решения",
+            "score": 15,
+            "max": 15,
+            "awarded": "Полный балл: результат практически применим для первичного выбора подрядчика и сохраняет причины, ограничения и происхождение профиля.",
+            "deductions": "Подтверждённых дефектов, требующих снятия баллов по этому критерию, не установлено.",
+            "evidence": [
+              "frontend/src/App.vue:441-533",
+              "frontend/src/components/ContractorDetail.vue:1-119",
+              "runtime check scenario-production-http"
+            ],
+            "deductionItems": [],
+            "awardedDetails": [
+              {
+                "aspect": "Сокращение ручного выбора",
+                "implementation": "Сервис возвращает короткую выдачу до трёх доступных профилей вместо полного каталога и показывает число eligible и причины исключений.",
+                "value": "Это непосредственно экономит время заказчика при подготовке события и сохраняет контроль над решением.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/app/services/recommendations.py:86-124",
+                  "frontend/src/App.vue:448-521",
+                  "runtime check scenario-production-http"
+                ]
+              },
+              {
+                "aspect": "Причина выбора пригодна для проверки",
+                "implementation": "Карточка получает объяснение из API, а detail-панель показывает факты ответа и параметры текущего подбора; synthetic-профиль явно помечается.",
+                "value": "Пользователь видит, на каких данных основан результат, и не принимает непрозрачную рекомендацию на веру.",
+                "verification": "source",
+                "evidence": [
+                  "frontend/src/components/ContractorCard.vue:1-120",
+                  "frontend/src/components/ContractorDetail.vue:38-119",
+                  "backend/app/services/explanations.py:64-107"
+                ]
+              },
+              {
+                "aspect": "Практичная обработка отсутствия результата",
+                "implementation": "UI показывает отдельные заголовки для отсутствующей категории и не прошедших фильтры кандидатов, а также выводит числовые exclusion-счётчики.",
+                "value": "Заказчик понимает, что изменить: город/категорию либо дату, бюджет, формат и дополнительные условия.",
+                "verification": "observed",
+                "evidence": [
+                  "frontend/src/App.vue:108-116",
+                  "frontend/src/App.vue:505-521",
+                  "runtime check scenario-edge-http"
+                ]
+              },
+              {
+                "aspect": "Граница применимости честно задана",
+                "implementation": "Система выполняет подбор и объяснение, но не притворяется системой бронирования: кейс не требовал бронирования, а в API нет скрытого шага подтверждения заказа.",
+                "value": "Решение остаётся сфокусированным на заявленной problem-solution fit и не усложняет MVP неподтверждёнными функциями.",
+                "verification": "source",
+                "evidence": [
+                  "cases/6/case-data/HackAlem AI_ Хакатон-задача_ умный подбор подрядчиков.md:9-12",
+                  "README.md:22-35"
+                ]
+              }
+            ],
+            "scoreReasoning": "Вся ценность кейса — объяснимый shortlist с календарём и ограничениями — присутствует и наблюдается в production HTTP-ответах. Полный балл оправдан практической направленностью и отсутствием требования реализовывать бронирование."
+          },
+          {
+            "name": "Потенциал развития и оригинальность подхода",
+            "score": 10,
+            "max": 10,
+            "awarded": "Полный балл: проект сочетает оригинальный локальный semantic-поиск с расширяемой инфраструктурой и уже содержит основу для новых правил и каталогов.",
+            "deductions": "Подтверждённых дефектов, требующих снятия баллов по этому критерию, не установлено.",
+            "evidence": [
+              "backend/app/services/embeddings.py:15-78",
+              "backend/app/repositories/hybrid.py:10-45",
+              "backend/app/services/cache.py:36-136"
+            ],
+            "deductionItems": [],
+            "awardedDetails": [
+              {
+                "aspect": "Переход от прототипа к большему каталогу",
+                "implementation": "Индекс и importer отделены от API, модель имеет strict mapping, а поиск ограничивает пул MAX_CANDIDATES до бизнес-фильтров.",
+                "value": "Расширение числа профилей и регулярная переиндексация имеют уже выделенный технический путь.",
+                "verification": "source",
+                "evidence": [
+                  "backend/app/core/config.py:25-34",
+                  "backend/scripts/index_dataset.py:95-132",
+                  "backend/app/repositories/elasticsearch.py:20-81"
+                ]
+              },
+              {
+                "aspect": "Переносимость локального AI",
+                "implementation": "Embedding-модель и кэш упакованы в образ, а provider не требует внешнего ключа; описания и evidence ограничены данными профиля.",
+                "value": "Подход можно перенести на другие хакатонные каталоги, сохранив контроль затрат и объяснимость.",
+                "verification": "source",
+                "evidence": [
+                  "backend/Dockerfile:4-14",
+                  "backend/app/services/embeddings.py:81-108",
+                  "backend/README.md:59-63"
+                ]
+              },
+              {
+                "aspect": "Расширение интерфейса без смены API",
+                "implementation": "UI уже имеет сценарии, карту городов, повторный запрос на другую дату, detail drawer и состояния degraded/offline.",
+                "value": "Следующие категории, города и правила могут использовать тот же контракт и визуальные состояния.",
+                "verification": "source",
+                "evidence": [
+                  "frontend/src/App.vue:59-96",
+                  "frontend/src/App.vue:224-258",
+                  "frontend/src/components/KazakhstanMap.vue:1-80"
+                ]
+              },
+              {
+                "aspect": "Урок переносится на другие задачи",
+                "implementation": "Жёсткие ограничения отделены от релевантности, а объяснение строится после выбора из проверенных кандидатов из конкретных полей.",
+                "value": "Этот паттерн применим к другим matching-задачам, где AI может ранжировать, но не должен отменять правила доступности и бюджета.",
+                "verification": "source",
+                "evidence": [
+                  "backend/app/services/recommendations.py:61-84",
+                  "backend/app/services/explanations.py:69-97"
+                ]
+              }
+            ],
+            "scoreReasoning": "Оригинальность и развитие подтверждаются работающим локальным semantic-поиском, контейнеризацией модели, раздельными хранилищами и уже выделенными UI/API-границами. Для масштаба пятичасового прототипа этого достаточно для 10/10."
+          }
+        ],
+        "total": 95
+      },
+      "judgeScore": 96,
+      "caseRequirements": [
+        {
+          "requirement": "Подбирать до трёх подрядчиков по городу, дате, формату, категории и бюджету",
+          "status": "met",
+          "explanation": "Фильтры применяются в RecommendationService до сортировки, а schema ограничивает items тремя. Production API вернул три карточки для плотного сценария.",
+          "evidence": [
+            "backend/app/services/recommendations.py:61-124",
+            "backend/app/schemas/recommendation.py:62-67",
+            "runtime check scenario-production-http"
+          ]
+        },
+        {
+          "requirement": "Поддерживать необязательные язык и длительность",
+          "status": "met",
+          "explanation": "Поля optional в RecommendationRequest проходят отдельные фильтры; null max_hours не исключает подрядчика. Это также покрыто тестами.",
+          "evidence": [
+            "backend/app/schemas/recommendation.py:16-35",
+            "backend/app/services/recommendations.py:141-150",
+            "backend/tests/test_recommendations.py:84-94"
+          ]
+        },
+        {
+          "requirement": "Исключать занятых на выбранную дату",
+          "status": "met",
+          "explanation": "Дата сравнивается с busy_dates до формирования выдачи, счётчик busy попадает в meta.exclusions; production сценарии показали 4 и 5 исключений на разных датах.",
+          "evidence": [
+            "backend/app/services/recommendations.py:128-136",
+            "runtime check scenario-production-http",
+            "runtime check scenario-date-http"
+          ]
+        },
+        {
+          "requirement": "Давать каждой карточке конкретное объяснение совпадений",
+          "status": "met",
+          "explanation": "Объяснение содержит доступность, цену, формат и дополнительные факты профиля, включая semantic evidence; UI отображает его в карточке и detail drawer.",
+          "evidence": [
+            "backend/app/services/explanations.py:64-107",
+            "frontend/src/components/ContractorCard.vue:34-92",
+            "backend/tests/test_recommendations.py:96-134",
+            "runtime check scenario-production-http"
+          ]
+        },
+        {
+          "requirement": "Сохранять порядок одинакового запроса и менять результат при смене даты",
+          "status": "met",
+          "explanation": "Сортировка имеет стабильный id tie-breaker, а повтор production-запроса сохранил порядок; другой день изменил состав ids.",
+          "evidence": [
+            "backend/app/services/recommendations.py:99-103",
+            "runtime check scenario-production-http",
+            "runtime check scenario-date-http"
+          ]
+        },
+        {
+          "requirement": "Различать подходящие результаты, отсутствие категории и кандидатов, не прошедших фильтры",
+          "status": "met",
+          "explanation": "Production HTTP-проверка получила matched, category_not_found для Зарубежье/Флорист и no_eligible_candidates для бюджета 1; сообщения различают причины.",
+          "evidence": [
+            "backend/app/services/recommendations.py:46-59",
+            "backend/app/services/recommendations.py:91-97",
+            "runtime check scenario-edge-http"
+          ]
+        },
+        {
+          "requirement": "Объяснять малый или пустой результат",
+          "status": "met",
+          "explanation": "Для одной карточки message сообщает, что подходит только 1 из 2 и указывает занятых; для пустого бюджета сообщает over_budget и другие причины.",
+          "evidence": [
+            "backend/app/services/recommendations.py:170-207",
+            "runtime check scenario-edge-http"
+          ]
+        },
+        {
+          "requirement": "Загрузить и использовать предоставленный датасет, включая synthetic-флаги",
+          "status": "met",
+          "explanation": "CSV был реально импортирован в полный стек: 66 профилей, 13 synthetic. Флаг проходит из модели в RecommendationItem и карточку.",
+          "evidence": [
+            "backend/scripts/import_dataset.py:33-72",
+            "backend/app/schemas/contractor.py:8-26",
+            "frontend/src/components/ContractorCard.vue:20-27",
+            "runtime check production-import"
+          ]
+        },
+        {
+          "requirement": "Не требовать бронирование",
+          "status": "met",
+          "explanation": "Решение ограничено подбором и объяснением, что соответствует задаче; API не заявляет фиктивного подтверждения заказа.",
+          "evidence": [
+            "cases/6/case-data/HackAlem AI_ Хакатон-задача_ умный подбор подрядчиков.md:9-12",
+            "backend/app/api/routes.py:23-53"
+          ]
+        }
+      ],
+      "testData": {
+        "provided": [
+          "cases/6/case-data/HackAlem AI_ Хакатон-задача_ умный подбор подрядчиков.md",
+          "cases/6/case-data/hackathon dataset anonymized .csv",
+          "cases/6/case-data/hackathon dataset preview.html"
+        ],
+        "used": [
+          "cases/6/case-data/HackAlem AI_ Хакатон-задача_ умный подбор подрядчиков.md",
+          "cases/6/case-data/hackathon dataset anonymized .csv",
+          "cases/6/case-data/hackathon dataset preview.html"
+        ],
+        "checks": [
+          {
+            "input": "CSV из case-data, полный каталог",
+            "method": "Импорт через scripts.import_dataset в production-стек с PostgreSQL и Elasticsearch.",
+            "result": "Импорт завершён: 66 профилей, включая 13 synthetic; индекс и база заполнены.",
+            "conclusion": "Формат и объём предоставленного CSV совместимы с пайплайном проекта."
+          },
+          {
+            "input": "Алматы, 2026-10-10, свадьба, Фотограф, бюджет 6000000",
+            "method": "UTF-8 POST /api/v1/recommendations через production API.",
+            "result": "HTTP 200, status matched, три карточки, busy=4; повторный запрос сохранил порядок.",
+            "conclusion": "Плотный основной сценарий работает на организаторском датасете."
+          },
+          {
+            "input": "Алматы, 2026-10-10, свадьба, Флорист, бюджет 6000000",
+            "method": "UTF-8 POST /api/v1/recommendations через production API.",
+            "result": "HTTP 200, status matched, одна карточка и сообщение 1 из 2 с причиной занятости.",
+            "conclusion": "Малая выдача не превращается в пустой экран и объясняет дефицит."
+          },
+          {
+            "input": "Зарубежье, 2026-10-10, свадьба, Флорист, бюджет 6000000",
+            "method": "UTF-8 POST /api/v1/recommendations через production API.",
+            "result": "HTTP 200, status category_not_found, items пуст.",
+            "conclusion": "Отсутствие категории в городе различается от отсева кандидатов."
+          },
+          {
+            "input": "Алматы, 2026-10-10, свадьба, Фотограф, бюджет 1",
+            "method": "UTF-8 POST /api/v1/recommendations через production API.",
+            "result": "HTTP 200, status no_eligible_candidates, items пуст, message содержит превышение бюджета.",
+            "conclusion": "Пустой результат с существующими кандидатами объясняет фильтр."
+          },
+          {
+            "input": "Алматы/Фотограф/свадьба/6000000 на 2026-11-14 вместо 2026-10-10",
+            "method": "HTTP-проверка на реальном CSV через тот же FastAPI сервис с memory-репозиторием; production unit/domain проверки дополнительно покрывают date logic.",
+            "result": "Состав ids изменился: на 10 октября [HK-53108, HK-16628, HK-30583], на 14 ноября [HK-76268, HK-91112, HK-68220]; busy изменился с 4 до 5.",
+            "conclusion": "Календарь реально влияет на выдачу, а не только на текст интерфейса."
+          },
+          {
+            "input": "Предоставленный Markdown и HTML preview",
+            "method": "Открыты заголовок, описание полей, диапазон дат, количество профилей и структуру preview; эти ожидания сопоставлены с CSV и импортёром.",
+            "result": "Материалы указывают на 66 профилей, 100-дневное окно, nullable max_hours и 13 synthetic.",
+            "conclusion": "Тестирование проводилось относительно оригинальных материалов кейса; полные датасеты в отчёт не копируются."
+          }
+        ],
+        "limitations": [
+          "HTML preview использован для проверки структуры и заявленных полей; визуальная проверка самого пользовательского приложения запрещена инструкцией и не выполнялась.",
+          "Публичный Live URL не предоставлен; локальный production стек и HTTP API проверены полностью.",
+          "Проверка проводилась на зафиксированном CSV кейса, а не на внешнем production-каталоге."
+        ]
+      },
+      "runtime": {
+        "status": "working",
+        "build": "Backend production image и frontend production build собраны успешно.",
+        "start": "Полный backend стек стартовал: PostgreSQL, Redis, Elasticsearch, затем API; /ready вернул HTTP 200 с catalog=true и cache=true.",
+        "scenario": "Основной сценарий воспроизведён через реальный production API и 66-профильный датасет; также отдельно проверены edge cases и смена даты.",
+        "environment": "Изолированные контейнеры с Python 3.12/Node 22 и pinned-зависимостями из репозитория; API keys не требуются. Визуальная проверка браузером намеренно не выполнялась.",
+        "summary": "Проект рабочий относительно заявленного локального сценария. Importer завершился кодом 0, frontend build и tests прошли, backend pytest прошёл 20 тестов, production API вернул корректные статусы и данные.",
+        "checks": [
+          {
+            "command": "npm run build",
+            "result": "Vite build завершён успешно; vue-tsc не сообщил ошибок.",
+            "id": "build-frontend",
+            "stage": "build",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Frontend собирается из зафиксированного package-lock без ошибок TypeScript."
+          },
+          {
+            "command": "npm test",
+            "result": "1 test file passed, 11 tests passed.",
+            "id": "test-frontend",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "UI-контракт, статусы, повтор, ошибки и synthetic label проходят автоматические проверки."
+          },
+          {
+            "command": "python -m pytest -q",
+            "result": "20 passed; только предупреждение pytest о read-only cache каталоге тестового контейнера.",
+            "id": "test-backend",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Backend API, доменная фильтрация, embeddings, индекс и CSV pipeline проходят тесты."
+          },
+          {
+            "command": "docker build -t <prefixed-image> backend",
+            "result": "Dockerfile собран успешно; pinned dependencies установлены, FastEmbed-модель warmup выполнен, app/scripts/data скопированы.",
+            "id": "backend-build",
+            "stage": "build",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Production backend image собирается и содержит локальную embedding-модель."
+          },
+          {
+            "command": "python -m scripts.import_dataset data/hackathon-dataset-anonymized.csv",
+            "result": "Imported 66 profiles (13 synthetic) into PostgreSQL and Elasticsearch; exit code 0.",
+            "id": "production-import",
+            "stage": "start",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Предоставленный CSV валидируется и синхронно загружается в оба production-хранилища."
+          },
+          {
+            "command": "uvicorn app.main:app --host 0.0.0.0 --port 8000",
+            "result": "Процесс стартовал; GET /health вернул HTTP 200 и {\"status\":\"ok\"}.",
+            "id": "start-backend",
+            "stage": "start",
+            "status": "pass",
+            "cause": "none",
+            "expected": "FastAPI приложение запускается из production image."
+          },
+          {
+            "command": "GET /ready",
+            "result": "HTTP 200: {status: ready, dependencies: {catalog: true, cache: true}} после запуска полного стека.",
+            "id": "ready-production",
+            "stage": "start",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Каталог и Redis доступны до пользовательского запроса."
+          },
+          {
+            "command": "POST /api/v1/recommendations",
+            "result": "UTF-8 production client получил HTTP 200, matched, три items, busy=4; повтор сохранил order.",
+            "id": "scenario-production-http",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Основной запрос на реальном каталоге возвращает до трёх свободных карточек с метаданными."
+          },
+          {
+            "command": "POST /api/v1/recommendations",
+            "result": "На реальных данных подтверждены rare matched с 1 item, category_not_found для Зарубежье/Флорист и no_eligible_candidates для бюджета 1.",
+            "id": "scenario-edge-http",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Три требуемых крайних исхода имеют разные статусы и объяснения."
+          },
+          {
+            "command": "POST /api/v1/recommendations",
+            "result": "Запросы на 2026-10-10 и 2026-11-14 дали разные ids и busy counts 4 и 5 соответственно.",
+            "id": "scenario-date-http",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Смена даты меняет доступность и может менять порядок/состав результата."
+          },
+          {
+            "command": "POST /api/v1/recommendations",
+            "result": "При запросе category=Отель, city=Алматы фактическая ветка была no_eligible_candidates, потому что в CSV есть два профиля этой категории; это противоречит примеру root README.",
+            "id": "scenario-isolated-http",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Документированный пример отсутствующей категории должен соответствовать фактическому содержимому CSV."
+          }
+        ],
+        "limitations": [
+          "Визуальный браузерный сценарий не проверялся по обязательному правилу user-owned visual verification; UI-поведение подтверждено статическим кодом, frontend build и тестами.",
+          "Публичная Live-ссылка отсутствует, но локальный полный стек и HTTP API проверены.",
+          "API-ключи не нужны для заявленного локального AI; внешние платные провайдеры не использовались."
+        ]
+      },
+      "liveDemo": {
+        "status": "none",
+        "url": null,
+        "notes": "Публичная Live-ссылка в материалах репозитория не предоставлена. Это не снижает оценку: локальный production stack и HTTP-сценарии воспроизведены."
+      },
+      "fiveHourContext": "Для пятичасового хакатона объём оправдан: команда довела путь от CSV и импорта до API, кэша, локальных embeddings и Vue-интерфейса, добавила тесты и сценарии крайних случаев. Production-бронирование, внешний LLM и публичный deployment не требовались кейсом и не вменяются как недостатки. Установленные замечания узкие и проверяемые: один неверный пример README и несогласованность формулы ранжирования.",
+      "strengths": [
+        "Полный локальный production-путь реально запускается: image build, импорт 66 профилей, readiness 200 и HTTP matched.",
+        "Календарь занятости, бюджет, формат, язык и длительность реализованы как серверные ограничения с понятными exclusion-счётчиками.",
+        "Три бизнес-статуса и малые/пустые результаты объясняются отдельно, а одинаковые запросы детерминированы.",
+        "Объяснения основаны на фактах профиля и semantic evidence, а synthetic-профили явно проходят до UI.",
+        "Backend и frontend имеют воспроизводимые pinned-зависимости, тесты и достаточно подробный README."
+      ],
+      "gaps": [
+        "F-README-WRONG-CATEGORY: корневой README называет Алматы/Отель отсутствующей категорией, хотя CSV содержит два таких профиля; фактический API возвращает другой статус.",
+        "F-RANK-FORMULA: README заявляет итоговую комбинацию 70% cosine и 30% BM25, но сервис передаёт в финальный score максимум weighted, lexical и semantic релевантностей."
+      ],
+      "futureAdvice": [
+        {
+          "principle": "Проверяйте демонстрационные команды на том же датасете, который запускает продукт.",
+          "why": "F-README-WRONG-CATEGORY показывает наблюдаемый рассинхрон: инструкция обещает category_not_found для Алматы/Отель, но данные и API дают no_eligible_candidates.",
+          "how": "Перед сдачей прогоните каждый README-пример через импортированный CSV и сохраните ожидаемые status, число items и ключевую фразу message рядом с примером; для отсутствующей категории используйте Зарубежье/Флорист.",
+          "findingIds": [
+            "F-README-WRONG-CATEGORY"
+          ],
+          "successCheck": "Все команды из README возвращают описанный статус и проверяемое число карточек на чистом импорте.",
+          "timeboxMinutes": 15
+        },
+        {
+          "principle": "Держите одну каноническую формулу ранжирования от поиска до выдачи.",
+          "why": "F-RANK-FORMULA: weighted score Elasticsearch далее конкурирует через max() с отдельными lexical и semantic значениями, поэтому заявленные веса не описывают финальное ранжирование.",
+          "how": "Зафиксируйте отдельную функцию final_relevance с явными весами и добавьте тест с двумя кандидатами, где max() и weighted сумма дают разный порядок; проверяйте порядок и объяснение одним контрактом.",
+          "findingIds": [
+            "F-RANK-FORMULA"
+          ],
+          "successCheck": "Изменение только одного веса предсказуемо меняет итоговый score и тестовый порядок, а README ссылается на ту же формулу.",
+          "timeboxMinutes": 35
+        }
+      ],
+      "uncertainties": [
+        "Визуальная раскладка, доступность в реальном браузере и responsive-поведение не проверялись по обязательному правилу; они покрыты только исходниками, сборкой и jsdom-тестами.",
+        "Публичное live-demo не предоставлено, поэтому его доступность не устанавливалась; локальный production API проверен полностью.",
+        "Скорость запроса не измерялась отдельным benchmark-замером; функциональная HTTP-проверка завершалась в пределах установленного клиентского timeout."
+      ],
+      "reviewPolicyVersion": 2,
+      "assessmentStatus": "ready",
+      "findings": [
+        {
+          "id": "F-STRENGTH-E2E",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Полный локальный путь от CSV-импорта до production HTTP API работает.",
+          "expected": "После импорта API должен быть ready и выдавать рекомендации из каталога.",
+          "actual": "Docker image собран, importer импортировал 66 профилей, /ready вернул 200 с catalog=true/cache=true, основной POST вернул matched.",
+          "evidence": [
+            "runtime check backend-build",
+            "runtime check production-import",
+            "runtime check ready-production",
+            "runtime check scenario-production-http"
+          ],
+          "checkIds": [
+            "backend-build",
+            "production-import",
+            "ready-production",
+            "scenario-production-http"
+          ]
+        },
+        {
+          "id": "F-STRENGTH-RULES",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Доменная логика корректно обрабатывает busy dates и разные бизнес-исходы.",
+          "expected": "Занятые исключаются; отсутствие категории и отсутствие eligible-кандидатов различаются.",
+          "actual": "Production HTTP-проверка показала busy=4, matched с одной карточкой для редкой категории, category_not_found и no_eligible_candidates.",
+          "evidence": [
+            "backend/app/services/recommendations.py:46-151",
+            "runtime check scenario-production-http",
+            "runtime check scenario-edge-http",
+            "runtime check scenario-date-http"
+          ],
+          "checkIds": [
+            "scenario-production-http",
+            "scenario-edge-http",
+            "scenario-date-http"
+          ]
+        },
+        {
+          "id": "F-STRENGTH-EXPLANATIONS",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Ответы содержат конкретные объяснения и причины дефицита.",
+          "expected": "Каждая карточка и пустой результат должны сообщать проверяемые факты, а не общий текст.",
+          "actual": "build_explanation собирает дату, цену, формат и факт профиля; messages содержат busy/over_budget/wrong_format; тесты объяснений прошли.",
+          "evidence": [
+            "backend/app/services/explanations.py:64-107",
+            "backend/app/services/recommendations.py:170-207",
+            "backend/tests/test_recommendations.py:96-134",
+            "runtime check scenario-edge-http"
+          ],
+          "checkIds": [
+            "test-backend",
+            "scenario-edge-http"
+          ]
+        },
+        {
+          "id": "F-STRENGTH-TESTS",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Автоматические проверки покрывают backend, frontend и pipeline данных.",
+          "expected": "Pinned test suites и production build должны завершаться без ошибок.",
+          "actual": "Backend: 20 passed; frontend: build успешен и 11 tests passed.",
+          "evidence": [
+            "runtime check test-backend",
+            "runtime check build-frontend",
+            "runtime check test-frontend",
+            "backend/tests/test_data_pipeline.py:13-51"
+          ],
+          "checkIds": [
+            "test-backend",
+            "build-frontend",
+            "test-frontend"
+          ]
+        },
+        {
+          "id": "F-README-WRONG-CATEGORY",
+          "kind": "defect",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Корневой README содержит неверный пример отсутствующей категории.",
+          "expected": "Запрос с city=Алматы и category=Отель должен демонстрировать category_not_found, если README называет его таким примером.",
+          "actual": "CSV содержит HK-72785 и HK-90011 с city=Алматы и category=Отель; фактический запрос проходит в no_eligible_candidates, а не category_not_found.",
+          "evidence": [
+            "README.md:134-137",
+            "backend/data/hackathon-dataset-anonymized.csv:49",
+            "backend/data/hackathon-dataset-anonymized.csv:65",
+            "runtime check scenario-isolated-http"
+          ],
+          "checkIds": [
+            "scenario-isolated-http"
+          ]
+        },
+        {
+          "id": "F-RANK-FORMULA",
+          "kind": "defect",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Фактическое финальное ранжирование не совпадает полностью с заявленной формулой 70% semantic + 30% lexical.",
+          "expected": "Итоговый relevance должен использовать задокументированные веса как каноническую формулу выдачи.",
+          "actual": "Elasticsearch считает weighted _score, но RecommendationService передаёт в score_candidate max(lexical_relevance, hybrid_relevance, semantic_relevance), так что raw semantic или lexical значение может обойти weighted score.",
+          "evidence": [
+            "backend/README.md:85",
+            "backend/app/repositories/elasticsearch.py:55-72",
+            "backend/app/services/recommendations.py:68-82",
+            "backend/app/services/recommendations.py:154-167"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "F-LIMIT-VISUAL",
+          "kind": "limitation",
+          "verification": "unverified",
+          "responsibility": "review_environment",
+          "claim": "Визуальное browser-поведение не устанавливалось.",
+          "expected": "Полную раскладку, responsive и взаимодействия нужно проверять визуальным пользовательским тестом.",
+          "actual": "Доступны статический Vue-код, frontend build и jsdom-тесты; браузерная проверка запрещена инструкцией.",
+          "evidence": [
+            "frontend/src/App.vue:266-552",
+            "frontend/tests/app.test.ts:21-117"
+          ],
+          "checkIds": [
+            "build-frontend",
+            "test-frontend"
+          ]
+        },
+        {
+          "id": "F-LIMIT-LIVE",
+          "kind": "limitation",
+          "verification": "unverified",
+          "responsibility": "review_environment",
+          "claim": "Публичная live-ссылка отсутствует в доступных материалах.",
+          "expected": "Публичный URL позволил бы отдельно подтвердить внешний deployment.",
+          "actual": "Проверен локальный production stack; публичный URL не заявлен.",
+          "evidence": [
+            "README.md:65-105",
+            "runtime check ready-production"
+          ],
+          "checkIds": [
+            "ready-production"
+          ]
+        }
+      ],
+      "gapFindingIds": [
+        "F-README-WRONG-CATEGORY",
+        "F-RANK-FORMULA"
+      ]
+    }
+  ],
+  "score": 96.0,
+  "status": "complete",
+  "expectedJudges": 1
+}

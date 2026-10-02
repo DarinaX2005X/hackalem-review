@@ -1,0 +1,849 @@
+{
+  "methodVersion": 4,
+  "repoId": "hack-682bab9a-til-3am",
+  "repoUrl": "https://github.com/BAITC-Hacks/hack-682bab9a-til-3am",
+  "caseId": 10,
+  "snapshot": "fc2fdd9099165c750ce9b221eca8e0bdef2c8064",
+  "judges": [
+    {
+      "methodVersion": 4,
+      "repoId": "hack-682bab9a-til-3am",
+      "caseId": 10,
+      "model": "GPT-5.6 Luna",
+      "snapshot": "fc2fdd9099165c750ce9b221eca8e0bdef2c8064",
+      "overallSummary": "Проект представляет собой цельный MVP консультанта для ekt.kz: FastAPI-сервис читает локальную выборку каталога, показывает характеристики и остатки, подбирает объяснимые аналоги, отвечает по демо-FAQ и проводит безопасный поток предложения → явного подтверждения → проверки остатка → корзины. Основной серверный сценарий подтверждён 18 acceptance-тестами, HTTP-стартом и отдельным запросом по артикулу 027228 с корректным остатком 5 шт. во входе с городом Алматы; фронтенд также собирается production-сборкой. Сильная сторона — детерминированные факты и серверная защита корзины, а не доверие LLM. Итог удерживают от максимума три подтверждённых ограничения реализации: вложения из задания не принимаются, корзина остаётся in-memory демо-корзиной со ссылкой #cart, а кнопочный live-поток фронтенда всегда создаёт подтверждение для Алматы, даже если карточка была показана для другого города. API-ключ LLM и визуальные браузерные проверки не требовались для оценки базового сценария и отдельно отмечены как ограничения проверки.",
+      "global": {
+        "criteria": [
+          {
+            "name": "Ценность решения",
+            "score": 22,
+            "max": 25,
+            "awarded": "Решение напрямую адресует задержку консультации и выбора электротехнических товаров: клиент получает данные каталога, остаток, аналог и следующий шаг в одном чате.",
+            "deductions": "Снято 3 балла за неполный охват входа и покупки: вложения не поддерживаются, а фактическая корзина остаётся демонстрационной, поэтому часть заявленной ценности ещё не доведена до реального заказа.",
+            "evidence": [
+              "cases/10/task.txt:2",
+              "cases/10/case-data/HackAlem AI_ ИИ-ассистент для чата на сайте ekt.kz.md:15",
+              "README.md:4",
+              "README.md:273"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "D-attachments",
+                "reason": "Клиент с фото или спецификацией не может пройти заявленный сценарий консультации: ни API, ни форма фронтенда не принимают файл, поэтому ценность для закупочного запроса с вложением отсутствует."
+              },
+              {
+                "points": 2,
+                "findingId": "D-demo-cart",
+                "reason": "Пользователь получает локальное состояние #cart, но не ссылку на актуальную корзину ekt.kz и не оформляет реальный заказ; это уменьшает практическую ценность последнего шага покупки."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Понятная проблема менеджерской консультации",
+                "implementation": "Кейс описывает задержку ответа по характеристикам, наличию и аналогам, а проект выносит эти действия в единый чат. README показывает запросы по артикулу, городу, сертификату, аналогам и условиям покупки.",
+                "value": "Это адресует конкретную боль клиента интернет-магазина и одновременно снимает повторяющиеся вопросы с менеджера; польза понятна и по постановке, и по воспроизводимому сценарию.",
+                "verification": "source",
+                "evidence": [
+                  "cases/10/case-data/HackAlem AI_ ИИ-ассистент для чата на сайте ekt.kz.md:15",
+                  "README.md:96"
+                ]
+              },
+              {
+                "aspect": "Данные каталога вместо свободной генерации",
+                "implementation": "Catalog загружает две страницы выгрузки и детальную карточку, а оркестратор строит ответ из Product и StockInfo. Для 027228 возвращаются цена 64 920 ₸, городские остатки и характеристики.",
+                "value": "Клиент получает полезный ответ с конкретным артикулом и проверяемыми числами, а не общий совет купить электротехнический товар.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/app/catalog.py:62",
+                  "backend/app/catalog.py:73",
+                  "backend/app/assistant/orchestrator.py:331",
+                  "scenario-api-existing"
+                ]
+              },
+              {
+                "aspect": "Помощь при нулевом остатке",
+                "implementation": "Для 027230 inventory даёт нулевой синтетический остаток, analogs.py сравнивает тип, серию, ток, полюса, бренд и отключающую способность, а карточка показывает совпадения, отличия, количество и предупреждение проверить совместимость.",
+                "value": "Такой ответ сохраняет клиента в воронке выбора и объясняет, почему вариант предложен, вместо того чтобы просто сообщить об отсутствии товара.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/app/assistant/analogs.py:75",
+                  "backend/app/assistant/analogs.py:113",
+                  "backend/tests/test_assistant.py:79",
+                  "acceptance-tests"
+                ]
+              },
+              {
+                "aspect": "Безопасный переход к покупке",
+                "implementation": "Ассистент сначала создаёт PendingConfirmation, а MockCartAdapter повторно проверяет остаток перед изменением корзины. До подтверждения тест видит пустую корзину, после текста «да, добавь» получает позицию и ссылку #cart.",
+                "value": "Даже в прототипе чат не превращает намерение «добавить» в несанкционированное изменение состояния; это снижает риск ошибочной покупки и делает следующий шаг очевидным.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/app/cart/adapter.py:35",
+                  "backend/app/cart/adapter.py:70",
+                  "backend/tests/test_assistant.py:107",
+                  "backend/tests/test_assistant.py:114"
+                ]
+              }
+            ],
+            "scoreReasoning": "22/25 отражает сильную связь с реальной задачей и работающую пользу для обычного текстового запроса по каталогу. До максимума не хватает именно предусмотренных кейсом границ: вложения полностью отсутствуют, а последний шаг ведёт в локальную демонстрационную корзину, а не в актуальное состояние магазина. Эти ограничения не отменяют пользу MVP, но ограничивают её для закупочных документов и фактического завершения покупки."
+          },
+          {
+            "name": "Результат и качество решения",
+            "score": 16,
+            "max": 20,
+            "awarded": "Основной текстовый сценарий целостен и подтверждён тестами: поиск → данные → аналог/условия → предложение → подтверждение → ограничение остатком.",
+            "deductions": "Снято 4 балла за отсутствие файлового входа, демонстрационную вместо интегрированной корзины и рассинхрон города в кнопочном live-потоке.",
+            "evidence": [
+              "captures/20261002T113909736132-backend-test.stdout.log",
+              "captures/20261002T113941863069-frontend-build.stdout.log",
+              "backend/tests/test_assistant.py:42",
+              "frontend/src/main.tsx:44"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "D-attachments",
+                "reason": "Качество заявленного входа неполно: MessageRequest содержит только строку message, а UI-композер — только текстовое поле; сценарии фото/Excel/Word/PDF/JPEG не могут быть выполнены."
+              },
+              {
+                "points": 2,
+                "findingId": "D-demo-cart",
+                "reason": "Результат покупки не выходит за пределы процесса прототипа: MockCartAdapter хранит состояние в памяти и выдаёт #cart, поэтому фактическая корзина магазина и оформление заказа не проверяются."
+              },
+              {
+                "points": 1,
+                "findingId": "D-city-button",
+                "reason": "Кнопка «Добавить» в live UI вызывает API с city: 'Алматы' независимо от города карточки; запрос по Нур-Султану может показывать 8 шт., но подтверждение проверит другой склад."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Серверный acceptance-сценарий",
+                "implementation": "Тесты проверяют наличие 027228, характеристики, конфликт 160/250 А, контекст города, отсутствие выдуманного сертификата, неизвестный остаток, аналог, FAQ, подтверждение, идемпотентность, чужую сессию и ссылку корзины.",
+                "value": "Это не только набор smoke-проверок: тесты покрывают опасные переходы состояния и дают воспроизводимое основание считать текстовый MVP рабочим.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/tests/test_assistant.py:42",
+                  "captures/20261002T113909736132-backend-test.stdout.log"
+                ]
+              },
+              {
+                "aspect": "Достоверность и конфликт данных",
+                "implementation": "Для товара 515291 Catalog специально переводит NOMINALNYY_TOK в статус conflict, а _build_product_answer выводит оба значения и просьбу уточнить их у менеджера. Неизвестный остаток остаётся None.",
+                "value": "Пользовательский результат честно отражает качество исходной выгрузки и не маскирует неопределённость под уверенный ответ.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/app/catalog.py:141",
+                  "backend/app/assistant/orchestrator.py:350",
+                  "backend/tests/test_assistant.py:53",
+                  "backend/tests/test_assistant.py:72"
+                ]
+              },
+              {
+                "aspect": "Проверка остатка перед мутацией",
+                "implementation": "create_confirmation проверяет существование товара, положительное количество и доступность с учётом уже лежащего в корзине; confirm повторяет проверку непосредственно перед записью.",
+                "value": "Ключевое бизнес-правило «не больше остатка» защищено и на подготовке, и на подтверждении, включая повторное подтверждение и чужую сессию.",
+                "verification": "source",
+                "evidence": [
+                  "backend/app/cart/adapter.py:39",
+                  "backend/app/cart/adapter.py:70",
+                  "backend/tests/test_assistant.py:132",
+                  "backend/tests/test_assistant.py:148"
+                ]
+              },
+              {
+                "aspect": "Собираемость поставки",
+                "implementation": "Backend-тесты проходят в изолированном окружении, а frontend выполняет tsc -b и Vite production build без ошибок; собранный bundle содержит 31 трансформированный модуль.",
+                "value": "Команда передала не только исходники: проект можно собрать и запустить, а серверный сценарий можно показать без LLM-ключа.",
+                "verification": "observed",
+                "evidence": [
+                  "captures/20261002T113909736132-backend-test.stdout.log",
+                  "captures/20261002T113941863069-frontend-build.stdout.log"
+                ]
+              }
+            ],
+            "scoreReasoning": "16/20 — это работающий и хорошо защищённый текстовый прототип, но не полный вход-выход из задания. Вложение невозможно передать, корзина не подключена к ekt.kz, а один UI-путь теряет выбранный город. Каждая проблема подтверждена исходниками и влияет на пользовательский результат, поэтому здесь уместно снижение, хотя основной серверный сценарий остаётся целостным."
+          },
+          {
+            "name": "Инновационность",
+            "score": 12,
+            "max": 15,
+            "awarded": "Основное отличие — grounded-подход: LLM ограничена разбором свободной фразы и перефразированием, а факты, аналоги и мутации вынесены в детерминированные сервисы.",
+            "deductions": "Снято 3 балла за то, что нестандартная защита не доведена до реального транзакционного контура, а контекст выбора города не проходит через одну из UI-операций.",
+            "evidence": [
+              "backend/app/assistant/orchestrator.py:26",
+              "backend/app/assistant/llm_client.py:3",
+              "backend/app/assistant/analogs.py:113",
+              "frontend/src/api.ts:93"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "D-demo-cart",
+                "reason": "Инновационный безопасный поток подтверждения заканчивается MockCartAdapter и локальным якорем; без реального CartAdapter преимущество остаётся демонстрацией процесса, а не отличием работающего торгового продукта."
+              },
+              {
+                "points": 1,
+                "findingId": "D-city-button",
+                "reason": "Контекстный поиск по городу реализован в оркестраторе, но кнопочная мутация игнорирует его и жёстко задаёт Алматы; это уменьшает последовательность нестандартного контекстного UX."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "LLM не является источником фактов",
+                "implementation": "В fast path сначала выполняются детерминированный разбор и поиск. LLM вызывается только при непонятном запросе или для казахского перефразирования, а клиент отклоняет ответ, если в нём появились числа, которых не было в исходном ответе.",
+                "value": "Для торговли это более безопасный и обоснованный подход, чем отдавать модели цену и остаток на доверие; он уменьшает риск уверенной галлюцинации.",
+                "verification": "source",
+                "evidence": [
+                  "backend/app/assistant/orchestrator.py:29",
+                  "backend/app/assistant/orchestrator.py:33",
+                  "backend/app/assistant/llm_client.py:195",
+                  "backend/tests/test_assistant.py:175"
+                ]
+              },
+              {
+                "aspect": "Объяснимый подбор аналогов",
+                "implementation": "Скоринг аналогов разделяет совпадающие и отличающиеся признаки, штрафует иной номинальный ток и добавляет предупреждение проверить совместимость по паспорту изделия.",
+                "value": "Пользователь видит не безымянную рекомендацию, а причинную связь между исходным товаром и заменой; это особенно полезно в электротехнике.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/app/assistant/analogs.py:98",
+                  "backend/app/assistant/analogs.py:109",
+                  "backend/tests/test_assistant.py:79"
+                ]
+              },
+              {
+                "aspect": "Согласование агента и корзины через предложение",
+                "implementation": "Оркестратор возвращает ActionProposal, а изменение состояния находится в HTTP/cart boundary; confirmation_id одноразовый и привязан к сессии.",
+                "value": "Разделение read-only рекомендации и write-действия — содержательно более безопасная архитектурная идея, чем дать агенту прямой доступ к корзине.",
+                "verification": "source",
+                "evidence": [
+                  "backend/app/assistant/contracts.py:128",
+                  "backend/app/cart/adapter.py:1",
+                  "backend/app/main.py:172"
+                ]
+              }
+            ],
+            "scoreReasoning": "12/15 заслужено за grounded LLM-политику, объяснимые аналоги и отдельный confirmation boundary. Это сильнее обычного демонстрационного поиска по ключевым словам. Два подтверждённых ограничения уменьшают новизну как законченного продукта: transaction boundary пока mock-only, а один UI-оператор не сохраняет город. Поэтому решение заметно нестандартно по безопасности и объяснимости, но не полностью реализует это преимущество в конечном контуре."
+          },
+          {
+            "name": "Потенциал развития и масштабирования",
+            "score": 15,
+            "max": 20,
+            "awarded": "Код разделён на Catalog, Inventory, FAQ, Assistant и Cart boundaries; провайдер LLM заменяем, синтетические данные явно отделены, а локальный MVP можно расширять без переписывания основного сценария.",
+            "deductions": "Снято 5 баллов за отсутствие обработчиков вложений, отсутствие реального CartAdapter и потерю города в UI-пути подтверждения.",
+            "evidence": [
+              "docs/ARCHITECTURE.md:37",
+              "backend/app/assistant/contracts.py:153",
+              "backend/app/cart/adapter.py:28",
+              "README.md:275"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "D-attachments",
+                "reason": "Без общего upload/extraction-контракта нельзя масштабировать сценарий на спецификации, накладные и фотографии, хотя эти форматы заложены в кейсе."
+              },
+              {
+                "points": 2,
+                "findingId": "D-demo-cart",
+                "reason": "In-memory MockCartAdapter сбрасывает состояние при рестарте и не определяет аутентификацию, резервирование и реакцию на изменения цены/остатка; это оставляет главный интеграционный слой для production."
+              },
+              {
+                "points": 1,
+                "findingId": "D-city-button",
+                "reason": "Жёстко заданный город в клиентском адаптере создаёт скрытую зависимость от Алматы и потребует исправления перед масштабированием на склады и города."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Явные интерфейсы заменяемых источников",
+                "implementation": "CatalogRepository, InventoryRepository и FAQRepository описаны протоколами, а AgentServices передаёт их оркестратору. Это позволяет заменить fixtures на API-адаптеры и сохранить бизнес-правила.",
+                "value": "Для расширения на полный каталог и новые склады это лучше, чем смешивать загрузку JSON, поиск и HTTP-обработчики в одном файле.",
+                "verification": "source",
+                "evidence": [
+                  "backend/app/assistant/contracts.py:153",
+                  "backend/app/assistant/contracts.py:167",
+                  "docs/ARCHITECTURE.md:37"
+                ]
+              },
+              {
+                "aspect": "Отделение реальных и синтетических данных",
+                "implementation": "Inventory помечает synthetic overlay, карточки добавляют предупреждение, FAQ использует явную метку демомагазина, а README описывает, какие остатки реально есть только для одной позиции.",
+                "value": "Такой слой маркировки облегчает последующую замену fixtures официальным API без незаметного смешивания демонстрационных и production-фактов.",
+                "verification": "source",
+                "evidence": [
+                  "backend/app/inventory.py:4",
+                  "backend/app/main.py:159",
+                  "backend/app/assistant/orchestrator.py:338",
+                  "backend/app/faq.py:14"
+                ]
+              },
+              {
+                "aspect": "Провайдер-независимый LLM boundary",
+                "implementation": "llm_client.py принимает OpenAI-compatible base URL, model и key из окружения, поддерживает cooldown/fallback моделей и сохраняет детерминированный режим при отсутствии конфигурации.",
+                "value": "Команда может заменить Gemini, Groq или NVIDIA без изменения retrieval и cart-логики, а локальная демонстрация не зависит от платного ключа.",
+                "verification": "source",
+                "evidence": [
+                  "backend/app/assistant/llm_client.py:1",
+                  "backend/app/assistant/llm_client.py:77",
+                  "README.md:61"
+                ]
+              },
+              {
+                "aspect": "Задел для интеграции сайта",
+                "implementation": "README и ARCHITECTURE фиксируют API-границы, правила подтверждения и список production-вопросов: аутентификация, резервы, CORS/CSP, формат каталога и Cart API.",
+                "value": "Для пятичасового хакатона это полезная карта следующего этапа: команда не выдаёт локальный mock за готовую интеграцию и явно называет необходимые договорённости.",
+                "verification": "source",
+                "evidence": [
+                  "docs/ARCHITECTURE.md:205",
+                  "docs/ARCHITECTURE.md:214",
+                  "README.md:273"
+                ]
+              }
+            ],
+            "scoreReasoning": "15/20 — хороший архитектурный фундамент для расширения, подтверждённый разделением репозиториев и контрактов. Но масштабирование на реальный ekt.kz невозможно без трёх конкретных шагов: extraction вложений, persistent/site cart adapter и передачи выбранного города через весь UI. Эти ограничения явно признаны README, поэтому оценка не предполагает production-готовность."
+          },
+          {
+            "name": "Презентация, демо и ответы на вопросы",
+            "score": 17,
+            "max": 20,
+            "awarded": "README подробно описывает запуск, пять обязательных проверок, архитектуру, безопасность, источники данных, ограничения и команды тестирования. В репозитории есть сценарий, который можно воспроизвести локально.",
+            "deductions": "Снято 3 балла за то, что в демонстрационном контуре не показан реальный переход к корзине магазина и заявленный файловый сценарий отсутствует в самом продукте; устная презентация и ответы не оценивались и за это баллы не сняты.",
+            "evidence": [
+              "README.md:34",
+              "README.md:96",
+              "README.md:183",
+              "README.md:258",
+              "captures/20261002T113941863069-frontend-build.stdout.log"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "D-attachments",
+                "reason": "README честно перечисляет вложения как ограничение, но воспроизводимое демо не может показать этот важный вход кейса."
+              },
+              {
+                "points": 2,
+                "findingId": "D-demo-cart",
+                "reason": "README и интерфейс показывают именно демокорзину с #cart; для демонстрации целевого пользовательского результата отсутствует переход к актуальной корзине ekt.kz."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Воспроизводимая инструкция",
+                "implementation": "README даёт команды для backend и frontend, ожидаемый health-ответ, режим без LLM-ключа и последовательность пяти обязательных сценариев с конкретными фразами.",
+                "value": "Участник или жюри может быстро понять, что вводить и какой результат ожидать; это существенно повышает проверяемость прототипа.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:34",
+                  "README.md:45",
+                  "README.md:258"
+                ]
+              },
+              {
+                "aspect": "Объяснение архитектуры и доверия к данным",
+                "implementation": "README содержит схему UI → FastAPI → оркестратор → retrieval/analogs/FAQ/cart, отдельно объясняет LLM boundary, synthetic overlays, конфликт характеристик и правила подтверждения.",
+                "value": "Документация раскрывает не только внешний вид, но и причины безопасного поведения ассистента, что делает демо убедительнее для технического и продуктового слушателя.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:183",
+                  "README.md:203",
+                  "README.md:225"
+                ]
+              },
+              {
+                "aspect": "Проверяемый результат сборки",
+                "implementation": "Production build frontend завершился успешно, backend acceptance suite завершился 18 passed; README также содержит live-тесты, но они не запускались из-за запрета браузерной автоматизации.",
+                "value": "Есть объективное подтверждение собираемости и серверного сценария, при этом граница визуальной проверки обозначена честно.",
+                "verification": "observed",
+                "evidence": [
+                  "captures/20261002T113909736132-backend-test.stdout.log",
+                  "captures/20261002T113941863069-frontend-build.stdout.log",
+                  "frontend/tests/live.spec.ts:16"
+                ]
+              },
+              {
+                "aspect": "Явное описание компромиссов MVP",
+                "implementation": "Раздел «Ограничения» прямо сообщает о synthetic stock, demo FAQ, in-memory корзине, не реализованных вложениях и отсутствии передачи диалога менеджеру.",
+                "value": "Документация не создаёт ложного впечатления production-интеграции; это сильная практика для хакатонной демонстрации.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:273",
+                  "README.md:275",
+                  "README.md:276"
+                ]
+              }
+            ],
+            "scoreReasoning": "17/20 — README и локальный путь демонстрации заметно выше минимального уровня: инструкции конкретны, ограничения честны, а сборка и серверные тесты подтверждены. Снижение относится к содержанию самого демо, а не к отсутствию публичной ссылки или устного выступления: нельзя показать работу с вложением и реальную корзину ekt.kz, потому что соответствующих функций в snapshot нет."
+          }
+        ],
+        "total": 82
+      },
+      "case": null,
+      "judgeScore": 82,
+      "caseRequirements": [
+        {
+          "requirement": "Ответ по существующему товару: цена, артикул, характеристики и наличие по городу.",
+          "status": "met",
+          "explanation": "Запрос по 027228 в Алматы возвращает товар 515291, цену 64 920 ₸, остаток 5 шт. и характеристики; follow-up по Нур-Султану покрыт тестом контекста и возвращает 8 шт.",
+          "evidence": [
+            "backend/tests/test_assistant.py:44",
+            "backend/tests/test_assistant.py:59",
+            "scenario-api-existing",
+            "dataset/api_products.json",
+            "dataset/api_products_detail.json"
+          ]
+        },
+        {
+          "requirement": "Не выдумывать противоречивые характеристики и честно сообщать о сертификате, если файла нет.",
+          "status": "met",
+          "explanation": "Для 027228 выводятся оба значения номинального тока 160 А / 250 А с предупреждением. При запросе сертификата система сообщает, что файл не приложен, и предлагает обратиться к менеджеру вместо выдуманной ссылки.",
+          "evidence": [
+            "backend/app/catalog.py:141",
+            "backend/app/assistant/orchestrator.py:285",
+            "backend/tests/test_assistant.py:53",
+            "backend/tests/test_assistant.py:65"
+          ]
+        },
+        {
+          "requirement": "При нулевом остатке предложить минимум один релевантный аналог с объяснением.",
+          "status": "met",
+          "explanation": "Для 027230 тест видит нулевой synthetic-остаток и две карточки аналогов; match_reason перечисляет совпадающие и отличающиеся признаки, остаток и необходимость проверить совместимость.",
+          "evidence": [
+            "backend/tests/test_assistant.py:79",
+            "backend/app/assistant/analogs.py:98",
+            "demo_data/stock_overrides.json"
+          ]
+        },
+        {
+          "requirement": "Ответить об оплате, доставке и минимальной партии.",
+          "status": "met",
+          "explanation": "FAQ покрывает оплату, доставку, минимальную партию и возврат на русском и казахском. Ответ явно помечен как условия демонстрационного магазина и не выдаётся за официальные правила ekt.kz.",
+          "evidence": [
+            "backend/tests/test_assistant.py:91",
+            "demo_data/faq.json",
+            "backend/app/assistant/orchestrator.py:94"
+          ]
+        },
+        {
+          "requirement": "Не менять корзину без явного подтверждения клиента.",
+          "status": "met",
+          "explanation": "Сообщение «добавь 2 штуки» только создаёт pending_confirmation, а проверка cart до подтверждения даёт пустой список. Текстовое «да, добавь» и кнопочный endpoint используют отдельное подтверждение.",
+          "evidence": [
+            "backend/tests/test_assistant.py:107",
+            "backend/tests/test_assistant.py:114",
+            "backend/app/main.py:172",
+            "backend/app/cart/adapter.py:54"
+          ]
+        },
+        {
+          "requirement": "Учитывать количество и не превышать подтверждённый остаток.",
+          "status": "met",
+          "explanation": "Количество проверяется при создании предложения и повторно непосредственно перед мутацией с учётом уже добавленных единиц; тест на превышение остатка оставляет корзину без изменения.",
+          "evidence": [
+            "backend/app/cart/adapter.py:44",
+            "backend/app/cart/adapter.py:70",
+            "backend/tests/test_assistant.py:132"
+          ]
+        },
+        {
+          "requirement": "Дать ссылку на актуальное состояние корзины после добавления.",
+          "status": "partial",
+          "explanation": "После подтверждения API возвращает cart_url и фронтенд показывает ссылку, но реализация является только локальной демокорзиной: MockCartAdapter возвращает #cart, состояние живёт в памяти и не является URL корзины ekt.kz.",
+          "evidence": [
+            "backend/app/cart/adapter.py:28",
+            "backend/app/cart/adapter.py:95",
+            "frontend/src/main.tsx:97",
+            "README.md:276"
+          ]
+        },
+        {
+          "requirement": "Принимать фото, Excel, Word, PDF и JPEG как входные данные.",
+          "status": "missing",
+          "explanation": "В доменных контрактах есть неиспользуемый AttachmentContent, но HTTP MessageRequest принимает только message, в backend нет UploadFile/multipart или extractor-модулей, а форма фронтенда содержит только текстовое поле.",
+          "evidence": [
+            "backend/app/main.py:58",
+            "backend/app/assistant/contracts.py:22",
+            "backend/app/assistant/contracts.py:135",
+            "frontend/src/main.tsx:94",
+            "README.md:277"
+          ]
+        },
+        {
+          "requirement": "Не выдумывать цену/наличие и не хранить платёжные данные.",
+          "status": "met",
+          "explanation": "Цены и остатки строятся из Catalog/Inventory, неизвестный остаток остаётся неизвестным, а FAQ и интерфейс прямо предупреждают не вводить платёжные данные. В LLM-клиенте дополнительно проверяются числа перефразированного ответа.",
+          "evidence": [
+            "backend/app/catalog.py:160",
+            "backend/app/inventory.py:68",
+            "backend/app/assistant/llm_client.py:207",
+            "frontend/src/main.tsx:95"
+          ]
+        },
+        {
+          "requirement": "Поддержать казахский, десктопный и мобильный сценарий.",
+          "status": "partial",
+          "explanation": "Тест без LLM подтверждает казахскую фразу добавления и подтверждения, а LLM-клиент предусматривает разбор свободного казахского текста. CSS содержит адаптивные правила и отдельный Playwright-тест, но визуальная проверка намеренно не запускалась; кнопочный город также не переносится.",
+          "evidence": [
+            "backend/tests/test_assistant.py:157",
+            "backend/app/assistant/llm_client.py:135",
+            "frontend/src/style.css:1",
+            "frontend/tests/live.spec.ts:54",
+            "frontend/src/api.ts:98"
+          ]
+        },
+        {
+          "requirement": "Не выдавать демо-данные и демо-условия за официальные данные партнёра.",
+          "status": "met",
+          "explanation": "Остатки из overlay получают synthetic data_source и предупреждение, FAQ начинается с явной метки демомагазина, а README разделяет выгрузку ekt.kz и синтетические fixtures.",
+          "evidence": [
+            "backend/app/main.py:159",
+            "backend/app/faq.py:14",
+            "README.md:245"
+          ]
+        }
+      ],
+      "testData": {
+        "provided": [
+          "cases/10/case-data/HackAlem AI_ ИИ-ассистент для чата на сайте ekt.kz.md",
+          "cases/10/case-data/ИИ-ассистент для чата на сайте ekt.kz ДАННЫЕ.docx.md"
+        ],
+        "used": [
+          "cases/10/task.txt",
+          "cases/10/case-data/HackAlem AI_ ИИ-ассистент для чата на сайте ekt.kz.md",
+          "cases/10/case-data/ИИ-ассистент для чата на сайте ekt.kz ДАННЫЕ.docx.md",
+          "dataset/api_products.json",
+          "dataset/api_products_page2.json",
+          "dataset/api_products_detail.json",
+          "demo_data/stock_overrides.json",
+          "demo_data/faq.json"
+        ],
+        "checks": [
+          {
+            "input": "Существующий товар 027228 в городе Алматы.",
+            "method": "backend/tests/test_assistant.py::test_stock_by_city_and_specs и отдельный HTTP GET health/POST messages с UTF-8 входом.",
+            "result": "Товар 515291 найден; HTTP-сценарий вернул 64 920 ₸, 5 шт. в Алматы и предупреждение о конфликте 160/250 А. Acceptance-тест дополнительно подтвердил Legrand.",
+            "conclusion": "Проверка пройдена; источник и городская фильтрация работают на предоставленных fixtures."
+          },
+          {
+            "input": "Follow-up «а в Нур-Султане?» после обсуждения 027228.",
+            "method": "backend/tests/test_assistant.py::test_follow_up_city_uses_dialog_context.",
+            "result": "Второй ответ вернул quantity=8 для того же товара.",
+            "conclusion": "Контекст диалога и выбор склада по городу подтверждены."
+          },
+          {
+            "input": "Нулевой остаток для 027230.",
+            "method": "backend/tests/test_assistant.py::test_out_of_stock_offers_explained_analog с demo_data/stock_overrides.json.",
+            "result": "515288 показан с quantity=0; среди результатов есть 515291 и 515286 с match_reason, совпадениями, отличиями и остатками.",
+            "conclusion": "Сценарий аналогов пройден; synthetic-источник явно помечен."
+          },
+          {
+            "input": "«Условия доставки и оплаты?», «минимальная партия?» и казахский «Жеткізу қалай?»",
+            "method": "Параметризованный backend-тест test_purchase_terms и demo_data/faq.json.",
+            "result": "Ответы содержат соответствующую тему и строку «Условия демонстрационного магазина».",
+            "conclusion": "FAQ-сценарий работает, но его содержание является допущением прототипа, а не официальными условиями."
+          },
+          {
+            "input": "«добавь 2 штуки» → состояние корзины до подтверждения → «да, добавь»; затем попытка превысить остаток.",
+            "method": "Тесты proposal_does_not_change_cart, text_confirmation_adds_once и quantity_never_exceeds_stock.",
+            "result": "До подтверждения items=[]; после подтверждения quantity=2 и cart_url непустой; повторное подтверждение не удваивает, превышение остатка отклоняется.",
+            "conclusion": "Основная политика явного подтверждения и лимита остатка пройдена."
+          }
+        ],
+        "limitations": [
+          "Реальный внешний API из документа с доступом к ekt.kz не вызывался: для оценки использованы сохранённые fixtures проекта, а credentials намеренно не переносились в отчёт.",
+          "Файловые входы из задания проверить как рабочий сценарий невозможно, потому что в snapshot отсутствуют upload/extraction-обработчики.",
+          "LLM-провайдер не вызывался без предоставленного ключа; базовый русский сценарий по документации и тестам работает без него."
+        ]
+      },
+      "runtime": {
+        "status": "working",
+        "build": "Backend acceptance suite: 18 passed. Frontend: tsc -b и vite build завершились успешно; Vite собрал production bundle.",
+        "start": "Uvicorn стартовал, приложение сообщило application startup complete; GET /api/v1/health вернул HTTP 200 и {\"status\":\"ok\",\"products_loaded\":40}.",
+        "scenario": "Серверный основной сценарий воспроизведён по API и acceptance-тестам: каталог/город/характеристики, аналог, FAQ, предложение без мутации, подтверждение, лимит остатка, идемпотентность и cart_url.",
+        "environment": "Изолированные окружения Python 3.11 и Node 22; зависимости установлены из backend requirements и frontend package-lock. LLM_API_KEY не предоставлялся.",
+        "summary": "Приложение собирается и запускается; основной текстовый пользовательский сценарий работает без внешнего LLM-ключа. Реальная корзина ekt.kz и вложения не являются частью рабочего runtime-пути.",
+        "checks": [
+          {
+            "command": "python -m pytest backend/tests -q",
+            "result": "18 passed, 1 warning in 1.95s; тесты покрыли все пять обязательных сценариев, безопасность подтверждения и guard чисел LLM.",
+            "id": "backend-tests",
+            "stage": "build",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Все серверные acceptance-тесты должны пройти без LLM-ключа."
+          },
+          {
+            "command": "npm run build",
+            "result": "tsc -b прошёл; Vite 6.4.3 преобразовал 31 модуль и создал dist/index.html и production assets.",
+            "id": "frontend-build",
+            "stage": "build",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Frontend должен пройти TypeScript-проверку и production-сборку."
+          },
+          {
+            "command": "GET /api/v1/health",
+            "result": "HTTP 200: {\"status\":\"ok\",\"products_loaded\":40}.",
+            "id": "start-health",
+            "stage": "start",
+            "status": "pass",
+            "cause": "none",
+            "expected": "После старта backend endpoint health должен вернуть status=ok и 40 загруженных товаров."
+          },
+          {
+            "command": "POST /api/v1/sessions; POST /api/v1/sessions/{id}/messages",
+            "result": "Для UTF-8 сообщения о 027228 в Алматы получены product_id=515291, quantity=5, цена 64 920 ₸ и предупреждение о конфликте; отдельные acceptance-тесты подтвердили последующие шаги корзины.",
+            "id": "http-existing",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "API должен вернуть существующий товар с корректным городским остатком и характеристиками."
+          },
+          {
+            "command": "python -m pytest backend/tests -q",
+            "result": "Набор сценариев подтвердил analog, FAQ, pending_confirmation без изменения cart, explicit confirm, stock limit, foreign session protection и непустой cart_url.",
+            "id": "api-scenario",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Основной сценарий кейса должен пройти от вопроса до подтверждённой демо-корзины без превышения остатка."
+          },
+          {
+            "command": "Визуальная проверка frontend в браузере",
+            "result": "Не запускалась: по инструкции проверки UI выполняет пользователь, а браузерная автоматизация и скриншоты запрещены.",
+            "id": "visual-ui",
+            "stage": "scenario",
+            "status": "not_run",
+            "cause": "review_environment",
+            "expected": "Визуальное поведение, мобильная ширина и фактическая доступность элементов должны быть проверены пользователем."
+          },
+          {
+            "command": "Вызов LLM-провайдера",
+            "result": "Не выполнялся без LLM_API_KEY; детерминированный русский путь и unit/domain guard проверены без внешнего сервиса.",
+            "id": "llm-external",
+            "stage": "scenario",
+            "status": "blocked",
+            "cause": "review_environment",
+            "expected": "Опциональный свободный казахский разбор и перефразирование должны быть проверены только при доступном ключе провайдера."
+          }
+        ],
+        "limitations": [
+          "Визуальная и браузерная проверка не проводилась по заданной политике; это не считается дефектом проекта.",
+          "Внешний LLM не вызывался из-за отсутствия credentials; это ограничение проверки, а не основание для снижения балла.",
+          "Runtime подтверждает локальный MockCartAdapter, а не интеграцию с корзиной ekt.kz."
+        ]
+      },
+      "liveDemo": {
+        "status": "none",
+        "url": null,
+        "notes": "Публичная live-ссылка в проверенных материалах не предоставлена. Локальное API воспроизводится; отсутствие публичного URL само по себе не снижало балл."
+      },
+      "fiveHourContext": "Для пятичасового MVP объём реализации убедителен: команда успела собрать frontend/backend, локальные fixtures, детерминированный retrieval, объяснимые аналоги, FAQ, LLM boundary и безопасный confirmation flow с тестами. В этом контексте отсутствие production Cart API и полноценных файловых обработчиков понятно как граница прототипа, но обе функции входят в заявленный контур кейса и поэтому отмечены как конкретные неполноты, а не как требование к production.",
+      "strengths": [
+        "18 серверных acceptance-тестов проходят и покрывают не только happy path, но и идемпотентность, чужую сессию, неизвестный остаток и guard чисел LLM.",
+        "Факты каталога и остатка отделены от LLM; конфликт 160/250 А показывается явно, synthetic-данные и демо-FAQ маркируются.",
+        "Аналоги объясняются через совпадающие и отличающиеся признаки и предупреждение о проверке совместимости.",
+        "Изменение корзины защищено одноразовым подтверждением и повторной проверкой остатка.",
+        "README содержит конкретную инструкцию запуска, сценарии, архитектуру, тесты и честный список ограничений."
+      ],
+      "gaps": [
+        "Вложения из кейса не реализованы: API и интерфейс принимают только текст.",
+        "Корзина остаётся in-memory MockCartAdapter, а возвращаемая ссылка — локальный #cart, не актуальная корзина ekt.kz.",
+        "Кнопочное добавление в live frontend жёстко передаёт city='Алматы' и может рассинхронизироваться с городом, по которому показана карточка."
+      ],
+      "futureAdvice": [
+        {
+          "principle": "Сначала зафиксировать end-to-end контракт входного формата.",
+          "why": "D-attachments подтверждает, что AttachmentContent существует только как доменный тип: реальный MessageRequest и UI не принимают ни одного файла.",
+          "how": "За короткий следующий слот добавить multipart/upload endpoint с типом, размером и безопасным именем, извлечение текста для PDF/DOCX/XLSX и явный статус «не удалось прочитать» для JPEG или неподдержанного файла; затем прокинуть нормализованный текст в тот же AssistantRequest.",
+          "findingIds": [
+            "D-attachments"
+          ],
+          "successCheck": "Один тестовый PDF или XLSX с артикулом 027228 создаёт сообщение с извлечённым текстом, а неподдержанный/битый файл получает понятную ошибку без изменения корзины.",
+          "timeboxMinutes": 45
+        },
+        {
+          "principle": "Заменять mock-интеграцию через тот же контракт, которым уже защищён прототип.",
+          "why": "D-demo-cart показывает, что логика подтверждения хороша, но MockCartAdapter возвращает #cart и теряет состояние после перезапуска.",
+          "how": "Сначала описать CartAdapter с реальным ответом URL/состоянием и ошибками цены или остатка, затем подключить тестовый HTTP-адаптер ekt.kz за feature flag; confirmation и повторную проверку оставить в backend boundary.",
+          "findingIds": [
+            "D-demo-cart"
+          ],
+          "successCheck": "После подтверждения тест получает непустой URL, который возвращён адаптером, повторный GET отражает ту же позицию, а stale/несовместимое подтверждение не меняет корзину.",
+          "timeboxMinutes": 60
+        },
+        {
+          "principle": "Передавать контекст пользователя единым объектом до операции записи.",
+          "why": "D-city-button показывает, что поиск учитывает город, но createConfirmation в live frontend всегда отправляет Алматы.",
+          "how": "Хранить city/location_id в карточке и pending state, передавать их из результата поиска в createConfirmation и покрыть два соседних города одним тестом; не задавать город внутри API-адаптера по умолчанию.",
+          "findingIds": [
+            "D-city-button"
+          ],
+          "successCheck": "Для запроса по Нур-Султану предложение и подтверждение используют тот же город и не проверяют остаток Алматы; тест с 8 шт. проходит, а попытка сверх 8 отклоняется.",
+          "timeboxMinutes": 30
+        }
+      ],
+      "uncertainties": [
+        "Внешний ekt.kz API из документа кейса не вызывался; оценка каталога основана на сохранённых fixtures проекта, структура которых соответствует проверенным сценариям.",
+        "Казахское свободное перефразирование через LLM не наблюдалось без ключа; точечный детерминированный казахский поток подтверждён backend-тестом.",
+        "Визуальная адаптивность и фактическое поведение браузерных контролов не проверялись из-за обязательного запрета UI-автоматизации; CSS и тестовые сценарии изучены статически.",
+        "Публичная liveDemo-ссылка отсутствует, поэтому HTTP-проверка выполнялась локально; это не снижало оценку само по себе."
+      ],
+      "reviewPolicyVersion": 2,
+      "assessmentStatus": "ready",
+      "findings": [
+        {
+          "id": "S-core-scenario",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Основной серверный сценарий каталога, аналогов, FAQ и подтверждённой демо-корзины работает без LLM-ключа.",
+          "expected": "Пять обязательных сценариев кейса должны быть воспроизводимы на локальных данных, включая отсутствие мутации до подтверждения.",
+          "actual": "18 acceptance-тестов прошли; отдельный HTTP-запрос по 027228 в Алматы вернул quantity=5, цену 64 920 ₸ и характеристики.",
+          "evidence": [
+            "captures/20261002T113909736132-backend-test.stdout.log",
+            "backend/tests/test_assistant.py:42",
+            "http-existing"
+          ],
+          "checkIds": [
+            "backend-tests",
+            "start-health",
+            "http-existing",
+            "api-scenario"
+          ]
+        },
+        {
+          "id": "S-grounded-explanations",
+          "kind": "strength",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Проект отделяет факты каталога от LLM, маркирует synthetic overlays и формирует объяснение аналогов по совпадениям и отличиям.",
+          "expected": "Рекомендации и цифры должны иметь источник и не выглядеть как неподтверждённая генерация.",
+          "actual": "Оркестратор получает данные из Catalog/Inventory, analogs.py строит match_reason, а UI и ответы помечают synthetic-остатки и демо-условия.",
+          "evidence": [
+            "backend/app/assistant/orchestrator.py:29",
+            "backend/app/assistant/analogs.py:113",
+            "backend/app/main.py:159",
+            "backend/app/faq.py:14"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "S-buildability",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Обе части проекта собираются в заявленном стеке.",
+          "expected": "Backend-тесты и frontend production build должны завершаться без ошибки проекта.",
+          "actual": "Backend: 18 passed; frontend: TypeScript и Vite build завершились успешно.",
+          "evidence": [
+            "captures/20261002T113909736132-backend-test.stdout.log",
+            "captures/20261002T113941863069-frontend-build.stdout.log"
+          ],
+          "checkIds": [
+            "backend-tests",
+            "frontend-build"
+          ]
+        },
+        {
+          "id": "D-attachments",
+          "kind": "defect",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Заявленные входные вложения не реализованы в HTTP и UI.",
+          "expected": "Чат должен принимать фото и Excel/Word/PDF/JPEG либо корректно обрабатывать их содержимое или ошибку чтения.",
+          "actual": "MessageRequest содержит только поле message; в frontend форма содержит только input текста; AttachmentContent объявлен, но не подключён к маршруту, и обработчиков multipart/extraction нет.",
+          "evidence": [
+            "backend/app/main.py:58",
+            "backend/app/main.py:59",
+            "backend/app/assistant/contracts.py:22",
+            "backend/app/assistant/contracts.py:135",
+            "frontend/src/main.tsx:94",
+            "README.md:277"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "D-demo-cart",
+          "kind": "defect",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Реализована только демонстрационная in-memory корзина, а ссылка после подтверждения — локальный якорь.",
+          "expected": "После добавления пользователь должен получить ссылку на актуальное состояние корзины/оформления ekt.kz.",
+          "actual": "main.py использует MockCartAdapter; adapter.py хранит _carts в памяти и возвращает cart_url=\"#cart\", README прямо называет корзину демонстрационной и сбрасываемой при рестарте.",
+          "evidence": [
+            "backend/app/main.py:51",
+            "backend/app/cart/adapter.py:28",
+            "backend/app/cart/adapter.py:33",
+            "backend/app/cart/adapter.py:95",
+            "README.md:276"
+          ],
+          "checkIds": [
+            "api-scenario"
+          ]
+        },
+        {
+          "id": "D-city-button",
+          "kind": "defect",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Кнопочный live-поток фронтенда игнорирует город найденной карточки при создании подтверждения.",
+          "expected": "Предложение и подтверждение должны использовать тот же город/склад, по которому показан остаток.",
+          "actual": "createConfirmation отправляет city: 'Алматы' и вызывается из prepare(product) без передачи city; запрос по другому городу может завершиться проверкой остатка Алматы.",
+          "evidence": [
+            "frontend/src/main.tsx:62",
+            "frontend/src/api.ts:93",
+            "frontend/src/api.ts:98"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "L-no-llm-key",
+          "kind": "limitation",
+          "verification": "unverified",
+          "responsibility": "review_environment",
+          "claim": "Свободный LLM-разбор и казахское перефразирование не запускались.",
+          "expected": "Опциональная внешняя интеграция проверяется при наличии ключа провайдера.",
+          "actual": "LLM_API_KEY не предоставлялся; локальный deterministic path работает и acceptance-тесты отключают LLM.",
+          "evidence": [
+            "backend/app/assistant/llm_client.py:77",
+            "backend/tests/test_assistant.py:15",
+            "runtime.checks.llm-external"
+          ],
+          "checkIds": [
+            "llm-external"
+          ]
+        },
+        {
+          "id": "L-visual-review",
+          "kind": "limitation",
+          "verification": "unverified",
+          "responsibility": "review_environment",
+          "claim": "Визуальные свойства UI и мобильная ширина не наблюдались в браузере.",
+          "expected": "Десктопный и мобильный интерфейс должны быть проверены визуально.",
+          "actual": "Проверка браузером и скриншоты не запускались по обязательной политике пользовательской визуальной проверки; собранность CSS/TS подтверждена.",
+          "evidence": [
+            "frontend/src/style.css:1",
+            "frontend/tests/live.spec.ts:54",
+            "runtime.checks.visual-ui"
+          ],
+          "checkIds": [
+            "visual-ui",
+            "frontend-build"
+          ]
+        }
+      ],
+      "gapFindingIds": [
+        "D-attachments",
+        "D-demo-cart",
+        "D-city-button"
+      ]
+    }
+  ],
+  "score": 82.0,
+  "status": "complete",
+  "expectedJudges": 1
+}

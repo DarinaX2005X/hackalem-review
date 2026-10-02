@@ -1,0 +1,973 @@
+{
+  "methodVersion": 4,
+  "repoId": "hack-2adafad9-kayo",
+  "repoUrl": "https://github.com/BAITC-Hacks/hack-2adafad9-kayo",
+  "caseId": 1,
+  "snapshot": "1ecd5de6641682004ff76e8b15a299370a703230",
+  "judges": [
+    {
+      "methodVersion": 4,
+      "repoId": "hack-2adafad9-kayo",
+      "caseId": 1,
+      "model": "GPT-5.6 Luna",
+      "snapshot": "1ecd5de6641682004ff76e8b15a299370a703230",
+      "overallSummary": "Решение представляет собой воспроизводимый offline-прототип почасового прогноза для двух турбин на 24–48 часов с архивом as-of-погоды, физической power curve, residual gradient boosting, квантильным коридором и агентным циклом collect, prepare, forecast, reflect, verify, explain. Основной сценарий воспроизведён: final_acceptance.py и agent_cycle.py прошли, а прямой build сформировал 2688 строк по T1/T2 и lead 24/48. Главные подтверждённые недостатки: production fit ограничен 30.10.2025 22:00 UTC и не использует доступные наблюдения до 31.01.2026; широкие диапазоны зависимостей допускают небольшой числовой drift между сохранённым и повторным артефактом. Февральские фактические цели отсутствуют, поэтому февральская точность не выдаётся за измеренную.",
+      "global": {
+        "criteria": [
+          {
+            "name": "Ценность решения",
+            "score": 23,
+            "max": 25,
+            "awarded": "Решение адресует конкретную операционную задачу ВЭС: диспетчеру нужны почасовые значения выработки и интервал неопределённости для планирования. Ценность подтверждена работающим расчётом, baseline-сравнением и экономическим блоком с явными допущениями.",
+            "deductions": "Снято 2 балла за то, что финальный расчёт не использует последние доступные месяцы истории до 31.01.2026.",
+            "evidence": [
+              "README.md:101-116,276-289",
+              "windagent/backtest.py:34,126-134",
+              "captures/20261002T153953228869-build.stdout.log"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "F1",
+                "reason": "Для operational value важна максимально свежая история; текущий fit заканчивается 30.10.2025 и исключает ноябрь 2025 — январь 2026."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Диспетчерский результат",
+                "implementation": "Для каждого часа и каждой турбины сохраняются p10, p50, p90, issue_time, lead_h, effective_lead_h и погодные метаданные; CSV и JSON формируются из одного результата.",
+                "value": "P50 можно использовать как ориентир поставки, а P10/P90 дают риск по часам. Это конкретный пользовательский формат, а не только исследовательская метрика.",
+                "verification": "observed",
+                "evidence": [
+                  "windagent/run.py:55-69,91-108",
+                  "checks/final_acceptance.py:31-67"
+                ]
+              },
+              {
+                "aspect": "Измеримая добавленная ценность",
+                "implementation": "backtest считает nMAE, nRMSE, bias и skill относительно persistence, climatology и смешанного baseline; опубликованные значения решения дают skill около 0.53 на 24 часах и 0.50 на 48 часах.",
+                "value": "Пользователь видит, чем решение лучше простого operational baseline, а не получает неподтверждённое утверждение о качестве.",
+                "verification": "observed",
+                "evidence": [
+                  "windagent/backtest.py:43-55,66-92,155-166",
+                  "forecasts/metrics.csv:2-5",
+                  "README.md:276-287"
+                ]
+              },
+              {
+                "aspect": "Интервальная и экономическая интерпретация",
+                "implementation": "Квантили калибруются отдельно по turbine и lead, а run.economics переводит nMAE в условные месячные потери через явно указанные 2.5 MW и 12000 ₸/MWh.",
+                "value": "Коридор полезен для оценки неопределённости, а экономика помогает обсуждать порядок эффекта; README честно отмечает, что тариф и capacity являются допущениями.",
+                "verification": "source",
+                "evidence": [
+                  "windagent/model.py:132-195",
+                  "windagent/run.py:72-82",
+                  "README.md:289-293,372-375"
+                ]
+              }
+            ],
+            "scoreReasoning": "23/25 заслужены за конкретный диспетчерский результат, uncertainty-aware выдачу и сравнение с baseline. До максимума не хватает использования всей доступной истории в финальном fit; это F1, но не блокировка рабочего MVP."
+          },
+          {
+            "name": "Результат и качество решения",
+            "score": 18,
+            "max": 20,
+            "awarded": "Основной сценарий целостен: архивная погода и часовые данные превращаются в признаки, затем в прогноз, reflection, verification и журнал. Автоматическая приёмка и агентные проверки выполнены успешно.",
+            "deductions": "Снято 1 балл за ранний cutoff обучения и 1 балл за зависимость числового артефакта от широких версий библиотек.",
+            "evidence": [
+              "windagent/agent.py:89-187,235-309,358-479",
+              "checks/final_acceptance.py:197-214",
+              "captures/20261002T153953228869-build.stdout.log"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "F1",
+                "reason": "Сценарий запускается, но финальный февральский fit не использует последние доступные месяцы."
+              },
+              {
+                "points": 1,
+                "findingId": "F2",
+                "reason": "В допустимом requirements.txt окружении повторная сборка дала coverage 0.7849 против 0.79377697 в сохранённом JSON; функциональность работает, но число не полностью зафиксировано."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Полный agentic pipeline",
+                "implementation": "agent.run_cycle последовательно выполняет collect, prepare, forecast, reflect, verify и explain; rollout повторяет цикл для ежедневных выпусков.",
+                "value": "Agentic-часть задания реализована как контролируемый цикл с журналом, а не как декларация о наличии агента.",
+                "verification": "source",
+                "evidence": [
+                  "windagent/agent.py:89-187,235-309,382-479"
+                ]
+              },
+              {
+                "aspect": "Безопасное деградирование",
+                "implementation": "prepare проверяет полноту и диапазоны; при плохом архивном окне collect останавливает выпуск; при stale facts reflect и verify переносят или пропускают коррекцию.",
+                "value": "Система не молча выдаёт прогноз из нарушенного окна и сохраняет объяснимую запись причины.",
+                "verification": "observed",
+                "evidence": [
+                  "windagent/agent.py:115-165,190-225",
+                  "captures/20261002T154604847108-scenario2.stdout.log"
+                ]
+              },
+              {
+                "aspect": "Паритет поставочных артефактов",
+                "implementation": "final_acceptance сопоставляет CSV и JSON по ключам, квантилям, weather reference и as-of archive; agent_cycle сравнивает delivery и training features.",
+                "value": "Результат можно проверить и передать дальше, не опасаясь, что dashboard и CSV показывают разные строки.",
+                "verification": "observed",
+                "evidence": [
+                  "windagent/run.py:85-140",
+                  "checks/final_acceptance.py:90-166",
+                  "captures/20261002T153953228869-build.stdout.log"
+                ]
+              }
+            ],
+            "scoreReasoning": "18/20 отражает воспроизведённый сценарий и сильную приёмку. Снижения относятся к качеству финального протокола F1/F2, а не к недоступности окружения или отсутствию запуска."
+          },
+          {
+            "name": "Инновационность",
+            "score": 15,
+            "max": 15,
+            "awarded": "Подход нестандартен именно для задачи: ML учит остаток относительно физической кривой, погода собрана в ensemble, uncertainty калибруется по горизонту, а агент может скорректировать bias или откатиться к curve при отрицательном skill.",
+            "deductions": "Снятий нет: основные идеи подтверждены исходниками и целевыми проверками.",
+            "evidence": [
+              "windagent/model.py:41-195",
+              "windagent/weather.py:28-42,97-107",
+              "windagent/agent.py:235-309,358-418"
+            ],
+            "deductionItems": [],
+            "awardedDetails": [
+              {
+                "aspect": "Physics plus residual ML",
+                "implementation": "power_curve строит монотонный baseline по прогнозному ветру, а HistGradientBoostingRegressor учит residual и добавляет его к curve.",
+                "value": "Физический prior даёт устойчивость и объяснимый fallback, а ML учит площадочные эффекты вместо слепого регрессирования цели.",
+                "verification": "source",
+                "evidence": [
+                  "windagent/model.py:41-58,127-154"
+                ]
+              },
+              {
+                "aspect": "Честный as-of архив",
+                "implementation": "asof.daily_ensemble выбирает previous_day2 для 24-часовой корзины и previous_day3 для 48-часовой, добавляет weather lead и проверяет publication buffer.",
+                "value": "Ретроспективный backtest не подменяет доступный в момент выпуска прогноз будущей фактической погодой.",
+                "verification": "observed",
+                "evidence": [
+                  "windagent/asof.py:47-81",
+                  "checks/final_acceptance.py:70-87"
+                ]
+              },
+              {
+                "aspect": "Рефлексия и rollback",
+                "implementation": "reflect сдвигает только p50 при bias gate по стандартной ошибке; verify сравнивает skill с persistence и при отрицательном результате публикует curve.",
+                "value": "Агент имеет наблюдаемые правила вмешательства и защитный fallback, а не безусловно доверяет своей модели.",
+                "verification": "source",
+                "evidence": [
+                  "windagent/agent.py:235-309",
+                  "checks/agent_cycle.py:42-74"
+                ]
+              }
+            ],
+            "scoreReasoning": "15/15: оригинальность видна в архитектуре и анти-leakage протоколе, а не только в названии Agentic AI; элементы реализованы и проверены."
+          },
+          {
+            "name": "Потенциал развития и масштабирования",
+            "score": 16,
+            "max": 20,
+            "awarded": "Слои data/weather/asof/model/backtest/agent/web разделены, погодные модели параметризованы, а README конкретно описывает SCADA, scheduler, planning integration и расширение на парк.",
+            "deductions": "Снято 4 балла: 2 за F1 как ограничение актуальности последующих выпусков и 2 за F2 как ограничение переносимости численного результата.",
+            "evidence": [
+              "windagent/data.py,weather.py,asof.py,model.py,backtest.py,agent.py",
+              "README.md:385-404,418-435",
+              "requirements.txt:1-4"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "F1",
+                "reason": "Для регулярной эксплуатации фиксированный ранний cutoff потребует отдельного production refit шага."
+              },
+              {
+                "points": 2,
+                "findingId": "F2",
+                "reason": "Масштабирование на разные машины без lock-файла не гарантирует одинаковые численные артефакты."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Модульная архитектура",
+                "implementation": "Источники данных, погодный адаптер, as-of-протокол, ML, backtest и агент вынесены в отдельные модули; web export не смешан с расчётом признаков.",
+                "value": "При добавлении турбин или провайдера точки замены понятны и не требуют переписывать весь pipeline.",
+                "verification": "source",
+                "evidence": [
+                  "windagent/data.py:18-24,68-85",
+                  "windagent/weather.py:59-107",
+                  "windagent/run.py:85-140"
+                ]
+              },
+              {
+                "aspect": "Переносимый weather layer",
+                "implementation": "MEMBERS, BASE, cache и общий tidy/ensemble интерфейс отделяют provider-specific получение погоды от модели.",
+                "value": "Добавление погодного члена или замена endpoint локализованы в weather/asof слое.",
+                "verification": "source",
+                "evidence": [
+                  "windagent/weather.py:25-44,83-107",
+                  "windagent/asof.py:25-81"
+                ]
+              },
+              {
+                "aspect": "Конкретный roadmap интеграции",
+                "implementation": "README перечисляет identifiers, coordinates, nominal capacity, SCADA measurements, API/DB format, scheduler and planning-system contract и явно отличает их от уже сделанного.",
+                "value": "Следующий разработчик получает применимый integration contract, а не абстрактное обещание масштабировать решение.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:385-404,418-435"
+                ]
+              }
+            ],
+            "scoreReasoning": "16/20: структура хорошо подготовлена к следующей итерации, но F1 и F2 являются конкретными препятствиями для регулярного переноса и масштабирования. Отсутствие production scheduler/SCADA само по себе не штрафовалось как требование кейса."
+          },
+          {
+            "name": "Презентация, демо и ответы на вопросы",
+            "score": 17,
+            "max": 20,
+            "awarded": "Устной презентации и Q&A не было, поэтому оценены README, CLI-путь, сохранённые CSV/JSON и воспроизводимое локальное демо. README содержит архитектуру, метрики, ограничения, команды и разбор обнаруженной leakage.",
+            "deductions": "Снято 3 балла за F2: описаны диапазоны, а не точные версии, и повторная числовая выдача немного отличается от сохранённого артефакта. За отсутствие public URL и визуальную непроверенность баллы не снимались.",
+            "evidence": [
+              "README.md:1-16,112-132,250-365",
+              "captures/20261002T153953228869-build.stdout.log",
+              "captures/20261002T154604847108-scenario2.stdout.log"
+            ],
+            "deductionItems": [
+              {
+                "points": 3,
+                "findingId": "F2",
+                "reason": "Воспроизводимое демо должно фиксировать вычислительное окружение; текущий dependency range оставляет наблюдаемый numerical drift."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Понятный запуск",
+                "implementation": "README предлагает режимы --backtest, --forecast и --export, описывает requirements, каталоги и автоматические checks.",
+                "value": "Проверяющий может перейти от клона к результату без ручного угадывания точки входа.",
+                "verification": "observed",
+                "evidence": [
+                  "README.md:112-124,348-359",
+                  "captures/20261002T154420467723-scenario.stdout.log"
+                ]
+              },
+              {
+                "aspect": "Доказательное демо из репозитория",
+                "implementation": "В репозитории сохранены forecast_T1.csv, forecast_T2.csv, metrics.csv, web/data.json и agent_log.json; final_acceptance проверяет их ключи и взаимный паритет.",
+                "value": "Результат можно предъявить и проверить по файлам даже без устного выступления.",
+                "verification": "observed",
+                "evidence": [
+                  "checks/final_acceptance.py:31-67,90-132",
+                  "captures/20261002T153953228869-build.stdout.log"
+                ]
+              },
+              {
+                "aspect": "Честное описание ограничений",
+                "implementation": "README отделяет февральскую поставку от validation, объясняет отсутствие фактических февральских целей, допущение publication delay и отсутствующие production components.",
+                "value": "Документация снижает риск неверно интерпретировать демонстрационные метрики как production SLA.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:263-274,366-383,418-435"
+                ]
+              }
+            ],
+            "scoreReasoning": "17/20: документация и локальное демо сильные; F2 оставляет небольшую неопределённость в точном числовом артефакте. Public URL, видео и устное выступление не использовались как основания для штрафа."
+          }
+        ],
+        "total": 89
+      },
+      "case": {
+        "criteria": [
+          {
+            "name": "Соответствие задаче и работоспособность",
+            "score": 22,
+            "max": 25,
+            "awarded": "Две турбины, почасовая выдача, корзины 24/48 часов, архивная as-of погода, ежедневный rollout и журнал реализованы и воспроизведены.",
+            "deductions": "Снято 3 балла за то, что production fit заканчивается 30.10.2025, а не использует доступную историю до 31.01.2026.",
+            "evidence": [
+              "windagent/backtest.py:34-38,120-140",
+              "windagent/asof.py:20-23,47-81",
+              "checks/final_acceptance.py:31-87",
+              "captures/20261002T154604847108-scenario2.stdout.log"
+            ],
+            "deductionItems": [
+              {
+                "points": 3,
+                "findingId": "F1",
+                "reason": "Требование истории до 31.01.2026 покрыто входными данными и validation protocol, но финальный fit фактически заканчивается 30.10.2025."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Две турбины и оба горизонта",
+                "implementation": "backtest задаёт lead_h 24 и 48, run пишет отдельные forecast_T1.csv и forecast_T2.csv, а final_acceptance ожидает 672 строки на каждый lead для каждой турбины.",
+                "value": "Минимальный объект кейса покрыт полностью: это не прогноз одной серии, а поставка по двум турбинам и 48-часовому окну.",
+                "verification": "observed",
+                "evidence": [
+                  "windagent/backtest.py:38,143-166",
+                  "windagent/run.py:55-69",
+                  "checks/final_acceptance.py:31-49"
+                ]
+              },
+              {
+                "aspect": "Исторический выпуск как в прошлом",
+                "implementation": "agent.run_backtest_month использует rollout с последовательными issue_time, отбирает февральские часы и сохраняет issue_time и journal.",
+                "value": "Модель не выдаёт единственный hindsight forecast на весь месяц, а реконструирует ежедневный процесс выпуска.",
+                "verification": "source",
+                "evidence": [
+                  "windagent/agent.py:421-450",
+                  "windagent/run.py:144-165",
+                  "README.md:263-274"
+                ]
+              },
+              {
+                "aspect": "No-future contract",
+                "implementation": "Поставочные features строятся из weather frame; power используется для fit и проверки доступного прошлого. checks/agent_cycle сравнивает training и delivery features.",
+                "value": "Ключевая опасность временной задачи — утечка будущего — проверяется отдельным путём, а не принимается на доверии.",
+                "verification": "observed",
+                "evidence": [
+                  "windagent/model.py:78-105",
+                  "checks/agent_cycle.py:23-37",
+                  "checks/final_acceptance.py:135-166"
+                ]
+              },
+              {
+                "aspect": "Проверенный as-of weather",
+                "implementation": "asof использует previous_day2/day3, issue hour 23 UTC и publication buffer 24 часа; archive values и metadata сопоставляются с delivery.",
+                "value": "Это покрывает наиболее специфичное требование задания о доступности архивного прогноза в момент расчёта.",
+                "verification": "observed",
+                "evidence": [
+                  "windagent/asof.py:15-23,47-81",
+                  "checks/final_acceptance.py:70-87,118-132"
+                ]
+              }
+            ],
+            "scoreReasoning": "22/25: почти все обязательные сценарии реально выполнены. F1 — видимое несоответствие свежести финального fit, но не утечка и не поломка основного запуска."
+          },
+          {
+            "name": "Техническая реализация",
+            "score": 23,
+            "max": 25,
+            "awarded": "Техническая реализация включает единый feature path, timezone normalization, block-local rolling, ensemble weather, residual boosting, quantile calibration, baseline gate и rollback.",
+            "deductions": "Снято 2 балла: 1 за F1 как ограничение fit pipeline и 1 за F2 как отсутствие фиксированного dependency set.",
+            "evidence": [
+              "windagent/data.py:42-65",
+              "windagent/model.py:65-111,132-195",
+              "windagent/agent.py:279-418",
+              "requirements.txt:1-4"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "F1",
+                "reason": "Технический pipeline намеренно фиксирует ранний TRAIN_END и не имеет отдельного production refit на доступной до 31.01 истории."
+              },
+              {
+                "points": 1,
+                "findingId": "F2",
+                "reason": "Диапазоны версий библиотек допускают изменение числового output между окружениями."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Единый путь признаков",
+                "implementation": "model.features создаёт density-normalized wind, cubic wind, shear, direction sin/cos, календарные признаки и ensemble spread; checks прогоняют тот же путь обучения и поставки.",
+                "value": "Это снижает train/serve skew на нескольких горизонтах и турбинах.",
+                "verification": "observed",
+                "evidence": [
+                  "windagent/model.py:78-111",
+                  "checks/agent_cycle.py:23-37"
+                ]
+              },
+              {
+                "aspect": "Корректная временная обработка",
+                "implementation": "data.read_raw учитывает переход UTC+6/UTC+5, to_hourly требует минимум четыре измерения, curtailed hours отделяются, а block_mean не пересекает календарный блок выпуска.",
+                "value": "Проект адресует типовые причины leakage и timezone shift для временных рядов.",
+                "verification": "source",
+                "evidence": [
+                  "windagent/data.py:32-65,88-92",
+                  "windagent/model.py:65-75",
+                  "checks/timealign.py:21-44"
+                ]
+              },
+              {
+                "aspect": "Управляемый agent control",
+                "implementation": "decide_rerun сравнивает изменения входа, prepare и collect отбрасывают плохие окна, verify откатывает к curve при отрицательном skill, а LLM вызывается только в explain.",
+                "value": "Численные решения остаются кодовыми и аудируемыми; внешняя модель не становится скрытым источником forecast.",
+                "verification": "source",
+                "evidence": [
+                  "windagent/agent.py:89-187,279-353,358-418",
+                  "windagent/llm.py:76-138"
+                ]
+              },
+              {
+                "aspect": "Специализированная приёмка",
+                "implementation": "final_acceptance проверяет delivery, archive, JSON parity и feature parity; agent_cycle проверяет rerun matrix, boundary behavior и stale facts.",
+                "value": "Проверки направлены на доменные failure modes, а не только на импорт модулей.",
+                "verification": "observed",
+                "evidence": [
+                  "checks/final_acceptance.py:70-214",
+                  "captures/20261002T153953228869-build.stdout.log",
+                  "captures/20261002T154604847108-scenario2.stdout.log"
+                ]
+              }
+            ],
+            "scoreReasoning": "23/25: техническое решение значительно выше минимального baseline и проверено в доменных сценариях. Два балла удерживают F1 и F2; отсутствие внешнего ключа не считалось техническим дефектом."
+          },
+          {
+            "name": "README и воспроизводимость",
+            "score": 23,
+            "max": 25,
+            "awarded": "README объясняет архитектуру, as-of protocol, команды, артефакты, метрики, ограничения и checks; чистая установка declared requirements и final_acceptance прошли без OpenAI key.",
+            "deductions": "Снято 2 балла за F2: точные версии не зафиксированы, а повторный build дал coverage 0.7849 против 0.79377697 в сохранённом JSON.",
+            "evidence": [
+              "README.md:25-67,112-124,348-365",
+              "requirements.txt:1-4",
+              "captures/20261002T153953228869-build.stdout.log",
+              "captures/20261002T154604847108-scenario2.stdout.log"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "F2",
+                "reason": "Локальный сценарий воспроизводится, но exact numerical artifact не гарантирован без lock/constraints."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Команды и структура",
+                "implementation": "README перечисляет backtest, live forecast, export, requirements, data/forecasts/web/out и назначение файлов.",
+                "value": "Проверяющий может быстро найти точку входа и пользовательский результат.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:25-67,112-124"
+                ]
+              },
+              {
+                "aspect": "Executable acceptance",
+                "implementation": "README перечисляет asof_weather, agent_cycle, final_acceptance и extended_features; final_acceptance проверяет строки, времена, квантили, weather source и parity.",
+                "value": "Документация связана с исполняемыми доказательствами.",
+                "verification": "observed",
+                "evidence": [
+                  "README.md:348-359",
+                  "checks/final_acceptance.py:31-67,90-214"
+                ]
+              },
+              {
+                "aspect": "Аудируемый экспорт",
+                "implementation": "CSV содержит issue_time, time, local time, lead и weather reference; JSON повторяет protocol, metrics и agent log.",
+                "value": "Можно восстановить происхождение каждой строки и сопоставить dashboard data с CSV.",
+                "verification": "source",
+                "evidence": [
+                  "windagent/run.py:64-67,91-133",
+                  "checks/final_acceptance.py:101-132"
+                ]
+              },
+              {
+                "aspect": "Честные ограничения",
+                "implementation": "README отделяет February delivery от validation, предупреждает об отсутствии February targets и прямо описывает отсутствующие production components.",
+                "value": "Читатель не получает ложное обещание production SLA.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:263-274,366-383,418-435"
+                ]
+              }
+            ],
+            "scoreReasoning": "23/25: документация и checks достаточны для понимания и запуска offline MVP. F2 оставляет наблюдаемую неопределённость в точном числовом артефакте."
+          },
+          {
+            "name": "Ценность и применимость решения",
+            "score": 13,
+            "max": 15,
+            "awarded": "Решение применимо как pilot forecasting component: выдаёт normalized generation, uncertainty, per-turbine outputs, baseline metrics и условную экономику; README описывает SCADA и planning integration.",
+            "deductions": "Снято 2 балла за F1: актуальность operational forecast снижается тем, что fit не включает последние доступные факты.",
+            "evidence": [
+              "windagent/run.py:72-82,91-133",
+              "README.md:385-404",
+              "captures/20261002T154604847108-scenario2.stdout.log"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "F1",
+                "reason": "Pilot-format пригоден, но production-пользователь ожидает включения последней истории; текущий cutoff этого не делает."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Соответствие аудитории",
+                "implementation": "README задаёт P50 как плановый ориентир, P10/P90 как риск, а выдача содержит нормированную почасовую мощность по обеим турбинам.",
+                "value": "Формат совпадает с задачей диспетчеризации, а не только с ML evaluation.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:406-416",
+                  "windagent/run.py:91-108"
+                ]
+              },
+              {
+                "aspect": "Проверка на реальных входах кейса",
+                "implementation": "Оба предоставленных CSV прошли data.read_raw и data.to_hourly: T1 142360 raw/23763 hourly, T2 149499 raw/25004 hourly.",
+                "value": "Это подтверждает совместимость с организаторским input contract, а не только с prebuilt parquet.",
+                "verification": "observed",
+                "evidence": [
+                  "captures/20261002T154604847108-scenario2.stdout.log",
+                  "windagent/data.py:42-65"
+                ]
+              },
+              {
+                "aspect": "Понятная экономическая граница",
+                "implementation": "economics выводит monthly_loss и baseline_loss, а capacity и penalty вынесены в явные константы и оговорены в README.",
+                "value": "Пилот можно обсуждать с бизнесом как order-of-magnitude, не выдавая допущение за договорной эффект.",
+                "verification": "source",
+                "evidence": [
+                  "windagent/run.py:29-32,72-82",
+                  "README.md:101-110,372-375"
+                ]
+              }
+            ],
+            "scoreReasoning": "13/15: решение отвечает реальной проблеме и выдаёт пригодный pilot-format. Два балла удерживает F1 как ограничение свежести обучения."
+          },
+          {
+            "name": "Потенциал развития и оригинальность подхода",
+            "score": 9,
+            "max": 10,
+            "awarded": "Hybrid curve-plus-residual, ensemble weather, adaptive reflection, rollback и leakage diagnostics образуют хорошую основу для парка турбин.",
+            "deductions": "Снят 1 балл за F1: регулярные будущие выпуски потребуют production refit на новом факте.",
+            "evidence": [
+              "windagent/model.py:41-111",
+              "windagent/asof.py:65-81",
+              "windagent/agent.py:235-309,358-479",
+              "README.md:332-346"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "F1",
+                "reason": "Agentic architecture расширяема, но актуальность последующих выпусков ограничена неизменяемой границей обучения."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Оригинальная hybrid model",
+                "implementation": "Физическая monotonic curve задаёт prior, residual boosting учит площадочные эффекты, quantile models дают распределение.",
+                "value": "Шаблон переносим на другие ВЭС и имеет объяснимый fallback.",
+                "verification": "source",
+                "evidence": [
+                  "windagent/model.py:41-58,132-195"
+                ]
+              },
+              {
+                "aspect": "Измеримый agent loop",
+                "implementation": "Rerun зависит от issue time и wind shift, reflect gated standard error, verify использует skill, explain отделён от численного path.",
+                "value": "Loop можно расширять новыми инструментами, сохраняя аудируемость численных решений.",
+                "verification": "observed",
+                "evidence": [
+                  "windagent/agent.py:312-418",
+                  "captures/20261002T154604847108-scenario2.stdout.log"
+                ]
+              },
+              {
+                "aspect": "Экспериментальная дисциплина",
+                "implementation": "extended feature experiment хранится отдельно и не включён в official delivery после ухудшения validation metrics.",
+                "value": "Отрицательный результат не скрыт и не ухудшает рабочий MVP.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:332-346",
+                  "out/extended_experiment.json:1"
+                ]
+              }
+            ],
+            "scoreReasoning": "9/10: оригинальность и направление расширения убедительны; один балл удерживает F1 как конкретная граница будущих регулярных выпусков."
+          }
+        ],
+        "total": 90
+      },
+      "judgeScore": 89.5,
+      "caseRequirements": [
+        {
+          "requirement": "Почасовой прогноз выработки двух турбин на 24–48 часов.",
+          "status": "met",
+          "explanation": "Выпуск содержит T1/T2, lead_h 24/48 и effective_lead_h 1–48; build сформировал 2688 строк за 01.02–28.02.2026.",
+          "evidence": [
+            "windagent/backtest.py:38,143-166",
+            "checks/final_acceptance.py:31-50",
+            "captures/20261002T154604847108-scenario2.stdout.log"
+          ]
+        },
+        {
+          "requirement": "История до 31.01.2026 без leakage.",
+          "status": "partial",
+          "explanation": "Будущие факты не подмешиваются, а train/validation boundary и feature parity проходят проверки. Но production TRAIN_END равен 30.10.2025 22:00 UTC, поэтому последние три месяца не попадают в февральский fit.",
+          "evidence": [
+            "windagent/backtest.py:34,126-134",
+            "web/data.json:23",
+            "checks/final_acceptance.py:201-205"
+          ]
+        },
+        {
+          "requirement": "Архивная погода, доступная в момент расчёта.",
+          "status": "met",
+          "explanation": "Исторический протокол использует previous_day2/previous_day3, issue hour 23 UTC и 24-часовой buffer; final_acceptance сопоставляет weather metadata и значения ветра с archive.",
+          "evidence": [
+            "windagent/asof.py:15-23,47-81",
+            "checks/final_acceptance.py:70-87,118-132",
+            "captures/20261002T153953228869-build.stdout.log"
+          ]
+        },
+        {
+          "requirement": "Agentic weather → preparation → model → forecast → analysis → rerun.",
+          "status": "met",
+          "explanation": "run_cycle/rollout реализуют collect, prepare, forecast, reflect, verify, explain и decide_rerun; agent_cycle проверяет matrix решений при новых и изменённых входах.",
+          "evidence": [
+            "windagent/agent.py:89-187,235-418",
+            "windagent/agent.py:421-479",
+            "checks/agent_cycle.py:42-59",
+            "captures/20261002T154604847108-scenario2.stdout.log"
+          ]
+        },
+        {
+          "requirement": "Не использовать фактическую будущую погоду и февральскую цель как input.",
+          "status": "met",
+          "explanation": "Поставочные признаки строятся из weather frame; power используется для обучения и проверки доступного прошлого. Feature parity и as-of checks прошли.",
+          "evidence": [
+            "windagent/model.py:78-105",
+            "windagent/agent.py:128-187,190-309",
+            "checks/agent_cycle.py:23-37",
+            "checks/final_acceptance.py:135-166"
+          ]
+        },
+        {
+          "requirement": "Корректно обработать организаторские CSV и выполнить почасовую агрегацию.",
+          "status": "met",
+          "explanation": "Оба CSV имеют ожидаемые пять колонок и были реально прочитаны через read_raw и агрегированы через to_hourly: T1 142360→23763, T2 149499→25004; обе серии заканчиваются 31.01.2026 после timezone normalization.",
+          "evidence": [
+            "cases/1/case-data/Dataset HackAlemAI для участников 11.03.2023-28.02.2026 - turbine 1.csv",
+            "cases/1/case-data/Dataset HackAlemAI для участников 11.03.2023-28.02.2026 - turbine 2.csv",
+            "windagent/data.py:26-65",
+            "captures/20261002T154604847108-scenario2.stdout.log"
+          ]
+        },
+        {
+          "requirement": "Почасовая uncertainty-aware выдача и проверяемый экспорт.",
+          "status": "met",
+          "explanation": "CSV/JSON содержат p10/p50/p90, порядок квантилей и диапазон [0,1] проверены; JSON содержит issue/weather metadata и agent_log.",
+          "evidence": [
+            "windagent/model.py:157-195",
+            "windagent/run.py:91-133",
+            "checks/final_acceptance.py:59-65,101-132"
+          ]
+        },
+        {
+          "requirement": "Сравнить качество с baseline.",
+          "status": "met",
+          "explanation": "Сохранены nMAE, nRMSE, bias и skill против persistence для 24/48; README отделяет validation window от неоцениваемого фактическими целями февраля.",
+          "evidence": [
+            "windagent/backtest.py:43-55,155-166",
+            "forecasts/metrics.csv:2-5",
+            "README.md:263-289"
+          ]
+        },
+        {
+          "requirement": "Воспроизводимый локальный запуск.",
+          "status": "partial",
+          "explanation": "Offline path и checks воспроизводятся без API key, но broad dependency ranges дают coverage 0.7849 в повторном build против 0.79377697 в сохранённом JSON.",
+          "evidence": [
+            "README.md:112-124,348-365",
+            "requirements.txt:1-4",
+            "captures/20261002T153953228869-build.stdout.log",
+            "captures/20261002T154604847108-scenario2.stdout.log"
+          ]
+        }
+      ],
+      "testData": {
+        "provided": [
+          "cases/1/case-data/Dataset HackAlemAI для участников 11.03.2023-28.02.2026 - turbine 1.csv",
+          "cases/1/case-data/Dataset HackAlemAI для участников 11.03.2023-28.02.2026 - turbine 2.csv",
+          "cases/1/case-data/HackAlem AI_ Agentic AI для прогнозирования выработки ВЭС.md"
+        ],
+        "used": [
+          "cases/1/case-data/Dataset HackAlemAI для участников 11.03.2023-28.02.2026 - turbine 1.csv",
+          "cases/1/case-data/Dataset HackAlemAI для участников 11.03.2023-28.02.2026 - turbine 2.csv",
+          "cases/1/case-data/HackAlem AI_ Agentic AI для прогнозирования выработки ВЭС.md"
+        ],
+        "checks": [
+          {
+            "input": "Оба организаторских CSV и их заголовки.",
+            "method": "Проверены пять ожидаемых колонок, затем каждый файл прочитан через windagent.data.read_raw.",
+            "result": "Оба файла приняты; read_raw обработал T1 с 142360 строками и T2 с 149499 строками.",
+            "conclusion": "Входной формат кейса совместим с loader проекта."
+          },
+          {
+            "input": "Оба CSV после проектной агрегации.",
+            "method": "Для каждого вызван windagent.data.to_hourly; проверены период, число часов и конечная дата.",
+            "result": "T1: 23763 часовые строки, T2: 25004; после timezone normalization обе серии заканчиваются 31.01.2026. Февральских целей нет.",
+            "conclusion": "Почасовая агрегация работает на реальных предоставленных входах."
+          },
+          {
+            "input": "Сохранённые weather archive, turbine parquet и CSV/JSON artifacts.",
+            "method": "Запущен checks/final_acceptance.py; он сопоставляет выпускные строки, archive, quantile order, feature parity и README metrics.",
+            "result": "PASS: 35,664 as-of weather rows; 2,688 CSV/JSON forecast rows; временные границы, buffer, local time и feature parity соблюдены.",
+            "conclusion": "Артефакты согласованы с as-of протоколом."
+          },
+          {
+            "input": "Офлайн agent.run_cycle/rollout и полный build.",
+            "method": "Запущены checks/agent_cycle.py и отдельная сборка через run.build; проверены parity, rerun matrix, archive boundary и stale-fact reflection.",
+            "result": "Все assertions прошли; build сформировал 2688 строк, T1/T2, lead 24/48, период 01.02–28.02.2026 и 179 journal entries.",
+            "conclusion": "Основной локальный сценарий воспроизведён."
+          }
+        ],
+        "limitations": [
+          "В тестовых CSV нет февральской фактической выработки, поэтому февральская точность не измерялась.",
+          "Live weather и OpenAI explanation не проверялись с внешними credentials; offline численный forecast от них не зависит."
+        ]
+      },
+      "runtime": {
+        "status": "working",
+        "build": "requirements.txt установлен; final_acceptance.py завершился с кодом 0.",
+        "start": "python -m windagent.run --help успешно показал CLI options --backtest, --forecast и --export.",
+        "scenario": "Offline build и agent-cycle выполнены; build вернул 2688 строк для двух турбин и двух горизонтов.",
+        "environment": "Изолированное окружение Python 3.14 с requirements.txt, без API-ключей; проект и case-data подключались только для чтения.",
+        "summary": "Основной сценарий working. Отсутствие credentials ограничивает только live weather/LLM path, а не offline старт и расчёт.",
+        "checks": [
+          {
+            "command": "python -m windagent.run --help",
+            "result": "Usage и опции --backtest, --forecast, --export напечатаны; процесс завершился успешно.",
+            "id": "R-START-01",
+            "stage": "start",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Точка входа импортируется и показывает доступные режимы запуска."
+          },
+          {
+            "command": "python checks/final_acceptance.py",
+            "result": "PASS: 35,664 archival as-of rows; 2,688 CSV/JSON forecasts; временные границы, buffer, local time и feature parity соблюдены. Для lead 24/48 выведены nMAE 0.1790/0.1791 и 0.1927/0.1930.",
+            "id": "R-BUILD-01",
+            "stage": "build",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Приёмка должна пройти по двум турбинам, двум горизонтам, archive weather и feature parity."
+          },
+          {
+            "command": "python checks/agent_cycle.py",
+            "result": "Все проверки без assertion: feature discrepancy T1/T2 0.00e+00, rerun matrix, корректный отказ за пределами archive и stale-fact reflection/verification.",
+            "id": "R-SCENARIO-01",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Agentic cycle сохраняет parity, принимает rerun decision и безопасно обрабатывает отсутствующий свежий факт."
+          },
+          {
+            "command": "python -X utf8 -c \"from windagent import run; run.build()\"",
+            "result": "forecast_rows=2688, turbines T1/T2, leads 24/48, period 2026-02-01—2026-02-28, coverage=0.7849, width=0.5178, journal=179.",
+            "id": "R-SCENARIO-02",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Полный numerical pipeline возвращает пользовательскую почасовую выдачу."
+          },
+          {
+            "command": "python -X utf8 -c \"from windagent import data; data.read_raw(...); data.to_hourly(...)\"",
+            "result": "T1 142360 raw → 23763 hourly, T2 149499 raw → 25004 hourly; обе серии заканчиваются 31.01.2026 после нормализации времени.",
+            "id": "R-DATA-01",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Проектный loader принимает предоставленные CSV и выполняет почасовую агрегацию."
+          }
+        ],
+        "limitations": [
+          "Live --forecast с внешним Open-Meteo и OpenAI text provider не получил подтверждённый service response в этой сессии.",
+          "Визуальное поведение dashboard не проверялось: визуальную проверку выполняет пользователь."
+        ]
+      },
+      "liveDemo": {
+        "status": "none",
+        "url": null,
+        "notes": "Публичной live URL в материалах не использовалось. Локальный CLI/offline demo подтверждён; web dashboard визуально не проверялся по политике ревью."
+      },
+      "fiveHourContext": "Для пятиячасового хакатона это сильный целостный MVP: реализованы as-of weather, hybrid model, quantile output, baselines, agent journal, rerun gate и leakage checks. Не штрафую за scheduler, SCADA adapter, market integration, live URL или визуальную проверку, поскольку это не обязательный минимальный сценарий кейса и визуальная проверка отдана пользователю. Снижения относятся только к подтверждённым F1/F2.",
+      "strengths": [
+        "Рабочий offline pipeline без OpenAI API key: архивы погоды и численный расчёт доступны локально.",
+        "Честный as-of protocol с previous_day2/day3, issue hour 23 UTC и 24-часовым publication buffer.",
+        "Hybrid power curve plus residual boosting с отдельными quantile models и calibration.",
+        "Agentic цикл с rerun decision, stale-fact reflection, baseline gate и rollback.",
+        "Сильные автоматические checks: final acceptance, time alignment, feature parity и leakage diagnostics.",
+        "README связывает архитектуру, команды, метрики, ограничения и интеграционный roadmap."
+      ],
+      "gaps": [
+        "F1: final production fit ограничен 30.10.2025 22:00 UTC и не использует наблюдения ноября 2025 — января 2026.",
+        "F2: requirements.txt задаёт диапазоны; повторный build дал coverage 0.7849 против 0.79377697 в сохранённом web/data.json."
+      ],
+      "futureAdvice": [
+        {
+          "principle": "Разделяйте validation cutoff и production refit cutoff.",
+          "why": "F1: честная validation сохраняется, но тот же ранний cutoff переносится в февральский production fit и исключает последние доступные месяцы.",
+          "how": "После validation отдельно переобучите production-модель на всей разрешённой истории до последнего факта; храните validation_end и production_training_end раздельно.",
+          "findingIds": [
+            "F1"
+          ],
+          "successCheck": "В protocol и journal видны оба cutoff, production_training_end равен 31.01.2026, а feature/leakage checks продолжают проходить.",
+          "timeboxMinutes": 35
+        },
+        {
+          "principle": "Фиксируйте вычислительное окружение вместе с артефактом.",
+          "why": "F2: broad dependency ranges допускают рабочий повторный запуск, но coverage отличается от сохранённого JSON.",
+          "how": "Сохраните lock/constraints с точными версиями Python, pandas, numpy, pyarrow и scikit-learn и добавьте tolerance check для ключевых metrics.",
+          "findingIds": [
+            "F2"
+          ],
+          "successCheck": "Чистая установка из lock-файла воспроизводит coverage, width и CSV metrics в установленном tolerance.",
+          "timeboxMinutes": 25
+        },
+        {
+          "principle": "Сохраняйте числовой forecast независимым от текстового AI.",
+          "why": "Проект уже демонстрирует удачный приём: LLM используется только в explain, а числа и fallback считаются детерминированным кодом.",
+          "how": "В другом кейсе сначала сохраняйте structured result и checks, а в LLM передавайте только агрегаты с локальным fallback.",
+          "findingIds": [
+            "F4",
+            "F5"
+          ],
+          "successCheck": "При пустом ключе числовой результат, journal и export остаются рабочими; меняется только объяснение.",
+          "timeboxMinutes": 20
+        }
+      ],
+      "uncertainties": [
+        "Февральские фактические цели отсутствуют, поэтому февральская точность не подтверждена.",
+        "Live Open-Meteo и OpenAI service responses в этой сессии не проверялись; исходники внешнего пути и fallback прослежены.",
+        "Визуальное поведение web dashboard не проверялось по политике пользователя.",
+        "Экономика использует CAPACITY_MW=2.5 и PENALTY_PER_MWH=12000 как допущения, не подтверждённые тарифом станции."
+      ],
+      "reviewPolicyVersion": 2,
+      "assessmentStatus": "ready",
+      "findings": [
+        {
+          "id": "F1",
+          "kind": "defect",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Февральский forecast использует fit, ограниченный TRAIN_END=2025-10-30 22:00 UTC, и не переобучается на наблюдениях ноября 2025 — января 2026.",
+          "expected": "После честной validation production-модель может быть переобучена на разрешённой истории до 31.01.2026.",
+          "actual": "backtest.prepare/train_models фильтруют данные по TRAIN_END, fit_all передаёт этот fit в agent.context, а run.build применяет его к февралю; web/data.json публикует тот же training_end_utc.",
+          "evidence": [
+            "windagent/backtest.py:34,95-134",
+            "windagent/agent.py:62-71",
+            "windagent/run.py:36-46,121-123",
+            "web/data.json:23"
+          ],
+          "checkIds": [
+            "R-BUILD-01",
+            "R-SCENARIO-02"
+          ]
+        },
+        {
+          "id": "F2",
+          "kind": "defect",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Числовой результат не полностью закреплён dependency environment.",
+          "expected": "Чистая установка либо воспроизводит опубликованный артефакт, либо явно фиксирует версии и допустимый drift.",
+          "actual": "requirements.txt содержит диапазоны pandas, numpy, pyarrow и scikit-learn; повторный build дал coverage 0.7849, сохранённый web/data.json содержит 0.7937769702475584.",
+          "evidence": [
+            "requirements.txt:1-4",
+            "web/data.json:47287",
+            "captures/20261002T154604847108-scenario2.stdout.log"
+          ],
+          "checkIds": [
+            "R-SCENARIO-02"
+          ]
+        },
+        {
+          "id": "F3",
+          "kind": "limitation",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "В репозитории нет scheduler, SCADA adapter, live-result persistence или planning-system integration.",
+          "expected": "Для production эксплуатации нужны расписание, свежая телеметрия, сохранение live выпусков и downstream contract.",
+          "actual": "README перечисляет эти части в таблице следующего этапа; текущий MVP работает с историческим cache и CLI.",
+          "evidence": [
+            "README.md:418-435"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "F4",
+          "kind": "strength",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "LLM не участвует в числовом forecast и имеет локальный fallback.",
+          "expected": "Отсутствие внешнего text provider не должно ломать численный прогноз.",
+          "actual": "llm.ask возвращает None без key или при ошибке, agent.explain строит локальный текст, а forecast/verify выполняются независимо.",
+          "evidence": [
+            "windagent/llm.py:76-138",
+            "windagent/agent.py:312-353"
+          ],
+          "checkIds": [
+            "R-SCENARIO-01",
+            "R-SCENARIO-02"
+          ]
+        },
+        {
+          "id": "F5",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Поставка согласована между CSV, JSON, weather archive и feature path.",
+          "expected": "Ключи, строки, lead buckets, quantile order, weather metadata и features совпадают.",
+          "actual": "final_acceptance завершился PASS; agent_cycle сообщил feature discrepancy 0.00e+00 для T1/T2.",
+          "evidence": [
+            "checks/final_acceptance.py:90-166,197-214",
+            "captures/20261002T153953228869-build.stdout.log",
+            "captures/20261002T154604847108-scenario2.stdout.log"
+          ],
+          "checkIds": [
+            "R-BUILD-01",
+            "R-SCENARIO-01"
+          ]
+        },
+        {
+          "id": "F6",
+          "kind": "strength",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Agent имеет явный rerun gate и rollback policy.",
+          "expected": "Изменение погодного входа приводит к объяснимому решению пересчитать или оставить прогноз.",
+          "actual": "decide_rerun использует issue time и сдвиг ветра, verify откатывает к curve при отрицательном skill.",
+          "evidence": [
+            "windagent/agent.py:279-309,358-418",
+            "checks/agent_cycle.py:42-59"
+          ],
+          "checkIds": [
+            "R-SCENARIO-01"
+          ]
+        },
+        {
+          "id": "F7",
+          "kind": "limitation",
+          "verification": "unverified",
+          "responsibility": "external_service",
+          "claim": "Реальный live weather/OpenAI response не подтверждён в этой сессии.",
+          "expected": "Live mode требует доступного endpoint и credentials для LLM explanation.",
+          "actual": "Offline cached path проверен; ключи не предоставлялись, live service не подменялся mock-ответом.",
+          "evidence": [
+            "windagent/weather.py:47-80",
+            "windagent/llm.py:89-127",
+            "README.md:112-124"
+          ],
+          "checkIds": []
+        }
+      ],
+      "gapFindingIds": [
+        "F1",
+        "F2"
+      ]
+    }
+  ],
+  "score": 89.5,
+  "status": "complete",
+  "expectedJudges": 1
+}

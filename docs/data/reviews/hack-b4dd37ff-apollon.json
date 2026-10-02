@@ -1,0 +1,835 @@
+{
+  "methodVersion": 4,
+  "repoId": "hack-b4dd37ff-apollon",
+  "repoUrl": "https://github.com/BAITC-Hacks/hack-b4dd37ff-apollon",
+  "caseId": 5,
+  "snapshot": "a54e1417262b4c5a3c00ec443b8e030fa8d56a17",
+  "judges": [
+    {
+      "methodVersion": 4,
+      "repoId": "hack-b4dd37ff-apollon",
+      "caseId": 5,
+      "model": "GPT-5.6 Luna",
+      "snapshot": "a54e1417262b4c5a3c00ec443b8e030fa8d56a17",
+      "overallSummary": "Apollon — сильный воспроизводимый прототип расчёта пополнения: сборка, типизация, линт и 135 unit/domain-тестов проходят, локальный PostgreSQL и Next.js стартуют, а расчёт на синтетическом и реальном наборе Systeme Electric даёт конечные объяснимые рекомендации. HTTP-проверки подтвердили черновик, ручное утверждение и CSV-экспорт. Основные удерживающие факторы — подтверждённый дефект конфигурации лимита тела запроса для загрузки полного набора из 12 книг и то, что предоставленная таблица сезонности сохраняется только как диагностическое сравнение, но не попадает в формулу прогноза; сезонность фактически выводится из истории продаж. Визуальное поведение и внешний OpenAI-сервис не проверялись.",
+      "global": {
+        "criteria": [
+          {
+            "name": "Ценность решения",
+            "score": 23,
+            "max": 25,
+            "awarded": "Высокая практическая ценность для менеджера закупок: от разрозненных Excel-выгрузок проект доводит пользователя до объяснённого черновика заказа.",
+            "deductions": "Снято 2 балла за F-005: полный пакет из 12 книг нельзя загрузить одним заявленным способом, поэтому ценность для первичного запуска на полном наборе ниже максимальной.",
+            "evidence": [
+              "README.md:28-51",
+              "lib/engine/index.ts:247-281",
+              "check-quick-test-real-se"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "F-005",
+                "reason": "Практический путь от полного набора данных к рекомендации обрывается на multipart-запросе более 10 МБ, хотя собственный маршрут объявляет лимит 80 МБ; это заметно снижает ценность готового прототипа для первого импорта реальных данных."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Автоматизация ручного решения закупщика",
+                "implementation": "Движок принимает продажи, остатки, подтверждённые и оценочные поставки, горизонт lead time плюс review period, категорию, рост и страховой запас; затем возвращает количество, срочность, покрытие, дату дефицита и русское объяснение. В HTTP-проверке на 48 позициях каждая строка имела объяснение, конечное количество и поставщика.",
+                "value": "Это непосредственно сокращает трудоёмкую консолидацию Excel и превращает расчёт в проверяемый список действий, а не только в прогнозный график.",
+                "verification": "observed",
+                "evidence": [
+                  "lib/engine/index.ts:247-281",
+                  "check-quick-test-synthetic",
+                  "check-quick-test-real-se"
+                ]
+              },
+              {
+                "aspect": "Защита от дефицита и лишнего запаса",
+                "implementation": "В расчёте отдельно учитываются текущий запас, поступления в горизонте, потерянный спрос при сниженной доступности и safety stock; прогноз проходит дневную проекцию, чтобы определить первый дефицит и urgency CRITICAL/HIGH/NORMAL.",
+                "value": "Менеджер получает не просто среднее за период, а приоритеты, связанные с риском stockout и временем поставки. На реальном наборе SE были найдены 17 товаров с оценённым потерянным спросом.",
+                "verification": "observed",
+                "evidence": [
+                  "lib/engine/index.ts:117-147",
+                  "lib/engine/index.ts:247-269",
+                  "check-checks-real-se"
+                ]
+              },
+              {
+                "aspect": "Объяснимый результат для принятия решения",
+                "implementation": "Каждая рекомендация содержит формулу в текстовом виде: базовый спрос, исключённые разовые продажи, восстановленный lost demand, сезонный коэффициент, рост, спрос на горизонте, safety stock, запас, inbound, MOQ и кратность.",
+                "value": "Такой результат можно проверить и скорректировать до заказа; он снижает риск слепого доверия автоматике и соответствует роли закупщика как ответственного за решение.",
+                "verification": "source",
+                "evidence": [
+                  "lib/engine/index.ts:279-289",
+                  "lib/contracts/engine.ts:41-52",
+                  "README.md:42-51"
+                ]
+              },
+              {
+                "aspect": "Человеческий контроль и приватность",
+                "implementation": "Заказ сначала создаётся как DRAFT. approveOrder требует имя, положительное количество, соблюдение MOQ/кратности и явное подтверждение оценочных входов; агентские сводки фильтруют raw customerId, invoice и transactions.",
+                "value": "Это делает автоматизацию пригодной как decision-support для закупок, а не как неконтролируемый отправитель заказов, и учитывает ограничение кейса на обезличивание клиентских данных.",
+                "verification": "observed",
+                "evidence": [
+                  "lib/repo/index.ts:112-140",
+                  "lib/agent/index.ts:35-45",
+                  "check-run-approval-export",
+                  "tests/agent/summary.test.ts"
+                ]
+              }
+            ],
+            "scoreReasoning": "23/25 заслужены за прямое попадание в проблему закупщика, приоритеты дефицита, объяснения и подтверждённый результат на реальных книгах SE. До максимума не хватает надёжного полного входного сценария: F-005 блокирует загрузку всех 12 книг одним предусмотренным multipart-запросом и требует отдельного обхода ещё до расчёта."
+          },
+          {
+            "name": "Результат и качество решения",
+            "score": 17,
+            "max": 20,
+            "awarded": "Целостный сценарий расчёта, редактирования, ручного утверждения и экспорта работает локально; качество доменной реализации подтверждено тестами и HTTP-проверками.",
+            "deductions": "Снято 3 балла за F-005: основной полный пакет кейса не проходит через заявленный upload API из-за несогласованного ограничения Next.js.",
+            "evidence": [
+              "check-build",
+              "check-tests",
+              "check-run-approval-export",
+              "check-quick-test-real-se"
+            ],
+            "deductionItems": [
+              {
+                "points": 3,
+                "findingId": "F-005",
+                "reason": "Ожидалось принятие полного набора XLSX в пределах лимита 80 МБ маршрута импорта; фактически Next.js обрезает тело после 10 МБ и возвращает ошибку разбора FormData. Это нарушает целостность сценария подготовки исходных данных, хотя уже импортированный набор рассчитывается корректно."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Сборка и статическая целостность",
+                "implementation": "Dockerfile собирает standalone Next.js-приложение, генерирует Prisma Client и собирает runtime-образ. В отдельном чистом окружении после npm run db:generate прошли npm run typecheck и npm run lint.",
+                "value": "Репозиторий даёт воспроизводимый способ получить запускаемый артефакт, а не только набор исходников; ошибки типов и линтера не маскируют основной сценарий.",
+                "verification": "observed",
+                "evidence": [
+                  "Dockerfile:1-31",
+                  "check-build",
+                  "check-static"
+                ]
+              },
+              {
+                "aspect": "Покрытие доменной логики",
+                "implementation": "После генерации Prisma Client npm test завершился с 135 пройденными тестами и 9 ожидаемыми пропусками интеграционных тестов без базы. Отдельно проверены engine, ingest, export, security, agent и API-схема.",
+                "value": "Для пятичасового MVP это существенная защита от регрессий в формулах, импорте, экспорте, guardrails и HTTP-контрактах.",
+                "verification": "observed",
+                "evidence": [
+                  "check-tests",
+                  "tests/engine/engine.test.ts",
+                  "tests/ingest/ingest.test.ts",
+                  "tests/export/export.test.ts",
+                  "tests/security/http.test.ts"
+                ]
+              },
+              {
+                "aspect": "Работающий read-only и расчётный API",
+                "implementation": "GET /api/quick-test на seeded dataset вернул 48 рекомендаций, 48 объяснений, конечные неотрицательные количества, 22 исключённых аномалии и пять из пяти обязательных проверок. На реально загруженном наборе SE вернулось 724 рекомендации, все объяснены и конечны, все шесть dataset checks прошли.",
+                "value": "Результат можно проверить без UI и без OpenAI-ключа; deterministic engine отделён от внешнего copilot и даёт измеримый выход на данных.",
+                "verification": "observed",
+                "evidence": [
+                  "app/api/quick-test/route.ts:22-96",
+                  "check-quick-test-synthetic",
+                  "check-quick-test-real-se",
+                  "check-checks-real-se"
+                ]
+              },
+              {
+                "aspect": "Закрытый контур утверждения и выгрузки",
+                "implementation": "POST /api/runs создал IEK DRAFT с 24 позициями; POST approve с revision 0 перевёл выбранную строку в APPROVED revision 1, сохранил approver и approved key; GET /api/export вернул HTTP 200, text/csv и строку поставщика.",
+                "value": "Проверен не только расчёт, но и последняя операционная миля: пользователь может отредактировать/утвердить черновик и получить безопасную выгрузку, при этом отправки поставщику нет.",
+                "verification": "observed",
+                "evidence": [
+                  "check-run-approval-export",
+                  "lib/repo/index.ts:95-140",
+                  "app/api/export/route.ts:5-13",
+                  "tests/export/export.test.ts"
+                ]
+              }
+            ],
+            "scoreReasoning": "17/20 отражают подтверждённый рабочий результат: сборка, доменные тесты, расчёт, approval и export реально выполнены. Три балла удержаны за F-005, потому что для продукта закупок входной импорт всего предоставленного пакета является частью сценария качества, а не второстепенной функцией."
+          },
+          {
+            "name": "Инновационность",
+            "score": 14,
+            "max": 15,
+            "awarded": "Выше среднего: проект сочетает робастный прогноз, контрфактические проверки входов, оценку lost demand и аудируемую обработку аномалий в одном закупочном потоке.",
+            "deductions": "Снято 1 балл за F-006: отдельно предоставленная сезонность не используется как расчётный сигнал, поэтому нестандартность подхода ограничена историей продаж и её derived profile.",
+            "evidence": [
+              "lib/engine/index.ts:23-37",
+              "lib/engine/index.ts:57-114",
+              "lib/engine/checks.ts:54-75",
+              "check-tests"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "F-006",
+                "reason": "Ожидалось, что доступная сезонная таблица будет влияющим входом или явно калибрующим сигналом; фактически она записывается как SUPPLIED_SEASONALITY для сравнения, а engine строит сезонность по sales series. Это уменьшает полноту заявленного нестандартного подхода."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Робастный тренд вместо простого среднего",
+                "implementation": "fitSeries нормирует сезонность, берёт Theil–Sen slope, ограничивает рост и использует последние 12 месяцев с anchor на последнем полном периоде. Профили объединяются по единице измерения, чтобы дорогие или метражные позиции не доминировали.",
+                "value": "Подход лучше соответствует шумным закупочным рядам и защищает от одного удачного/провального месяца; рост становится объяснимым параметром, а не скрытым коэффициентом.",
+                "verification": "source",
+                "evidence": [
+                  "lib/engine/index.ts:23-37",
+                  "lib/engine/index.ts:150-179",
+                  "lib/engine/math.ts:95-114"
+                ]
+              },
+              {
+                "aspect": "Двухступенчатое удаление разовых покупок",
+                "implementation": "cleanSeries сначала сверяет invoice totals с monthly sales, затем использует median, MAD, IQR, сезонный порог и persistence; отдельный контур группирует покупки по anonymized customerId в 60-дневном окне. Несогласованные месяцы не разрешают автоматическое вычитание.",
+                "value": "Это более содержательная защита от выброса, чем безусловное winsorizing: решение учитывает подтверждение источниками и оставляет anomaly provenance для восстановления.",
+                "verification": "source",
+                "evidence": [
+                  "lib/engine/index.ts:57-114",
+                  "lib/engine/checks.ts:40-49",
+                  "check-quick-test-synthetic"
+                ]
+              },
+              {
+                "aspect": "Оценка потерянного спроса с неопределённостью",
+                "implementation": "availabilityHistory различает подтверждённые stockout intervals и оценку по нулевым остаткам/низким продажам, рассчитывает lost, lostLow и lostHigh через sensitivity ±0.25 и ограничивает компенсацию capacity.",
+                "value": "Модель не выдаёт оценку дефицита как точную истину и одновременно не игнорирует недопродажу; это полезный баланс между недозаказом и переоценкой.",
+                "verification": "source",
+                "evidence": [
+                  "lib/engine/index.ts:117-147",
+                  "lib/contracts/engine.ts:38-45",
+                  "check-checks-real-se"
+                ]
+              },
+              {
+                "aspect": "Проверки чувствительности как часть продукта",
+                "implementation": "runInputSensitivityCheck создаёт копии одного реального SKU и изменяет stock, inbound внутри/вне горизонта; checks сравнивает rawNeed и eligibleInbound, а не только округлённое количество.",
+                "value": "Это превращает важные требования кейса в наблюдаемое доказательство направления влияния и снижает риск теста, который случайно проходит из-за MOQ-округления.",
+                "verification": "source",
+                "evidence": [
+                  "lib/engine/checks.ts:54-75",
+                  "check-checks-real-se",
+                  "tests/engine/engine.test.ts"
+                ]
+              }
+            ],
+            "scoreReasoning": "14/15 заслужены за сочетание Theil–Sen, сезонной нормализации, сверки счетов, customer-window, lost-demand range и rawNeed sensitivity. Один балл удержан по F-006: отдельная сезонная таблица не влияет на forecast, поэтому полный заявленный набор сигналов не объединён в одной формуле."
+          },
+          {
+            "name": "Потенциал развития и масштабирования",
+            "score": 18,
+            "max": 20,
+            "awarded": "Хорошая архитектурная база для расширения на новых поставщиков и сценарии: чистый engine, сохранение raw workbook, версионирование источников, paginated loading и отдельные job/run/order модели.",
+            "deductions": "Снято 2 балла за F-005: масштабирование загрузки крупных многокнижных наборов ограничено несогласованным лимитом тела запроса.",
+            "evidence": [
+              "lib/contracts/engine.ts:1-72",
+              "lib/repo/index.ts:37-80",
+              "lib/repo/raw-workbook.ts:1-80",
+              "check-static"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "F-005",
+                "reason": "При росте числа и размера книг API-приём перестаёт соответствовать собственному 80-МБ контракту уже около 10 МБ; это подтверждённый потолок масштабирования именно входного контура."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Чистая доменная граница",
+                "implementation": "calculatePlan работает на сериализуемых DatasetInput и Policy без Next.js, Prisma или OpenAI; repository только загружает данные и сохраняет PlanResult.",
+                "value": "Такую функцию можно переиспользовать в batch job, CLI, API или backtest без переписывания формул и без обязательного внешнего ключа.",
+                "verification": "source",
+                "evidence": [
+                  "lib/contracts/engine.ts:1-59",
+                  "lib/engine/index.ts:203-305",
+                  "README.md:145-150"
+                ]
+              },
+              {
+                "aspect": "Аудируемое хранение исходников",
+                "implementation": "Raw workbook сохраняет SHA-256, исходные байты, листы, строки и ячейки; source planning отделяет raw ingestion от материализации Dataset/Product. Импорт идемпотентен по хэшу.",
+                "value": "Это создаёт основу для повторного маппинга, расследования проблем в исходной Excel-структуре и подключения новых шаблонов поставщиков без потери происхождения.",
+                "verification": "source",
+                "evidence": [
+                  "lib/ingest/raw-workbook.ts:75-133",
+                  "lib/repo/raw-workbook.ts:1-80",
+                  "lib/repo/index.ts:16-35",
+                  "check-case-xlsx"
+                ]
+              },
+              {
+                "aspect": "Пагинация и модель выполнения",
+                "implementation": "loadDataset читает Product страницами по 100, Run сохраняет policy/filter/result и создаёт Order по поставщикам, а withJob фиксирует CALCULATE/IMPORT/BACKTEST статус.",
+                "value": "Для увеличения ассортимента есть понятные места для очередей, повторных запусков и оптимизации без смешивания пользовательского состояния с формулой.",
+                "verification": "source",
+                "evidence": [
+                  "lib/repo/index.ts:37-80",
+                  "lib/repo/index.ts:143-146",
+                  "app/api/backtest/route.ts:1-6"
+                ]
+              },
+              {
+                "aspect": "Расширение через сценарии и copilot",
+                "implementation": "Policy overrides, baseRunId/scenarioDelta, backtest и AI-tools отделены от детерминированного engine; guardrails запрещают сырые customer/invoice поля и инструменты send/approve.",
+                "value": "Команда заложила естественный путь от MVP к сценарному анализу, проверке качества и помощнику без передачи LLM права принимать или отправлять заказ.",
+                "verification": "source",
+                "evidence": [
+                  "lib/contracts/api.ts:1-23",
+                  "lib/agent/index.ts:65-142",
+                  "tests/agent/agent.test.ts",
+                  "tests/agent/summary.test.ts"
+                ]
+              }
+            ],
+            "scoreReasoning": "18/20 отражают хорошие границы расширения, происхождение данных, paginated repository и сценарии. Два балла удержаны только за F-005: масштабирование данных ломается на транспортном лимите раньше, чем достигается собственный лимит маршрута."
+          },
+          {
+            "name": "Презентация, демо и ответы на вопросы",
+            "score": 20,
+            "max": 20,
+            "awarded": "README ясно описывает проблему, целевой сценарий, формулу, ограничения, команды и read-only API; локальное демо воспроизводимо по репозиторию и подтверждено HTTP-проверками.",
+            "deductions": "Снятий нет: устной презентации и вопросов не было, поэтому оценены только README, объяснения и воспроизводимый локальный сценарий.",
+            "evidence": [
+              "README.md:1-30",
+              "README.md:180-212",
+              "README.md:275-310",
+              "check-build",
+              "check-quick-test-synthetic"
+            ],
+            "deductionItems": [],
+            "awardedDetails": [
+              {
+                "aspect": "Быстрый путь к демо",
+                "implementation": "README даёт docker compose up --build, описывает автоматические миграции и seed, отдельный GET /api/quick-test, параметры limit/supplier/datasetId и ожидаемую структуру ответа.",
+                "value": "Жюри или новый разработчик может быстро перейти от репозитория к проверяемому результату без знания внутреннего кода.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:20-30",
+                  "README.md:180-212",
+                  "app/api/quick-test/route.ts:41-96"
+                ]
+              },
+              {
+                "aspect": "Понятное объяснение методики",
+                "implementation": "README последовательно описывает horizon, forecast, seasonal profile, Theil–Sen, lost demand, MAD/IQR outliers, MOQ, approval и экспорт, а в каждой строке результата сохраняется provenance.",
+                "value": "Объяснение связывает бизнес-проблему с наблюдаемыми полями результата и позволяет обсуждать компромиссы, а не только показывать красивый интерфейс.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:55-110",
+                  "README.md:145-178",
+                  "lib/contracts/engine.ts:41-52"
+                ]
+              },
+              {
+                "aspect": "Демонстрационный API без внешнего ключа",
+                "implementation": "Документация честно отделяет deterministic calculation/checks от необязательного AI-copilot и предлагает read-only quick-test, который ничего не сохраняет.",
+                "value": "Сценарий демо устойчив к отсутствию OPENAI_API_KEY и даёт числовые доказательства обязательных проверок, что особенно полезно для короткого судейского показа.",
+                "verification": "observed",
+                "evidence": [
+                  "README.md:275-310",
+                  "app/api/quick-test/route.ts:22-37",
+                  "check-quick-test-synthetic",
+                  "check-start-health"
+                ]
+              },
+              {
+                "aspect": "Документированные ограничения",
+                "implementation": "README явно сообщает о synthetic local data, отсутствии customer IDs в реальных выгрузках, общей демонстрационной аутентификации и необязательности AI.",
+                "value": "Это уменьшает риск неверно интерпретировать синтетические проверки как production ground truth и соответствует требованию честно отделять ограничения от успехов.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:286-310",
+                  "app/api/agent/route.ts:17-20",
+                  "proxy.ts:7-25"
+                ]
+              }
+            ],
+            "scoreReasoning": "20/20: в рамках заданного метода устной презентации не было, поэтому проверены README, объяснение решения и воспроизводимое демо из репозитория. Эти элементы достаточно ясны и подтверждены build/HTTP-проверками; отсутствие внешней Live-ссылки отдельно не штрафовалось."
+          }
+        ],
+        "total": 92
+      },
+      "case": null,
+      "judgeScore": 92,
+      "caseRequirements": [
+        {
+          "requirement": "Базовая потребность по артикулу учитывает историю продаж, текущий остаток, товары в пути, категорию и рост.",
+          "status": "met",
+          "explanation": "В calculatePlan прогноз строится по истории, дневной проекции и safety stock, затем вычитает доступный остаток и inbound с ETA внутри горизонта; category service/safety и growth входят в Policy. Counterfactual sensitivity на реальном SE-позиции подтвердила: дополнительный запас и inbound внутри горизонта уменьшают rawNeed, поздний inbound не влияет.",
+          "evidence": [
+            "lib/engine/index.ts:203-264",
+            "lib/engine/checks.ts:54-75",
+            "check-checks-real-se"
+          ]
+        },
+        {
+          "requirement": "Сезонность и устойчивый рост отражаются в прогнозе.",
+          "status": "partial",
+          "explanation": "Сезонный профиль по истории продаж и Theil–Sen growth действительно влияют на forecast; quick-test нашёл выраженный seasonal factor и рост в реальном SE наборе. Однако отдельные сезонные таблицы из входных XLSX только сохраняются как SUPPLIED_SEASONALITY/diagnostic comparison: engine не читает input.seasonality при вычислении факторов.",
+          "evidence": [
+            "lib/engine/index.ts:150-179",
+            "lib/engine/index.ts:214-226",
+            "lib/ingest/index.ts:198-206",
+            "F-006"
+          ]
+        },
+        {
+          "requirement": "Потерянный спрос при stockout оценивается и компенсируется.",
+          "status": "met",
+          "explanation": "availabilityHistory различает подтверждённые интервалы и оценку по запасам/продажам, а returned provenance содержит lostDemand и диапазон. Синтетические тесты подтверждают рост заказа с компенсацией, а реальный SE набор дал 17 товаров с estimated lost demand.",
+          "evidence": [
+            "lib/engine/index.ts:117-147",
+            "lib/engine/checks.ts:33-39",
+            "check-tests",
+            "check-checks-real-se"
+          ]
+        },
+        {
+          "requirement": "Разовые крупные покупки, включая концентрацию на одном обезличенном клиенте, не искажают регулярную норму.",
+          "status": "partial",
+          "explanation": "Invoice-level выбросы проверяются через сверку monthly totals, MAD/IQR/seasonal thresholds; отдельная ветка группирует анонимный customerId в 60-дневном окне. Synthetic engine tests подтвердили искусственный spike и customer case, а реальный импортированный SE набор подтвердил invoice anomalies. В предоставленных partner workbooks customer IDs отсутствуют, поэтому customer-specific сценарий на реальных книгах не доказан.",
+          "evidence": [
+            "lib/engine/index.ts:57-114",
+            "tests/agent/agent.test.ts",
+            "check-tests",
+            "check-quick-test-real-se",
+            "README.md:300-305"
+          ]
+        },
+        {
+          "requirement": "Итоговый список содержит количество, поставщика и объяснение по каждой позиции и может быть сгруппирован.",
+          "status": "met",
+          "explanation": "Recommendation несёт supplier, code, quantity, urgency и explanation; Run создаёт отдельный Order на каждого supplier, а quick-test на 48 строках и реальном SE наборе подтвердил allExplained/allFinite.",
+          "evidence": [
+            "lib/contracts/engine.ts:47-52",
+            "lib/repo/index.ts:72-80",
+            "check-quick-test-synthetic",
+            "check-quick-test-real-se"
+          ]
+        },
+        {
+          "requirement": "Заказ не отправляется без ручного подтверждения.",
+          "status": "met",
+          "explanation": "Run создаёт DRAFT, approveOrder отдельно проверяет revision, имя, положительные количества, MOQ/кратность и acknowledgedEstimates, после чего фиксирует APPROVED snapshot. В исходниках нет инструмента отправки поставщику; HTTP-сценарий реально прошёл draft → approve → export.",
+          "evidence": [
+            "lib/repo/index.ts:72-80",
+            "lib/repo/index.ts:112-140",
+            "lib/agent/index.ts:77-80",
+            "check-run-approval-export"
+          ]
+        },
+        {
+          "requirement": "Клиентские данные обезличены и не передаются в AI-сводку.",
+          "status": "met",
+          "explanation": "Контракты допускают только optional customerId, агент получает aggregate facts, output guardrail блокирует customerId/invoice/transactions/apiKey, а тесты проверяют отсутствие чувствительных полей и отсутствие send/approve tools.",
+          "evidence": [
+            "lib/contracts/engine.ts:14",
+            "lib/agent/index.ts:35-45",
+            "lib/agent/index.ts:65-74",
+            "tests/agent/agent.test.ts",
+            "tests/agent/summary.test.ts"
+          ]
+        },
+        {
+          "requirement": "Проверяется чувствительность к товарам в пути, сезонности, stockout и выбросам.",
+          "status": "partial",
+          "explanation": "Изменение stock/ETA проверено контрфактически на реальном SKU, stockout и outlier покрыты synthetic и dataset checks, derived seasonal profile подтверждён. Чувствительность именно к предоставленной отдельной seasonality table не проверяется и не реализована как вход — это граница F-006.",
+          "evidence": [
+            "lib/engine/checks.ts:54-75",
+            "lib/engine/checks.ts:79-94",
+            "check-checks-real-se",
+            "F-006"
+          ]
+        },
+        {
+          "requirement": "Предоставленные XLSX читаются и используются в импорте.",
+          "status": "partial",
+          "explanation": "Все 12 supplied workbooks были прочитаны собственным OOXML parser: сохранены sheets, dimensions, formulas и error cells; шесть книг SE также прошли реальный multipart import/materialization в 724-product dataset. Полный 12-файловый upload не завершился из-за F-005, поэтому сквозное использование полного IEK+SE набора одним запросом не подтверждено.",
+          "evidence": [
+            "lib/ingest/raw-workbook.ts:75-133",
+            "check-case-xlsx",
+            "check-real-se-import",
+            "check-import-full",
+            "F-005"
+          ]
+        }
+      ],
+      "testData": {
+        "provided": [
+          "IEK/MOQ ИЭК.xlsx",
+          "IEK/Динамика продаж_2025-2026.xlsx",
+          "IEK/Ежемесячные остатки продукции за последние 2 года ИЭК.xlsx",
+          "IEK/Ежемесячные продажи в количественном выражении за последние 2 года.xlsx",
+          "IEK/Путь ИЭК 22.09.2026.xlsx",
+          "IEK/Сезонность ИЭК.xlsx",
+          "Systeme electric/MOQ SystemElectric.xlsx",
+          "Systeme electric/Динамика продаж_Syseme Electric_2025-2026.xlsx",
+          "Systeme electric/Ежемесячные остатки SystemElectric 2024-2026.xlsx",
+          "Systeme electric/Ежемесячные продажи в кол-м выражении SystemElectric 2024-2026.xlsx",
+          "Systeme electric/Сезонность SystemElectric 2024-2026.xlsx",
+          "Systeme electric/Товар в пути_SystemElectric на 22.09.2026.xlsx"
+        ],
+        "used": [
+          "Все 12 предоставленных XLSX прочитаны lib/ingest/raw-workbook.ts с сохранением SHA-256, листов, размеров, формул и error-cell metadata.",
+          "Шесть файлов Systeme electric загружены через POST /api/import и materialized в локальную БД как реальный non-synthetic dataset: 724 products, 177 import issues.",
+          "Seeded sample-data из репозитория использован для полного synthetic расчёта, sensitivity, сезонности, stockout, outlier и approval/export сценариев.",
+          "Отдельно проверены исходные таблицы MOQ, history/transactions, stocks, seasonality и transit через их parser summaries; это не подмена production ground truth."
+        ],
+        "checks": [
+          {
+            "input": "Все 12 supplied XLSX, включая книги с 171605 строками, формулами и error cells.",
+            "method": "Собственный parseRawWorkbook/rawWorkbookSummary в изолированном Node 24 окружении.",
+            "result": "Все 12 файлов прочитаны; parserVersion ooxml-source-1. Примеры: IEK sales — 171605 rows, SE sales — 77314 rows, SE transit — 2 sheets.",
+            "conclusion": "OOXML ingestion способен открыть предоставленные книги и сохранить структурную метаинформацию; проблема полного набора возникает позже на HTTP body limit."
+          },
+          {
+            "input": "Шесть книг Systeme electric.",
+            "method": "POST /api/import multipart через локальный HTTP API, затем GET /api/quick-test с datasetId.",
+            "result": "Импорт HTTP 200; 724 products, 177 issues. Quick-test: 724 recommendations, allExplained=true, allFinite=true, five must-have checks true.",
+            "conclusion": "Материализация и расчёт на реальном supplied-подмножестве работают сквозным образом."
+          },
+          {
+            "input": "Seeded synthetic IEK + SE dataset, limit=3.",
+            "method": "GET /api/quick-test?limit=3 с Basic auth.",
+            "result": "48 recommendations; 48 explained; all finite; 22 excluded anomalies; 4 products with lost demand; five must-have checks true. Sensitivity example showed baseNeed 1775.2806, in-horizon inbound/extra stock reduced it to 887.6403, late inbound left 1775.2806.",
+            "conclusion": "Основной deterministic расчёт и обязательные synthetic scenarios дают ожидаемое направление и объяснение."
+          },
+          {
+            "input": "Реальный SE dataset.",
+            "method": "POST /api/checks.",
+            "result": "6/6 checks passed: dataset-sensitivity, dataset-inputs, dataset-seasonality, dataset-stockouts, dataset-anomaly, dataset-provenance; realChecks: 724 rows, finite quantities, all explained, 250 flagged anomalies, 17 lost-demand products.",
+            "conclusion": "Проверки входов, сезонного профиля, stockout/anomaly evidence и округлённого объяснимого заказа проходят на materialized supplied data."
+          },
+          {
+            "input": "IEK draft order and one positive line.",
+            "method": "POST /api/runs, POST /api/orders/{id}/approve, GET /api/export?format=csv.",
+            "result": "Создан DRAFT revision 0; approve вернул APPROVED revision 1 с approver Reviewer; export вернул HTTP 200, text/csv и строку с кодом, количеством 630, единицей шт и поставщиком IEK.",
+            "conclusion": "Ручное подтверждение и frozen approved export работают без автоматической отправки поставщику."
+          },
+          {
+            "input": "Все 12 supplied XLSX одним multipart upload.",
+            "method": "POST /api/import с размером ниже собственного 80 MB route cap.",
+            "result": "HTTP API вернул ошибку с текстом The operation could not complete; контейнерный лог Next.js сообщил Request body exceeded 10MB и Failed to parse body as FormData.",
+            "conclusion": "Подтверждён проектный mismatch между 80 MB в app/api/import/route.ts и стандартным 10 MB лимитом Next.js; это F-005, а не ограничение отсутствующего ключа."
+          }
+        ],
+        "limitations": [
+          "Полный IEK+SE batch не materialized через HTTP из-за F-005; отдельный parser всех 12 книг и сквозной SE subset подтверждены.",
+          "В supplied partner workbooks нет anonymized customerId, поэтому customer-specific branch проверена на synthetic fixture и по исходникам, но не на real partner rows.",
+          "Отдельная seasonality table прочитана и диагностически сохранена, но не является активным forecast input; это F-006."
+        ]
+      },
+      "runtime": {
+        "status": "partial",
+        "build": "PASS: Dockerfile built the standalone runtime image; Next.js build completed and listed the dynamic API routes.",
+        "start": "PASS: isolated Node 24/Next.js runtime started against PostgreSQL 17; GET /api/health returned HTTP 200 with database connected.",
+        "scenario": "PARTIAL: seeded synthetic calculation, real SE import/calculation, draft approval and CSV export were reproduced. Full 12-book upload failed at the application body-size boundary documented in F-005.",
+        "environment": "Изолированный Docker runtime с Node 24, Next.js 16.3.6, Prisma 7.10.0 и PostgreSQL 17; OPENAI_API_KEY не предоставлялся. Проверка была HTTP/API и domain-level, без браузера и визуальной инспекции.",
+        "summary": "Основной расчётный и операционный путь работает без внешнего AI-ключа, но входной путь полного набора кейса частично заблокирован проектной конфигурацией лимита тела запроса.",
+        "checks": [
+          {
+            "command": "npm run build",
+            "result": "Docker build completed successfully; Next.js emitted the standalone runtime and dynamic routes including /api/quick-test, /api/import, /api/orders/[id]/approve and /api/export.",
+            "id": "check-build",
+            "stage": "build",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Repository builds into a runnable standalone image."
+          },
+          {
+            "command": "npm run db:generate && npm run typecheck && npm run lint",
+            "result": "Prisma Client 7.10.0 generated; tsc --noEmit and eslint . exited successfully.",
+            "id": "check-static",
+            "stage": "build",
+            "status": "pass",
+            "cause": "none",
+            "expected": "TypeScript and lint checks pass after the documented Prisma generation step."
+          },
+          {
+            "command": "npm run db:generate && npm test",
+            "result": "15 test files passed; 135 tests passed and 9 integration tests skipped because no DATABASE_URL was supplied to the test container.",
+            "id": "check-tests",
+            "stage": "build",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Unit/domain/security/export/agent tests pass; only explicitly environment-dependent integration tests may skip."
+          },
+          {
+            "command": "GET /api/health",
+            "result": "HTTP 200: {status:ok,database:connected,copilotConfigured:false}.",
+            "id": "check-start-health",
+            "stage": "start",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Running application reports an available database and remains startable without OPENAI_API_KEY."
+          },
+          {
+            "command": "GET /api/quick-test?limit=3",
+            "result": "HTTP 200 on seeded data: 48 recommendations, all explained/finite, five must-have checks true, 22 excluded anomalies and 4 lost-demand products.",
+            "id": "check-quick-test-synthetic",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Read-only calculation endpoint returns a deterministic, explained supplier plan without saving changes."
+          },
+          {
+            "command": "POST /api/import (six Systeme electric XLSX) then GET /api/quick-test?datasetId=<real-SE-dataset>&limit=3",
+            "result": "HTTP 200 import created 724-product dataset with 177 issues; quick-test returned 724 explained finite recommendations and five true must-have checks.",
+            "id": "check-quick-test-real-se",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Provided real-format workbooks materialize and calculate through the application."
+          },
+          {
+            "command": "POST /api/checks; POST /api/runs; POST /api/orders/{id}/approve; GET /api/export?format=csv",
+            "result": "Real SE checks were 6/6. IEK run created DRAFT revision 0; approval created APPROVED revision 1; CSV export returned HTTP 200 with supplier-grouped line content.",
+            "id": "check-checks-real-se",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Domain checks, manual approval and frozen export produce the expected auditable result."
+          },
+          {
+            "command": "POST /api/import (all 12 supplied XLSX in one multipart request)",
+            "result": "Application returned a generic operation error; Next.js runtime log reported Request body exceeded 10MB and Failed to parse body as FormData. Route source declares MAX_UPLOAD_BYTES=80*1024*1024.",
+            "id": "check-import-full",
+            "stage": "scenario",
+            "status": "fail",
+            "cause": "project",
+            "expected": "The route should accept the provided complete workbook package within its advertised 80 MB limit and materialize it."
+          },
+          {
+            "command": "parseRawWorkbook/rawWorkbookSummary for each supplied XLSX",
+            "result": "All 12 supplied workbooks parsed successfully in isolation; metadata included sheet names, dimensions, row/cell counts, formulas and error cells.",
+            "id": "check-case-xlsx",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "The project parser opens every provided workbook format without assuming missing columns."
+          },
+          {
+            "command": "POST /api/runs; POST /api/orders/{id}/approve; GET /api/export?format=csv",
+            "result": "Draft, approval and export returned expected states and content; no send-to-supplier endpoint/tool was used or found.",
+            "id": "check-run-approval-export",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "User-facing order lifecycle requires manual confirmation and produces a downloadable approved snapshot."
+          }
+        ],
+        "limitations": [
+          "OpenAI API credentials were intentionally unavailable; /api/agent and /api/insights are source-reviewed and explicitly return 503 without OPENAI_API_KEY, while deterministic calculation/checks/export work.",
+          "No browser, screenshot, CUA, Playwright, Selenium or equivalent UI inspection was performed; layout and visual interaction remain unverified.",
+          "The full 12-workbook HTTP scenario is a project failure caused by the 10 MB Next.js request limit, not by missing review credentials."
+        ]
+      },
+      "liveDemo": {
+        "status": "claimed",
+        "url": "https://apollon-production-59ea.up.railway.app",
+        "notes": "README claims this Railway URL and /api/health endpoint, but it was not independently contacted in this review. The local HTTP/API equivalent was verified."
+      },
+      "fiveHourContext": "Для пятичасового MVP объём реализации высокий: отдельные ingestion/source layers, робастный расчёт, backtest/checks, provenance, approval audit, exports, security tests и optional guarded copilot. Оценка не требует production-grade identity, полноценной интеграции 1С или отключаемой LLM-инфраструктуры. Удержаны только подтверждённые проектные проблемы F-005 и F-006.",
+      "strengths": [
+        "F-001: deterministic engine соединяет прогноз, остатки, inbound, stockout, outlier, MOQ и объяснение в одной Recommendation.",
+        "F-002: полный ручной контур DRAFT → APPROVED → CSV/XLSX/email-ready export подтверждён HTTP и тестами.",
+        "F-003: собственный OOXML parser прочитал все 12 предоставленных книг, а шесть SE книг materialized через приложение.",
+        "F-004: raw provenance, privacy guardrails, Basic auth, rate limits и formula-safe export покрыты кодом и тестами."
+      ],
+      "gaps": [
+        "F-005: маршрут импорта заявляет 80 MB, но Next.js обрезает тело после 10 MB; полный пакет из 12 книг не проходит одним запросом.",
+        "F-006: предоставленная сезонность сохраняется как comparison/diagnostic metadata и не используется engine как forecast input."
+      ],
+      "futureAdvice": [
+        {
+          "principle": "Согласовывать лимит транспорта с лимитом доменного обработчика и проверять полный happy path.",
+          "why": "F-005 показывает, что route-level MAX_UPLOAD_BYTES=80 MB не защищает сценарий: фактический Next.js runtime отбрасывает multipart после 10 MB, поэтому полный кейс не materializes.",
+          "how": "В другом хакатоне сначала зафиксировать размер реального пакета, затем явно настроить framework body limit или принимать книги по resumable/одиночным upload-частям; добавить один API smoke-test, который отправляет весь пакет и проверяет число материализованных товаров.",
+          "findingIds": [
+            "F-005"
+          ],
+          "successCheck": "Один воспроизводимый POST полного набора возвращает 200, dataset содержит все ожидаемые файлы/поставщиков, а следующий quick-test считает строки без ручного обхода.",
+          "timeboxMinutes": 30
+        },
+        {
+          "principle": "Явно разделять диагностический сигнал и активный сигнал модели.",
+          "why": "F-006: parser читает supplied seasonality, но engine строит factors только из sales series; пользователь может решить, что таблица сезонности влияет на число, хотя это не так.",
+          "how": "Для другого кейса либо калибровать derived profile проверенными коэффициентами из таблицы с provenance и sensitivity test, либо переименовать поле/README как comparison-only и показать это ограничение в UI рядом с прогнозом.",
+          "findingIds": [
+            "F-006"
+          ],
+          "successCheck": "Изменение только сезонных коэффициентов на одном SKU меняет forecast/rawNeed предсказуемо либо API явно сообщает, что таблица comparison-only, а тест и объяснение подтверждают это.",
+          "timeboxMinutes": 45
+        }
+      ],
+      "uncertainties": [
+        "OpenAI-assisted agent/insights path не запускался без API key; исходники и tests проверены, а deterministic path намеренно работает без него.",
+        "UI layout, визуальная и интерактивная работа модальных окон, графиков и загрузки не проверялись по пользовательской политике визуальной верификации.",
+        "Customer-specific large-order branch поддерживается по optional customerId, но supplied partner workbooks не содержат customer IDs; на реальных строках подтверждены invoice-level anomalies, не customer concentration."
+      ],
+      "reviewPolicyVersion": 2,
+      "assessmentStatus": "ready",
+      "findings": [
+        {
+          "id": "F-001",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Детерминированный engine на seeded и real-SE данных учитывает ключевые сигналы пополнения и возвращает объяснимые рекомендации.",
+          "expected": "Расчёт должен реагировать на stock, ETA, сезонный профиль, рост, stockout/outlier и отдавать конечные количества с provenance.",
+          "actual": "quick-test на synthetic вернул 48 объяснённых конечных строк, а real-SE dataset check подтвердил 724 строки, 6/6 checks, 17 lost-demand products и 250 flagged anomalies.",
+          "evidence": [
+            "lib/engine/index.ts:117-147",
+            "lib/engine/index.ts:247-289",
+            "check-quick-test-synthetic",
+            "check-checks-real-se"
+          ],
+          "checkIds": [
+            "check-quick-test-synthetic",
+            "check-checks-real-se"
+          ]
+        },
+        {
+          "id": "F-002",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Операционный lifecycle заказа реализован как DRAFT с ручным APPROVED revision и frozen export.",
+          "expected": "Заказ не должен отправляться без ручного подтверждения; approved snapshot должен быть экспортируемым и защищённым от несогласованной ревизии.",
+          "actual": "HTTP run создал DRAFT revision 0; approve с именем и acknowledgement создал APPROVED revision 1; CSV export вернул HTTP 200 и утверждённую строку.",
+          "evidence": [
+            "lib/repo/index.ts:72-140",
+            "app/api/export/route.ts:5-13",
+            "check-run-approval-export",
+            "tests/export/export.test.ts"
+          ],
+          "checkIds": [
+            "check-run-approval-export"
+          ]
+        },
+        {
+          "id": "F-003",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Собственный parser открыл все 12 supplied XLSX, а application import/materialization успешно обработал шесть SE книг.",
+          "expected": "Parser должен открывать исходный OOXML формат и не терять листы, формулы, error cells и source provenance.",
+          "actual": "Все 12 parseRawWorkbook summaries завершились успешно; SE multipart import создал 724-product dataset с SHA-256/workbook IDs и 177 diagnostics.",
+          "evidence": [
+            "lib/ingest/raw-workbook.ts:75-133",
+            "check-case-xlsx",
+            "check-real-se-import"
+          ],
+          "checkIds": [
+            "check-case-xlsx",
+            "check-quick-test-real-se"
+          ]
+        },
+        {
+          "id": "F-004",
+          "kind": "strength",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Privacy, approval guardrails, HTTP security и formula-safe exports имеют явную реализацию и тесты.",
+          "expected": "AI не должен видеть raw customer/invoice payload, экспорт не должен выполнять формулы, а cross-origin/approval границы должны быть проверяемыми.",
+          "actual": "Agent summary/guardrail блокируют чувствительные поля, send/approve tools отсутствуют; security/http, proxy, agent и export suites проходят.",
+          "evidence": [
+            "lib/agent/index.ts:35-45",
+            "lib/agent/index.ts:65-80",
+            "tests/security/http.test.ts",
+            "tests/security/proxy.test.ts",
+            "tests/agent/agent.test.ts",
+            "tests/export/export.test.ts"
+          ],
+          "checkIds": [
+            "check-tests",
+            "check-run-approval-export"
+          ]
+        },
+        {
+          "id": "F-005",
+          "kind": "defect",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Полный multipart upload из 12 supplied XLSX не проходит, хотя маршрут объявляет лимит 80 MB.",
+          "expected": "POST /api/import должен принять весь предоставленный пакет в пределах MAX_UPLOAD_BYTES=80 MB и материализовать его.",
+          "actual": "При полном POST приложение вернуло generic operation error; Next.js runtime сообщил Request body exceeded 10MB и Failed to parse body as FormData. В next.config.ts нет настройки, снимающей этот framework limit.",
+          "evidence": [
+            "app/api/import/route.ts:10-24",
+            "app/api/import/route.ts:27-37",
+            "next.config.ts:1-20",
+            "check-import-full"
+          ],
+          "checkIds": [
+            "check-import-full"
+          ]
+        },
+        {
+          "id": "F-006",
+          "kind": "defect",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Отдельные supplied seasonality tables не участвуют в числовом forecast.",
+          "expected": "Если сезонность заявлена как вход кейса, изменение её коэффициентов должно менять прогноз либо продукт должен явно маркировать таблицу как comparison-only.",
+          "actual": "ingest/index.ts записывает SUPPLIED_SEASONALITY и coefficient как info issue; engine/index.ts строит pooled factors из sales series/profile и не читает input.seasonality. Agent тоже называет suppliedSeasonalityForComparisonOnly.",
+          "evidence": [
+            "lib/ingest/index.ts:198-206",
+            "lib/engine/index.ts:214-226",
+            "lib/agent/index.ts:71-74",
+            "check-case-xlsx"
+          ],
+          "checkIds": [
+            "check-case-xlsx",
+            "check-checks-real-se"
+          ]
+        },
+        {
+          "id": "F-007",
+          "kind": "limitation",
+          "verification": "observed",
+          "responsibility": "review_environment",
+          "claim": "AI-copilot path не запускался в проверке из-за намеренно отсутствующего OPENAI_API_KEY.",
+          "expected": "Без ключа deterministic расчёт должен оставаться рабочим, а AI endpoint должен честно сообщать о недоступности.",
+          "actual": "GET /api/health сообщил copilotConfigured=false; source route returns 503 без ключа. Расчёт, checks, approval и export работали без него.",
+          "evidence": [
+            "app/api/agent/route.ts:13-20",
+            "app/api/insights/route.ts:17-22",
+            "check-start-health",
+            "check-quick-test-synthetic"
+          ],
+          "checkIds": [
+            "check-start-health",
+            "check-quick-test-synthetic"
+          ]
+        },
+        {
+          "id": "F-008",
+          "kind": "limitation",
+          "verification": "unverified",
+          "responsibility": "review_environment",
+          "claim": "Визуальное поведение интерфейса не входило в проверку.",
+          "expected": "Браузерная проверка могла бы подтвердить layout, графики, модальные окна и интерактивные состояния.",
+          "actual": "Проведены только статические, unit/domain и HTTP/API проверки; визуальные утверждения не используются как доказательство и не уменьшают балл.",
+          "evidence": [
+            "app/layout.tsx:1-80",
+            "components/workspace.tsx:1-80",
+            "runtime ограничения проверки"
+          ],
+          "checkIds": []
+        }
+      ],
+      "gapFindingIds": [
+        "F-005",
+        "F-006"
+      ]
+    }
+  ],
+  "score": 92.0,
+  "status": "complete",
+  "expectedJudges": 1
+}

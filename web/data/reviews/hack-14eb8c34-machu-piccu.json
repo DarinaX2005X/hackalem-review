@@ -1,0 +1,1064 @@
+{
+  "methodVersion": 4,
+  "repoId": "hack-14eb8c34-machu-piccu",
+  "repoUrl": "https://github.com/BAITC-Hacks/hack-14eb8c34-machu-piccu",
+  "caseId": 1,
+  "snapshot": "6746c1908892fba3ef0e85247b014aa449f4afb4",
+  "judges": [
+    {
+      "methodVersion": 4,
+      "repoId": "hack-14eb8c34-machu-piccu",
+      "caseId": 1,
+      "model": "GPT-5.6 Luna",
+      "snapshot": "6746c1908892fba3ef0e85247b014aa449f4afb4",
+      "overallSummary": "WindAgent — сильный, воспроизводимый офлайн-прототип для требуемого сценария. Основной детерминированный путь действительно строит почасовой прогноз двух турбин на 24–48 часов, использует архивные fixed-lead прогнозы Open-Meteo, ведёт последовательный дневной replay, измеряет обновление входов и формирует CSV/JSON для диспетчера. Проверены сборка образа, 14 офлайн-тестов, один цикл 31 января, полный февральский replay на 1 344 строки и 122-дневный верификационный replay. Два подтверждённых недостатка удерживают оценку от максимума: опубликованный Docker ENTRYPOINT не запускается из-за CRLF в shell-скрипте, а заявленный lead_day не входит в фактический список признаков, поэтому одна модель, обученная только на 24-часовом lead, применяется и к 48/72-часовым входам без явного признака упреждения. Эти проблемы не блокируют локальный Python-сценарий, но снижают готовность упаковки и обоснованность переноса модели на длинные lead.",
+      "global": {
+        "criteria": [
+          {
+            "name": "Ценность решения",
+            "score": 24,
+            "max": 25,
+            "awarded": "Практическая задача, пользователь и результат определены очень конкретно: диспетчер получает прогноз мощности, эквивалентные часы полной нагрузки, пики, минимумы, рампы, интервал неопределённости и объяснение свежести входов.",
+            "deductions": "1 балл снят за подтверждённый дефект упаковки: заявленный Docker-способ запуска, который является наиболее переносимым путём для пользователя, не стартует до исправления CRLF в ENTRYPOINT.",
+            "evidence": [
+              "README.md:67-88",
+              "src/pipeline.py:193-233",
+              "captures/20261002T154412211573-scenario-agent.stdout.log"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "F-DOCKER-ENTRYPOINT",
+                "reason": "Практическая ценность для оператора включает возможность получить результат заявленным контейнерным запуском; сейчас команда из README завершается до выполнения приложения. Python-путь при этом работает, поэтому снятие ограничено одним баллом."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Конкретный пользовательский результат",
+                "implementation": "Pipeline переводит 48 строк на каждую турбину в понятные показатели: сумму мощности за 48 часов и за день вперёд, средний capacity factor, пик, минимум, часы около номинала, часы ниже cut-in, рампы, ширину P10–P90 и средний разброс NWP.",
+                "value": "Это не только массив чисел: диспетчер может оценить ожидаемую энергию и резерв на опасных участках прогноза. В наблюдённом цикле для обеих турбин были выданы энергия 48 ч, day-ahead энергия, пик, один ramp event, low confidence и причина неопределённости.",
+                "verification": "observed",
+                "evidence": [
+                  "src/pipeline.py:193-233",
+                  "src/agent.py:282-304",
+                  "captures/20261002T154412211573-scenario-agent.stdout.log"
+                ]
+              },
+              {
+                "aspect": "Решение реальной операционной проблемы",
+                "implementation": "README связывает прогноз с ветровым коридором Шелек и двумя близкими турбинами, а модель выдаёт данные в доле номинальной мощности и equivalent full-load hours.",
+                "value": "Нормализация делает результат сопоставимым между турбинами, а разделение day-ahead и D+2 соответствует реальному горизонту планирования ВЭС.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:21-29",
+                  "src/config.py:29-31",
+                  "src/pipeline.py:211-216"
+                ]
+              },
+              {
+                "aspect": "Польза ежедневного обновления измерена",
+                "implementation": "Backtest связывает ранний D+2 прогноз с более свежим D+1 прогнозом на тех же часах и считает improvement_pct, а агент на каждом цикле отдельно сравнивает mean_abs_change с порогом.",
+                "value": "Команда показывает не декларативную agentic-идею, а полезность пересчёта: в проверенном replay paired MAE снизился с 0.1738 до 0.1573, то есть на 9.5%.",
+                "verification": "observed",
+                "evidence": [
+                  "src/backtest.py:177-198",
+                  "src/pipeline.py:323-353",
+                  "captures/20261002T154604065692-scenario-verified.stdout.log"
+                ]
+              },
+              {
+                "aspect": "Граница практического применения честно видна",
+                "implementation": "Публикуются nwp_lead_hours, policy, issue_time и interval band; README отдельно показывает rolling и strict и объясняет смысл fixed-lead архива.",
+                "value": "Потребитель результата может отличить обычный 24-часовой operational продукт от более консервативного 48-часового режима и не принять forecast за фактическую выработку.",
+                "verification": "source",
+                "evidence": [
+                  "src/pipeline.py:24-33",
+                  "src/config.py:62-78",
+                  "README.md:187-200"
+                ]
+              }
+            ],
+            "scoreReasoning": "24/25 заслужены за точное попадание в понятную операционную задачу и за наблюдённый результат, который можно использовать как диспетчерскую сводку. Единственное снятие связано не с отсутствием production-интеграций, а с реально воспроизведённым контейнерным барьером: основной Python-сценарий ценность доказывает, но самый переносимый способ запуска требует исправления скрипта."
+          },
+          {
+            "name": "Результат и качество решения",
+            "score": 19,
+            "max": 20,
+            "awarded": "Основной сценарий целостен и реально воспроизведён: от прогноза погоды и подготовки признаков до модели, анализа, ревизии и файлов сдачи.",
+            "deductions": "1 балл снят за то, что официальный контейнерный путь не доходит до тестов или replay из-за ошибки ENTRYPOINT, хотя прямой запуск модулей проходит.",
+            "evidence": [
+              "captures/20261002T154342920710-test-direct.stdout.log",
+              "captures/20261002T154412211573-scenario-agent.stdout.log",
+              "captures/20261002T154457827227-scenario-replay.stdout.log"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "F-DOCKER-ENTRYPOINT",
+                "reason": "Документированный `docker run --rm windagent test` фактически заканчивается ошибкой exec до запуска pytest; это снижает воспроизводимость готового сценария, но не качество уже проверенного прямого Python-пути."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Сборка и зависимости",
+                "implementation": "Dockerfile фиксирует основной стек pandas, NumPy, LightGBM, pyarrow, pytest и Streamlit; образ собирается из pinned Python 3.12 slim и содержит кэш, модель и данные.",
+                "value": "Зависимости и артефакты не нужно собирать заново для локального replay, что существенно для пятичасового MVP и повторной проверки жюри.",
+                "verification": "observed",
+                "evidence": [
+                  "Dockerfile:1-10",
+                  "requirements.txt:1-20",
+                  "captures/20261002T153757472810-build.stderr.log"
+                ]
+              },
+              {
+                "aspect": "Основной цикл агентной системы",
+                "implementation": "WindAgent вызывает ForecastPipeline, затем считает revision_vs_previous/detect_input_change, добавляет заметки и может сохранить hourly CSV и JSON summary.",
+                "value": "Все существенные шаги кейса присутствуют в одном исполняемом пути, а deterministic mode не зависит от внешнего LLM-ключа.",
+                "verification": "observed",
+                "evidence": [
+                  "src/agent.py:237-279",
+                  "src/pipeline.py:254-304",
+                  "captures/20261002T154412211573-scenario-agent.stdout.log"
+                ]
+              },
+              {
+                "aspect": "Проверенная полнота февральской сдачи",
+                "implementation": "Sequential replay выполняет warm-up, 28 дневных issue cycles, сохраняет все leads и отбирает day-ahead строки в локальном времени; затем проверяет размер и печатает per-turbine coverage.",
+                "value": "Наблюдённый результат — 1 344 строки, по 672 на турбину, без пропусков в 28×24 часов. Это сильное доказательство пользовательского результата именно для требуемого тестового окна.",
+                "verification": "observed",
+                "evidence": [
+                  "src/backtest.py:201-252",
+                  "captures/20261002T154457827227-scenario-replay.stdout.log"
+                ]
+              },
+              {
+                "aspect": "Результат измерен против базовых линий",
+                "implementation": "Metrics считают MAE, RMSE, bias, R², coverage и сравнивают WindAgent с persistence, power curve и climatology; верификационный replay использует out-of-sample осень–январь.",
+                "value": "Это отличает работающий прототип от демонстрации без проверки: на 11 436 наблюдённых часах day-ahead MAE составил 0.1586 против 0.3342 у persistence.",
+                "verification": "observed",
+                "evidence": [
+                  "src/metrics.py:8-100",
+                  "src/backtest.py:116-174",
+                  "captures/20261002T154604065692-scenario-verified.stdout.log"
+                ]
+              }
+            ],
+            "scoreReasoning": "19/20: целостность подтверждена не только исходниками, но и тремя уровнями запуска — тесты, один операторский цикл и полный replay. Один балл удержан за packaging-дефект, который пользователь встретит при точном выполнении Docker-команды из README."
+          },
+          {
+            "name": "Инновационность",
+            "score": 15,
+            "max": 15,
+            "awarded": "Необычность подхода обоснована технически: fixed-lead архив вместо анализа, независимые NWP-модели с ensemble spread, physics-aware признаки, online calibration и агентный слой поверх детерминированной модели.",
+            "deductions": "Снятий нет.",
+            "evidence": [
+              "src/config.py:34-56",
+              "src/dataset.py:36-65",
+              "src/agent.py:1-18"
+            ],
+            "deductionItems": [],
+            "awardedDetails": [
+              {
+                "aspect": "Честное использование исторической погоды",
+                "implementation": "`previous_day1/2/3` выбираются по policy для каждого target hour, а issue_time_utc и nwp_lead_hours сохраняются в блоке и публикации.",
+                "value": "Это более содержательный подход к point-in-time replay, чем подстановка фактической погоды или текущего анализа; именно временная дисциплина является центральной сложностью кейса.",
+                "verification": "source",
+                "evidence": [
+                  "src/config.py:62-78",
+                  "src/features.py:41-88",
+                  "tests/test_honesty.py:21-46"
+                ]
+              },
+              {
+                "aspect": "Многомодельный погодный ансамбль",
+                "implementation": "ECMWF IFS, GFS и ICON хранятся по отдельности, для направлений используется circular mean, для hub-height ветра — standard deviation, min, max и range.",
+                "value": "Разброс погодных моделей превращается в измеримую неопределённость прогноза, а не теряется в одном opaque provider output.",
+                "verification": "source",
+                "evidence": [
+                  "src/config.py:42-56",
+                  "src/dataset.py:36-65",
+                  "src/features.py:250-262"
+                ]
+              },
+              {
+                "aspect": "Физически осмысленные признаки",
+                "implementation": "Feature pipeline считает wind shear, влажный air density, density-corrected wind, wind power density, gust factor, circular direction encoding, veer, ramps и block-local rolling statistics.",
+                "value": "Сочетание физики и ML использует доменную структуру ВЭС, а не только time-series авторегрессию; это даёт модели признаки режима, в котором один и тот же ветер производит разную мощность.",
+                "verification": "source",
+                "evidence": [
+                  "src/features.py:94-167",
+                  "src/features.py:214-262"
+                ]
+              },
+              {
+                "aspect": "Agentic AI как управляемый слой",
+                "implementation": "LLM-интеграция получает пять Python-инструментов, но числовой forecast остаётся в deterministic pipeline; transcript и cost сохраняются, а autonomous mode работает без ключа.",
+                "value": "Это разумное разделение ответственности: агент анализирует и объясняет результат, но не может самостоятельно придумать число прогноза. Такой паттерн переносим на другие операционные кейсы.",
+                "verification": "source",
+                "evidence": [
+                  "src/agent.py:33-61",
+                  "src/agent.py:306-344",
+                  "src/llm.py:125-190"
+                ]
+              }
+            ],
+            "scoreReasoning": "Полный балл оправдан: инновационность здесь не сводится к названию Agentic AI, а реализована через as-of политику, ансамбль, uncertainty, калибровку и tool-calling границу. Отсутствие внешнего LLM-ключа в среде проверки не является дефектом, поскольку автономный режим является рабочим и достаточен для основного сценария."
+          },
+          {
+            "name": "Потенциал развития и масштабирования",
+            "score": 18,
+            "max": 20,
+            "awarded": "Архитектура хорошо раскладывается на погодный клиент, dataset/features, model, pipeline, agent и reporting; есть live/archive режимы, две policy, кэш, pooled model и отдельный dashboard.",
+            "deductions": "2 балла сняты за два подтверждённых ограничения проекта: контейнерный entrypoint не запускается, а перенос на 48/72-часовые leads не получает явного lead_day признака при обучении только на 24-часовом lead.",
+            "evidence": [
+              "src/pipeline.py:67-160",
+              "src/features.py:214-262",
+              "src/train.py:20-31",
+              "Dockerfile:1-10"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "F-DOCKER-ENTRYPOINT",
+                "reason": "Без исправления shell-скрипта тот же артефакт нельзя надёжно перенести на другую машину через опубликованные Docker-команды; это непосредственно ограничивает масштабирование упаковки."
+              },
+              {
+                "points": 1,
+                "findingId": "F-LEAD-FEATURE",
+                "reason": "Долгий lead является частью целевого продукта, но фактический allowlist признаков не содержит lead_day, тогда как fit выполняется только на lead_day=1; при расширении горизонта перенос модели недостаточно явно контролируется."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Разделение слоёв позволяет расширять систему",
+                "implementation": "ForecastPipeline изолирует fetch_weather, prepare, predict, analyse, publication и verification; weather client поддерживает archive/live, а WindAgent работает поверх обоих режимов.",
+                "value": "Новая площадка или новый provider может быть добавлен на уровне конфигурации/клиента без переписывания operator briefing и scoring.",
+                "verification": "source",
+                "evidence": [
+                  "src/pipeline.py:67-191",
+                  "src/weather.py:80-163",
+                  "src/agent.py:229-279"
+                ]
+              },
+              {
+                "aspect": "Кэш делает replay переносимым",
+                "implementation": "Архивные parquet-фрагменты читаются до сетевого fallback, а модель и validation summary лежат в artifacts; README описывает офлайн-команды.",
+                "value": "Для повторного запуска не требуется одновременно доступ к API, восстановление большого обучающего процесса и ручная подготовка данных.",
+                "verification": "observed",
+                "evidence": [
+                  "src/weather.py:36-110",
+                  "src/dataset.py:68-86",
+                  "README.md:27-58"
+                ]
+              },
+              {
+                "aspect": "Масштабирование на новые режимы работы",
+                "implementation": "Есть rolling и strict policy, pooled model с turbine_id, CLI для replay/verify/agent и Streamlit-приложение для цикла, февраля и accuracy.",
+                "value": "Система уже имеет естественные точки роста от двух турбин к площадке и от офлайн-аудита к live control-room потоку.",
+                "verification": "source",
+                "evidence": [
+                  "src/config.py:78-97",
+                  "src/train.py:53-73",
+                  "app.py:47-63",
+                  "docker/entrypoint.sh:15-23"
+                ]
+              },
+              {
+                "aspect": "Ограничения развития видны в данных",
+                "implementation": "Верификационный replay отдельно считает skill по lead, coverage interval и gain от refresh, поэтому развитие можно направлять на погодный вход и длинные горизонты, а не только на замену алгоритма.",
+                "value": "Наличие измеримых baselines и lead-level метрик создаёт основу для контроля регрессий при масштабировании на новые провайдеры и турбины.",
+                "verification": "observed",
+                "evidence": [
+                  "src/train.py:98-132",
+                  "src/backtest.py:141-198",
+                  "captures/20261002T154604065692-scenario-verified.stdout.log"
+                ]
+              }
+            ],
+            "scoreReasoning": "18/20: структура кода и измерения хорошо подготовлены для дальнейшего развития. Удержаны один балл за непосредственный Docker packaging blocker и один за отсутствие lead_day в реальном feature allowlist при заявленном обслуживании 24/48/72 часов. Это не обнуляет MVP, но требует более строгой проверки при расширении горизонта или площадки."
+          },
+          {
+            "name": "Презентация, демо и ответы на вопросы",
+            "score": 18,
+            "max": 20,
+            "awarded": "Устного выступления не было, поэтому оценены только README, объяснение решения и воспроизводимое демо из репозитория. README исключительно подробный: даёт команды, ожидаемые строки, архитектуру, ограничения, метрики, структуру output и handoff.",
+            "deductions": "2 балла сняты за то, что ключевой Docker demo path, прямо приведённый в README, фактически не запускается; Python-команды и воспроизводимый результат при этом работают.",
+            "evidence": [
+              "README.md:1-20",
+              "README.md:27-58",
+              "README.md:487-510",
+              "captures/20261002T154457827227-scenario-replay.stdout.log"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "F-DOCKER-ENTRYPOINT",
+                "reason": "README обещает `docker run --rm windagent test/replay/agent`, но Docker ENTRYPOINT завершается до выполнения этих команд. Это конкретно уменьшает оценку воспроизводимого демо, а не штраф за отсутствие публичного URL или визуальной проверки."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "README ведёт от пяти минут до глубокого аудита",
+                "implementation": "Документ содержит быстрый старт, ожидаемый output, две policy, описание данных, признаки, обучение, scoring, agentic architecture, ограничения и roadmap.",
+                "value": "Участник или жюри может сначала получить результат, а затем проследить его происхождение до конкретных модулей и артефактов.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:1-20",
+                  "README.md:27-58",
+                  "README.md:201-262"
+                ]
+              },
+              {
+                "aspect": "Команды воспроизводимости конкретны",
+                "implementation": "README и backtest.py приводят команды для тестов, февраля, strict и 122-дневного verified replay, а также ожидают 1 344 строки и 672 строки на турбину.",
+                "value": "Проверяющий не должен угадывать, какой модуль запускать и как распознать неполную сдачу.",
+                "verification": "observed",
+                "evidence": [
+                  "README.md:487-507",
+                  "src/backtest.py:1-11",
+                  "captures/20261002T154457827227-scenario-replay.stdout.log"
+                ]
+              },
+              {
+                "aspect": "Объяснение честности не маскирует неопределённость",
+                "implementation": "Документация различает analysis и previous_dayN, rolling/strict и отдельно раскрывает, что точные timestamps публикации fixed-lead API не даются.",
+                "value": "Это повышает доверие к демо: сильные места и границы методологии предъявлены рядом с метриками.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:146-200",
+                  "README.md:456-478",
+                  "power_forecasting/src/validation.py:5-44"
+                ]
+              },
+              {
+                "aspect": "Воспроизводимый текстовый демо-результат",
+                "implementation": "CLI agent печатает по каждой турбине энергию, peak/trough, confidence, band width, NWP lead, calibration и revision note.",
+                "value": "Даже без визуального браузерного просмотра у пользователя есть содержательная, проверяемая демонстрация результата.",
+                "verification": "observed",
+                "evidence": [
+                  "src/agent.py:281-304",
+                  "captures/20261002T154412211573-scenario-agent.stdout.log"
+                ]
+              }
+            ],
+            "scoreReasoning": "18/20: README и текстовое CLI-демо значительно выше минимального уровня и дают воспроизводимый результат. Два балла удержаны только за конкретную ошибку контейнерного launch path. Визуальное поведение Streamlit не оценивалось по обязательному запрету пользовательской визуальной проверки и само по себе баллы не уменьшало."
+          }
+        ],
+        "total": 94
+      },
+      "case": {
+        "criteria": [
+          {
+            "name": "Соответствие задаче и работоспособность",
+            "score": 23,
+            "max": 25,
+            "awarded": "Основной кейсовый сценарий реализован и наблюдён: последовательный прогноз двух турбин на 24–48 часов, ежедневный replay февраля, почасовая локальная выдача и обновление при более свежем входе.",
+            "deductions": "2 балла сняты за Docker launch blocker: именно заявленный переносимый способ запуска не доходит до приложения, хотя прямой модульный запуск сценария работает.",
+            "evidence": [
+              "src/backtest.py:27-86",
+              "src/pipeline.py:254-276",
+              "captures/20261002T154457827227-scenario-replay.stdout.log"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "F-DOCKER-ENTRYPOINT",
+                "reason": "Требуемый работающий сценарий должен быть воспроизводимым заявленным способом; `docker run --rm windagent test` завершился `exec docker/entrypoint.sh: no such file or directory` до запуска кода. Наблюдённый Python replay ограничивает размер снятия."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Два турбинных прогноза и часовая детализация",
+                "implementation": "run_cycle и backtest проходят по t1/t2, строят 48-часовые блоки и публикуют time_utc/time_local, horizon_day, forecast, p10/p50/p90 и nwp_lead_hours.",
+                "value": "Это покрывает не только один пример, а требуемую структуру результата по обеим турбинам и двум дням.",
+                "verification": "observed",
+                "evidence": [
+                  "src/pipeline.py:24-28",
+                  "src/pipeline.py:254-276",
+                  "captures/20261002T154412211573-scenario-agent.stdout.log"
+                ]
+              },
+              {
+                "aspect": "Последовательный февральский replay",
+                "implementation": "run_backtest использует issue dates 31 января–27 февраля, 30-дневный warm-up, record и локальное окно 1–28 февраля; duplicate hours отсекаются по turbine/time_local с выбором свежего issue.",
+                "value": "Наблюдённая выдача имеет 1 344 строки и 672 строки на каждую турбину, то есть полностью закрывает тестовый месяц по 24 часам.",
+                "verification": "observed",
+                "evidence": [
+                  "src/backtest.py:47-86",
+                  "src/backtest.py:216-252",
+                  "captures/20261002T154457827227-scenario-replay.stdout.log"
+                ]
+              },
+              {
+                "aspect": "Agentic cycle соответствует перечисленным этапам кейса",
+                "implementation": "Agent tools покрывают inspect_weather, run_forecast_cycle, recent_performance, check_input_updates и publish_forecast; autonomous путь проходит тот же цикл без LLM.",
+                "value": "Получение данных, подготовка, модель, forecast, analysis и обновление входов не остаются отдельными скриптами без общей оркестрации.",
+                "verification": "source",
+                "evidence": [
+                  "src/agent.py:78-214",
+                  "src/agent.py:237-279",
+                  "src/pipeline.py:104-191"
+                ]
+              },
+              {
+                "aspect": "Out-of-sample работоспособность",
+                "implementation": "Верификационный запуск обработал 122 issue cycles, 11 712 forecast hours и 11 436 часов с известным SCADA target; day-ahead MAE 0.1586.",
+                "value": "Это фактическая проверка качества вне обучающего окна, а не только наличие файлов или unit-тестов.",
+                "verification": "observed",
+                "evidence": [
+                  "src/train.py:20-31",
+                  "captures/20261002T154604065692-scenario-verified.stdout.log"
+                ]
+              }
+            ],
+            "scoreReasoning": "23/25: все существенные части задания подтверждены кодом и локальным replay. Два балла — только за упаковку запуска; отсутствие фактических февральских targets является свойством конкурсного набора и не трактовано как недостаток команды."
+          },
+          {
+            "name": "Техническая реализация",
+            "score": 22,
+            "max": 25,
+            "awarded": "Техническая реализация зрелая для пятичасового MVP: три NWP-модели, causal feature engineering, pooled LightGBM, quantiles, calibration, cached archive и agent tools реально связаны в pipeline.",
+            "deductions": "3 балла сняты: 1 за Docker ENTRYPOINT, который ломает готовый deployment path, и 2 за несоответствие заявленного lead_day фактическому feature allowlist при обучении только на 24-часовых строках.",
+            "evidence": [
+              "src/dataset.py:36-86",
+              "src/features.py:94-167",
+              "src/model.py:89-152",
+              "src/train.py:20-31"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "F-DOCKER-ENTRYPOINT",
+                "reason": "Сборка образа проходит, но `ENTRYPOINT [\"docker/entrypoint.sh\"]` не может исполнить CRLF shell script; это дефект технической поставки, наблюдённый на точной команде запуска."
+              },
+              {
+                "points": 2,
+                "findingId": "F-LEAD-FEATURE",
+                "reason": "README и комментарии говорят, что lead_day является модельным признаком, но фактический `FEATURE_COLUMNS` его не содержит, а `TRAIN_LEAD_DAYS` равен только (1). Одна модель поэтому применяется к strict 48 h и D+2 72 h без явного lead feature; это ухудшает обоснованность технического переноса на весь заявленный горизонт."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Архивный weather path и causal join",
+                "implementation": "Weather client строит cache key из URL/параметров, читает `previous_dayN`, нормализует единицы и формирует по каждому lead отдельный ensemble frame. Pipeline выбирает только leads policy и временное окно target day.",
+                "value": "Технически это предотвращает наиболее опасную ошибку кейса — использование текущего анализа или будущей погоды в прошлом replay.",
+                "verification": "source",
+                "evidence": [
+                  "src/weather.py:80-111",
+                  "src/dataset.py:68-86",
+                  "src/features.py:41-88"
+                ]
+              },
+              {
+                "aspect": "Feature engineering и физическая модель",
+                "implementation": "Вычисляются density-corrected wind, air density, shear, gust, directions, ramps, local rolling statistics и power-curve priors; SCADA anomalies исключаются при fit.",
+                "value": "Модель получает признаки, соответствующие физике мощности ВЭС, и отдельно видит uncertainty NWP в wind и power units.",
+                "verification": "source",
+                "evidence": [
+                  "src/features.py:94-167",
+                  "src/dataset.py:175-212",
+                  "src/model.py:74-86"
+                ]
+              },
+              {
+                "aspect": "Pooled LightGBM и интервальный прогноз",
+                "implementation": "Одна pooled модель имеет point booster и три quantile boosters, сохраняется через joblib с metadata, клиппуется в [0,1], а quantiles сортируются для монотонного band.",
+                "value": "Результат пригоден и для volume forecast, и для reserve/uncertainty решения; проверенный replay показал P10–P90 coverage 0.764 при target 0.80.",
+                "verification": "observed",
+                "evidence": [
+                  "src/model.py:45-71",
+                  "src/model.py:89-152",
+                  "captures/20261002T154604065692-scenario-verified.stdout.log"
+                ]
+              },
+              {
+                "aspect": "Online calibration без будущего знания",
+                "implementation": "Calibrator отбрасывает verification rows с `time >= as_of`, требует минимальное число наблюдений, ограничивает bias и отдельно масштабирует conformal band.",
+                "value": "Система адаптирует bias и uncertainty к последним наблюдённым ошибкам, сохраняя point-in-time правило; в цикле 31 января отображено 672 verified hours.",
+                "verification": "source",
+                "evidence": [
+                  "src/calibration.py:65-100",
+                  "src/calibration.py:118-130",
+                  "tests/test_honesty.py:49-66",
+                  "captures/20261002T154412211573-scenario-agent.stdout.log"
+                ]
+              },
+              {
+                "aspect": "Проверки честности встроены в проект",
+                "implementation": "14 тестов проверяют issue moments, lead archive, block boundaries, calibration cutoff, monotonic error by lead and coherent February output; они исполнились в образе.",
+                "value": "Это делает ключевую техническую гарантию повторяемой, а не оставляет её только в комментариях README.",
+                "verification": "observed",
+                "evidence": [
+                  "tests/test_honesty.py:21-86",
+                  "captures/20261002T154342920710-test-direct.stdout.log"
+                ]
+              }
+            ],
+            "scoreReasoning": "22/25: архитектурное ядро и causal discipline сильны и реально протестированы. Главный содержательный технический gap — не отсутствие платного API, а разрыв между заявленным lead-aware дизайном и фактическим allowlist признаков: обучение происходит на 24 h, но модель не получает lead_day при 48/72 h. Дополнительный один балл снимает рабочий Docker packaging defect."
+          },
+          {
+            "name": "README и воспроизводимость",
+            "score": 23,
+            "max": 25,
+            "awarded": "Документация исключает большинство неопределённостей: даёт команды, ожидаемые файлы, формат колонок, метрики, архитектуру, ограничения и карту исходников; Python replay воспроизведён в контейнере.",
+            "deductions": "2 балла сняты за неработающий Docker-командный путь, который README предлагает как способ запуска без установки Python.",
+            "evidence": [
+              "README.md:27-58",
+              "README.md:487-510",
+              "src/backtest.py:1-11",
+              "captures/20261002T154457827227-scenario-replay.stdout.log"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "F-DOCKER-ENTRYPOINT",
+                "reason": "README-команды `docker run --rm windagent ...` не выполняются из-за CRLF в `docker/entrypoint.sh`; прямые `python -m pytest`, `python -m src.agent` и `python -m src.backtest` воспроизводятся, поэтому снятие не превышает два балла."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Быстрый старт и ожидаемые артефакты",
+                "implementation": "README перечисляет Python/pytest/backtest/agent, ожидаемый CSV на 1 344 строки, per-turbine counts и dashboard command.",
+                "value": "Проверяющему легко сопоставить фактический output с целевым результатом, что и было сделано в replay.",
+                "verification": "observed",
+                "evidence": [
+                  "README.md:27-58",
+                  "captures/20261002T154457827227-scenario-replay.stdout.log"
+                ]
+              },
+              {
+                "aspect": "Документирован формат и смысл сдачи",
+                "implementation": "Описаны local time, issue_time_local, honest nwp_lead_hours, policy, p10/p50/p90 и отличие hourly_all_leads от day-ahead submission.",
+                "value": "Это помогает не перепутать промежуточный D+2 прогноз с финальной строкой для каждого часа тестового месяца.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:325-355",
+                  "src/backtest.py:201-252"
+                ]
+              },
+              {
+                "aspect": "Репозиторий содержит проверяемые результаты",
+                "implementation": "В artifacts лежат pooled model metadata и validation summary, в outputs — submission/report artifacts, а команды из README указывают путь к каждому главному результату.",
+                "value": "Ревью может проверить не только код, но и связь между обучением, валидацией и публикацией.",
+                "verification": "source",
+                "evidence": [
+                  "artifacts/pooled_model.json",
+                  "artifacts/validation_summary.json",
+                  "README.md:499-510"
+                ]
+              },
+              {
+                "aspect": "Глубина self-audit",
+                "implementation": "README описывает leakage policy, две интерпретации момента выпуска, baseline comparison, coverage, refresh gain и roadmap по более точным GRIB timestamps.",
+                "value": "Документация не скрывает, что fixed-lead archive не доказывает exact publication timestamp; это делает воспроизводимость проверяемой и честной.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:187-200",
+                  "README.md:456-478",
+                  "power_forecasting/src/validation.py:5-44"
+                ]
+              }
+            ],
+            "scoreReasoning": "23/25: по содержанию README почти полностью закрывает критерий и Python-путь действительно повторён. Два балла относятся только к противоречию между обещанием бесшовного Docker запуска и фактическим CRLF-дефектом; отсутствие live URL и визуальной проверки не штрафовалось."
+          },
+          {
+            "name": "Ценность и применимость решения",
+            "score": 14,
+            "max": 15,
+            "awarded": "Прототип непосредственно адресует планирование выработки и резерва: выдаёт прогноз по каждой турбине, uncertainty band и сигнал о существенном изменении свежего NWP входа.",
+            "deductions": "1 балл снят за Docker packaging defect, который препятствует самому простому переносу результата на рабочую машину, хотя локальная функциональность доказана.",
+            "evidence": [
+              "src/agent.py:281-304",
+              "src/pipeline.py:323-353",
+              "captures/20261002T154412211573-scenario-agent.stdout.log"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "F-DOCKER-ENTRYPOINT",
+                "reason": "Прикладная ценность выше, когда диспетчерская команда может запустить артефакт в стандартном контейнере; заявленный путь сейчас требует обхода ENTRYPOINT и прямого вызова Python."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Прогноз полезен для диспетчерского решения",
+                "implementation": "Briefing называет expected energy, capacity factor, peak/trough, ramps и confidence, а P10–P90 остаётся в CSV.",
+                "value": "Оператор получает одновременно ожидаемый объём и диапазон риска, что ближе к задаче резерва, чем один point estimate.",
+                "verification": "observed",
+                "evidence": [
+                  "src/agent.py:281-304",
+                  "captures/20261002T154412211573-scenario-agent.stdout.log"
+                ]
+              },
+              {
+                "aspect": "Качество подтверждено baselines",
+                "implementation": "122-дневный replay сравнил модель с persistence и power curve; WindAgent day-ahead MAE 0.1586, skill относительно persistence в validation summary около 53% для 24 h продукта.",
+                "value": "Польза не заявлена без контекста: есть количественная проверка, что ML/ensemble слой лучше простых альтернатив на том же наборе часов.",
+                "verification": "observed",
+                "evidence": [
+                  "src/metrics.py:59-100",
+                  "captures/20261002T154604065692-scenario-verified.stdout.log",
+                  "artifacts/validation_summary.json"
+                ]
+              },
+              {
+                "aspect": "Обновление прогноза привязано к измеримому порогу",
+                "implementation": "Revision check сравнивает сегодняшнюю D+1 оценку со вчерашней D+2 на пересечении часов и публикует mean/max absolute change и action note.",
+                "value": "Пользователь видит не просто новый файл, а почему новый weather input заслуживает внимания и насколько изменился forecast.",
+                "verification": "observed",
+                "evidence": [
+                  "src/pipeline.py:323-353",
+                  "src/agent.py:245-275",
+                  "captures/20261002T154604065692-scenario-verified.stdout.log"
+                ]
+              },
+              {
+                "aspect": "Применимость ограничена честно",
+                "implementation": "Система явно маркирует fixed-lead methodology и публикует nwp lead, policy и calibration state вместо выдачи метрики без provenance.",
+                "value": "Такая маркировка уменьшает риск использовать прогноз как более свежий или более точный, чем он есть.",
+                "verification": "source",
+                "evidence": [
+                  "src/pipeline.py:24-28",
+                  "src/config.py:62-78",
+                  "power_forecasting/src/validation.py:22-44"
+                ]
+              }
+            ],
+            "scoreReasoning": "14/15: ценность подтверждена и результат ориентирован на реального пользователя ВЭС. Один балл — за упаковку, потому что стандартный контейнерный entrypoint не позволяет без обхода получить тот же прикладной результат на другой машине."
+          },
+          {
+            "name": "Потенциал развития и оригинальность подхода",
+            "score": 9,
+            "max": 10,
+            "awarded": "Оригинальность и roadmap сильные: две as-of policy, fixed-lead weather semantics, ансамблевая неопределённость, conformal calibration и LLM tool layer дают ясные направления развития.",
+            "deductions": "1 балл снят за подтверждённое ограничение lead-aware реализации: `lead_day` описан как признак, но отсутствует в фактическом FEATURE_COLUMNS при fit только на 24-часовом lead.",
+            "evidence": [
+              "README.md:187-200",
+              "src/train.py:20-31",
+              "src/features.py:214-262"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "F-LEAD-FEATURE",
+                "reason": "Для дальнейшего расширения на разные горизонты нужно либо явно включить lead_day в обучаемый allowlist и проверить folds, либо честно разделить модели; текущая реализация не подтверждает заявленную lead-aware часть полностью."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Оригинальный fixed-lead replay",
+                "implementation": "Команда не использует только последний weather analysis, а формирует два operational прочтения момента выпуска и сохраняет lead provenance в каждой строке.",
+                "value": "Это прямо отвечает трудной части кейса и создаёт переносимый шаблон для других forecast-задач с архивными провайдерами.",
+                "verification": "source",
+                "evidence": [
+                  "src/config.py:62-78",
+                  "src/features.py:28-88",
+                  "README.md:187-200"
+                ]
+              },
+              {
+                "aspect": "Открытые точки расширения",
+                "implementation": "Weather provider, model, calibrator, policy, reporting и LLM backend разделены; присутствуют OpenAI и Anthropic adapters, archive/live modes и outputs для аудита.",
+                "value": "Можно добавлять provider, более точные run timestamps, новые турбины или control-room connector, не меняя базовый контракт прогноза.",
+                "verification": "source",
+                "evidence": [
+                  "src/weather.py:80-163",
+                  "src/llm.py:125-245",
+                  "src/pipeline.py:389-399"
+                ]
+              },
+              {
+                "aspect": "Развитие направлено на наблюдаемый bottleneck",
+                "implementation": "README и validation report сравнивают error по lead, coverage и baselines, а roadmap предлагает exact GRIB runs и provider ensemble members.",
+                "value": "Следующий шаг привязан к измерениям качества входа, а не к необоснованному усложнению модели.",
+                "verification": "observed",
+                "evidence": [
+                  "README.md:154-165",
+                  "README.md:456-478",
+                  "artifacts/validation_summary.json"
+                ]
+              },
+              {
+                "aspect": "Agentic слой ограничен проверяемыми инструментами",
+                "implementation": "LLM получает только функции inspect/run/performance/update/publish, транскрипт сохраняет tool calls и usage, а deterministic mode является fallback без ключа.",
+                "value": "Это масштабируемая схема для операторских объяснений с контролем числовой достоверности.",
+                "verification": "source",
+                "evidence": [
+                  "src/agent.py:211-214",
+                  "src/agent.py:306-344",
+                  "src/llm.py:143-190"
+                ]
+              }
+            ],
+            "scoreReasoning": "9/10: подход оригинален и имеет измеримый roadmap. Один балл удержан из-за конкретной несогласованности lead-aware документации и модели; это исправимо и не отменяет ценность уже реализованных as-of и agentic механизмов."
+          }
+        ],
+        "total": 91
+      },
+      "judgeScore": 92.5,
+      "caseRequirements": [
+        {
+          "requirement": "Почасовой прогноз выработки двух ВЭС на горизонте 24–48 часов",
+          "status": "met",
+          "explanation": "Pipeline строит два 24-часовых local-day блока, публикует 48 строк на турбину и в наблюдённом цикле сформировал результат для t1 и t2.",
+          "evidence": [
+            "src/pipeline.py:67-99",
+            "src/pipeline.py:254-276",
+            "captures/20261002T154412211573-scenario-agent.stdout.log"
+          ]
+        },
+        {
+          "requirement": "Обучение на истории, доступной не позднее 31.01.2026",
+          "status": "met",
+          "explanation": "Training window ограничен TRAIN_ISSUE_END=2026-01-30 для целей до 31 января, а validation/test boundaries отделены от training rows.",
+          "evidence": [
+            "src/train.py:20-31",
+            "src/train.py:57-73",
+            "README.md:263-306"
+          ]
+        },
+        {
+          "requirement": "На каждый день февраля 2026 использовать архивный прогноз погоды, доступный на момент расчёта",
+          "status": "partial",
+          "explanation": "Rolling и strict policy выбирают `previous_dayN` с фиксированным lead и проходят point-in-time тесты. При этом сам выбранный fixed-lead API не предоставляет точные индивидуальные timestamps публикации, поэтому exact publication provenance не доказан.",
+          "evidence": [
+            "src/config.py:34-39",
+            "src/config.py:62-78",
+            "src/features.py:61-88",
+            "power_forecasting/src/validation.py:5-44",
+            "captures/20261002T154342920710-test-direct.stdout.log"
+          ]
+        },
+        {
+          "requirement": "Не подмешивать фактическую будущую погоду или целевую выработку февраля во вход прогноза",
+          "status": "met",
+          "explanation": "SCADA state фильтруется строго по time < issue moment, calibration использует только verification time < as_of, а погодный block берётся из archive leads. Февральский replay не имел измеренных actuals и не использовал их для scoring.",
+          "evidence": [
+            "src/dataset.py:96-119",
+            "src/calibration.py:65-99",
+            "tests/test_honesty.py:30-66",
+            "captures/20261002T154457827227-scenario-replay.stdout.log"
+          ]
+        },
+        {
+          "requirement": "Ежедневно повторять прогноз с 31 января по 27 февраля и закрыть 1–28 февраля",
+          "status": "met",
+          "explanation": "Полный rolling replay завершился с 28 daily cycles, 1 344 строками и 672 строками на турбину; скрипт проверяет локальное окно и выводит incomplete hours только при пропусках.",
+          "evidence": [
+            "src/config.py:90-97",
+            "src/backtest.py:58-86",
+            "src/backtest.py:216-252",
+            "captures/20261002T154457827227-scenario-replay.stdout.log"
+          ]
+        },
+        {
+          "requirement": "Agentic-цикл: погода → подготовка → модель → прогноз → анализ → повторный расчёт при обновлении",
+          "status": "met",
+          "explanation": "Autonomous agent исполняет весь цикл без ключа; tool-calling слой предоставляет те же операции LLM. Наблюдённый CLI цикл показал briefing и revision notes для обеих турбин.",
+          "evidence": [
+            "src/agent.py:78-214",
+            "src/agent.py:237-279",
+            "src/pipeline.py:104-191",
+            "captures/20261002T154412211573-scenario-agent.stdout.log"
+          ]
+        },
+        {
+          "requirement": "Выдача должна быть почасовой и пригодной для передачи результата",
+          "status": "met",
+          "explanation": "Публикация содержит local/UTC timestamps, policy, issue date, lead, forecast и quantiles; backtest пишет day-ahead CSV, all-leads CSV, JSON report и daily briefings.",
+          "evidence": [
+            "src/pipeline.py:235-252",
+            "src/backtest.py:201-213",
+            "captures/20261002T154457827227-scenario-replay.stdout.log"
+          ]
+        },
+        {
+          "requirement": "Использовать предоставленные CSV по двум турбинам с указанными временными и целевыми полями",
+          "status": "met",
+          "explanation": "Оба organizer CSV открыты; repository copies byte-identical к ним: размеры 6,049,266 и 6,354,725 bytes и совпадающие SHA-256. SCADA loader использует все пять требуемых русских колонок, после чего агрегирует 10-минутные записи в часы.",
+          "evidence": [
+            "src/scada.py:11-32",
+            "src/scada.py:57-91",
+            "dataset/Dataset HackAlemAI для участников 11.03.2023-28.02.2026 - turbine 1.csv",
+            "dataset/Dataset HackAlemAI для участников 11.03.2023-28.02.2026 - turbine 2.csv"
+          ]
+        }
+      ],
+      "testData": {
+        "provided": [
+          "Dataset HackAlemAI для участников 11.03.2023-28.02.2026 - turbine 1.csv",
+          "Dataset HackAlemAI для участников 11.03.2023-28.02.2026 - turbine 2.csv",
+          "HackAlem AI_ Agentic AI для прогнозирования выработки ВЭС.md"
+        ],
+        "used": [
+          "Dataset HackAlemAI для участников 11.03.2023-28.02.2026 - turbine 1.csv",
+          "Dataset HackAlemAI для участников 11.03.2023-28.02.2026 - turbine 2.csv",
+          "HackAlem AI_ Agentic AI для прогнозирования выработки ВЭС.md"
+        ],
+        "checks": [
+          {
+            "input": "Два CSV кейса по turbine 1 и turbine 2; repository copies сопоставлены с provided files по размеру и SHA-256.",
+            "method": "Открыть заголовки/файлы и сравнить с dataset inputs проекта; затем выполнить pytest и backtest в собранном образе, который читает dataset/*.csv через src.scada.",
+            "result": "Оба файла совпали byte-for-byte: turbine 1 — 6,049,266 bytes, SHA-256 C4C341582FB2DD348B7187F0128CFF265FE055F469413871EBB5DB50EEF58B5B; turbine 2 — 6,354,725 bytes, SHA-256 820578CD18BB557CD30C2E102F3AE5A386DFC6C489A5A15743339C2B017305E5.",
+            "conclusion": "Проверки применены к тем же организаторским данным по содержимому; отдельной подмены или mock-датасета не использовалось."
+          },
+          {
+            "input": "Временные столбцы и десятиминутные SCADA строки из двух CSV.",
+            "method": "SCADA loader переименовывает русские headers, парсит `Статистическое время`, сортирует и агрегирует resample(1h), требуя минимум четыре из шести samples.",
+            "result": "Код успешно прошёл загрузку данных в warm-up, February replay и 122-day verified replay; 14 unit/domain тестов также прошли.",
+            "conclusion": "Формат полей и временная агрегация совместимы с предоставленными файлами. Доказательства: src/scada.py:11-32, src/scada.py:57-91, captures/20261002T154342920710-test-direct.stdout.log."
+          },
+          {
+            "input": "Февральское окно 1–28 февраля 2026 без organizer actual targets.",
+            "method": "Запустить `python -m src.backtest --policy rolling`, проверить размер day-ahead CSV, per-turbine counts, локальное покрытие и наличие quantile ordering в проектных тестах.",
+            "result": "Replay завершился: 1,344 строки, t1=672, t2=672; проект вывел, что production для этого окна отсутствует, поэтому accuracy не считалась.",
+            "conclusion": "Тестовая выдача полна и coherent; scoring февраля ограничен тем, что фактическая выработка организаторами не предоставлена, это не дефект проекта. Доказательства: tests/test_honesty.py:75-86, captures/20261002T154457827227-scenario-replay.stdout.log."
+          },
+          {
+            "input": "Историческое окно с известной SCADA для проверки качества и refresh.",
+            "method": "Запустить rolling replay 2025-10-01..2026-01-30 и сравнить printed metrics с кодом scoring.",
+            "result": "122 cycles; 11,712 forecast hours; 11,436 verified. Day-ahead MAE 0.1586, RMSE 0.2134, R² 0.651; P10–P90 coverage 0.764; paired refresh MAE 0.1738 → 0.1573, 9.5% better; 234/244 cycles had material input change.",
+            "conclusion": "Основные количественные claims README воспроизведены на реальном проектном наборе. Доказательства: src/backtest.py:116-198, captures/20261002T154604065692-scenario-verified.stdout.log."
+          }
+        ],
+        "limitations": [
+          "Организаторские фактические targets февраля в предоставленных данных отсутствуют, поэтому February replay проверяет coverage, формат и причинность, но не final February accuracy.",
+          "Визуальная проверка dashboard не выполнялась по правилу задания; проверены статические источники и CLI/API-подобные пути.",
+          "Exact historical publication timestamps внешнего fixed-lead archive не доступны в выбранном методе; проект сам маркирует это ограничение."
+        ]
+      },
+      "runtime": {
+        "status": "working",
+        "build": "Сборка Docker image прошла успешно.",
+        "start": "Основной Python-путь стартует и работает; документированный ENTRYPOINT не стартует из-за CRLF в docker/entrypoint.sh.",
+        "scenario": "Автономный цикл 31.01, полный February rolling replay и 122-дневный verified rolling replay воспроизведены.",
+        "environment": "Проверка выполнена в собранном python:3.12-slim образе без API-ключей и без визуальной автоматизации; для обхода подтверждённого ENTRYPOINT-дефекта использован прямой запуск Python-модуля.",
+        "summary": "Главный сценарий имеет статус working, потому что наблюдён прямой end-to-end результат. Статус не понижен из-за отсутствия LLM credentials: autonomous mode является предусмотренным основным режимом. Docker launch defect записан отдельно как project finding.",
+        "checks": [
+          {
+            "command": "docker build -t windagent .",
+            "result": "Образ собран успешно; pinned dependencies установлены, COPY исходников и chmod завершились без ошибки.",
+            "id": "CHK-BUILD-IMAGE",
+            "stage": "build",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Образ проекта должен собираться с кодом, артефактами, кэшем погоды и зависимостями."
+          },
+          {
+            "command": "docker run --rm windagent test",
+            "result": "FAIL до запуска приложения: `exec docker/entrypoint.sh: no such file or directory`. Дополнительный запуск через /bin/sh также показал `set: Illegal option -` из-за CRLF.",
+            "id": "CHK-START-ENTRYPOINT",
+            "stage": "start",
+            "status": "fail",
+            "cause": "project",
+            "expected": "Документированный контейнерный запуск должен стартовать entrypoint и выполнить 14 офлайн-тестов."
+          },
+          {
+            "command": "python -m pytest -q",
+            "result": "14 passed in 18.11s.",
+            "id": "CHK-TESTS-OFFLINE",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Офлайн-тесты должны проверять causal issue times, archive leads, calibration cutoff, output shape и отсутствие leakage."
+          },
+          {
+            "command": "python -m src.agent --date 2026-01-31",
+            "result": "Успешно: обе турбины получили 48-часовой forecast; CLI вывел energy, peak/trough, low confidence, calibration и NWP revision. Выход содержит 24/48 h leads.",
+            "id": "CHK-SCENARIO-AGENT",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Один автономный цикл 31 января должен дать операторскую сводку по двум турбинам и сравнить свежий вход со вчерашним."
+          },
+          {
+            "command": "python -m src.backtest --policy rolling",
+            "result": "Успешно: warm-up 30 дней, February replay, 1,344 day-ahead строки; t1=672, t2=672; accuracy не считалась из-за отсутствия February actuals.",
+            "id": "CHK-SCENARIO-FEBRUARY",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Реплей должен покрыть 1–28 февраля 2026 ровно по 24 часа для каждой из двух турбин и записать submission/report artifacts."
+          },
+          {
+            "command": "python -m src.backtest --start 2025-10-01 --end 2026-01-30 --label verified --policy rolling",
+            "result": "Успешно: 122 cycles, 11,712 forecast hours, 11,436 verified; day-ahead MAE 0.1586, RMSE 0.2134, R² 0.651; coverage 0.764; refresh improvement 9.5%.",
+            "id": "CHK-SCENARIO-VERIFIED",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Длинный out-of-sample replay должен дать scoring и измерить ценность ежедневного пересчёта на часах с известной SCADA."
+          }
+        ],
+        "limitations": [
+          "Live Streamlit rendering и визуальное поведение не проверялись по явному запрету визуальной автоматизации.",
+          "LLM reasoning mode не запускался без предоставленных credentials; deterministic autonomous mode запускается без них и покрывает основной кейс.",
+          "Документированный Docker ENTRYPOINT требует исправления перевода строк; это project defect, а не ограничение среды ревью."
+        ]
+      },
+      "liveDemo": {
+        "status": "none",
+        "url": null,
+        "notes": "Публичной live-ссылки в материалах репозитория нет. README документирует локальный Streamlit dashboard; визуальное поведение не проверялось и отсутствие URL не использовано как причина снятия баллов."
+      },
+      "fiveHourContext": "Для пятичасового хакатона объём решения убедителен: команда собрала рабочий offline path с уже сохранёнными weather/model artifacts, написала leakage-oriented tests, добавила две трактовки as-of policy, quantile output, calibration, sequential replay, operator briefing и подробный handoff. От production-системы не требовались интеграции диспетчерской, exact GRIB publication provenance или полноценная эксплуатационная observability. В этом контексте CRLF-ошибка запуска контейнера и отсутствие lead_day в фактических признаках — существенные, но локальные недостатки MVP, а не основание считать проект неработающим.",
+      "strengths": [
+        "End-to-end deterministic scenario воспроизведён без API-ключей: прогноз, анализ, revision и публикация.",
+        "Полный February replay дал 1 344 строки без пропусков по двум турбинам.",
+        "122-дневный out-of-sample replay подтвердил количественный skill и 9.5% пользу ежедневного refresh.",
+        "Point-in-time правила и leakage tests заметно сильнее обычной README-декларации о честности.",
+        "README и исходники подробно раскрывают формат данных, команды, метрики, ограничения и roadmap."
+      ],
+      "gaps": [
+        "Документированный Docker ENTRYPOINT не запускается: CRLF в docker/entrypoint.sh приводит к ошибке exec до выполнения тестов/replay.",
+        "Lead-aware обещание не совпадает с фактической моделью: train.py обучает только lead_day=1, а features.FEATURE_COLUMNS не содержит lead_day, хотя модель применяется к 48/72-часовым входам."
+      ],
+      "futureAdvice": [
+        {
+          "principle": "Проверять артефакт доставки той же командой, которую получает пользователь",
+          "why": "F-DOCKER-ENTRYPOINT показывает, что успешная сборка и рабочий Python-код не гарантируют запуска образа: shebang и CRLF ломают ENTRYPOINT до тестов.",
+          "how": "В другом хакатоне сразу после сборки выполнять чистый smoke test `docker run --rm <image> test` в Linux-контейнере и проверять первые байты shell entrypoint; хранить executable scripts с LF и отдельно проверять dashboard/CLI command.",
+          "findingIds": [
+            "F-DOCKER-ENTRYPOINT"
+          ],
+          "successCheck": "Свежий клон выполняет ровно команду из README, запускает тесты и печатает ожидаемый сценарный результат без ручного override ENTRYPOINT.",
+          "timeboxMinutes": 15
+        },
+        {
+          "principle": "Разделять модели или признаки по горизонту только после явной проверки lead semantics",
+          "why": "F-LEAD-FEATURE: фактический fit идёт по 24-часовым строкам, но strict и D+2 обслуживаются той же моделью без lead_day в feature allowlist; это делает перенос на длинный lead менее обоснованным.",
+          "how": "В новом кейсе зафиксировать lead в feature registry, включить его только при наличии хронологических fold-проверок либо обучить отдельные модели; затем сравнить MAE/RMSE/coverage отдельно для каждого lead и проверить, что output metadata совпадает с модельным режимом.",
+          "findingIds": [
+            "F-LEAD-FEATURE"
+          ],
+          "successCheck": "Feature manifest, training rows и inference path одинаково показывают поддерживаемые leads, а отдельный тест меняет lead и проверяет, что выбранная модель/признак действительно меняется и не использует future target.",
+          "timeboxMinutes": 35
+        }
+      ],
+      "uncertainties": [
+        "Визуальное поведение Streamlit dashboard не проверялось, поскольку визуальную проверку выполняет пользователь.",
+        "LLM tool-calling ветка не проверялась с реальным provider credential; её структура и error path оценены по исходникам. Autonomous ветка проверена.",
+        "Метод fixed-lead Open-Meteo подтверждает номинальное упреждение, но не точные timestamps публикации каждого provider run; это явно отражено проектом и учтено как partial в caseRequirements, не как отдельный штраф."
+      ],
+      "reviewPolicyVersion": 2,
+      "assessmentStatus": "ready",
+      "findings": [
+        {
+          "id": "F-OFFLINE-REPRO",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Основной offline Python-сценарий воспроизводит тесты, один агентный цикл, February submission и verified scoring без API-ключей.",
+          "expected": "Репозиторий должен иметь локальный путь от входных данных до проверяемого forecast output.",
+          "actual": "14 тестов прошли; agent cycle, 1,344-row February replay и 122-day replay завершились успешно.",
+          "evidence": [
+            "captures/20261002T154342920710-test-direct.stdout.log",
+            "captures/20261002T154412211573-scenario-agent.stdout.log",
+            "captures/20261002T154457827227-scenario-replay.stdout.log",
+            "captures/20261002T154604065692-scenario-verified.stdout.log"
+          ],
+          "checkIds": [
+            "CHK-TESTS-OFFLINE",
+            "CHK-SCENARIO-AGENT",
+            "CHK-SCENARIO-FEBRUARY",
+            "CHK-SCENARIO-VERIFIED"
+          ]
+        },
+        {
+          "id": "F-CAUSAL-ARCHIVE",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Archive selection, issue moments, past-only SCADA state and calibration cutoff защищены исходниками и тестами.",
+          "expected": "Будущая погода и target не должны попадать во входы historical replay.",
+          "actual": "14 offline tests прошли; code selects previous_day leads and filters verification time strictly before as_of.",
+          "evidence": [
+            "src/config.py:62-78",
+            "src/features.py:61-88",
+            "src/dataset.py:96-119",
+            "src/calibration.py:65-99",
+            "tests/test_honesty.py:21-66",
+            "captures/20261002T154342920710-test-direct.stdout.log"
+          ],
+          "checkIds": [
+            "CHK-TESTS-OFFLINE",
+            "CHK-SCENARIO-FEBRUARY"
+          ]
+        },
+        {
+          "id": "F-VERIFIED-SKILL",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "На известной SCADA модель показала положительный skill и измеримую пользу ежедневного refresh.",
+          "expected": "Out-of-sample replay должен дать метрики на target rows и отдельно оценить повторный расчёт.",
+          "actual": "11,436 verified hours; MAE 0.1586 for day-ahead; 9.5% paired refresh improvement; 234/244 material input changes.",
+          "evidence": [
+            "src/backtest.py:141-198",
+            "captures/20261002T154604065692-scenario-verified.stdout.log"
+          ],
+          "checkIds": [
+            "CHK-SCENARIO-VERIFIED"
+          ]
+        },
+        {
+          "id": "F-DOCKER-ENTRYPOINT",
+          "kind": "defect",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Документированный контейнерный запуск не исполняет собственный entrypoint.",
+          "expected": "`docker run --rm windagent test` должен стартовать `docker/entrypoint.sh` и выполнить pytest.",
+          "actual": "Собранный image завершился `exec docker/entrypoint.sh: no such file or directory`; запуск через /bin/sh также получил `set: Illegal option -`. Файл содержит CRLF и shebang с байтами 0D 0A.",
+          "evidence": [
+            "Dockerfile:1-10",
+            "docker/entrypoint.sh:1-16",
+            "captures/20261002T154316774856-test.stderr.log",
+            "captures/20261002T154335290346-test-shell.stderr.log"
+          ],
+          "checkIds": [
+            "CHK-BUILD-IMAGE",
+            "CHK-START-ENTRYPOINT"
+          ]
+        },
+        {
+          "id": "F-LEAD-FEATURE",
+          "kind": "defect",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Документация описывает lead_day как модельный признак, но фактический feature allowlist его не содержит; fit выполняется только на 24-hour lead.",
+          "expected": "Для модели, обслуживающей 24/48/72-hour inputs, lead semantics должны быть явно представлены в обучении либо должны существовать отдельные проверенные модели.",
+          "actual": "`TRAIN_LEAD_DAYS=(1,)` и `FEATURE_COLUMNS=features.FEATURE_COLUMNS+[\"turbine_id\"]`; список в features.py содержит погодные, календарные и state columns, но не `lead_day`. train.py затем применяет одну модель к rolling 24 h, strict 48 h и D+2 72 h.",
+          "evidence": [
+            "src/train.py:20-31",
+            "src/train.py:69-73",
+            "src/train.py:102-107",
+            "src/features.py:47-52",
+            "src/features.py:214-262"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "F-FIXED-LEAD-LIMITATION",
+          "kind": "limitation",
+          "verification": "source",
+          "responsibility": "external_service",
+          "claim": "Выбранный fixed-lead historical forecast method не доказывает exact publication timestamp каждого значения.",
+          "expected": "Идеальный point-in-time audit должен знать реальный run/publication timestamp для каждого provider value.",
+          "actual": "Проект принимает fixed-lead methodology, сохраняет nominal reference и явно ставит exact_publication_timestamps_verified=false.",
+          "evidence": [
+            "power_forecasting/src/validation.py:5-44",
+            "README.md:187-200"
+          ],
+          "checkIds": []
+        }
+      ],
+      "gapFindingIds": [
+        "F-DOCKER-ENTRYPOINT",
+        "F-LEAD-FEATURE"
+      ]
+    }
+  ],
+  "score": 92.5,
+  "status": "complete",
+  "expectedJudges": 1
+}

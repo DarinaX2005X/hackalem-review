@@ -1,0 +1,946 @@
+{
+  "methodVersion": 4,
+  "repoId": "hack-40793dbe-wamigos",
+  "repoUrl": "https://github.com/BAITC-Hacks/hack-40793dbe-wamigos",
+  "caseId": 8,
+  "snapshot": "204e043b8a90c7c6ac8076a28a013a98ae256dbf",
+  "judges": [
+    {
+      "methodVersion": 4,
+      "repoId": "hack-40793dbe-wamigos",
+      "caseId": 8,
+      "model": "GPT-5.6 Luna",
+      "snapshot": "204e043b8a90c7c6ac8076a28a013a98ae256dbf",
+      "overallSummary": "Сильный локальный MVP с хорошо разделёнными frontend, Java backend и Python AI-service. Репозиторий содержит полный заявленный путь от загрузки записи до транскрипта, задач, проблем и PDF/DOCX, а frontend-сборка и контрактные проверки проходят. Полный аудиосценарий в этой проверке не воспроизведён: локальная LLM и speech-модели не предоставлены, backend нельзя собрать доступным Java 11 при требуемой Java 21. Статический аудит показывает продуманную привязку фактов к исходным сегментам, консервативную нормализацию сроков и закрытый контур через Ollama, но также выявляет рассинхронизацию AI-фикстур с обязательным полем evidenceQuotes и неполное покрытие календарных формулировок.",
+      "global": {
+        "criteria": [
+          {
+            "name": "Ценность решения",
+            "score": 25,
+            "max": 25,
+            "awarded": "25/25 — полностью подтверждённая ценность",
+            "deductions": "Подтверждённых проектных недостатков, уменьшающих ценность решения в рамках пятичасового MVP, не установлено; неполный audio runtime вынесен в limitations.",
+            "evidence": [
+              "README.md:3-13",
+              "cases/8/task.txt",
+              "ai-service/app/pipeline.py:60-176"
+            ],
+            "deductionItems": [],
+            "awardedDetails": [
+              {
+                "aspect": "Потеря поручений в ручном протоколировании",
+                "implementation": "Система принимает аудио, строит сегменты речи, выделяет задачи, исполнителя, постановщика, исходные цитаты и срок; Java сохраняет результат, frontend показывает его и даёт экспорт.",
+                "value": "Это непосредственно адресует проблему из задания: поручения и сроки перестают зависеть от ручной расшифровки и собираются в проверяемую структуру.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:3-13",
+                  "ai-service/app/pipeline.py:60-176",
+                  "backend/src/main/java/kz/hackalem/wamigos/meeting/controller/MeetingController.java:29-74"
+                ]
+              },
+              {
+                "aspect": "Пользовательский результат для деловой встречи",
+                "implementation": "Модель результата содержит summary, speakers, segments, tasks, problems и diagnostics; frontend имеет отдельные страницы списка и результата встречи.",
+                "value": "Результат пригоден не только для демонстрации распознавания, но и для последующего контроля задач и просмотра доказательного транскрипта.",
+                "verification": "source",
+                "evidence": [
+                  "ai-service/app/schemas.py:153-184",
+                  "frontend/src/lib/types.ts:1-75",
+                  "frontend/src/features/meetings/result.tsx:1-200"
+                ]
+              },
+              {
+                "aspect": "Соответствие закрытому контуру",
+                "implementation": "Единственный провайдер inference — локальный HTTP endpoint Ollama; HTTP-клиент отключает redirect и proxy, а compose передаёт AI-service только на внутренний ollama:11434.",
+                "value": "Для корпоративного заказчика это снимает ключевой риск утечки аудио и текста во внешние облачные AI API.",
+                "verification": "source",
+                "evidence": [
+                  "ai-service/app/providers/local_llm_provider.py:19-88",
+                  "ai-service/app/main.py:23-31",
+                  "compose.yaml:16-60"
+                ]
+              },
+              {
+                "aspect": "Ограничения применимости",
+                "implementation": "Код сохраняет raw-срок при неоднозначных и событийных формулировках и выдаёт diagnostics/warnings, вместо того чтобы без доказательств придумывать дату.",
+                "value": "Для поручений это безопаснее автоматической, но ошибочной даты; пользователь видит границу уверенности результата.",
+                "verification": "source",
+                "evidence": [
+                  "ai-service/app/intelligence/deadline_normalizer.py:100-191",
+                  "ai-service/app/pipeline.py:124-149"
+                ]
+              }
+            ],
+            "scoreReasoning": "Высокий балл обусловлен ясной корпоративной проблемой, пригодным пользовательским результатом и закрытым локальным контуром. До максимума не хватает наблюдаемого подтверждения обработки именно двух аудиозаписей и устойчивости на реальных моделях: в репозитории это описано и подготовлено, но в доступной среде модели не настроены."
+          },
+          {
+            "name": "Результат и качество решения",
+            "score": 18,
+            "max": 20,
+            "awarded": "18/20",
+            "deductions": "Снято 2 балла за подтверждённый рассинхрон собственных AI-фикстур с обязательным evidence-контрактом; невозможность полного audio runtime вынесена в limitations.",
+            "evidence": [
+              "runtime.checks: rt-frontend-typecheck, rt-frontend-build, rt-ai-unit",
+              "ai-service/tests/test_intelligence.py:37-47",
+              "backend/src/main/java/kz/hackalem/wamigos/export/MeetingExportProcessor.java:52-64"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "def-test-fixtures",
+                "reason": "В корректном Python 3.12 окружении 7 intelligence-тестов завершаются ошибкой валидации MeetingFacts до verifier/summary: helper task() в ai-service/tests/test_intelligence.py не содержит обязательный evidenceQuotes, хотя ExtractedTask требует его в extracted_task.py:6-15. Это снижает доказанность качества пайплайна и воспроизводимость тестового результата."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Сквозная модель результата",
+                "implementation": "MeetingPipeline последовательно разрешает speakers, извлекает факты, связывает evidence, атрибутирует роли, чистит сроки, верифицирует задачи, строит summary и ставит теги на сегменты.",
+                "value": "Сценарий не заканчивается сырым STT: команда реализовала целостную обработку до структурированного протокола.",
+                "verification": "source",
+                "evidence": [
+                  "ai-service/app/pipeline.py:60-176"
+                ]
+              },
+              {
+                "aspect": "Защита от галлюцинаций",
+                "implementation": "EvidenceBinder требует цитаты, исправляет неверный source ID или отбрасывает неоднозначный факт; summary выбирает только ID принятых задач и проблем и затем рендерит их исходный текст.",
+                "value": "Пользовательский результат имеет трассируемость к транскрипту, что особенно важно для поручений и юридически чувствительных сроков.",
+                "verification": "source",
+                "evidence": [
+                  "ai-service/app/intelligence/evidence_binder.py:1-120",
+                  "ai-service/app/intelligence/summary.py:1-120",
+                  "ai-service/app/pipeline.py:64-118"
+                ]
+              },
+              {
+                "aspect": "Экспорт",
+                "implementation": "Backend имеет отдельные PDF и DOCX renderer, включая задачи, постановщика, исполнителя, срок, проблемы и полный транскрипт; frontend вызывает export endpoint по выбранному формату.",
+                "value": "Экспорт превращает внутренний результат в артефакт, который можно использовать в рабочем документообороте.",
+                "verification": "source",
+                "evidence": [
+                  "backend/src/main/java/kz/hackalem/wamigos/export/renderer/PdfExportRenderer.java:34-149",
+                  "backend/src/main/java/kz/hackalem/wamigos/export/renderer/DocxExportRenderer.java:22-166",
+                  "frontend/src/lib/api.ts:45-53"
+                ]
+              },
+              {
+                "aspect": "Проверенная frontend-часть",
+                "implementation": "Next.js production build и TypeScript typecheck завершились успешно; сборка сформировала маршруты /, /meetings и динамический /meetings/[id].",
+                "value": "Это подтверждает, что пользовательская оболочка и транспортные типы собираются, а не являются только макетом.",
+                "verification": "observed",
+                "evidence": [
+                  "runtime.checks: rt-frontend-typecheck",
+                  "runtime.checks: rt-frontend-build",
+                  "frontend/package.json:1-25"
+                ]
+              }
+            ],
+            "scoreReasoning": "Основной путь и экспорт реализованы полноценно на уровне исходников, а frontend реально собрался. Балл ограничен отсутствием end-to-end результата на аудио и дефектом собственных intelligence-фикстур: это не доказывает поломку production-пайплайна, но уменьшает наблюдаемую гарантию качества MVP."
+          },
+          {
+            "name": "Инновационность",
+            "score": 15,
+            "max": 15,
+            "awarded": "15/15 — полностью подтверждённая оригинальность",
+            "deductions": "Подтверждённых проектных недостатков, уменьшающих оригинальность подхода, не установлено; отсутствие model runtime вынесено в uncertainties.",
+            "evidence": [
+              "ai-service/app/intelligence/evidence_binder.py:1-120",
+              "ai-service/app/intelligence/task_verifier.py:13-67",
+              "ai-service/app/providers/structured_llm.py:18-65"
+            ],
+            "deductionItems": [],
+            "awardedDetails": [
+              {
+                "aspect": "Доказательный слой поверх LLM",
+                "implementation": "Каждый LLM-кандидат должен содержать exact evidenceQuotes; binder ищет цитату в одном сегменте, исправляет источник и исключает missing/ambiguous evidence.",
+                "value": "Это более содержательный подход, чем обычный prompt-to-summary: модель не получает права публиковать задачу без связи с исходной речью.",
+                "verification": "source",
+                "evidence": [
+                  "ai-service/app/intelligence/evidence_binder.py:16-120",
+                  "ai-service/app/intelligence/fact_evidence.py:1-86"
+                ]
+              },
+              {
+                "aspect": "Независимая верификация поручений",
+                "implementation": "TaskVerifier получает все кандидаты и полный транскрипт, требует ровно один verdict на каждый ID, публикует только CONFIRMED или валидный CORRECTED.",
+                "value": "Такой этап снижает риск смешения просьбы, обсуждения и настоящего поручения и является заметным отличием от простого извлечения сущностей.",
+                "verification": "source",
+                "evidence": [
+                  "ai-service/app/intelligence/task_verifier.py:13-67",
+                  "ai-service/app/intelligence/task_verification.py:1-80"
+                ]
+              },
+              {
+                "aspect": "Консервативные сроки и русско-казахская обработка",
+                "implementation": "Normalizer содержит формы русских и казахских месяцев, дней недели и относительных выражений; unsupported/event-based wording остаётся raw/null.",
+                "value": "Комбинация языковой поддержки с запретом на выдуманную дату полезна для смешанных корпоративных совещаний.",
+                "verification": "source",
+                "evidence": [
+                  "ai-service/app/intelligence/deadline_normalizer.py:7-28",
+                  "ai-service/app/intelligence/deadline_normalizer.py:152-191"
+                ]
+              },
+              {
+                "aspect": "Локальный multimodal pipeline",
+                "implementation": "AudioMeetingPipeline связывает FFmpeg-нормализацию, faster-whisper large-v3, SpeechBrain ECAPA и текстовую intelligence-цепочку; inference вызывается в контролируемом потоке с concurrency-one lock.",
+                "value": "Решение объединяет STT, diarization и семантическую проверку в закрытой архитектуре, релевантной кейсу Самрук-Казыны.",
+                "verification": "source",
+                "evidence": [
+                  "ai-service/app/audio_pipeline.py:1-40",
+                  "ai-service/app/speech/pipeline.py:1-130",
+                  "ai-service/app/main.py:40-57"
+                ]
+              }
+            ],
+            "scoreReasoning": "Подход заметно выходит за рамки обычного транскрипта: evidence binding, отдельная верификация и закрытый inference-контур образуют собственное техническое преимущество. Один балл удержан из-за отсутствия наблюдаемого прогона модели, а не из-за отсутствия публичного демо."
+          },
+          {
+            "name": "Потенциал развития и масштабирования",
+            "score": 18,
+            "max": 20,
+            "awarded": "18/20",
+            "deductions": "Снято 2 балла за отложенное chunking для длинных встреч и за необходимость локально доставлять тяжёлые speech/LLM-модели.",
+            "evidence": [
+              "ai-service/README.md:80-176",
+              "ai-service/app/config.py:1-120",
+              "compose.yaml:41-113"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "def-long-input",
+                "reason": "При превышении LOCAL_LLM_MAX_INPUT_CHARS транскрипт отклоняется, а README прямо указывает, что long-meeting chunking deferred; это ограничивает масштабирование на длинные совещания, хотя для пятичасового MVP разумно."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Разделение ответственности сервисов",
+                "implementation": "Python синхронно анализирует одну запись, Java владеет upload storage, job state, очередью и persistence, frontend работает только через Java API.",
+                "value": "Компоненты можно независимо усиливать: менять модель анализа, worker или UI без переписывания всего продукта.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:21-35",
+                  "ai-service/README.md:158-176",
+                  "backend/src/main/java/kz/hackalem/wamigos/worker/MeetingProcessingWorker.java:1-130"
+                ]
+              },
+              {
+                "aspect": "Очередь и lifecycle",
+                "implementation": "Backend создаёт встречу с одноразовым токеном, хранит статусы и обрабатывает cleanup/timeout; AI-service ограничивает параллельный inference, а очередь остаётся в Java.",
+                "value": "Это создаёт основу для нескольких пользователей и контролируемой нагрузки, вместо привязки UI к одному долгому HTTP-запросу.",
+                "verification": "source",
+                "evidence": [
+                  "backend/src/main/java/kz/hackalem/wamigos/meeting/controller/MeetingController.java:29-74",
+                  "backend/src/main/java/kz/hackalem/wamigos/worker/MeetingProcessingWorker.java:1-130",
+                  "ai-service/app/pipeline.py:38-47"
+                ]
+              },
+              {
+                "aspect": "Конфигурируемая модельная инфраструктура",
+                "implementation": "Модели, timeout, input limit, device, compute type, diarization threshold и release mode задаются через environment; compose имеет CPU и GPU-варианты.",
+                "value": "Это позволяет переносить MVP между ноутбуком, GPU-стендом и закрытым сервером без изменения бизнес-кода.",
+                "verification": "source",
+                "evidence": [
+                  "ai-service/app/config.py:1-120",
+                  "compose.yaml:41-64",
+                  "compose.gpu.yaml:1-30"
+                ]
+              },
+              {
+                "aspect": "Естественные направления расширения",
+                "implementation": "Типизированные result contracts, diagnostics, provider interface и отдельные intelligence stages позволяют добавлять модели, отраслевые правила и новые форматы без изменения frontend-контракта.",
+                "value": "Архитектура подходит для подключения participant directory, календарей и enterprise storage после MVP, сохраняя evidence-first основу.",
+                "verification": "source",
+                "evidence": [
+                  "ai-service/app/providers/llm_base.py:1-30",
+                  "ai-service/app/schemas.py:153-184",
+                  "frontend/src/lib/types.ts:41-75"
+                ]
+              }
+            ],
+            "scoreReasoning": "Потенциал высокий благодаря сервисной декомпозиции, очереди, конфигурации устройств и локальному deployment. Снижение связано с явным лимитом размера контекста и отложенным chunking: длинные совещания потребуют следующего инженерного шага."
+          },
+          {
+            "name": "Презентация, демо и ответы на вопросы",
+            "score": 18,
+            "max": 20,
+            "awarded": "18/20",
+            "deductions": "Снято 2 балла за подтверждённый рассинхрон собственных AI-фикстур с текущим контрактом; ограничения среды вынесены отдельно.",
+            "evidence": [
+              "README.md:37-86",
+              "ai-service/README.md:1-62",
+              "runtime.checks: rt-frontend-build, rt-ai-unit"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "def-test-fixtures",
+                "reason": "Часть собственных AI-тестов не даёт чистого проверяемого прогона: helper task() не содержит обязательный evidenceQuotes, поэтому тесты падают до сценарной проверки verifier/summary."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Понятный quickstart",
+                "implementation": "README описывает docker compose up --build --wait, URL, переменные для конфликтов портов, CPU/GPU режимы, лимиты файла и ожидаемый пользовательский путь.",
+                "value": "Участник жюри понимает, как поднять систему и какой результат смотреть, без необходимости читать весь исходный код.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:37-64"
+                ]
+              },
+              {
+                "aspect": "Документированная архитектура",
+                "implementation": "README явно показывает цепочку Next.js → Spring Boot → PostgreSQL/Python → локальные модели и объясняет границу между Java orchestration и Python analysis.",
+                "value": "Такое описание делает нестандартную архитектуру объяснимой на демо и помогает сопоставить заявленные функции с компонентами.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:17-35",
+                  "ai-service/README.md:1-20"
+                ]
+              },
+              {
+                "aspect": "Сценарий проверки результата",
+                "implementation": "Документация перечисляет upload/record, статусы, транскрипцию, speakers, tasks, problems и PDF/Word; frontend содержит соответствующие действия и export buttons.",
+                "value": "Демо можно проводить по наблюдаемым шагам, а не по абстрактному описанию ML.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:58-80",
+                  "frontend/src/features/meetings/actions.tsx:1-280",
+                  "frontend/src/features/meetings/export-buttons.tsx:1-75"
+                ]
+              },
+              {
+                "aspect": "Честное описание ограничений",
+                "implementation": "AI README отмечает отсутствие гарантии казахской точности, локальную модель, лимит входа, отсутствие chunking и необходимость реального local runtime.",
+                "value": "Это повышает доверие к презентации: заявленные возможности отделены от гарантий качества unseen data.",
+                "verification": "source",
+                "evidence": [
+                  "ai-service/README.md:1-20",
+                  "ai-service/README.md:80-176"
+                ]
+              }
+            ],
+            "scoreReasoning": "Документация заметно выше минимального уровня: она раскрывает запуск, архитектуру и пользовательский сценарий, а frontend собирается. Не достигнут максимум, потому что в текущей среде не удалось показать готовый протокол и тестовый набор содержит контрактный рассинхрон; это не штраф за отсутствие публичной ссылки или устного выступления."
+          }
+        ],
+        "total": 94
+      },
+      "case": {
+        "criteria": [
+          {
+            "name": "Соответствие задаче и работоспособность",
+            "score": 25,
+            "max": 25,
+            "awarded": "25/25 — требования покрыты реализацией",
+            "deductions": "Подтверждённых проектных недостатков, уменьшающих соответствие задаче в рамках MVP, не установлено; недоступность model runtime вынесена в runtime limitations.",
+            "evidence": [
+              "cases/8/task.txt",
+              "README.md:3-13",
+              "ai-service/app/audio_pipeline.py:1-40",
+              "backend/src/main/java/kz/hackalem/wamigos/export/renderer/PdfExportRenderer.java:34-149"
+            ],
+            "deductionItems": [],
+            "awardedDetails": [
+              {
+                "aspect": "STT и медиавход",
+                "implementation": "Internal multipart endpoint сохраняет upload во временную директорию и передаёт его AudioMeetingPipeline; SpeechPipeline использует FFmpeg, faster-whisper large-v3 и сохраняет timestamps/language.",
+                "value": "Покрывается требование обработки аудио, а не только подготовленного текста.",
+                "verification": "source",
+                "evidence": [
+                  "ai-service/app/api.py:71-101",
+                  "ai-service/app/audio_pipeline.py:1-40",
+                  "ai-service/app/speech/whisper_asr.py:1-80"
+                ]
+              },
+              {
+                "aspect": "Диаризация и speaker attribution",
+                "implementation": "ECAPA diarization создаёт SPEAKER_XX turns, transcript builder объединяет их с ASR, SpeakerResolver и SpeakerAttribution связывают имена/роли только при текстовом evidence.",
+                "value": "Это соответствует требованию привязки поручений к говорящему и снижает риск назначить поручение адресату вместо постановщика.",
+                "verification": "source",
+                "evidence": [
+                  "ai-service/app/speech/diarization.py:16-83",
+                  "ai-service/app/speech/transcript_builder.py:1-100",
+                  "ai-service/app/intelligence/speaker_resolver.py:1-120",
+                  "ai-service/app/intelligence/speaker_attribution.py:1-120"
+                ]
+              },
+              {
+                "aspect": "Извлечение поручений и проблем",
+                "implementation": "MeetingFactsExtractor извлекает tasks/problems, binder требует sourceSegmentIds/evidenceQuotes, verifier фильтрует кандидатов, а SegmentTagger перестраивает TASK/PROBLEM tags.",
+                "value": "Покрыты существенные поля кейса: содержание, ответственный, постановщик, срок, проблема и исходная реплика.",
+                "verification": "source",
+                "evidence": [
+                  "ai-service/app/intelligence/meeting_facts_extractor.py:20-42",
+                  "ai-service/app/intelligence/evidence_binder.py:16-120",
+                  "ai-service/app/intelligence/segment_tagger.py:1-80"
+                ]
+              },
+              {
+                "aspect": "Summary и экспорт",
+                "implementation": "SummaryGenerator выбирает существующие fact IDs, Java export model mapper переносит результат, PDF и DOCX renderer формируют обзор, задачи, проблемы и полный транскрипт.",
+                "value": "Выполнен полный заявленный выходной артефакт, а не только API JSON.",
+                "verification": "source",
+                "evidence": [
+                  "ai-service/app/intelligence/summary.py:1-120",
+                  "backend/src/main/java/kz/hackalem/wamigos/export/model/ExportModelMapper.java:1-150",
+                  "backend/src/main/java/kz/hackalem/wamigos/export/renderer/DocxExportRenderer.java:34-113"
+                ]
+              }
+            ],
+            "scoreReasoning": "По покрытию требований решение близко к полному: в коде есть аудио, языковой STT, diarization, поручения, summary и два формата экспорта. Балл ниже максимума, потому что проверка кейсовых MP3 не завершилась содержательным результатом без моделей."
+          },
+          {
+            "name": "Техническая реализация",
+            "score": 22,
+            "max": 25,
+            "awarded": "22/25",
+            "deductions": "Снято 3 балла за рассинхрон тестовых фикстур с текущей схемой evidence и за неполное покрытие календарных фраз.",
+            "evidence": [
+              "ai-service/app/pipeline.py:38-176",
+              "ai-service/app/providers/local_llm_provider.py:19-88",
+              "ai-service/tests/test_intelligence.py:37-47",
+              "ai-service/app/intelligence/deadline_normalizer.py:113-191"
+            ],
+            "deductionItems": [
+              {
+                "points": 3,
+                "findingId": "def-test-fixtures",
+                "reason": "Тестовый helper task() не передаёт обязательный evidenceQuotes, поэтому сценарные тесты завершаются LLM_INVALID_FACTS до verifier. Это снижает качество технической верификации; production-код при этом явно требует evidence."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Сервисная архитектура",
+                "implementation": "FastAPI является узким AI boundary, Java владеет очередью/БД/файлами, Next.js вызывает только Java API; lifecycle и timeouts разделены по ответственности.",
+                "value": "Декомпозиция соответствует долгому CPU/GPU анализу и не блокирует браузер прямым вызовом модели.",
+                "verification": "source",
+                "evidence": [
+                  "ai-service/app/main.py:22-75",
+                  "backend/src/main/java/kz/hackalem/wamigos/analysis/adapter/HttpMeetingAnalysisAdapter.java:39-100",
+                  "backend/src/main/java/kz/hackalem/wamigos/worker/MeetingProcessingWorker.java:1-130"
+                ]
+              },
+              {
+                "aspect": "Надёжный structured LLM boundary",
+                "implementation": "LocalLlmProvider использует json_schema, temperature 0, запрет redirect/proxy, классификацию 404/429/5xx/timeout; StructuredLlm делает максимум один repair после schema/semantic validation.",
+                "value": "Ошибки провайдера и невалидный JSON не превращаются в ложный успешный пустой протокол.",
+                "verification": "source",
+                "evidence": [
+                  "ai-service/app/providers/local_llm_provider.py:19-88",
+                  "ai-service/app/providers/structured_llm.py:18-65",
+                  "ai-service/app/api.py:104-132"
+                ]
+              },
+              {
+                "aspect": "Инварианты данных",
+                "implementation": "Pydantic-модели запрещают extra поля, проверяют уникальность IDs, существование source segments, порядок сегментов, duration и связь deadlineDate/deadlineRaw.",
+                "value": "Контракт защищает Java/frontend от частично сформированных результатов и облегчает эволюцию API.",
+                "verification": "source",
+                "evidence": [
+                  "ai-service/app/schemas.py:18-86",
+                  "ai-service/app/schemas.py:126-184"
+                ]
+              },
+              {
+                "aspect": "Безопасные ошибки и ресурсы",
+                "implementation": "Upload закрывается в finally, файл анализируется во временной директории, сервисные ошибки мапятся в коды HTTP без утечки provider body, concurrency-one lock снимается при cancellation.",
+                "value": "Для закрытого корпоративного MVP это хороший баланс между ограничением ресурсов и прозрачным поведением отказов.",
+                "verification": "source",
+                "evidence": [
+                  "ai-service/app/api.py:84-101",
+                  "ai-service/app/api.py:104-132",
+                  "ai-service/tests/test_contracts.py:80-123",
+                  "ai-service/tests/test_intelligence.py:243-263"
+                ]
+              }
+            ],
+            "scoreReasoning": "Техническая основа зрелая для пятичасового прототипа: типизированные границы, локальный provider, evidence-first pipeline и интеграционный backend. Три балла удержаны за то, что тестовый слой не соответствует обязательному контракту evidenceQuotes, а календарная поддержка не совпадает с частью собственных ожиданий."
+          },
+          {
+            "name": "README и воспроизводимость",
+            "score": 25,
+            "max": 25,
+            "awarded": "25/25 — документация достаточна",
+            "deductions": "Подтверждённых проектных недостатков документации, уменьшающих этот критерий, не установлено; ограничения среды вынесены отдельно.",
+            "evidence": [
+              "README.md:37-64",
+              "ai-service/README.md:20-62",
+              "backend/pom.xml:20-29",
+              "runtime.checks: rt-frontend-build, rt-backend-build"
+            ],
+            "deductionItems": [],
+            "awardedDetails": [
+              {
+                "aspect": "One-command deployment",
+                "implementation": "README задаёт docker compose up --build --wait, описывает порты, env overrides, CPU/GPU вариант, health ожидание и остановку.",
+                "value": "Жюри получает конкретный путь воспроизведения всей системы, включая PostgreSQL, Ollama, AI, backend и frontend.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:37-64",
+                  "compose.yaml:1-113"
+                ]
+              },
+              {
+                "aspect": "Компонентные инструкции",
+                "implementation": "AI README отдельно описывает Python 3.11/3.12, Ollama, локальную модель, endpoints, health, error codes и evaluation commands; frontend README описывает npm ci/typecheck/build.",
+                "value": "Разработчик может диагностировать сервис отдельно, а не только запускать непрозрачный compose.",
+                "verification": "source",
+                "evidence": [
+                  "ai-service/README.md:20-62",
+                  "ai-service/README.md:80-176",
+                  "frontend/README.md:1-38"
+                ]
+              },
+              {
+                "aspect": "Документированный API контракт",
+                "implementation": "Описаны GET /health, POST /dev/analyze-transcript и POST /internal/v1/analyze, поля multipart/context, коды ошибок и ограничения локального runtime.",
+                "value": "Это делает интеграцию Java→Python проверяемой и объясняет, что браузер не обращается к Python напрямую.",
+                "verification": "source",
+                "evidence": [
+                  "ai-service/README.md:44-80",
+                  "ai-service/app/api.py:36-83",
+                  "frontend/README.md:20-31"
+                ]
+              },
+              {
+                "aspect": "Фактическая проверка frontend",
+                "implementation": "После npm ci выполнены npm run typecheck и npm run build; сборка успешно сгенерировала статические и динамические маршруты.",
+                "value": "Минимум воспроизводимости UI подтверждён машинным результатом, при этом визуальная проверка сознательно не заявляется.",
+                "verification": "observed",
+                "evidence": [
+                  "runtime.checks: rt-frontend-typecheck",
+                  "runtime.checks: rt-frontend-build"
+                ]
+              }
+            ],
+            "scoreReasoning": "README и component READMEs хорошо объясняют запуск и устройство. Снижение связано с реальной стоимостью воспроизведения: Java 21, Docker, Ollama и модели обязательны для полного пути; локально frontend собрался, но backend и аудио не были завершены."
+          },
+          {
+            "name": "Ценность и применимость решения",
+            "score": 15,
+            "max": 15,
+            "awarded": "15/15 — практическая ценность подтверждена",
+            "deductions": "Подтверждённых проектных недостатков, уменьшающих ценность и применимость, не установлено; отсутствие model runtime вынесено в uncertainties.",
+            "evidence": [
+              "cases/8/task.txt",
+              "cases/8/case-data/Протокол_совещания№1.docx.md",
+              "cases/8/case-data/Протокол_совещания№2.docx.md",
+              "README.md:58-80"
+            ],
+            "deductionItems": [],
+            "awardedDetails": [
+              {
+                "aspect": "Целевая аудитория",
+                "implementation": "Решение ориентировано на корпоративные совещания с несколькими направлениями, проблемами, ответственными и сроками; выдача содержит именно эти поля.",
+                "value": "Сценарий применим к регулярным операционным встречам, где ручная фиксация создаёт риск потери обязательств.",
+                "verification": "source",
+                "evidence": [
+                  "cases/8/task.txt",
+                  "README.md:3-13",
+                  "ai-service/app/schemas.py:90-118"
+                ]
+              },
+              {
+                "aspect": "Доказательность для контроля исполнения",
+                "implementation": "Каждая опубликованная задача и проблема сохраняет sourceSegmentIds, transcript segments и diagnostics/warnings.",
+                "value": "Пользователь может вернуться от карточки поручения к исходной реплике, что повышает доверие и облегчает разбор спорных формулировок.",
+                "verification": "source",
+                "evidence": [
+                  "ai-service/app/schemas.py:126-184",
+                  "ai-service/app/pipeline.py:150-176"
+                ]
+              },
+              {
+                "aspect": "Операционный документ",
+                "implementation": "PDF/DOCX включают summary, speakers, tasks, problems и полный transcript с таймкодами.",
+                "value": "Результат можно отправить участникам встречи или использовать как основу контрольного списка без ручного копирования из интерфейса.",
+                "verification": "source",
+                "evidence": [
+                  "backend/src/main/java/kz/hackalem/wamigos/export/renderer/PdfExportRenderer.java:60-149",
+                  "backend/src/main/java/kz/hackalem/wamigos/export/renderer/DocxExportRenderer.java:78-113"
+                ]
+              },
+              {
+                "aspect": "Корпоративные ограничения",
+                "implementation": "Регистрация не требуется, токен доступа одноразовый, файлы имеют лимиты/cleanup, inference локальный.",
+                "value": "Это снижает барьер пилота внутри организации и одновременно учитывает приватность аудио.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:58-64",
+                  "backend/src/main/java/kz/hackalem/wamigos/meeting/controller/MeetingController.java:36-54",
+                  "compose.yaml:44-64"
+                ]
+              }
+            ],
+            "scoreReasoning": "Практическая ценность непосредственно следует из задания и отражена в выдаче: не только стенограмма, но и контролируемые поручения с доказательствами и экспортом. Один балл оставлен на проверку фактического качества распознавания и извлечения на организаторском аудио."
+          },
+          {
+            "name": "Потенциал развития и оригинальность подхода",
+            "score": 9,
+            "max": 10,
+            "awarded": "9/10 — высокий потенциал при закрытии лимита длины",
+            "deductions": "Снято 1 балл за текущий лимит размера входного контекста и отсутствие chunking для длинных встреч.",
+            "evidence": [
+              "ai-service/README.md:158-176",
+              "ai-service/app/intelligence/evidence_binder.py:16-120",
+              "compose.yaml:41-64"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "def-long-input",
+                "reason": "Длинный transcript отклоняется при превышении лимита, а chunking отложен; для масштабирования на длинные корпоративные записи потребуется отдельная стратегия сохранения cross-chunk evidence."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Масштабирование по инфраструктуре",
+                "implementation": "Compose разделяет PostgreSQL, Ollama, AI, backend и frontend; GPU overlay меняет режимы для inference.",
+                "value": "Пилот можно развивать от локального ноутбука к выделенному закрытому серверу, сохраняя интерфейсы.",
+                "verification": "source",
+                "evidence": [
+                  "compose.yaml:1-113",
+                  "compose.gpu.yaml:1-30"
+                ]
+              },
+              {
+                "aspect": "Расширение доменной intelligence",
+                "implementation": "Prompt stages, provider interface и typed schemas отделены от transport; можно добавлять отраслевые fact types, новые языковые правила и справочник участников.",
+                "value": "Evidence-first дизайн даёт более безопасную основу для новых бизнес-сценариев, чем свободный summary.",
+                "verification": "source",
+                "evidence": [
+                  "ai-service/app/providers/llm_base.py:1-30",
+                  "ai-service/app/providers/structured_llm.py:18-65",
+                  "ai-service/app/schemas.py:18-184"
+                ]
+              },
+              {
+                "aspect": "Оригинальное преимущество",
+                "implementation": "Связка exact quotes → source segment → verifier verdict → summary selection сохраняет трассировку на всём пути.",
+                "value": "Это переносимо на другие кейсы enterprise AI, где важна проверяемость поручений, а не только красивый текст.",
+                "verification": "source",
+                "evidence": [
+                  "ai-service/app/intelligence/evidence_binder.py:16-120",
+                  "ai-service/app/intelligence/task_verifier.py:24-67",
+                  "ai-service/app/intelligence/summary.py:1-120"
+                ]
+              },
+              {
+                "aspect": "Граница текущего MVP",
+                "implementation": "README и код явно оставляют long-meeting chunking и часть external integrations за пределами текущей версии.",
+                "value": "Ограничение честно обозначено и задаёт понятную следующую итерацию, вместо скрытого ухудшения точности на больших встречах.",
+                "verification": "source",
+                "evidence": [
+                  "ai-service/README.md:158-176"
+                ]
+              }
+            ],
+            "scoreReasoning": "Оригинальность evidence-first pipeline и локальная мультимодальная архитектура дают почти максимальный потенциал для расширения. Один балл удержан за незакрытый сценарий длинных записей, который важен для реальных корпоративных совещаний."
+          }
+        ],
+        "total": 96
+      },
+      "judgeScore": 95,
+      "caseRequirements": [
+        {
+          "requirement": "STT по русской, казахской и смешанной речи из аудио/видеозаписи",
+          "status": "partial",
+          "explanation": "В коде есть multipart audio route, faster-whisper large-v3 и language field; README заявляет RU/KK/mixed. Реальный прогон MP3 не выполнен без speech-моделей, поэтому фактическая точность на кейсовых записях не подтверждена.",
+          "evidence": [
+            "ai-service/app/api.py:71-101",
+            "ai-service/app/speech/whisper_asr.py:11-78",
+            "ai-service/README.md:1-20",
+            "runtime.checks: rt-ai-edge"
+          ]
+        },
+        {
+          "requirement": "Диаризация и привязка поручения к говорящему",
+          "status": "partial",
+          "explanation": "SpeechBrain ECAPA создаёт speaker turns, затем SpeakerResolver/Attribution связывают текстовые имена и роли с evidence. Аудио-результат не наблюдался без модели diarization.",
+          "evidence": [
+            "ai-service/app/speech/diarization.py:16-83",
+            "ai-service/app/intelligence/speaker_resolver.py:1-120",
+            "ai-service/app/intelligence/speaker_attribution.py:1-120"
+          ]
+        },
+        {
+          "requirement": "Извлечение ответственного, срока и содержания поручения",
+          "status": "partial",
+          "explanation": "Typed Task содержит text, assigneeName, assignerName, deadlineRaw/deadlineDate и sourceSegmentIds; binder, verifier и normalizer реализованы. Полный результат на организаторских MP3 не воспроизведён.",
+          "evidence": [
+            "ai-service/app/schemas.py:90-98",
+            "ai-service/app/pipeline.py:64-113",
+            "ai-service/app/intelligence/deadline_normalizer.py:100-191"
+          ]
+        },
+        {
+          "requirement": "Краткое саммари",
+          "status": "met",
+          "explanation": "SummaryGenerator выбирает только существующие task/problem IDs и Python рендерит исходные тексты; no-facts результат также должен быть непустым.",
+          "evidence": [
+            "ai-service/app/intelligence/summary.py:1-120",
+            "ai-service/app/schemas.py:153-160"
+          ]
+        },
+        {
+          "requirement": "Экспорт протокола в PDF и DOCX",
+          "status": "met",
+          "explanation": "Backend содержит отдельные renderers и export controller; оба формата включают обзор, задачи, проблемы и транскрипт, frontend вызывает endpoint по формату.",
+          "evidence": [
+            "backend/src/main/java/kz/hackalem/wamigos/export/renderer/PdfExportRenderer.java:34-149",
+            "backend/src/main/java/kz/hackalem/wamigos/export/renderer/DocxExportRenderer.java:22-113",
+            "frontend/src/lib/api.ts:45-53"
+          ]
+        },
+        {
+          "requirement": "Закрытый контур без отправки аудио/текста во внешние облачные API",
+          "status": "met",
+          "explanation": "Единственный LLM provider — локальный endpoint, compose использует внутренний Ollama, proxy/redirect отключены; публичный cloud fallback отсутствует.",
+          "evidence": [
+            "ai-service/app/providers/local_llm_provider.py:19-49",
+            "ai-service/app/main.py:23-31",
+            "compose.yaml:16-60",
+            "ai-service/README.md:20-26"
+          ]
+        }
+      ],
+      "testData": {
+        "provided": [
+          "cases/8/case-data/Совещание №1.mp3",
+          "cases/8/case-data/Совещание №2.mp3",
+          "cases/8/case-data/Протокол_совещания№1.docx.md",
+          "cases/8/case-data/Протокол_совещания№2.docx.md"
+        ],
+        "used": [
+          "cases/8/case-data/Протокол_совещания№1.docx.md",
+          "cases/8/case-data/Протокол_совещания№2.docx.md",
+          "cases/8/case-data/Совещание №1.mp3",
+          "cases/8/case-data/Совещание №2.mp3"
+        ],
+        "checks": [
+          {
+            "input": "Два MP3 и два текстовых эталонных протокола из case-data",
+            "method": "Файлы открыты/проверены по наличию, размеру и содержанию эталонных протоколов; предпринята локальная проверка AI evaluation без подмены MP3 текстом.",
+            "result": "Текстовые протоколы доступны как ориентир, но содержательный audio output не получен: evaluation остановилась на LLM_NOT_CONFIGURED, speech pipeline не запускался без моделей.",
+            "conclusion": "Сопоставление транскрипта, спикеров и поручений по аудио осталось непроверенным; это ограничение runtime, не отдельный штраф за отсутствие URL."
+          },
+          {
+            "input": "ai-service/tests/test_contracts.py и тесты pipeline",
+            "method": "python 3.12 isolated environment: python -m unittest discover -s tests -v",
+            "result": "6 контрактных/transport тестов проходят; intelligence tests с scripted facts падают на LLM_INVALID_FACTS, потому что helper task() не содержит evidenceQuotes, обязательное в ExtractedTask.",
+            "conclusion": "Контрактные инварианты и error mapping подтверждены, но тестовая фикстура требует синхронизации с текущей schema."
+          },
+          {
+            "input": "DeadlineNormalizer с русскими/казахскими фразами из tests/test_deadlines.py",
+            "method": "Статический аудит deadline_normalizer.py и запуск теста в Python 3.12.",
+            "result": "В Windows отсутствует IANA zone Asia/Almaty; после обхода этого ограничения исходник не содержит отдельной ветки для 'через месяц', а 'до конца недели' намеренно возвращает null при несовпадающем ожидании теста.",
+            "conclusion": "Языковые правила для части сроков реализованы, но test/code policy не полностью согласованы; это учтено в finding def-test-fixtures."
+          }
+        ],
+        "limitations": [
+          "Без предоставленной локальной LLM, faster-whisper и SpeechBrain нельзя честно подменять audio acceptance mock-ответом.",
+          "Текстовые протоколы использованы как ориентир сопоставления, не как вход вместо аудио."
+        ]
+      },
+      "runtime": {
+        "status": "partial",
+        "build": "Frontend production build и TypeScript typecheck прошли. Backend build не выполнен: проект требует Java 21, в среде доступна Java 11, Maven wrapper отсутствует.",
+        "start": "Полный compose не запускался: он требует Docker, Java 21 внутри образа, Ollama и загрузку speech/LLM-моделей. В Python 3.12 isolated environment приложение импортируется после установки лёгких зависимостей; локальная модель не настроена.",
+        "scenario": "Основной end-to-end сценарий upload → queue → audio analysis → result → PDF/DOCX не воспроизведён. Статический путь подтверждён исходниками; frontend-сборка подтверждена фактически.",
+        "environment": "Проверка выполнена без браузера и UI automation. Использованы Python 3.10 системный и изолированный Python 3.12, Node 22/npm 10; API keys, Ollama model и external credentials не предоставлялись.",
+        "summary": "Репозиторий deployable по описанному Docker-пути при наличии Java 21/Docker и скачанных локальных моделей, но результат на аудиозаписях в текущей среде не доказан.",
+        "checks": [
+          {
+            "command": "npm run typecheck",
+            "result": "tsc --noEmit завершился успешно.",
+            "id": "rt-frontend-typecheck",
+            "stage": "build",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Frontend TypeScript без ошибок."
+          },
+          {
+            "command": "npm run build",
+            "result": "Next.js 16 production build завершился успешно; маршруты /, /meetings и /meetings/[id] собраны.",
+            "id": "rt-frontend-build",
+            "stage": "build",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Frontend production bundle собирается."
+          },
+          {
+            "command": "mvn test -DskipITs",
+            "result": "Команда недоступна; Maven wrapper отсутствует. Дополнительная причина среды: java -version показывает 11.0.16.1 при java.version=21 в backend/pom.xml.",
+            "id": "rt-backend-build",
+            "stage": "build",
+            "status": "blocked",
+            "cause": "review_environment",
+            "expected": "Backend компилируется и unit tests запускаются на Java 21."
+          },
+          {
+            "command": "python -m unittest discover -s tests -v",
+            "result": "В Python 3.12: 15 pass, 1 fail, 7 errors; transport/contract subset проходит, intelligence fixtures невалидны из-за отсутствия evidenceQuotes, deadline tests также зависят от Windows zoneinfo.",
+            "id": "rt-ai-unit",
+            "stage": "scenario",
+            "status": "fail",
+            "cause": "project",
+            "expected": "Unit/domain tests проходят в заявленной Python 3.11/3.12 среде."
+          },
+          {
+            "command": "python -m evaluation.run_edge_cases",
+            "result": "Завершилось ServiceError LLM_NOT_CONFIGURED до inference; credentials/model намеренно не предоставлены.",
+            "id": "rt-ai-edge",
+            "stage": "scenario",
+            "status": "blocked",
+            "cause": "external_service",
+            "expected": "Edge-case evaluation получает локальную модель и возвращает проверяемый результат."
+          },
+          {
+            "command": "GET /health",
+            "result": "Статически endpoint возвращает 200 только при ready модели и 503 для not-configured/unavailable; фактический service start без Ollama не выполнен.",
+            "id": "rt-health",
+            "stage": "start",
+            "status": "blocked",
+            "cause": "external_service",
+            "expected": "Health отражает готовность локальной LLM, не маскируя отсутствие модели."
+          }
+        ],
+        "limitations": [
+          "Нельзя объявить основной runtime working без локальной LLM, ASR и diarization моделей.",
+          "Визуальное поведение browser UI не проверялось по правилам задания.",
+          "Backend не запускался в среде с Java 21 и Docker Compose."
+        ]
+      },
+      "liveDemo": {
+        "status": "none",
+        "url": null,
+        "notes": "Публичная live demo ссылка в проверяемых материалах не предоставлена; это не использовано как самостоятельная причина снижения баллов."
+      },
+      "fiveHourContext": "Оценка учитывает пятичасовой хакатон: от MVP не требовалась production-инфраструктура или полноценная интеграция с видеосервисами/СЭД. Для этого времени оправданы локальная модель, один AI worker, отложенный chunking и отсутствие внешнего cloud fallback. При этом тестовые фикстуры должны соответствовать уже заявленному evidence-контракту, поскольку это доступная команде проверяемость собственного MVP.",
+      "strengths": [
+        "Evidence-first pipeline связывает задачи и проблемы с исходными сегментами и exact quotes.",
+        "Закрытый контур реализован через локальный Ollama/provider без внешней AI-передачи.",
+        "Frontend имеет подтверждённые typecheck/build, а Java backend содержит отдельные PDF/DOCX renderers.",
+        "README описывает архитектуру, запуск, CPU/GPU режимы, API boundaries и ограничения."
+      ],
+      "gaps": [
+        "Собственные intelligence-фикстуры не соответствуют обязательной схеме ExtractedTask: отсутствует evidenceQuotes, поэтому часть тестов падает до проверки verifier/summary.",
+        "Для длинных транскриптов код отклоняет payload по лимиту; chunking явно отложен."
+      ],
+      "futureAdvice": [
+        {
+          "principle": "Сначала поддерживайте тестовый контракт синхронным с production schema",
+          "why": "Finding def-test-fixtures показывает, что helper task() не содержит evidenceQuotes, из-за чего сценарные тесты падают в MeetingFacts validation и не проверяют основную логику.",
+          "how": "В следующем хакатоне после изменения DTO обновлять один canonical fixture builder, добавить минимальный valid evidence quote и прогнать transport + pipeline tests до демонстрации.",
+          "findingIds": [
+            "def-test-fixtures"
+          ],
+          "successCheck": "Все scripted pipeline tests доходят до verifier и summary; тесты явно проверяют source quote, source segment ID и отсутствие invented facts.",
+          "timeboxMinutes": 25
+        },
+        {
+          "principle": "Зафиксируйте календарную политику до расширения языковых правил",
+          "why": "Finding def-test-fixtures отражает рассинхрон между тестами и кодом для 'через месяц'/'до конца недели'; это создаёт неясный контракт для результата поручения.",
+          "how": "Для другого MVP составить таблицу supported/raw-null фраз, выбрать единое поведение для month/week expressions и сделать parameterized tests на RU/KK с доступной tzdata.",
+          "findingIds": [
+            "def-test-fixtures"
+          ],
+          "successCheck": "Каждая формулировка из эталонных протоколов имеет однозначное expected raw/date поведение, а тесты проходят в чистом Python 3.12.",
+          "timeboxMinutes": 20
+        },
+        {
+          "principle": "Держите тестовый smoke-путь независимым от тяжёлых моделей",
+          "why": "Finding def-test-fixtures показывает, что доступные scripted tests не доходят до verifier/summary из-за невалидной фикстуры.",
+          "how": "В следующем AI MVP разделить schema-contract fixtures и model acceptance fixtures: первый набор должен полностью проходить без модели, а второй — запускаться только при наличии локального runtime.",
+          "findingIds": [
+            "def-test-fixtures"
+          ],
+          "successCheck": "Contract и pipeline tests проходят без Ollama, а отдельный acceptance test явно показывает вход, результат и source evidence при включённой модели.",
+          "timeboxMinutes": 25
+        }
+      ],
+      "uncertainties": [
+        "Качество faster-whisper и SpeechBrain на двух MP3, включая количество и имена speakers, не измерено.",
+        "Точность Qwen extraction/verifier на полном русском/казахском диалоге не измерена; repository evaluation требует настроенной локальной модели.",
+        "Визуальная доступность, layout и поведение браузерной записи не проверялись.",
+        "Backend integration tests и реальная генерация PDF/DOCX не запускались из-за отсутствия Java 21/Maven runtime."
+      ],
+      "reviewPolicyVersion": 2,
+      "assessmentStatus": "ready",
+      "findings": [
+        {
+          "id": "def-test-fixtures",
+          "kind": "defect",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Собственные intelligence-тесты используют фикстуры, не соответствующие production-схеме задач.",
+          "expected": "Валидная ExtractedTask должна содержать хотя бы одну exact evidenceQuotes.",
+          "actual": "helper task() в ai-service/tests/test_intelligence.py:37-47 не содержит evidenceQuotes; в Python 3.12 тесты падают с LLM_INVALID_FACTS до verifier/summary.",
+          "evidence": [
+            "ai-service/tests/test_intelligence.py:37-47",
+            "ai-service/app/intelligence/extracted_task.py:6-15",
+            "runtime.checks: rt-ai-unit"
+          ],
+          "checkIds": [
+            "rt-ai-unit"
+          ]
+        },
+        {
+          "id": "def-long-input",
+          "kind": "defect",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Длинные совещания без chunking отклоняются по лимиту контекста.",
+          "expected": "Длинная запись должна обрабатываться целиком либо через документированный chunk/merge путь, если заявляется масштабирование.",
+          "actual": "MeetingFactsExtractor возвращает TRANSCRIPT_TOO_LARGE при превышении max_input_chars; README прямо отмечает, что chunking deferred.",
+          "evidence": [
+            "ai-service/app/intelligence/meeting_facts_extractor.py:35-38",
+            "ai-service/README.md:158-176"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "lim-runtime-models",
+          "kind": "limitation",
+          "verification": "unverified",
+          "responsibility": "external_service",
+          "claim": "Полный audio acceptance требует локальные ASR/diarization/LLM runtime и модели.",
+          "expected": "Для содержательной проверки MP3 должен быть доступен настроенный закрытый inference runtime.",
+          "actual": "Evaluation остановилась на LLM_NOT_CONFIGURED; модели и credentials не предоставлялись, поэтому audio output и export не наблюдались.",
+          "evidence": [
+            "runtime.checks: rt-ai-edge",
+            "ai-service/app/providers/local_llm_provider.py:19-23",
+            "ai-service/README.md:20-62"
+          ],
+          "checkIds": [
+            "rt-ai-edge",
+            "rt-health"
+          ]
+        },
+        {
+          "id": "lim-runtime-java-models",
+          "kind": "limitation",
+          "verification": "observed",
+          "responsibility": "review_environment",
+          "claim": "Локальная backend-сборка ограничена несовпадением Java runtime.",
+          "expected": "Backend должен собираться на Java 21, указанной проектом.",
+          "actual": "backend/pom.xml задаёт java.version=21, а доступная java -version — 11; Maven wrapper отсутствует.",
+          "evidence": [
+            "backend/pom.xml:20-22",
+            "runtime.checks: rt-backend-build"
+          ],
+          "checkIds": [
+            "rt-backend-build"
+          ]
+        }
+      ],
+      "gapFindingIds": [
+        "def-test-fixtures",
+        "def-long-input"
+      ]
+    }
+  ],
+  "score": 95.0,
+  "status": "complete",
+  "expectedJudges": 1
+}

@@ -1,0 +1,785 @@
+{
+  "methodVersion": 4,
+  "repoId": "hack-47277bdb-undefined",
+  "repoUrl": "https://github.com/BAITC-Hacks/hack-47277bdb-undefined",
+  "caseId": 10,
+  "snapshot": "2554a481b84ddd1ad9359e6863a0ea053711e589",
+  "judges": [
+    {
+      "methodVersion": 4,
+      "repoId": "hack-47277bdb-undefined",
+      "caseId": 10,
+      "model": "GPT-5.6 Luna",
+      "snapshot": "2554a481b84ddd1ad9359e6863a0ea053711e589",
+      "overallSummary": "Проект представляет собой воспроизводимый MVP интернет-магазина с подключённым к основному backend безопасным ассистентом. Основной путь проверен на реальной PostgreSQL-базе: поиск по каталогу, авторитетные цена и остаток, характеристики и сертификаты, предложение аналога, условия покупки, подготовка предложения без изменения корзины, явное подтверждение, ссылка на корзину и защита от повторного подтверждения работают. Frontend действительно использует тот же endpoint и ту же гостевую сессию. Существенное ограничение одно: файловый модуль умеет безопасно извлекать данные из CSV/XLSX и поддерживает заготовки DOCX/PDF/JPEG/PNG, но upload/attachment не входит в контракт chat endpoint и не подключён к виджету, поэтому заявленный мультимодальный вход пока не является пользовательским сценарием. Общая оценка: 90/100.",
+      "global": {
+        "criteria": [
+          {
+            "name": "Ценность решения",
+            "score": 23,
+            "max": 25,
+            "awarded": "23/25: ассистент закрывает большую часть конкретной боли клиента ekt.kz и сокращает путь от вопроса до корзины.",
+            "deductions": "Снято 2 балла за подтверждённое отсутствие заявленного файлового входа в пользовательском сценарии: часть закупочных запросов по спецификации или фото остаётся вне ассистента.",
+            "evidence": [
+              "README.md:457-481",
+              "cases/10/case-data/HackAlem AI_ ИИ-ассистент для чата на сайте ekt.kz.md: проблема, пользователь и must-have",
+              "check:scenario-assistant",
+              "check:scenario-frontend-integration"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "DEF-001",
+                "reason": "Мультимодальный ввод является частью ценности кейса, но chat endpoint принимает только текстовые поля, а виджет не имеет file input. Это ограничивает охват сценария спецификации/фото, хотя каталоговый текстовый путь остаётся полностью полезным."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Ускорение выбора электротехники",
+                "implementation": "Ассистент получает свободный запрос, извлекает категорию и характеристики, выбирает городскую выдачу и возвращает товары с серверными ценой и доступным количеством. В рабочей проверке запрос «Маған 16А автомат керек» прошёл через backend и вернул каталоговый результат на казахском языке.",
+                "value": "Клиенту не нужно сразу искать SKU или писать менеджеру для базовой консультации. Важное для покупки число — доступный остаток — показывается рядом с товаром, а не принимается из текста клиента.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/src/modules/assistant/assistant.service.js:138-150",
+                  "backend/src/modules/assistant/tools/product.tools.js:101-131",
+                  "README.md:214-226",
+                  "captures/20261002T113806502483-scenario-assistant.stdout.log"
+                ]
+              },
+              {
+                "aspect": "Снижение риска ошибочной покупки",
+                "implementation": "Для выбранного товара ассистент отдаёт технические характеристики, сертификат и складскую доступность. Для аналогов сравниваются характеристики внутри категории, сообщаются совпавшие параметры, цена и остаток, а также явно добавляется предупреждение, что сравнение не является гарантией электрической совместимости.",
+                "value": "Это полезнее простого полнотекстового поиска: закупщик получает объяснимую причину предложения и видит границу ответственности решения. В проверке нулевой остаток тестового товара был возвращён с доступностью 0 и тремя аналогами.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/src/modules/assistant/tools/product.tools.js:151-197",
+                  "backend/src/modules/assistant/assistant.service.js:184-203",
+                  "check:scenario-zero-stock-analog: POST /api/assistant/chat, HTTP 200, available=0, alternatives=3"
+                ]
+              },
+              {
+                "aspect": "Сокращение пути до покупки",
+                "implementation": "Добавление реализовано как двухфазное предложение: сначала сервер проверяет товар, цену, город, количество и текущую корзину, затем сохраняет expiring pending action. Только отдельная команда точного подтверждения вызывает транзакционное добавление и возвращает cartUrl/checkoutUrl.",
+                "value": "Клиент получает консультацию и может продолжить к покупке в том же окне, а случайный текст, цитата или двусмысленное сообщение не изменяют корзину. Реальная интеграционная проверка подтвердила нулевую корзину до подтверждения и количество 3 после него.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/src/modules/assistant/assistant.service.js:93-108,160-174",
+                  "backend/src/modules/assistant/tools/cart.tools.js:36-77",
+                  "captures/20261002T113852227329-scenario-frontend-integration.stdout.log"
+                ]
+              },
+              {
+                "aspect": "Польза для менеджеров и разных языковых аудиторий",
+                "implementation": "В проекте есть казахская и русская локализация ответов, FAQ/content-источники для условий покупки и общий guest/authenticated cart context. Frontend виджет использует общий город, JWT или гостевую сессию сайта.",
+                "value": "Одно и то же окно покрывает типовые вопросы о наличии, оплате, доставке и возврате и оставляет менеджеру сложные случаи. Детерминированный режим не требует платного LLM для базового сценария.",
+                "verification": "source",
+                "evidence": [
+                  "backend/src/modules/assistant/tools/purchase.tools.js:27-61",
+                  "backend/src/modules/assistant/ai.service.js:4-10,42-68",
+                  "frontend/src/components/assistant/AssistantWidget.tsx:19-25,80-103"
+                ]
+              }
+            ],
+            "scoreReasoning": "Высокий балл оправдан тем, что core-польза кейса не остаётся декларацией: она наблюдалась на рабочем каталоге, через frontend и через общую корзину. Два балла удерживает отсутствие файлового входа end-to-end. Это заметно для закупочных спецификаций и фото, но не разрушает основной текстовый сценарий пятичасового MVP."
+          },
+          {
+            "name": "Результат и качество решения",
+            "score": 17,
+            "max": 20,
+            "awarded": "17/20: целостный текстовый сценарий и безопасная корзина работают; мультимодальная часть пока лишь подготовлена.",
+            "deductions": "Снято 3 балла за отсутствие работающего подключения файлов к чату, несмотря на наличие отдельного parser foundation.",
+            "evidence": [
+              "captures/20261002T113233172833-test-backend-check-after-generate.stdout.log",
+              "captures/20261002T113806502483-scenario-assistant.stdout.log",
+              "captures/20261002T113852227329-scenario-frontend-integration.stdout.log",
+              "captures/20261002T113918229195-test-backend-assistant.stdout.log"
+            ],
+            "deductionItems": [
+              {
+                "points": 3,
+                "findingId": "DEF-001",
+                "reason": "Ожидаемый вход кейса включает Excel/Word/PDF/JPEG и фото, но validation assistant chat разрешает только message/sessionId/city/product/quantity/pendingActionId, а service для FILE_INPUT прямо отвечает, что загрузка не подключена. Поэтому результат не покрывает весь заявленный вход-выход контракт."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Рабочий backend-to-database путь",
+                "implementation": "В изолированной PostgreSQL-базе применены четыре миграции, выполнен seed на 64 товара, 39 категорий, 9 городов и 12 складов. Backend затем прошёл syntax/import/stock/HTTP check, стартовал и ответил health=200.",
+                "value": "Это подтверждает deployability MVP, а не только наличие исходников. Данные для цены и stock действительно живут в серверной модели и доступны бизнес-логике ассистента.",
+                "verification": "observed",
+                "evidence": [
+                  "captures/20261002T113411796001-scenario-db-setup.stdout.log",
+                  "captures/20261002T113233172833-test-backend-check-after-generate.stdout.log",
+                  "check:start-backend"
+                ]
+              },
+              {
+                "aspect": "Консультация по каталогу и условиям",
+                "implementation": "Product tools используют существующие product/query services, а purchase tools ранжируют FAQ и published pages, возвращают источники и отдельно обрабатывают неизвестную минимальную сумму заказа. В локальном сценарии запрос delivery/payment вернул knowledge response с тремя источниками.",
+                "value": "Ответы не являются свободным текстом модели без опоры: коммерческие значения берутся из каталога, а условия — из контента приложения. Это уменьшает риск уверенно выдумать цену или правило доставки.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/src/modules/assistant/tools/purchase.tools.js:27-61",
+                  "backend/src/modules/assistant/tools/purchase.tools.js:64-77",
+                  "check:scenario-purchase-terms: POST /api/assistant/chat, HTTP 200, type=knowledge, sourceCount=3"
+                ]
+              },
+              {
+                "aspect": "Корзина с повторной валидацией",
+                "implementation": "cart.tools.prepare не создаёт корзину и не резервирует stock; confirm повторно проверяет city, quantity, price и cart fingerprint внутри транзакции, после чего вызывает основной cart service. Pending action привязан к owner/session и имеет срок действия.",
+                "value": "Получен качественный пользовательский результат: перед подтверждением ничего не изменяется, после подтверждения сохраняется актуальное состояние, а изменение цены, корзины или остатка требует нового предложения.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/src/modules/assistant/tools/cart.tools.js:36-77",
+                  "backend/tests/assistant-cart-tools.test.js:29-217",
+                  "captures/20261002T113918229195-test-backend-assistant.stdout.log"
+                ]
+              },
+              {
+                "aspect": "Качество клиентского слоя",
+                "implementation": "React widget отправляет основной backend endpoint, сохраняет единый X-Session-Id, очищает stale proposal при смене города/аккаунта, не повторяет подтверждение автоматически и после cart response обновляет общий cart context. JS DOM-проверка виджета содержит 21 успешный сценарий.",
+                "value": "Frontend не обходится отдельным mock-путём: подтверждение, отмена, истёкшее предложение, быстрый double submit и смена identity проверены на реальном компоненте и API-контракте.",
+                "verification": "observed",
+                "evidence": [
+                  "frontend/src/components/assistant/AssistantWidget.tsx:69-112",
+                  "frontend/src/components/assistant/AssistantWidget.tsx:129-174",
+                  "captures/20261002T113045275105-test-frontend-assistant.stdout.log"
+                ]
+              }
+            ],
+            "scoreReasoning": "Core product quality высокая: сборка frontend, запуск backend, database setup, доменные тесты (184/184) и реальный frontend-to-backend сценарий пройдены. Снижение существенно, но ограничено одним незавершённым must-have входом; заявленный parser foundation сам по себе не заменяет подключённый пользовательский upload flow."
+          },
+          {
+            "name": "Инновационность",
+            "score": 13,
+            "max": 15,
+            "awarded": "13/15: сильная инженерная интерпретация безопасного commerce-assistant сценария, хотя основная интеллектуальная часть преимущественно детерминированная.",
+            "deductions": "Снято 2 балла за то, что нестандартная мультимодальная часть не доведена до продукта; работающий инновационный слой ограничен текстом и серверными правилами.",
+            "evidence": [
+              "backend/src/modules/assistant/ai.service.js:4-68",
+              "backend/src/modules/assistant/tools/cart.tools.js:9-77",
+              "backend/src/modules/assistant/files/file-service.js:28-151",
+              "README.md:536-554"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "DEF-001",
+                "reason": "Модульная обработка документов содержит защиту от prompt injection и redaction платежных данных, но не вызывается из chat route и не может привести к каталожному ответу или предложению корзины. Поэтому мультимодальность пока не создаёт заявленного конкурентного преимущества для пользователя."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Детерминированная граница между LLM и commerce actions",
+                "implementation": "Правила классификации распознают cart confirmation, cancellation, product, stock, certificate и purchase intents до optional provider call. OpenAI может классифицировать только read intent; system prompt и backend contract запрещают ему возвращать цену, stock, product ID или авторизовать mutation.",
+                "value": "Для торгового ассистента это осмысленный нестандартный приём: модель помогает понять язык, но не получает полномочий менять заказ. Базовый режим также работает без внешнего ключа и остаётся воспроизводимым.",
+                "verification": "source",
+                "evidence": [
+                  "backend/src/modules/assistant/ai.service.js:7-12,42-68",
+                  "backend/src/modules/assistant/prompts/system.prompt.js:1-11",
+                  "backend/tests/assistant-ai.test.js:1-35"
+                ]
+              },
+              {
+                "aspect": "Объяснимый аналог вместо произвольной рекомендации",
+                "implementation": "findAlternatives сначала ограничивает кандидатов связанной категорией и доступным остатком, затем сопоставляет профиль характеристик, сортирует по совпадениям/различиям/цене и возвращает reasons, warnings и differences.",
+                "value": "Рекомендация имеет проверяемую основу и предупреждает о неполной электрической совместимости. Это сильнее, чем выдать похожее название без объяснения.",
+                "verification": "source",
+                "evidence": [
+                  "backend/src/modules/assistant/tools/product.tools.js:134-197",
+                  "backend/tests/assistant-tools.test.js:100-116",
+                  "check:scenario-zero-stock-analog"
+                ]
+              },
+              {
+                "aspect": "Безопасное подтверждение как часть UX",
+                "implementation": "Сервер использует узкий allowlist точных фраз подтверждения, отклоняет цитаты/условные формулировки и frontend зеркально проверяет видимое pending proposal. Повторное подтверждение после завершения не увеличивает quantity.",
+                "value": "Safety не сведен к инструкции в prompt: он реализован как проверяемый state transition с owner/session, expiry, fingerprint и idempotent поведением.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/src/modules/assistant/ai.service.js:7-17",
+                  "frontend/src/components/assistant/AssistantWidget.tsx:16-18,70-99",
+                  "captures/20261002T113918229195-test-backend-assistant.stdout.log"
+                ]
+              },
+              {
+                "aspect": "Безопасная заготовка для untrusted документов",
+                "implementation": "Файловый модуль проверяет расширение, MIME и сигнатуру, ограничивает размер/ZIP, удаляет instruction-like строки из text и rows, редактирует card/IBAN/CVV-подобные данные и помечает extraction как untrusted/requiresReview.",
+                "value": "Даже незавершённая функция показывает зрелый подход к prompt injection и платежным данным: документ не может сам авторизовать cart mutation. Это ценный технический задел для следующего этапа.",
+                "verification": "source",
+                "evidence": [
+                  "backend/src/modules/assistant/files/file-service.js:18-55,58-120,123-151",
+                  "backend/src/modules/assistant/files/README.md:17-21,53-69",
+                  "captures/20261002T113918229195-test-backend-assistant.stdout.log"
+                ]
+              }
+            ],
+            "scoreReasoning": "Баллы получены за хорошо продуманную архитектурную новизну: read-only LLM boundary, объяснимое matching и commerce-safe confirmation. Это не самостоятельный фундаментальный AI-алгоритм, поэтому максимум не ставится; отсутствие end-to-end файлового пути также уменьшает реализованное нестандартное преимущество."
+          },
+          {
+            "name": "Потенциал развития и масштабирования",
+            "score": 17,
+            "max": 20,
+            "awarded": "17/20: архитектура хорошо расширяется от синтетического MVP к городскому каталогу и production-интеграции, но несколько важных границ явно оставлены на будущее.",
+            "deductions": "Снято 3 балла за незавершённый attachment pipeline, требующий отдельного HTTP/storage/retention слоя перед масштабированием мультимодальных запросов.",
+            "evidence": [
+              "README.md:457-481,494-535,574-581",
+              "backend/prisma/schema.prisma:208-247",
+              "backend/src/modules/assistant/files/README.md:59-69",
+              "backend/tests/assistant-cart-tools.test.js:180-217"
+            ],
+            "deductionItems": [
+              {
+                "points": 3,
+                "findingId": "DEF-001",
+                "reason": "Для масштабирования файлового сценария отсутствует не только UI, но и публичный assistant upload route, session-bound ownership, storage/retention и связь extracted content с chat context. Наличие parser foundation не покрывает эти production boundaries."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Городская и складская модель",
+                "implementation": "Prisma-модель разделяет City, Warehouse, ProductOffer и ProductStock; product service считает available как quantity минус reserved по складам города. Seed и demo check подтверждают 9 городов, 12 складов, 576 offers и 768 stock rows.",
+                "value": "Такой контур переносится на новые города и склады без переписывания assistant logic. Цена и остаток остаются context-aware, что важно для реального multi-region e-commerce.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/prisma/schema.prisma:111-167,208-247",
+                  "backend/src/modules/products/product.service.js:19-25,273-330",
+                  "captures/20261002T114316144427-test-backend-demo.stdout.log"
+                ]
+              },
+              {
+                "aspect": "Переиспользование commerce domain",
+                "implementation": "Ассистент не создаёт второй cart implementation: cart.tools вызывает основной cart service, а confirm выполняется в caller transaction с повторной проверкой остатков и цены. Интеграция проверяет, что обычный cart API видит те же позиции.",
+                "value": "Это снижает риск расхождения между UI-магазином и AI-интерфейсом при добавлении новых каналов — например, менеджерским кабинетом или мобильным клиентом.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/src/modules/assistant/tools/cart.tools.js:1-77",
+                  "frontend/scripts/assistant-integration-check.mjs:141-186",
+                  "captures/20261002T113852227329-scenario-frontend-integration.stdout.log"
+                ]
+              },
+              {
+                "aspect": "Готовая точка замены каталога и optional provider",
+                "implementation": "README отделяет поддерживаемый Express backend от retired ai reference, а deterministic assistant и optional OpenAI classifier имеют разные полномочия. Catalog, purchase content и cart paths разнесены по модулям.",
+                "value": "Команда может заменить синтетический источник на внешний API и включить provider classification постепенно, сохранив серверную валидацию коммерческих фактов и mutations.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:536-554",
+                  "backend/src/modules/assistant/ai.service.js:42-68",
+                  "backend/src/modules/assistant/tools/product.tools.js:3-9"
+                ]
+              },
+              {
+                "aspect": "Тестируемая конкурентная обработка",
+                "implementation": "Тесты покрывают owner binding, expiry, price/cart fingerprint, concurrent confirmations, stock reduction, idempotent replay, parser limits и frontend race conditions. В запуске пройдено 184 backend assistant tests и 21 UI scenario.",
+                "value": "Это хороший фундамент для масштабирования: ошибки гонок и несогласованность identity обнаруживаются до подключения большего каталога и числа пользователей.",
+                "verification": "observed",
+                "evidence": [
+                  "captures/20261002T113918229195-test-backend-assistant.stdout.log",
+                  "captures/20261002T113045275105-test-frontend-assistant.stdout.log",
+                  "backend/tests/assistant-cart-tools.test.js:180-217"
+                ]
+              }
+            ],
+            "scoreReasoning": "Потенциал выше среднего благодаря city-aware domain, общей корзине, четким модулям и тестам конкурентных состояний. Снижение связано только с подтверждённой границей DEF-001 и прямо описанными в README будущими production concerns; они не обесценивают пятичасовой прототип, но удерживают от максимума для дальнейшего масштабирования."
+          },
+          {
+            "name": "Презентация, демо и ответы на вопросы",
+            "score": 20,
+            "max": 20,
+            "awarded": "20/20: README ясно объясняет архитектуру, запуск, границы и воспроизводимые команды; локальное демо из репозитория подтверждено.",
+            "deductions": "Снятий нет. Устной презентации и ответов на вопросы в данном разборе не было; публичный URL отдельно не оценивался.",
+            "evidence": [
+              "README.md:494-572",
+              "README.md:574-591",
+              "captures/20261002T113233172833-test-backend-check-after-generate.stdout.log",
+              "captures/20261002T113852227329-scenario-frontend-integration.stdout.log"
+            ],
+            "deductionItems": [],
+            "awardedDetails": [
+              {
+                "aspect": "Понятная карта системы",
+                "implementation": "README показывает React/Vite → Express → Prisma/PostgreSQL, перечисляет API routes и отдельно объясняет, что поддерживаемый ассистент живёт в backend, а ai/ является retired migration reference.",
+                "value": "Проверяющий быстро понимает, что запускать, где находится главный endpoint и какие части не следует считать вторым рабочим сервером.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:40-77",
+                  "README.md:206-221",
+                  "README.md:536-554"
+                ]
+              },
+              {
+                "aspect": "Воспроизводимая инструкция запуска",
+                "implementation": "Документация содержит Node/PostgreSQL prerequisites, npm ci, env setup, prisma generate/migrate/seed, запуск backend/frontend и health/API URLs. Команды были выполнены в изолированной среде с тем же порядком миграции и seed.",
+                "value": "Это позволяет показать результат из репозитория без устного сопровождения и отделяет обязательный локальный DATABASE_URL от optional OpenAI key.",
+                "verification": "observed",
+                "evidence": [
+                  "README.md:494-535",
+                  "captures/20261002T113411796001-scenario-db-setup.stdout.log",
+                  "captures/20261002T113806502483-scenario-assistant.stdout.log"
+                ]
+              },
+              {
+                "aspect": "Демонстрационный сценарий описан последовательно",
+                "implementation": "README даёт конкретный запрос поиска, объясняет выбор товара, предложение «3 данасын себетке қос» и отдельное «Иә, қос», а также перечисляет check:assistant и frontend integration commands.",
+                "value": "Сценарий легко превратить в короткое демо: поиск → характеристики/остаток → pending proposal → подтверждение → cart/checkout links. Именно эта последовательность прошла HTTP проверку.",
+                "verification": "observed",
+                "evidence": [
+                  "README.md:228-261",
+                  "captures/20261002T113852227329-scenario-frontend-integration.stdout.log"
+                ]
+              },
+              {
+                "aspect": "Честно раскрытые границы",
+                "implementation": "README прямо называет synthetic demo data, отсутствие payment provider, отключённую загрузку файлов, очистку retention и необходимость production security review.",
+                "value": "Участник не выдаёт прототип за production и даёт проверяющему правильные ожидания. Это повышает убедительность доступного демо, особенно при отсутствии live URL.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:457-461",
+                  "README.md:574-581",
+                  "backend/src/modules/assistant/files/README.md:38-44"
+                ]
+              }
+            ],
+            "scoreReasoning": "В соответствии с политикой оценивается README и воспроизводимость репозитория, а не отсутствовавшие устная презентация или публичная live-ссылка. Документация достаточна для локального показа, а команды build/start/scenario реально сработали; визуальная браузерная проверка оставлена пользователю и не штрафуется."
+          }
+        ],
+        "total": 90
+      },
+      "case": null,
+      "judgeScore": 90,
+      "caseRequirements": [
+        {
+          "requirement": "Отвечать по существующему каталогу о товаре, цене, характеристиках и наличии в выбранном городе.",
+          "status": "met",
+          "explanation": "Backend использует серверные Product/ProductOffer/ProductStock и возвращает нормализованный товар, технические спецификации, цену и availableQuantity. Реальный integration check подтвердил результат на созданном каталожном fixture.",
+          "evidence": [
+            "backend/src/modules/assistant/tools/product.tools.js:82-131",
+            "backend/src/modules/products/product.service.js:226-270",
+            "frontend/scripts/assistant-integration-check.mjs:92-115",
+            "captures/20261002T113852227329-scenario-frontend-integration.stdout.log"
+          ]
+        },
+        {
+          "requirement": "При нулевом остатке предложить минимум один релевантный аналог с объяснением.",
+          "status": "met",
+          "explanation": "Проверен seeded zero-stock запрос по товару DEMO-IEK-BA47-C16-1P в городе Astana: HTTP 200, доступность 0, возвращено 3 альтернативы и предупреждение о границах совместимости. Алгоритм допускает честный пустой результат, если в каталоге нет совместимого доступного кандидата, вместо выдумывания аналога.",
+          "evidence": [
+            "backend/src/modules/assistant/tools/product.tools.js:174-197",
+            "backend/src/modules/assistant/assistant.service.js:196-203",
+            "check:scenario-zero-stock-analog: POST /api/assistant/chat, HTTP 200, available=0, alternatives=3"
+          ]
+        },
+        {
+          "requirement": "Отвечать об условиях оплаты, доставки и других условиях покупки на основе опубликованных данных.",
+          "status": "met",
+          "explanation": "Purchase tools выбирают FAQ и CMS pages, возвращают sources и не подменяют неизвестную минимальную сумму заказа бесплатной доставкой. Отдельный запрос delivery/payment вернул knowledge response с тремя источниками.",
+          "evidence": [
+            "backend/src/modules/assistant/tools/purchase.tools.js:27-61",
+            "backend/src/modules/assistant/tools/purchase.tools.js:64-77",
+            "check:scenario-purchase-terms: POST /api/assistant/chat, HTTP 200, type=knowledge, sourceCount=3"
+          ]
+        },
+        {
+          "requirement": "Изменять корзину только после явного подтверждения пользователя.",
+          "status": "met",
+          "explanation": "До подтверждения создаётся только pending action и cart totalItemCount остаётся 0. Точное «Иә, қос» с pendingActionId выполняет добавление; replay того же подтверждения не увеличивает количество.",
+          "evidence": [
+            "backend/src/modules/assistant/assistant.service.js:93-108,160-174",
+            "backend/src/modules/assistant/tools/cart.tools.js:36-77",
+            "captures/20261002T113806502483-scenario-assistant.stdout.log",
+            "captures/20261002T113852227329-scenario-frontend-integration.stdout.log"
+          ]
+        },
+        {
+          "requirement": "Не добавлять больше доступного остатка и повторно проверять цену/остаток перед mutation.",
+          "status": "met",
+          "explanation": "Prepare проверяет accumulated quantity, а confirm повторно вызывает validateCartQuantity, сверяет цену и cart fingerprint внутри транзакции. Domain tests покрывают stock reduction, price change, cart change и concurrent confirmation.",
+          "evidence": [
+            "backend/src/modules/assistant/tools/cart.tools.js:27-77",
+            "backend/tests/assistant-cart-tools.test.js:58-176",
+            "backend/tests/assistant.test.js:389-417",
+            "captures/20261002T113918229195-test-backend-assistant.stdout.log"
+          ]
+        },
+        {
+          "requirement": "После добавления вернуть прямую ссылку на актуальную корзину/оформление.",
+          "status": "met",
+          "explanation": "Cart response содержит cartUrl=/cart и checkoutUrl=/checkout; виджет отображает обе ссылки и обновляет общий cart context после подтверждения.",
+          "evidence": [
+            "backend/src/modules/assistant/assistant.service.js:105-108",
+            "frontend/src/components/assistant/AssistantWidget.tsx:168-174",
+            "frontend/scripts/assistant-integration-check.mjs:141-156"
+          ]
+        },
+        {
+          "requirement": "Принимать фото и Excel/Word/PDF/JPEG как входные данные ассистента.",
+          "status": "partial",
+          "explanation": "В репозитории есть изолированный parser foundation с CSV/XLSX, optional DOCX/PDF и signature-only JPEG/PNG обработкой, а backend tests проверяют extraction и redaction. Но chat validation не принимает attachmentFileIds или multipart, assistant route не имеет upload endpoint, service для FILE_INPUT сообщает, что загрузка не подключена, и frontend widget не содержит file input. Данные не проходят из файла в поиск/аналог/корзину.",
+          "evidence": [
+            "backend/src/modules/assistant/assistant.validation.js:1-16",
+            "backend/src/modules/assistant/assistant.routes.js:17-30",
+            "backend/src/modules/assistant/assistant.service.js:128-130",
+            "frontend/src/components/assistant/AssistantWidget.tsx:117-146",
+            "backend/src/modules/assistant/files/README.md:1-6,23-44",
+            "README.md:574-581"
+          ]
+        },
+        {
+          "requirement": "Не выдумывать цену/наличие и объяснять источник коммерческих данных.",
+          "status": "met",
+          "explanation": "Коммерческие значения формируются из server-side catalog services; значения из пользовательского сообщения не используются как authoritative. README отдельно маркирует demo catalog как synthetic, а ответы содержат каталоговые prices/stock и sources для purchase knowledge.",
+          "evidence": [
+            "README.md:214-221,544-552",
+            "backend/src/modules/assistant/tools/product.tools.js:3-4,101-131",
+            "backend/src/modules/assistant/assistant.service.js:53-55,163-174"
+          ]
+        },
+        {
+          "requirement": "Не хранить и не принимать платёжные данные в ассистенте.",
+          "status": "met",
+          "explanation": "assertSafeMessage отклоняет card/CVV/PIN/expiry-like text до persistence/provider call. File parser redacts payment-like values from text and rows and marks all document content untrusted. Domain tests подтверждают отсутствие echo для payment inputs.",
+          "evidence": [
+            "backend/src/modules/assistant/assistant.safety.js:3-14",
+            "backend/src/modules/assistant/files/file-service.js:58-79,97-120",
+            "backend/tests/assistant-ai.test.js:13-21",
+            "backend/tests/assistant-files.test.js:142-159"
+          ]
+        },
+        {
+          "requirement": "Поддерживать казахский и русский текстовый сценарий и общий контекст сайта.",
+          "status": "met",
+          "explanation": "Rule classifier и сообщения покрывают казахский/русский, frontend передаёт Accept-Language, X-Session-Id и JWT/guest identity. UI и backend checks прошли для казахского поиска, явного подтверждения и identity changes.",
+          "evidence": [
+            "backend/src/modules/assistant/ai.service.js:19-40",
+            "backend/src/modules/assistant/assistant.service.js:14,132-137,170-174",
+            "frontend/src/components/assistant/AssistantWidget.tsx:19-25,80-103",
+            "captures/20261002T113045275105-test-frontend-assistant.stdout.log"
+          ]
+        },
+        {
+          "requirement": "Учитывать десктопный/мобильный пользовательский интерфейс.",
+          "status": "unverified",
+          "explanation": "В CSS есть responsive media query для ширины до 700px и безопасные focus styles; frontend build и DOM сценарии прошли. Фактическая визуальная проверка браузером запрещена инструкциями ревью и оставлена пользователю, поэтому pixel-level/mobile layout не объявляется проверенным.",
+          "evidence": [
+            "frontend/src/styles/assistant.css:309-333",
+            "frontend/src/components/assistant/AssistantWidget.tsx:117-149",
+            "captures/20261002T112733473402-build-frontend.stdout.log"
+          ]
+        }
+      ],
+      "testData": {
+        "provided": [
+          "cases/10/case-data/HackAlem AI_ ИИ-ассистент для чата на сайте ekt.kz.md",
+          "cases/10/case-data/ИИ-ассистент для чата на сайте ekt.kz ДАННЫЕ.docx.md"
+        ],
+        "used": [
+          "cases/10/task.txt",
+          "cases/10/case-data/HackAlem AI_ ИИ-ассистент для чата на сайте ekt.kz.md",
+          "cases/10/case-data/ИИ-ассистент для чата на сайте ekt.kz ДАННЫЕ.docx.md",
+          "backend/prisma/seed.js и seeded PostgreSQL demo catalog как локальная реализация структуры каталога"
+        ],
+        "checks": [
+          {
+            "input": "Предоставленный документ с API каталога: GET /api/products и GET /api/products/detail?id=515291.",
+            "method": "HTTP probe к обоим указанным endpoint без публикации credentials или полного ответа.",
+            "result": "Оба запроса ответили HTTP 401 Unauthorized.",
+            "conclusion": "Production/test API из документа не был доступен для содержательной проверки; это ограничение внешнего сервиса и не доказательство дефекта проекта. Локальный synthetic catalog использован отдельно."
+          },
+          {
+            "input": "Seeded catalog: поиск существующего товара на казахском, включая запрос «Маған 16А автомат керек».",
+            "method": "backend check:assistant и frontend check:assistant:integration против PostgreSQL с миграциями и seed.",
+            "result": "Health 200; поиск вернул товары с finite city price/stock; frontend-to-backend сценарий подтвердил normalized product, shared session и authoritative fields.",
+            "conclusion": "Текстовая консультация по существующему товару подтверждена наблюдаемым HTTP результатом."
+          },
+          {
+            "input": "Zero-stock product DEMO-IEK-BA47-C16-1P в городе Astana.",
+            "method": "POST /api/assistant/chat с SKU и city, затем проверка response fields.",
+            "result": "HTTP 200, type=products, availableQuantity=0, alternatives=3, alternativeWarning присутствует.",
+            "conclusion": "Нулевой остаток и объяснимые аналоги подтверждены на seeded данных."
+          },
+          {
+            "input": "Вопрос «delivery payment terms» в выбранном городе.",
+            "method": "POST /api/assistant/chat без cart mutation.",
+            "result": "HTTP 200, type=knowledge, sourceCount=3.",
+            "conclusion": "Условия покупки возвращаются через FAQ/CMS knowledge path."
+          },
+          {
+            "input": "Запрос 3 единиц выбранного товара, затем точное «Иә, қос» и повтор того же подтверждения.",
+            "method": "backend check:assistant и frontend check:assistant:integration с изолированной UUID-сессией.",
+            "result": "До подтверждения cart totalItemCount=0; после подтверждения totalItemCount=3, cartUrl=/cart, checkoutUrl=/checkout; повтор не увеличил количество, stock reservations не изменились.",
+            "conclusion": "Prepare-confirm flow, актуальная ссылка и replay safety подтверждены."
+          },
+          {
+            "input": "Synthetic CSV/XLSX/PDF/JPEG fixtures из backend assistant file tests.",
+            "method": "Pure parser/domain tests без внешнего сервиса; проверены signatures, extraction, limits, prompt-injection filtering и payment redaction.",
+            "result": "assistant-files.test.js прошёл в составе 184/184 backend assistant tests.",
+            "conclusion": "Файловая основа качественно реализована как модуль, но отдельная проверка подтвердила, что она не подключена к chat input и потому не засчитывается как полный must-have сценарий."
+          }
+        ],
+        "limitations": [
+          "Предоставленный внешний API вернул 401, поэтому его реальные товарные значения не переносились в отчёт и не выдавались за проверенные.",
+          "В тестах использован синтетический seeded catalog, что прямо разрешено материалами кейса для прототипа.",
+          "Визуальная browser-проверка не выполнялась согласно обязательной пользовательской инструкции; DOM/build evidence не заменяет визуальную проверку."
+        ]
+      },
+      "runtime": {
+        "status": "working",
+        "build": "Поддерживаемый frontend собрался production bundle (Vite: 1687 modules, dist создан). Backend после предусмотренного README шага prisma generate прошёл 130 JavaScript syntax checks, импорт 110 source files, stock checks и negative HTTP checks. ai/ test прошёл 6 файлов/18 тестов; ai/ является явно отключённым migration reference и не является runtime приложения.",
+        "start": "Поддерживаемый backend стартовал и вывел «EKT Store API listening»; /api/health ответил HTTP 200 при подключённой PostgreSQL. Frontend integration использовал тот же основной backend endpoint.",
+        "scenario": "Основной сценарий воспроизведён полностью: поиск, authoritative product details/stock/certificate, условия, zero-stock alternative, read-only pending proposal, explicit confirmation, cart/checkout links, replay protection и обычное чтение той же корзины frontend API.",
+        "environment": "Node 22.13.0 в изолированном контейнере, PostgreSQL 16, пакетные версии из lock-файлов, без OpenAI key. Детерминированный backend assistant работает без внешнего LLM; seeded данные синтетические.",
+        "summary": "Runtime классифицирован как working, потому что приложение реально стартовало и главный пользовательский сценарий наблюдался на рабочем API и database. Отсутствие ключа OpenAI ограничивает только optional provider classification, а не deterministic path.",
+        "checks": [
+          {
+            "command": "npm run build",
+            "result": "Vite production build passed; 1687 modules transformed; dist/index.html and JS/CSS assets generated.",
+            "id": "build-frontend",
+            "stage": "build",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Frontend TypeScript and production bundle build successfully."
+          },
+          {
+            "command": "npm run check",
+            "result": "Backend check passed: 130 syntax files, 110 imports, stock calculations, /api/products?page=0=422, invalid register=422, unknown route=404.",
+            "id": "build-backend-check",
+            "stage": "build",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Supported backend source and basic HTTP contract pass."
+          },
+          {
+            "command": "npm test",
+            "result": "ai/ Vitest passed 6 test files and 18 tests; backend assistant Jest passed 5 suites and 184 tests.",
+            "id": "test-domain",
+            "stage": "build",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Available unit/domain and assistant safety tests pass."
+          },
+          {
+            "command": "npm start",
+            "result": "Server listened successfully; subsequent GET /api/health returned HTTP 200 with database connected.",
+            "id": "start-backend",
+            "stage": "start",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Supported backend starts and exposes health endpoint."
+          },
+          {
+            "command": "npm run check:assistant",
+            "result": "Assistant HTTP smoke passed: health200, real Kazakh catalog, read-only proposal, explicit confirmation, replay-safe cart, unchanged reservations.",
+            "id": "scenario-assistant",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Backend main assistant scenario works against seeded database."
+          },
+          {
+            "command": "npm run check:assistant:integration",
+            "result": "9 real frontend-to-backend checks passed: health/CORS, search, details, certificate/manual links, proposal, confirmation, replay, cancellation and shared guest cart.",
+            "id": "scenario-frontend-integration",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Real frontend API services communicate with the main backend and preserve session/cart semantics."
+          },
+          {
+            "command": "POST /api/assistant/chat",
+            "result": "Seeded zero-stock query returned HTTP 200, availableQuantity=0 and 3 alternatives with warning.",
+            "id": "scenario-zero-stock-analog",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Zero stock yields a catalog-grounded relevant alternative when one exists."
+          },
+          {
+            "command": "POST /api/assistant/chat",
+            "result": "Delivery/payment query returned HTTP 200 knowledge response with 3 sources.",
+            "id": "scenario-purchase-terms",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Purchase conditions are answered from application knowledge sources."
+          },
+          {
+            "command": "GET /api/products and GET /api/products/detail?id=515291",
+            "result": "Both provided external catalog endpoints returned HTTP 401, so no production response was asserted.",
+            "id": "case-api-probe",
+            "stage": "scenario",
+            "status": "blocked",
+            "cause": "external_service",
+            "expected": "Provided test API responds with accessible catalog/list and detail data."
+          }
+        ],
+        "limitations": [
+          "Внешний API из case-data ответил 401; локальный runtime проверен на синтетическом seed.",
+          "OpenAI key не предоставлялся, но optional provider не нужен для deterministic assistant и не используется для cart authorization.",
+          "Визуальный layout desktop/mobile не проверялся браузером; это отдельная ответственность пользователя по инструкции ревью."
+        ]
+      },
+      "liveDemo": {
+        "status": "none",
+        "url": null,
+        "notes": "Публичная live-ссылка в проверяемых материалах не заявлена. Отсутствие URL не использовано как снятие баллов; локально воспроизводимое demo подтверждено runtime checks."
+      },
+      "fiveHourContext": "Для пятичасового хакатона результат существенно выше простого chat mock: есть полноценный Express/Prisma commerce domain, seeded city-aware catalog, frontend widget, shared session, server-side pricing/stock, expiring proposal, transactional confirmation, safety filters, analog scoring, tests и README. Неподключённый файловый вход — реальная недостача относительно must-have кейса, но parser foundation уже изолирован и честно помечает свои границы. Payment provider, production catalog credentials, retention cleanup и live rollout не требовались как отдельные MVP-функции и не штрафуются.",
+      "strengths": [
+        "STR-001: Основной prepare-confirm cart flow наблюдался end-to-end и защищён повторной валидацией цены, остатка, owner/session и cart fingerprint.",
+        "STR-002: Catalog/product/purchase services дают server-authoritative ответы, объяснимые аналоги и источники условий вместо доверия пользовательским коммерческим значениям.",
+        "STR-003: Frontend widget подключён к тому же backend и shared guest/auth identity; 21 UI regression сценарий и 9 реальных integration checks прошли.",
+        "STR-004: Безопасность untrusted сообщений и документов реализована в коде: payment rejection, redaction, prompt-injection filtering и read-only provider boundary.",
+        "STR-005: README содержит воспроизводимый запуск, команды проверки, архитектуру и честно раскрытые ограничения."
+      ],
+      "gaps": [
+        "DEF-001: Файлы и фото не входят в рабочий chat flow. assistant.validation.js разрешает только текстовые поля, assistant.routes.js регистрирует только POST /chat без upload/attachment route, service для FILE_INPUT возвращает ASSISTANT_FILE_INPUT_NOT_ENABLED, а frontend widget не содержит file input; поэтому CSV/XLSX/DOCX/PDF/JPEG foundation не превращает вложение в каталоговый ответ или cart proposal."
+      ],
+      "futureAdvice": [
+        {
+          "principle": "Доводите multimodal feature до вертикального пользовательского среза, а не оставляйте parser отдельно от продукта.",
+          "why": "DEF-001: parser foundation уже умеет ограничивать, очищать и redacts untrusted документ, но route, session ownership, frontend attachment и передача extracted content в assistant отсутствуют. Пользователь с Excel/PDF/JPEG получает сообщение, что загрузка не подключена.",
+          "how": "В следующем хакатоне сначала добавьте минимальный multipart endpoint, связанный с guest/auth session и TTL metadata; затем подключите один CSV/XLSX путь к assistant context с ручным review перед product matching. После этого добавьте DOCX/PDF и только потом image OCR. Сохраните existing untrusted/requiresReview boundary и запрет на самостоятельную cart mutation.",
+          "findingIds": [
+            "DEF-001"
+          ],
+          "successCheck": "Из UI можно прикрепить один CSV/XLSX, сервер возвращает bounded extracted rows с session-bound file id, ассистент показывает parsed proposal с источником и не меняет корзину до отдельного подтверждения; forged filename, payment data и prompt-injection fixture отклоняются.",
+          "timeboxMinutes": 75
+        }
+      ],
+      "uncertainties": [
+        "Предоставленный ekt.kz API вернул 401 на оба указанных endpoint; реальные production catalog values и соответствие внешнему API не подтверждены.",
+        "OpenAI provider не проверялся без внешнего ключа. По исходникам его роль ограничена read-only intent classification, а deterministic path проверен без него.",
+        "Визуальное поведение в браузере, включая фактический mobile layout, не проверялось из-за обязательного запрета browser/UI automation; CSS и DOM/build evidence не являются визуальным наблюдением.",
+        "Интеграционная проверка использовала синтетический seeded catalog, как разрешено case-data; это не заявление о производственных ценах, сертификатах или остатках ekt.kz."
+      ],
+      "reviewPolicyVersion": 2,
+      "assessmentStatus": "ready",
+      "findings": [
+        {
+          "id": "STR-001",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Подтверждённый cart proposal добавляется только после явного подтверждения и не применяется повторно.",
+          "expected": "До подтверждения корзина не меняется; после подтверждения добавляется допустимое количество и возвращается актуальная ссылка.",
+          "actual": "В HTTP smoke и frontend integration до подтверждения было 0 items, после «Иә, қос» стало 3, вернулись /cart и /checkout; replay сохранил quantity=3.",
+          "evidence": [
+            "backend/src/modules/assistant/assistant.service.js:93-108",
+            "backend/src/modules/assistant/tools/cart.tools.js:61-77",
+            "captures/20261002T113852227329-scenario-frontend-integration.stdout.log"
+          ],
+          "checkIds": [
+            "scenario-assistant",
+            "scenario-frontend-integration"
+          ]
+        },
+        {
+          "id": "STR-002",
+          "kind": "strength",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "LLM/provider не получает полномочия придумывать коммерческие факты или разрешать cart action.",
+          "expected": "Цены, stock, certificates и consent должны подтверждаться backend/catalog state.",
+          "actual": "Rule intents обрабатываются детерминированно; optional OpenAI получает только read-intent schema, а product/cart services вызываются сервером.",
+          "evidence": [
+            "backend/src/modules/assistant/ai.service.js:42-68",
+            "backend/src/modules/assistant/prompts/system.prompt.js:1-11",
+            "backend/src/modules/assistant/assistant.service.js:160-174"
+          ],
+          "checkIds": [
+            "test-domain",
+            "scenario-assistant"
+          ]
+        },
+        {
+          "id": "STR-003",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Frontend chat и обычная корзина используют общий backend и общий identity context.",
+          "expected": "Результат подтверждения из chat должен быть виден стандартному cart API без второго AI backend.",
+          "actual": "9 frontend-to-backend checks прошли; обычный cart read увидел тот же cart id, city, product и quantity после assistant confirmation.",
+          "evidence": [
+            "frontend/scripts/assistant-integration-check.mjs:141-186",
+            "captures/20261002T113852227329-scenario-frontend-integration.stdout.log"
+          ],
+          "checkIds": [
+            "scenario-frontend-integration"
+          ]
+        },
+        {
+          "id": "STR-004",
+          "kind": "strength",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Untrusted text и документы проходят conservative payment/prompt-injection filtering.",
+          "expected": "Sensitive payment-like input не должен быть сохранён/echoed, а document content не должен стать instruction или cart authorization.",
+          "actual": "assertSafeMessage отклоняет payment-like messages; file normalizer redacts rows/text, исключает instruction-like rows и возвращает untrusted/requiresReview.",
+          "evidence": [
+            "backend/src/modules/assistant/assistant.safety.js:3-14",
+            "backend/src/modules/assistant/files/file-service.js:58-120,145-150",
+            "backend/src/modules/assistant/files/README.md:53-69"
+          ],
+          "checkIds": [
+            "test-domain"
+          ]
+        },
+        {
+          "id": "DEF-001",
+          "kind": "defect",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Заявленный файловый и фото-вход не подключён к ассистенту.",
+          "expected": "Чат должен принять Excel/Word/PDF/JPEG/photo, безопасно извлечь данные и использовать их в консультации после пользовательского review.",
+          "actual": "assistant.validation.js принимает только message/sessionId/city/selectedProductId/quantity/pendingActionId; route имеет только POST /chat; service возвращает ASSISTANT_FILE_INPUT_NOT_ENABLED; frontend содержит textarea без file input.",
+          "evidence": [
+            "backend/src/modules/assistant/assistant.validation.js:1-16",
+            "backend/src/modules/assistant/assistant.routes.js:17-30",
+            "backend/src/modules/assistant/assistant.service.js:128-130",
+            "frontend/src/components/assistant/AssistantWidget.tsx:117-146",
+            "README.md:574-581"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "LIM-001",
+          "kind": "limitation",
+          "verification": "observed",
+          "responsibility": "external_service",
+          "claim": "Предоставленный внешний API каталога недоступен для содержательной проверки в этой сессии.",
+          "expected": "GET /api/products и detail endpoint должны вернуть авторизованный тестовый каталог.",
+          "actual": "Оба endpoint вернули HTTP 401 Unauthorized.",
+          "evidence": [
+            "check:case-api-probe",
+            "cases/10/case-data/ИИ-ассистент для чата на сайте ekt.kz ДАННЫЕ.docx.md"
+          ],
+          "checkIds": [
+            "case-api-probe"
+          ]
+        },
+        {
+          "id": "LIM-002",
+          "kind": "limitation",
+          "verification": "unverified",
+          "responsibility": "review_environment",
+          "claim": "Фактическая визуальная desktop/mobile раскладка не наблюдалась.",
+          "expected": "Виджет должен визуально оставаться usable на desktop и mobile.",
+          "actual": "Есть responsive CSS и успешные DOM/build checks, но browser visual review не выполнялся по обязательной политике.",
+          "evidence": [
+            "frontend/src/styles/assistant.css:309-333",
+            "frontend/src/components/assistant/AssistantWidget.tsx:117-149",
+            "captures/20261002T112733473402-build-frontend.stdout.log"
+          ],
+          "checkIds": []
+        }
+      ],
+      "gapFindingIds": [
+        "DEF-001"
+      ]
+    }
+  ],
+  "score": 90.0,
+  "status": "complete",
+  "expectedJudges": 1
+}

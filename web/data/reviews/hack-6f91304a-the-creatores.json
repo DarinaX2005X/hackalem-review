@@ -1,0 +1,849 @@
+{
+  "methodVersion": 4,
+  "repoId": "hack-6f91304a-the-creatores",
+  "repoUrl": "https://github.com/BAITC-Hacks/hack-6f91304a-the-creatores",
+  "caseId": 5,
+  "snapshot": "c81fd69e56da42c137dcddeb9b705417dfe32ff9",
+  "judges": [
+    {
+      "methodVersion": 4,
+      "repoId": "hack-6f91304a-the-creatores",
+      "caseId": 5,
+      "model": "GPT-5.6 Luna",
+      "snapshot": "c81fd69e56da42c137dcddeb9b705417dfe32ff9",
+      "overallSummary": "В репозитории есть содержательный FastAPI-бэкенд с детерминированным расчётом пополнения: он загружает Excel, валидирует структуру, прогнозирует спрос с сезонностью, трендом и устойчивым ограничением выбросов, учитывает остаток, поставки в пути, MOQ и кратность, сохраняет объяснение и экспортирует результат. Это подтверждено 133 автоматическими тестами и отдельным API-smoke в деморежиме. Однако пользовательский frontend намеренно не связан с API: после выбора любого файла он показывает фиксированные MOCK_PRODUCTS и локальный CSV. Поэтому сквозной продуктовый сценарий по реальным данным не воспроизведён; запуск реального Excel-провайдера на предоставленных организаторами книгах не завершился за 299,2 секунды и был остановлен только в собственном именованном контейнере. Дополнительно в модели нет категорий и клиентского измерения, а stockout повышает темп продаж по дням наличия, но явно не оценивает скрытый lost demand.",
+      "global": {
+        "criteria": [
+          {
+            "name": "Ценность решения",
+            "score": 17,
+            "max": 25,
+            "awarded": "Проблема закупочного пополнения и потенциальная польза для менеджера закупа раскрыты убедительно на уровне бэкенда, но реальная ценность для пользователя ограничена несвязанным frontend и отсутствием категорий/клиентского измерения.",
+            "deductions": "Снято 8 баллов за подтверждённые ограничения основного пользовательского результата и охвата входных данных.",
+            "evidence": [
+              "cases/5/task.txt:1-3",
+              "backend/main.py:95-209",
+              "backend/calculations/orders.py:107-221",
+              "frontend/app.js:3-22",
+              "frontend/app.js:234-245",
+              "DEF-001",
+              "DEF-002"
+            ],
+            "deductionItems": [
+              {
+                "points": 5,
+                "findingId": "DEF-001",
+                "reason": "Пользовательский интерфейс не передаёт выбранный Excel в API и показывает фиксированные рекомендации, поэтому заявленная экономия времени и расчёт по складу не достигаются в основном пользовательском сценарии."
+              },
+              {
+                "points": 3,
+                "findingId": "DEF-002",
+                "reason": "Категории товаров не принимаются и не участвуют в расчёте, хотя это прямо относится к требуемой закупочной потребности и возможной сегментации ассортимента."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Понятная операционная проблема",
+                "implementation": "Материалы кейса фиксируют ручную консолидацию Excel менеджером закупа, редкость расчётов, риск дефицита/излишков и искажение регулярного спроса разовыми крупными продажами.",
+                "value": "Это конкретная бизнес-боль с прямым эффектом на хранение и упущенные продажи; проект выбрал сценарий, где автоматизация действительно может быть полезна целевой роли.",
+                "verification": "source",
+                "evidence": [
+                  "cases/5/task.txt:1-3",
+                  "cases/5/case-data/HackAlem AI_ Автоматизация формирования заказов поставщикам.docx.md:2-5"
+                ]
+              },
+              {
+                "aspect": "Расчёт от фактов запаса",
+                "implementation": "В `calculate_order` потребность строится как прогноз спроса плюс страховой запас минус остаток и поставки в интервале; результат содержит количество, поставщика, срочность и текстовую причину.",
+                "value": "Такая форма результата отвечает ежедневному решению закупщика: что заказать, сколько и почему, а не только выдаёт безымянный прогноз.",
+                "verification": "source",
+                "evidence": [
+                  "backend/calculations/orders.py:107-221",
+                  "backend/models.py:57-71"
+                ]
+              },
+              {
+                "aspect": "Устойчивость к искажённому спросу",
+                "implementation": "История нормализуется по наличию товара, пропуски не превращаются в нули, а аномальные дневные темпы ограничиваются robust upper clip; тесты отдельно проверяют одиночный миллионный всплеск.",
+                "value": "Это полезная защита от типичной проблемы кейса — разовой крупной покупки, которая иначе завысила бы регулярное пополнение.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/calculations/demand.py:244-357",
+                  "tests/test_calculations_demand.py:46-56",
+                  "RT-BUILD-001"
+                ]
+              },
+              {
+                "aspect": "Разрыв между сервисом и интерфейсом",
+                "implementation": "Frontend содержит реальные пути API только как карту интеграции, но `dataService.calculate` после задержки возвращает `MOCK_PRODUCTS`, не читая файл; экспорт также строится локально из этих fixtures.",
+                "value": "Это существенно снижает ценность для конечного пользователя: работающий расчётный модуль существует, но через заявленный интерфейс пользователь не получает расчёт по своему набору.",
+                "verification": "source",
+                "evidence": [
+                  "frontend/app.js:3-22",
+                  "frontend/app.js:234-245",
+                  "frontend/app.js:633-655",
+                  "DEF-001"
+                ]
+              }
+            ],
+            "scoreReasoning": "17 баллов заслужены за хорошо выбранную задачу и за то, что бэкенд действительно моделирует ключевые факторы пополнения. До высокой оценки не хватает именно доступной пользователю ценности: основной интерфейс не использует этот бэкенд, а категории не являются частью данных и формулы. Эти недостатки подтверждены исходниками, а не отсутствием внешнего ключа."
+          },
+          {
+            "name": "Результат и качество решения",
+            "score": 11,
+            "max": 20,
+            "awarded": "Бэкенд даёт целостный API-контракт и экспортируемый результат, но целостность продукта нарушена: frontend — демонстрационный макет с фиксированными данными, а реальный набор Excel не доведён до результата в проверке.",
+            "deductions": "Снято 9 баллов за несвязанный основной UI, отсутствие категорий и неполную компенсацию stockout-сценария.",
+            "evidence": [
+              "tests/test_api.py:1-220",
+              "tests/test_server_smoke.py:1-63",
+              "backend/main.py:95-209",
+              "frontend/app.js:234-245",
+              "DEF-001",
+              "DEF-002",
+              "DEF-003"
+            ],
+            "deductionItems": [
+              {
+                "points": 6,
+                "findingId": "DEF-001",
+                "reason": "Выбор файла в интерфейсе не приводит к `/api/upload`, `/api/calculate` или `/api/recommendations`; пользовательский результат всегда синтетический."
+              },
+              {
+                "points": 2,
+                "findingId": "DEF-002",
+                "reason": "Обязательная часть входа про категории отсутствует в Excel-алиасах и расчётной модели, поэтому сценарий не охвачен целиком."
+              },
+              {
+                "points": 1,
+                "findingId": "DEF-003",
+                "reason": "При stockout реализация нормирует продажи на дни наличия и предупреждает, что lost sales неизвестны, но не формирует явную оценку/компенсацию скрытого спроса."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Контракт загрузки и расчёта",
+                "implementation": "FastAPI предоставляет `/api/upload`, `/api/calculate`, `/api/recommendations` и `/api/export`; адаптер проверяет провайдера, валидность набора, даты периода и фильтр поставщика.",
+                "value": "Контракт разделяет загрузку, расчёт, просмотр и экспорт, что является рабочим скелетом целостного сервиса и позволяет заменить расчётный модуль без подмены результата демо.",
+                "verification": "source",
+                "evidence": [
+                  "backend/main.py:110-183",
+                  "backend/main.py:189-209",
+                  "backend/services/calculations.py:11-94"
+                ]
+              },
+              {
+                "aspect": "Проверяемый backend-сценарий",
+                "implementation": "В отдельном API-smoke в DEMO_MODE без ключа получены health 200, upload 201, calculate 201, recommendations 200 с `total=2` и export 200 с Excel MIME-типом и 8398 байтами.",
+                "value": "Это доказывает, что серверный маршрут от загрузки до выгрузки запускается и возвращает согласованный пользовательский контракт, даже когда внешний OpenAI недоступен.",
+                "verification": "observed",
+                "evidence": [
+                  "RT-HTTP-001",
+                  "backend/services/demo.py:13-66"
+                ]
+              },
+              {
+                "aspect": "Контроль качества и ошибок",
+                "implementation": "Pydantic-модели запрещают лишние поля и невалидные количества, сервис отклоняет несовместимый провайдер и некорректный результат, а тесты покрывают ошибки API, экспорт и агентские ограничения.",
+                "value": "Для пятичасового прототипа это заметно повышает предсказуемость результата и снижает риск тихо сформировать неправильный заказ.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/models.py:13-18",
+                  "backend/services/calculations.py:56-94",
+                  "tests/test_provider_contract.py:45-80",
+                  "RT-BUILD-001"
+                ]
+              },
+              {
+                "aspect": "Фактический пользовательский результат",
+                "implementation": "Вместо передачи содержимого файла в backend `dataService.calculate` возвращает восемь заранее заданных SKU, а `exportOrder` формирует CSV из отфильтрованных fixtures.",
+                "value": "Макет хорошо показывает форму будущего результата, но не является рабочим результатом кейса: изменение входной таблицы не может изменить рекомендации.",
+                "verification": "source",
+                "evidence": [
+                  "frontend/app.js:12-22",
+                  "frontend/app.js:234-245",
+                  "frontend/app.js:624-655",
+                  "DEF-001"
+                ]
+              }
+            ],
+            "scoreReasoning": "11 баллов отражают сильный и тестируемый серверный скелет, но результатом кейса должен быть список по данным склада, а не только контракт и синтетический demo-v1. Несвязанный frontend — подтверждённый дефект продукта, тогда как длительная обработка организаторских книг остаётся ограничением проверки и отдельно не оштрафована."
+          },
+          {
+            "name": "Инновационность",
+            "score": 11,
+            "max": 15,
+            "awarded": "Собственная сильная сторона — инспектируемый robust-forecast вместо простого среднего: Theil–Sen тренд, сезонность с проверкой двух лет, корректировка выбросов и временная проверка дефицита. Пользовательский слой этого подхода не раскрывает.",
+            "deductions": "Снято 4 балла из-за того, что нестандартный расчёт не подключён к UI и не охватывает клиентский/категорийный контекст.",
+            "evidence": [
+              "backend/calculations/demand.py:57-148",
+              "backend/calculations/demand.py:325-377",
+              "backend/calculations/orders.py:181-220",
+              "frontend/app.js:234-245",
+              "DEF-001",
+              "DEF-003"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "DEF-001",
+                "reason": "Инновационный алгоритм не демонстрируется на реальном пользовательском вводе: интерфейс показывает заранее заданные значения и не вызывает расчётный модуль."
+              },
+              {
+                "points": 2,
+                "findingId": "DEF-003",
+                "reason": "Stockout обрабатывается осторожной нормировкой по дням наличия, но проект сознательно не оценивает скрытый спрос; это оставляет важную часть нестандартного подхода незавершённой."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Robust-ограничение разовых всплесков",
+                "implementation": "Для двух и более наблюдений проект вычисляет ограничитель через медианный центр/MAD и заменяет завышенный темп на верхнюю границу; результат сохраняет список аномалий и метод `robust_upper_clip`.",
+                "value": "Это осмысленнее наивного среднего для закупок и напрямую соответствует проблеме разовых больших продаж.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/calculations/demand.py:330-357",
+                  "tests/test_calculations_demand.py:46-56"
+                ]
+              },
+              {
+                "aspect": "Устойчивый тренд",
+                "implementation": "Theil–Sen slope применяется только при достаточной истории и направленных шагах, фактор ограничен 25%; явный `growth_adjustment` может заменить автоматический тренд.",
+                "value": "Порог и ограничение защищают пятиичасовой MVP от агрессивной экстраполяции, но позволяют учитывать устойчивый рост/снижение.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/calculations/demand.py:57-65",
+                  "backend/calculations/demand.py:173-179",
+                  "tests/test_calculations_demand.py:68-93"
+                ]
+              },
+              {
+                "aspect": "Проверяемая сезонность",
+                "implementation": "Явные коэффициенты применяются по месяцам, а вывод сезонности из истории разрешается только для 24 последовательных полных месяцев; годовые повторения проверяются на противоречивость.",
+                "value": "Подход делает сезонную поправку объяснимой и не выдаёт один пик за надёжный сезонный паттерн.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/calculations/demand.py:68-148",
+                  "tests/test_calculations_demand.py:163-184"
+                ]
+              },
+              {
+                "aspect": "Нестандартная проверка времени дефицита",
+                "implementation": "Помимо суммарной потребности, `_projected_shortage` проходит по датам поставок и выставляет high urgency, если средний спрос создаёт временный минус до прихода.",
+                "value": "Это добавляет операционную приоритизацию: одинаковая сумма заказа может иметь разную срочность из-за даты поставки.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/calculations/orders.py:90-104",
+                  "backend/calculations/orders.py:173-199",
+                  "tests/test_calculations_orders.py:146-155"
+                ]
+              }
+            ],
+            "scoreReasoning": "11 баллов — высокий результат для короткого прототипа: в расчёте есть несколько обоснованных защит от наивного среднего и подробное evidence-поле. До максимума не хватает связанного демо и более полного использования измерений кейса; это не требование production-ML, а конкретная граница текущего алгоритма."
+          },
+          {
+            "name": "Потенциал развития и масштабирования",
+            "score": 14,
+            "max": 20,
+            "awarded": "Архитектура хорошо подготовлена к замене провайдера, масштабированию контрактов и добавлению ассистента, но текущая поставка остаётся локальным прототипом: frontend не интегрирован, категории не моделируются, а реальная обработка больших книг не показала завершённого результата.",
+            "deductions": "Снято 6 баллов за подтверждённые пробелы охвата и связности; отсутствие production-инфраструктуры само по себе не штрафовалось.",
+            "evidence": [
+              "backend/services/calculations.py:11-94",
+              "backend/agent/tools.py:26-167",
+              "backend/main.py:48-65",
+              "frontend/app.js:234-245",
+              "DEF-001",
+              "DEF-002",
+              "DEF-004"
+            ],
+            "deductionItems": [
+              {
+                "points": 3,
+                "findingId": "DEF-001",
+                "reason": "Без API-интеграции frontend нельзя расширять на реальные организации и новые наборы данных как единый продуктовый сценарий."
+              },
+              {
+                "points": 2,
+                "findingId": "DEF-002",
+                "reason": "Отсутствие категорий ограничивает перенос расчёта на ассортиментные правила и сегментацию, предусмотренные кейсом."
+              },
+              {
+                "points": 1,
+                "findingId": "DEF-004",
+                "reason": "Нет клиентского измерения, поэтому устойчивость к крупной покупке одного клиента не масштабируется в отдельную бизнес-правило/аналитику."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Контрактный провайдер",
+                "implementation": "`CalculationAdapter` динамически импортирует модуль с `prepare_dataset` и `calculate`, проверяет JSON-safe payload, бизнес-валидацию и неизменность параметров результата.",
+                "value": "Это позволяет подключать отдельные расчётные реализации и не смешивать provider, storage и HTTP; такой шов полезен для следующего этапа разработки.",
+                "verification": "source",
+                "evidence": [
+                  "backend/services/calculations.py:11-94",
+                  "tests/test_provider_contract.py:11-80"
+                ]
+              },
+              {
+                "aspect": "Разделение сервисов",
+                "implementation": "Загрузка, хранение, расчёт, экспорт и агентские инструменты разнесены по модулям; API ограничивает тело запроса, число файлов и размеры workbook.",
+                "value": "Структура уже допускает добавление новых поставщиков/форматов без переписывания всех маршрутов и содержит базовые границы ресурсоёмкого ввода.",
+                "verification": "source",
+                "evidence": [
+                  "backend/services/uploads.py:1-111",
+                  "backend/services/storage.py:1-75",
+                  "backend/services/body_limit.py:1-57",
+                  "backend/main.py:26-65"
+                ]
+              },
+              {
+                "aspect": "Ассистент с ограниченной областью",
+                "implementation": "OpenAI-инструменты получают server-bound dataset/calculation IDs, имеют строгие схемы, лимит вызовов и возвращают страницу рекомендаций, объяснение SKU или ссылку на экспорт, а не workbook payload.",
+                "value": "Такой интерфейс можно расширять, сохраняя проверяемые факты и не передавая в модель произвольные файлы/секреты.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/agent/tools.py:39-51",
+                  "backend/agent/tools.py:75-167",
+                  "tests/test_agent.py:34-100"
+                ]
+              },
+              {
+                "aspect": "Масштабирование ограничено моделью данных",
+                "implementation": "Нормализованный продукт содержит SKU, поставщика, остаток, продажи, incoming и seasonality, но не содержит canonical category или customer ID; frontend также не использует provider.",
+                "value": "Для локального MVP это понятная граница, но именно она мешает расширению на категории, клиентские выбросы и реальный multi-source UI.",
+                "verification": "source",
+                "evidence": [
+                  "backend/calculations/excel_loader.py:18-84",
+                  "backend/calculations/excel_loader.py:442-458",
+                  "frontend/app.js:234-245",
+                  "DEF-001",
+                  "DEF-002",
+                  "DEF-004"
+                ]
+              }
+            ],
+            "scoreReasoning": "14 баллов заслужены за модульность и хороший контрактный шов, а также за ограниченный, контролируемый агентский слой. Снижение касается не отсутствия облака или авторизации, которых пятичасовой MVP не обязан иметь, а конкретных отсутствующих измерений и разрыва между доступным API и интерфейсом."
+          },
+          {
+            "name": "Презентация, демо и ответы на вопросы",
+            "score": 12,
+            "max": 20,
+            "awarded": "README и docs достаточно ясно описывают backend, контракты и деморежим; frontend визуально и текстово оформлен как понятный сценарий. Но воспроизводимое демо из репозитория вводит в заблуждение относительно использования файла: фактически оно фиксированное.",
+            "deductions": "Снято 8 баллов за подтверждённый разрыв между заявленным upload/recommendation UX и реальным поведением frontend.",
+            "evidence": [
+              "README.md:5-16",
+              "backend/calculations/README.md:1-221",
+              "frontend/index.html:63-110",
+              "frontend/app.js:234-245",
+              "DEF-001"
+            ],
+            "deductionItems": [
+              {
+                "points": 8,
+                "findingId": "DEF-001",
+                "reason": "На экране обещан расчёт по загруженному Excel и скачивание заказа, но исходник прямо сообщает, что API-запросов нет, а файл не читается; это снижает убедительность демо и ясность того, что реально готово."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Короткая навигация по проекту",
+                "implementation": "README называет FastAPI, загрузку/расчёт, OpenAI agent, SQLite и Excel export, ссылается на backend docs и OpenAPI, а также явно предупреждает о DEMO_MODE.",
+                "value": "Участнику или судье понятно, где искать контракт и как отличить синтетическую демонстрацию от расчётного модуля.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:5-16"
+                ]
+              },
+              {
+                "aspect": "Объяснимый экран результата",
+                "implementation": "HTML содержит шаги загрузка→проверка→экспорт, фильтры поставщика/срочности, таблицу с остатком, incoming, forecast, recommended и карточку с причиной.",
+                "value": "Информационная архитектура хорошо соответствует роли менеджера закупа и делает важные поля видимыми до выгрузки.",
+                "verification": "source",
+                "evidence": [
+                  "frontend/index.html:57-95",
+                  "frontend/index.html:98-110"
+                ]
+              },
+              {
+                "aspect": "Локализация и доступность",
+                "implementation": "Frontend имеет RU/KZ/EN-переводы, aria-label/role/status, native dialog и responsive CSS; строки результата экранируются перед HTML.",
+                "value": "Для демонстрационного UX это повышает понятность и показывает внимание к разным пользователям без сетевых зависимостей.",
+                "verification": "source",
+                "evidence": [
+                  "frontend/app.js:24-80",
+                  "frontend/app.js:203-257",
+                  "frontend/index.html:30-49",
+                  "frontend/styles.css:332-499"
+                ]
+              },
+              {
+                "aspect": "Проверяемое серверное демо вместо устного обещания",
+                "implementation": "Без внешнего ключа серверный API-smoke воспроизвёл health, upload, calculate, recommendations и export; targeted server smoke также подтвердил отдельный запуск uvicorn.",
+                "value": "Репозиторий содержит проверяемый технический сценарий, хотя в отчёте не приписывается команде отсутствовавшая устная презентация.",
+                "verification": "observed",
+                "evidence": [
+                  "RT-HTTP-001",
+                  "RT-START-001",
+                  "captures/20261002T071920905055-start2.stdout.log"
+                ]
+              }
+            ],
+            "scoreReasoning": "12 баллов — это признание ясного макета, локализации, документации и реально работающего серверного smoke. Снижение существенное, потому что критерий проверяет воспроизводимое демо из репозитория: красивый экран показывает не результат API, а фиксированные fixtures. Визуальная проверка браузером не выполнялась по обязательному запрету и за это отдельно баллы не снимались."
+          }
+        ],
+        "total": 65
+      },
+      "case": null,
+      "judgeScore": 65,
+      "caseRequirements": [
+        {
+          "requirement": "Расчёт по истории продаж, остаткам, товарам в пути, категориям и прогнозу прироста с выводом количества и объяснения.",
+          "status": "partial",
+          "explanation": "История продаж, остаток, dated incoming, growth adjustment, MOQ/кратность и объяснение реализованы в provider/orders. Категории не входят в canonical aliases/product payload и не используются. Реальный результат на полном наборе Excel не получен.",
+          "evidence": [
+            "backend/calculations/excel_loader.py:18-84",
+            "backend/calculations/excel_loader.py:442-458",
+            "backend/calculations/orders.py:107-254",
+            "tests/test_calculations_orders.py:57-143",
+            "DEF-002",
+            "LIM-001"
+          ]
+        },
+        {
+          "requirement": "Учёт сезонности и устойчивого роста спроса.",
+          "status": "met",
+          "explanation": "Есть явные сезонные коэффициенты, осторожное выведение сезонности из 24 последовательных месяцев, Theil–Sen тренд и ограничение фактора. Unit/domain тесты подтверждают сезонную поправку и рост/снижение; работа на организаторских книгах отдельно не была завершена.",
+          "evidence": [
+            "backend/calculations/demand.py:68-148",
+            "backend/calculations/demand.py:151-179",
+            "tests/test_calculations_demand.py:27-43",
+            "tests/test_calculations_demand.py:68-93",
+            "RT-BUILD-001"
+          ]
+        },
+        {
+          "requirement": "Оценка и компенсация упущенного спроса в периоды stockout.",
+          "status": "partial",
+          "explanation": "Известные дни отсутствия уменьшают знаменатель и могут поднять наблюдаемый дневной темп; полностью отсутствующий месяц исключается. Но код явно не добавляет lost sales и предупреждает, что скрытый спрос неизвестен, поэтому полная компенсация требования не доказана.",
+          "evidence": [
+            "backend/calculations/demand.py:257-288",
+            "tests/test_calculations_demand.py:96-120",
+            "DEF-003"
+          ]
+        },
+        {
+          "requirement": "Выявление разовой крупной продажи и устойчивость к выбросу, включая покупку одного клиента.",
+          "status": "partial",
+          "explanation": "Агрегированный временной всплеск устойчиво ограничивается robust upper clip и это покрыто тестами. Однако входной loader не принимает обезличенный client ID и не группирует продажи по клиенту, поэтому отдельный крупный заказ одного клиента не может быть распознан как самостоятельный фактор.",
+          "evidence": [
+            "backend/calculations/demand.py:330-357",
+            "tests/test_calculations_demand.py:46-56",
+            "backend/calculations/excel_loader.py:18-84",
+            "DEF-004"
+          ]
+        },
+        {
+          "requirement": "Список заказов с группировкой по поставщикам, обоснованием каждой строки, срочностью и экспортом.",
+          "status": "met",
+          "explanation": "Каждая recommendation содержит supplier, recommended_qty, urgency и reason; API фильтрует supplier/urgency, а export строит отдельные листы по поставщикам. Это проверено contract/domain тестами и demo API-smoke.",
+          "evidence": [
+            "backend/models.py:57-71",
+            "backend/main.py:155-183",
+            "backend/services/export.py:1-109",
+            "tests/test_export.py:12-58",
+            "RT-HTTP-001"
+          ]
+        },
+        {
+          "requirement": "Не отправлять заказ без ручного подтверждения и обезличивать клиентские данные.",
+          "status": "met",
+          "explanation": "В API есть расчёт и экспорт, но нет маршрута отправки поставщику; tool layer не принимает dataset/calculation IDs из аргументов и не передаёт provider payload в модель. Входная модель агрегирует SKU/month/quantity и не содержит клиентских данных.",
+          "evidence": [
+            "backend/main.py:151-209",
+            "backend/agent/tools.py:75-126",
+            "backend/models.py:96-113",
+            "tests/test_agent.py:34-100"
+          ]
+        },
+        {
+          "requirement": "Проверить чувствительность к incoming, сезонности, stockout и выбросу.",
+          "status": "partial",
+          "explanation": "Чувствительность к incoming, сезонности, stockout и выбросам отдельно проверена синтетическими domain-тестами: incoming уменьшает order, сезонный коэффициент меняет прогноз, stockout меняет exposure, всплеск ограничивается. На 12 предоставленных книгах итоговый расчёт не завершился, поэтому численные результаты именно организаторского набора не утверждаются.",
+          "evidence": [
+            "tests/test_calculations_demand.py:27-56",
+            "tests/test_calculations_demand.py:96-120",
+            "tests/test_calculations_orders.py:57-64",
+            "tests/test_calculations_orders.py:96-110",
+            "RT-BUILD-001",
+            "LIM-001"
+          ]
+        },
+        {
+          "requirement": "Совместимость с предоставленными Excel-таблицами и безопасная валидация входа.",
+          "status": "partial",
+          "explanation": "Loader поддерживает русские/английские aliases, wide/long monthly sheets, формулы с cached values, duplicate/conflict/error reporting и ограничения тела/файлов. Но переданные книги не дали завершённого результата за отведённую проверку; backend также рекламирует XLS в UI, тогда как loader основан на openpyxl и проектные тесты работают с XLSX.",
+          "evidence": [
+            "backend/calculations/excel_loader.py:1-7",
+            "backend/calculations/excel_loader.py:184-240",
+            "backend/calculations/excel_loader.py:585-623",
+            "backend/services/uploads.py:1-111",
+            "LIM-001"
+          ]
+        }
+      ],
+      "testData": {
+        "provided": [
+          "cases/5/case-data/HackAlem AI_ Автоматизация формирования заказов поставщикам.docx.md",
+          "cases/5/case-data/IEK/MOQ  ИЭК.xlsx",
+          "cases/5/case-data/IEK/Динамика продаж_2025-2026.xlsx",
+          "cases/5/case-data/IEK/Ежемесячные остатки продукции за последние 2 года  ИЭК.xlsx",
+          "cases/5/case-data/IEK/Ежемесячные продажи в количественном выражении за последние 2 года.xlsx",
+          "cases/5/case-data/IEK/Путь ИЭК 22.09.2026.xlsx",
+          "cases/5/case-data/IEK/Сезонность ИЭК.xlsx",
+          "cases/5/case-data/Systeme electric/MOQ SystemElectric.xlsx",
+          "cases/5/case-data/Systeme electric/Динамика продаж_Syseme Electric_2025-2026.xlsx",
+          "cases/5/case-data/Systeme electric/Ежемесячные остатки SystemElectric 2024-2026.xlsx",
+          "cases/5/case-data/Systeme electric/Ежемесячные продажи в кол-м выражении SystemElectric 2024-2026.xlsx",
+          "cases/5/case-data/Systeme electric/Сезонность SystemElectric 2024-2026.xlsx",
+          "cases/5/case-data/Systeme electric/Товар в пути_SystemElectric на 22.09.2026.xlsx"
+        ],
+        "used": [
+          "Все 12 XLSX кейса были переданы в `provider.prepare_dataset` в одном запуске; набор завершения не дал.",
+          "Шесть XLSX из `cases/5/case-data/IEK` были отдельно переданы в тот же loader; набор завершения не дал.",
+          "MOQ и сезонность IEK/SystemElectric были отдельно переданы в loader; набор завершения не дал."
+        ],
+        "checks": [
+          {
+            "input": "Все 12 XLSX из IEK и Systeme electric, calculation_date=2026-09-23, lead_time_days=7, review_period_days=14, safety_stock_days=10.",
+            "method": "Запуск `provider.prepare_dataset` и `calculate_detailed` в изолированном Python 3.12 контейнере без ключей.",
+            "result": "За 299,2 секунды stdout остался пустым; процесс был остановлен (exit 137) только у собственного контейнера после устойчивой загрузки CPU. Результат рекомендаций не заявляется.",
+            "conclusion": "Проверка совместимости и числового результата на полном организаторском наборе не завершена; это ограничение runtime-проверки, не автоматический штраф."
+          },
+          {
+            "input": "Шесть XLSX IEK: MOQ, продажи, остатки, продажи в количестве, путь, сезонность.",
+            "method": "Повторный запуск того же provider loader с теми же параметрами и без демо-подмены.",
+            "result": "После примерно 115 секунд процесс также оставался занят обработкой; остановлен у собственного именованного контейнера без stdout.",
+            "conclusion": "Наблюдается тяжёлая обработка исходных таблиц, но без завершённого результата нельзя честно приписать конкретную числовую ошибку проекту."
+          },
+          {
+            "input": "Синтетическая XLSX-загрузка в DEMO_MODE для проверки транспорта API.",
+            "method": "FastAPI TestClient: POST /api/upload → POST /api/calculate → GET /api/recommendations → GET /api/export.",
+            "result": "health 200; upload 201; calculate 201; recommendations 200, total=2; export 200, XLSX MIME и 8398 байт. Ответ demo явно предупреждает, что содержимое Excel не участвует.",
+            "conclusion": "Серверный demo-транспорт воспроизводим, но не доказывает работу business provider на файлах кейса."
+          }
+        ],
+        "limitations": [
+          "Числовые рекомендации для 12 предоставленных книг не опубликованы, потому что loader не завершил проверочный прогон.",
+          "Один API-ключ OpenAI не предоставлялся; расчётный backend проверен без внешнего AI, а agent-путь оценён исходниками и mock-тестами.",
+          "Визуальная и браузерная проверка не выполнялась по обязательной политике пользовательской визуальной проверки."
+        ]
+      },
+      "runtime": {
+        "status": "partial",
+        "build": "Зависимости из requirements.txt установлены в Python 3.12 контейнере; полный набор из 133 тестов завершился успешно. Отдельный compileall с read-only checkout был заблокирован записью __pycache__ и не трактуется как дефект проекта.",
+        "start": "Отдельный server smoke прошёл: uvicorn стартует как отдельный процесс, /api/health отвечает 200; при пустом ключе AI имеет configured=false, а при отсутствующем расчётном модуле health остаётся согласованным.",
+        "scenario": "Демо API-сценарий upload→calculate→recommendations→export воспроизведён. Основной real-data сценарий на 12 книгах и отдельном IEK-наборе не завершился до остановки собственных контейнеров.",
+        "environment": "Python 3.12, зависимости requirements.txt, Docker-контейнеры с 2 CPU/3 GB, без API-ключей; браузер и UI automation не использовались.",
+        "summary": "Сервер и контракт работают, но целостный пользовательский путь частичный: demo использует синтетические данные, frontend использует свои fixtures, а реальный Excel provider не дал завершённого результата в проверке.",
+        "checks": [
+          {
+            "command": "python -m pytest -q",
+            "result": "133 passed, 2 warnings in 11.51s; warnings — deprecated Starlette/httpx import и невозможность pytest cache в read-only mount.",
+            "id": "RT-BUILD-001",
+            "stage": "build",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Все проектные unit/domain/API/export/agent/server smoke тесты должны пройти."
+          },
+          {
+            "command": "python -m pytest -q tests/test_server_smoke.py",
+            "result": "1 passed in 3.55s; отдельный uvicorn process поднялся, GET /api/health вернул 200, расчётный provider намеренно недоступен в тесте, AI disabled.",
+            "id": "RT-START-001",
+            "stage": "start",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Сервер должен стартовать и вернуть согласованный health без OPENAI ключа."
+          },
+          {
+            "command": "FastAPI TestClient: POST /api/upload; POST /api/calculate; GET /api/recommendations; GET /api/export",
+            "result": "Набор demo API smoke завершён: health 200, upload 201, calculate 201, recommendations 200 с total=2, export 200 с XLSX MIME и 8398 байтами.",
+            "id": "RT-HTTP-001",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "После загрузки допустимого XLSX demo API должен создать расчёт, вернуть рекомендации и экспортируемый XLSX."
+          },
+          {
+            "command": "python -c \"prepare_dataset(all case XLSX); calculate_detailed(...)\"",
+            "result": "Нет stdout за 299,2 секунды; процесс завершён exit 137 после остановки собственного контейнера. Полный real-data result не заявляется.",
+            "id": "RT-REAL-001",
+            "stage": "scenario",
+            "status": "blocked",
+            "cause": "review_environment",
+            "expected": "Реальный provider должен прочитать 12 предоставленных XLSX и вернуть validation report и рекомендации."
+          },
+          {
+            "command": "python -c \"prepare_dataset(IEK XLSX subset); calculate_detailed(...)\"",
+            "result": "Нет stdout примерно за 115 секунд; отдельный собственный контейнер остановлен. Это фиксирует незавершённость прогона, но не конкретную бизнес-ошибку.",
+            "id": "RT-IEK-001",
+            "stage": "scenario",
+            "status": "blocked",
+            "cause": "review_environment",
+            "expected": "Provider должен обработать хотя бы IEK-набор и вернуть нормализованный payload."
+          },
+          {
+            "command": "python -m compileall -q backend contracts",
+            "result": "Команда получила OSError read-only filesystem при попытке записать __pycache__; это свойство стенда, а не исходника.",
+            "id": "RT-BUILD-ENV-001",
+            "stage": "build",
+            "status": "blocked",
+            "cause": "review_environment",
+            "expected": "Compileall должен иметь возможность записать кэш компиляции."
+          }
+        ],
+        "limitations": [
+          "Реальный provider не был подменён demo-ответом: поэтому данные кейса не получили искусственно успешный результат.",
+          "Отсутствие OPENAI_API_KEY ограничивает только live-проверку внешнего agent provider; ключ не нужен для расчётного API и не использовался.",
+          "UI поведение не визуально проверялось."
+        ]
+      },
+      "liveDemo": {
+        "status": "none",
+        "url": null,
+        "notes": "Публичной live-ссылки в проверяемом репозитории не заявлено. Локальный API-smoke подтверждён; браузерное поведение не проверялось."
+      },
+      "fiveHourContext": "Для пятичасового MVP разумно считать сильной частью детерминированный расчётный модуль, контрактный FastAPI-слой, тесты и объяснение результата. Не требовались production-аутентификация, облачная инфраструктура или полноценная ML-модель. При этом несвязанный frontend — не косметическая недоделка: он не выполняет главный пользовательский сценарий. Отсутствие категорий, client ID и явной lost-sales оценки — конкретные пробелы относительно must-have кейса, а не штраф за отсутствие production-функций.",
+      "strengths": [
+        "Детерминированный и объяснимый provider с forecast evidence, предупреждениями и строгим JSON-safe контрактом.",
+        "Robust-обработка выбросов, Theil–Sen trend, сезонность с осторожным выводом по 24 месяцам и проверка timing shortage.",
+        "Сильное автоматическое покрытие: 133 теста включают domain-арифметику, loader, API, export, provider contract, agent и server smoke.",
+        "Разделение provider/storage/HTTP/agent и ограниченная область OpenAI tools без передачи произвольного workbook payload.",
+        "Согласованный backend demo flow с рекомендациями по поставщикам, объяснением строки и XLSX export."
+      ],
+      "gaps": [
+        "Frontend не вызывает API и показывает фиксированные MOCK_PRODUCTS; загруженный пользователем файл не читается, поэтому UI не является реальным клиентом расчётного сервиса.",
+        "Категория товара отсутствует в canonical Excel aliases и нормализованном payload; расчёт не может учитывать категорийные правила.",
+        "При stockout проект не добавляет оценку lost sales: он меняет exposure rate и честно оставляет скрытый спрос неизвестным.",
+        "Входной формат не содержит обезличенного клиента и не может отличить крупную продажу одного клиента от обычного агрегированного всплеска."
+      ],
+      "futureAdvice": [
+        {
+          "principle": "Сначала замыкайте главный путь данных от пользовательского действия до результата.",
+          "why": "DEF-001: визуальный upload/calculate UX и backend API существуют отдельно; файл блокирует только mock-расчёт и не влияет на рекомендации.",
+          "how": "В другом хакатоне зафиксируйте один контрактный happy path: FormData upload → dataset_id → calculate с параметрами → recommendations → export. Затем добавьте один интеграционный тест, меняющий значение во входной таблице и проверяющий изменение результата.",
+          "findingIds": [
+            "DEF-001"
+          ],
+          "successCheck": "Изменение stock или incoming в тестовом XLSX меняет строку рекомендации одновременно в API и в UI; CSV/XLSX export содержит тот же результат.",
+          "timeboxMinutes": 60
+        },
+        {
+          "principle": "Моделируйте каждое обязательное измерение в нормализованной схеме до написания формулы.",
+          "why": "DEF-002 и DEF-004: текущий payload знает SKU/поставщика/продажи, но не category и client ID, поэтому часть must-have нельзя выразить.",
+          "how": "В другом кейсе добавьте canonical aliases для category и anonymized_client_id, проверьте уникальность и агрегацию на уровне SKU-месяц-клиент, а затем явно решите, когда клиентский пик исключается из регулярной базы.",
+          "findingIds": [
+            "DEF-002",
+            "DEF-004"
+          ],
+          "successCheck": "Один тест с двумя категориями и один тест с крупной покупкой одного клиента дают разные, объяснимые базовые прогнозы без утечки исходного PII.",
+          "timeboxMinutes": 90
+        },
+        {
+          "principle": "Разделяйте осторожное наблюдение stockout и оценку скрытого спроса.",
+          "why": "DEF-003: нормировка на дни наличия полезна, но код намеренно не оценивает lost sales и потому не выполняет полную компенсацию.",
+          "how": "Для следующего прототипа добавьте ограниченную формулу counterfactual demand только при достаточной истории доступности, сохраните confidence/warning и отдельный тест сравнения raw-vs-stockout сценариев.",
+          "findingIds": [
+            "DEF-003"
+          ],
+          "successCheck": "При одинаковых продажах и известных 15 днях stockout прогноз увеличивается по документированной формуле, а при полном/неизвестном stockout результат остаётся unknown с понятным предупреждением.",
+          "timeboxMinutes": 45
+        }
+      ],
+      "uncertainties": [
+        "Полные числовые результаты на 12 организаторских XLSX не получены из-за незавершённого прогона; поэтому они не использованы как доказательство успеха или дефекта формулы.",
+        "OpenAI credentials намеренно не предоставлялись; agent provider оценён по полному пути исходников и mock-тестам, но не по реальному внешнему ответу.",
+        "Визуальное поведение frontend не проверялось по политике user-owned visual verification; исходный код и статические связи проверены.",
+        "Не утверждается, что команда проводила устную презентацию или отвечала на вопросы: в этом разборе соответствующий критерий оценён по README, docs, коду и воспроизводимому API-smoke."
+      ],
+      "reviewPolicyVersion": 2,
+      "assessmentStatus": "ready",
+      "findings": [
+        {
+          "id": "STR-001",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Расчётный модуль имеет детерминированную, объяснимую обработку спроса и заказа с сезонностью, трендом, выбросами, остатком, incoming, MOQ и срочностью.",
+          "expected": "Основные факторы кейса должны проходить через расчёт и оставлять проверяемое объяснение.",
+          "actual": "Код реализует перечисленные этапы; 133 теста проходят, включая sensitivity-пары для сезонности, stockout, incoming и spike.",
+          "evidence": [
+            "backend/calculations/demand.py:68-148",
+            "backend/calculations/demand.py:330-377",
+            "backend/calculations/orders.py:107-254",
+            "tests/test_calculations_demand.py:27-184",
+            "tests/test_calculations_orders.py:57-155",
+            "RT-BUILD-001"
+          ],
+          "checkIds": [
+            "RT-BUILD-001"
+          ]
+        },
+        {
+          "id": "STR-002",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "FastAPI backend воспроизводит согласованный demo API flow от upload до рекомендаций и Excel export.",
+          "expected": "Сервер должен стартовать, принять XLSX, создать расчёт, вернуть рекомендации и экспорт.",
+          "actual": "В DEMO_MODE health=200, upload=201, calculate=201, recommendations=200 total=2, export=200 и 8398 байт.",
+          "evidence": [
+            "backend/main.py:95-209",
+            "backend/services/demo.py:13-66",
+            "RT-HTTP-001"
+          ],
+          "checkIds": [
+            "RT-HTTP-001"
+          ]
+        },
+        {
+          "id": "STR-003",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Agent tools ограничены строгими схемами и server-bound IDs и не передают модели произвольный provider payload.",
+          "expected": "Внешний assistant должен получать только разрешённые факты текущего dataset/calculation.",
+          "actual": "Strict schemas, запрет неизвестных tools, лимиты аргументов/вызовов и тесты scope/conversation/error проходят.",
+          "evidence": [
+            "backend/agent/tools.py:39-51",
+            "backend/agent/tools.py:75-167",
+            "backend/agent/client.py:180-215",
+            "tests/test_agent.py:34-100",
+            "tests/test_agent.py:187-192"
+          ],
+          "checkIds": [
+            "RT-BUILD-001"
+          ]
+        },
+        {
+          "id": "DEF-001",
+          "kind": "defect",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Frontend не связан с backend API и не использует выбранный пользователем Excel для расчёта.",
+          "expected": "После выбора Excel UI должен отправить файл на `/api/upload`, выполнить `/api/calculate`, показать серверные recommendations и экспортировать их.",
+          "actual": "В `frontend/app.js` прямо указано `No API requests are made here`; `dataService.calculate` ждёт 1100 мс и возвращает копии `MOCK_PRODUCTS`, а export создаёт локальный CSV.",
+          "evidence": [
+            "frontend/app.js:3-22",
+            "frontend/app.js:234-245",
+            "frontend/app.js:388-420",
+            "frontend/app.js:624-655"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "DEF-002",
+          "kind": "defect",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Категория товара не является частью нормализованного входа и не участвует в формуле.",
+          "expected": "Сервис должен принимать и учитывать категории товаров при формировании регулярной потребности.",
+          "actual": "DEFAULT_ALIASES содержит SKU/name/supplier/stock/MOQ/month/sales/incoming/seasonality, но не category; product создаётся без category и provider передаёт в forecast только sales/seasonality.",
+          "evidence": [
+            "backend/calculations/excel_loader.py:18-84",
+            "backend/calculations/excel_loader.py:442-458",
+            "backend/calculations/orders.py:116-123"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "DEF-003",
+          "kind": "defect",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Stockout не получает явной оценки и компенсации скрытого lost demand.",
+          "expected": "При известном периоде отсутствия потребность должна быть скорректирована вверх с документированной оценкой упущенного спроса, когда данных достаточно.",
+          "actual": "Код уменьшает exposure_days и рассчитывает observed rate, но предупреждает `lost sales фактически неизвестны` и не добавляет lost-sales величину; тест прямо проверяет отсутствие `lost_sales` в результате.",
+          "evidence": [
+            "backend/calculations/demand.py:257-288",
+            "tests/test_calculations_demand.py:105-112"
+          ],
+          "checkIds": [
+            "RT-BUILD-001"
+          ]
+        },
+        {
+          "id": "DEF-004",
+          "kind": "defect",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Крупную продажу одного клиента нельзя отличить от агрегированного месячного всплеска.",
+          "expected": "Обезличенный клиентский идентификатор должен позволять проверить и исключить разовую крупную покупку конкретного клиента из регулярной потребности.",
+          "actual": "Loader не имеет client/customer aliases, product sales содержат только month, quantity и stockout_days; robust clip работает только на агрегированном временном ряду.",
+          "evidence": [
+            "backend/calculations/excel_loader.py:18-84",
+            "backend/calculations/excel_loader.py:490-517",
+            "backend/calculations/demand.py:330-357"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "LIM-001",
+          "kind": "limitation",
+          "verification": "observed",
+          "responsibility": "review_environment",
+          "claim": "Прогон реального provider на предоставленных Excel не завершён в рамках проверки.",
+          "expected": "12 XLSX должны пройти загрузчик и вернуть validation report/рекомендации.",
+          "actual": "Полный запуск был остановлен через 299,2 секунды после нулевого stdout и устойчивой загрузки CPU; отдельный IEK subset также не завершился. Это не доказывает неправильное числовое значение.",
+          "evidence": [
+            "captures/20261002T070627362421-scenario.stdout.log",
+            "RT-REAL-001",
+            "RT-IEK-001"
+          ],
+          "checkIds": [
+            "RT-REAL-001",
+            "RT-IEK-001"
+          ]
+        },
+        {
+          "id": "LIM-002",
+          "kind": "limitation",
+          "verification": "source",
+          "responsibility": "external_service",
+          "claim": "Реальный OpenAI provider не был вызван.",
+          "expected": "При наличии credentials можно было бы проверить внешний Responses/tool-calling путь.",
+          "actual": "`.env.example` оставляет OPENAI_API_KEY и OPENAI_MODEL пустыми; в среду проверки ключи намеренно не передавались. Локальные mock-тесты agent проходят.",
+          "evidence": [
+            ".env.example:6-9",
+            "tests/test_agent.py:57-176"
+          ],
+          "checkIds": [
+            "RT-BUILD-001"
+          ]
+        },
+        {
+          "id": "LIM-003",
+          "kind": "limitation",
+          "verification": "unverified",
+          "responsibility": "review_environment",
+          "claim": "Визуальное поведение browser UI не оценивалось.",
+          "expected": "Визуальная проверка могла бы подтвердить layout/responsive/dialog поведение.",
+          "actual": "По политике проверки браузеры, CUA и UI automation запрещены; оценены только статические HTML/JS/CSS и API.",
+          "evidence": [
+            "frontend/index.html:1-112",
+            "frontend/styles.css:332-499"
+          ],
+          "checkIds": []
+        }
+      ],
+      "gapFindingIds": [
+        "DEF-001",
+        "DEF-002",
+        "DEF-003",
+        "DEF-004"
+      ]
+    }
+  ],
+  "score": 65.0,
+  "status": "complete",
+  "expectedJudges": 1
+}

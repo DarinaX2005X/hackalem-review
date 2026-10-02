@@ -1,0 +1,1080 @@
+{
+  "methodVersion": 4,
+  "repoId": "hack-7ab49ed7-a-ln",
+  "repoUrl": "https://github.com/BAITC-Hacks/hack-7ab49ed7-a-ln",
+  "caseId": 2,
+  "snapshot": "d1a7112f91b813ea64b9a28415392a77cac93072",
+  "judges": [
+    {
+      "methodVersion": 4,
+      "repoId": "hack-7ab49ed7-a-ln",
+      "caseId": 2,
+      "model": "GPT-5.6 Luna",
+      "snapshot": "d1a7112f91b813ea64b9a28415392a77cac93072",
+      "overallSummary": "Проект представляет собой воспроизводимый AML-пайплайн от трёх parquet-файлов до ролей, кластеров, ранжирования, объяснений и направленного графа. На предоставленных данных кейса локальный пересчёт завершился успешно: 2248 узлов, 3119 рёбер, 4840 транзакций, 444 узла глубины 4; созданы три обязательные выгрузки и viewer.html. Тесты проекта дали 7 passed, а HTTP-проверка подтвердила health, выдачу viewer и детерминированный fallback ассистента без ключа. Главный подтверждённый недостаток — входящие метрики seed участвуют в некоторых правилах ролей и в приоритете, хотя они объявлены неполными и README обещает не использовать входящий баланс seed. Дополнительно найдены малые проблемы переносимости метаданных: период в graph.json фиксирован июлем 2026 года, а runtime_sec в graph.json записывается до измерения времени. Итоговая оценка — 93.0 из 100; оценка обоснована и готова к публикации.",
+      "global": {
+        "criteria": [
+          {
+            "name": "Ценность решения",
+            "score": 23,
+            "max": 25,
+            "awarded": "Решение напрямую сокращает ручную работу AML-аналитика: из списка seed строится сеть, каждому узлу даётся объяснимая роль, а проверка начинается с ранжированного топ-листа.",
+            "deductions": "Снято 2 балла за риск ложной интерпретации приоритета seed из-за использования неполных входящих метрик.",
+            "evidence": [
+              "README.md:7-15",
+              "README.md:60-67",
+              "captures/20261001T112948153224-scenario4.stdout.log"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "D1",
+                "reason": "Для seed ветви coordinator/consolidator читают in_deg и in_kzt, а priority flow учитывает входящий оборот; это ослабляет надёжность ответа на вопрос, кого проверять первым, когда входящие seed заведомо занижены."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Конкретная задача AML",
+                "implementation": "README описывает сценарий аналитика, который получает известные seed и должен восстановить, кто собирает, проводит и распределяет деньги; результат сформулирован как ответ на вопрос о первых клиентах для проверки.",
+                "value": "Это прикладная и понятная ценность: вместо просмотра 2248 клиентов вручную аналитик получает роли, очередь и численное объяснение.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:7-15",
+                  "README.md:299-310"
+                ]
+              },
+              {
+                "aspect": "Приоритизация с объяснением",
+                "implementation": "priority.py собирает score из роли, оборота, центральности, связи с seed и сигналов; top_nodes.csv содержит rank, role, priority_score и why.",
+                "value": "Пользователь получает не только подозрительный узел, но и разложение причины его места в очереди, что делает результат пригодным для triage.",
+                "verification": "source",
+                "evidence": [
+                  "src/moneygraph/priority.py:43-65",
+                  "src/moneygraph/pipeline.py:54-59"
+                ]
+              },
+              {
+                "aspect": "Сохранение ограничений как части результата",
+                "implementation": "Для глубины 4 код использует оценку p_forward и sink_status=truncated_depth, а data_requests.csv формирует запросы на дополнительные выписки.",
+                "value": "Инструмент не выдаёт обрыв обхода за доказанный конечный сток и связывает неопределённость с конкретным следующим запросом данных.",
+                "verification": "observed",
+                "evidence": [
+                  "src/moneygraph/roles.py:171-185",
+                  "captures/20261001T113125155051-test.stdout.log"
+                ]
+              },
+              {
+                "aspect": "Граница интерпретации",
+                "implementation": "README явно называет выводы гипотезами, перечисляет отсутствие атрибутов клиента и частичную видимость входящих переводов.",
+                "value": "Для финансового мониторинга это снижает риск представить графовую эвристику как доказанное обвинение.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:68-70",
+                  "README.md:203-209",
+                  "src/moneygraph/assistant/agent.py:26-40"
+                ]
+              }
+            ],
+            "scoreReasoning": "Высокий балл заслужен прямым соответствием аудитории и наличием рабочего результата: роли, очередь и объяснения действительно произведены на полном графе. До максимума не хватает из-за D1: код одновременно признаёт неполноту входящих seed и использует их в части классификации и ranking, поэтому приоритет для уже известных клиентов может зависеть от артефакта выборки."
+          },
+          {
+            "name": "Результат и качество решения",
+            "score": 19,
+            "max": 20,
+            "awarded": "Основной сценарий целостен и воспроизведён на данных кейса: загрузка, sanity-check, признаки, forward-оценка, Louvain, роли, priority, экспорт и viewer проходят одним запуском.",
+            "deductions": "Снято 1 балл за неполную семантическую защиту seed-метрик, влияющую на качество некоторых ролей и порядка проверки.",
+            "evidence": [
+              "src/moneygraph/pipeline.py:19-107",
+              "captures/20261001T112948153224-scenario4.stdout.log",
+              "captures/20261001T113125155051-test.stdout.log"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "D1",
+                "reason": "На рабочий экспорт попадает seed, классифицированный правилом in_deg=7≥4; при объявленной неполноте входящих это может изменить роль и ranking именно в пользовательском результате."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Целостный pipeline",
+                "implementation": "pipeline.run последовательно вызывает load, sanity_check, построение графа, basic_features, forward_table, temporal/anomaly features, cycles/routes, clustering, roles, priority, extras и экспорт.",
+                "value": "Нет разрыва между аналитической идеей и пользовательскими артефактами: все обязательные файлы строятся из входных parquet без ручного редактирования.",
+                "verification": "source",
+                "evidence": [
+                  "src/moneygraph/pipeline.py:19-71"
+                ]
+              },
+              {
+                "aspect": "Проверка консистентности",
+                "implementation": "load.py агрегирует transactions по src/dst и сверяет сумму и количество с edges, проверяет уникальность gid и принадлежность рёбер узлам.",
+                "value": "Ошибки входной агрегации не маскируются и обнаруживаются до расчёта ролей.",
+                "verification": "source",
+                "evidence": [
+                  "src/moneygraph/load.py:12-37"
+                ]
+              },
+              {
+                "aspect": "Фактический пользовательский результат",
+                "implementation": "Свежий запуск на case-data/data создал nodes_roles.csv на 2248 строк, clusters.csv на 72 строки, top_nodes.csv на 50 строк и viewer.html; CLI explain вернул карточку конкретного gid.",
+                "value": "Это подтверждает не только наличие исходников, но и прохождение результата от входа до объяснения отдельного узла.",
+                "verification": "observed",
+                "evidence": [
+                  "captures/20261001T112948153224-scenario4.stdout.log"
+                ]
+              },
+              {
+                "aspect": "Автотесты выходов",
+                "implementation": "Тесты проверяют схему, полноту gid и evidence, обработку depth=4, ограничение seed transit, типологии, сортировку top_nodes и отсутствие gid-литералов в исходниках.",
+                "value": "Ключевые требования кейса защищены исполняемыми проверками, а не только описанием в README.",
+                "verification": "observed",
+                "evidence": [
+                  "tests/test_outputs.py:25-72",
+                  "captures/20261001T113125155051-test.stdout.log"
+                ]
+              }
+            ],
+            "scoreReasoning": "Практически весь основной сценарий наблюдался в работе и дополнительно закреплён семью тестами. Единственное существенное снижение — D1, потому что корректность результата для обычных узлов не устраняет риск искажения отдельных seed-решений."
+          },
+          {
+            "name": "Инновационность",
+            "score": 15,
+            "max": 15,
+            "awarded": "Проект сочетает интерпретируемую rule-based типологию, вероятностную обработку обрыва на четвёртом колене, temporal-сигналы, графовые сообщества, устойчивость ranking и инструментальный AI-слой.",
+            "deductions": "Нет подтверждённых дефектов, требующих снятия баллов по этому критерию.",
+            "evidence": [
+              "src/moneygraph/config.py:7-35",
+              "src/moneygraph/features.py:41-123",
+              "src/moneygraph/clusters.py:24-50",
+              "README.md:284-295"
+            ],
+            "deductionItems": [],
+            "awardedDetails": [
+              {
+                "aspect": "Вероятностная обработка обрыва",
+                "implementation": "Для узлов depth=4 p_forward оценивается по наблюдаемым коленам 1-3, а роль выбирается как вероятный transit или terminal с отдельным sink_status.",
+                "value": "Это нестандартно и уместно для искусственно обрезанного графа: нулевая исходящая степень не превращается в наивное утверждение о конечном получателе.",
+                "verification": "source",
+                "evidence": [
+                  "src/moneygraph/features.py:41-102",
+                  "src/moneygraph/roles.py:171-185"
+                ]
+              },
+              {
+                "aspect": "Temporal и повторяющиеся паттерны",
+                "implementation": "Пайплайн считает быстрый транзит, burst-in/burst-out, повторные суммы, повторные маршруты и циклы; эти сигналы включаются в typology и priority.",
+                "value": "Система использует не только статическую степень, а временную структуру движения средств, что даёт AML-аналитику более содержательную гипотезу.",
+                "verification": "source",
+                "evidence": [
+                  "src/moneygraph/pipeline.py:31-39",
+                  "src/moneygraph/priority.py:11-40",
+                  "src/moneygraph/config.py:135-141"
+                ]
+              },
+              {
+                "aspect": "Проверка устойчивости",
+                "implementation": "priority.sensitivity меняет каждый вес на ±20%, нормирует веса и сравнивает overlap top-k; результат экспортируется в metrics.json и показывается в итоговом логе.",
+                "value": "Команда проверяет, не является ли очередь артефактом единственного набора весов.",
+                "verification": "observed",
+                "evidence": [
+                  "src/moneygraph/priority.py:69-82",
+                  "captures/20261001T112948153224-scenario4.stdout.log"
+                ]
+              },
+              {
+                "aspect": "AI как grounded-интерфейс",
+                "implementation": "Assistant сначала обращается к read-only tools над graph.json, требует gid и числа в system prompt, а без ключа или при ошибке API возвращает детерминированный fallback по карточкам и top-5.",
+                "value": "LLM добавлен к уже рассчитанному графу, а не используется как источник фактов; это снижает риск вымышленных атрибутов.",
+                "verification": "source",
+                "evidence": [
+                  "src/moneygraph/assistant/agent.py:1-18",
+                  "src/moneygraph/assistant/tools.py:1-15",
+                  "src/moneygraph/assistant/llm.py:183-202"
+                ]
+              }
+            ],
+            "scoreReasoning": "Для пятичасового прототипа набор признаков заметно шире прямого degree-based baseline и при этом остаётся объяснимым. Ограничения переносимости и seed-метрик относятся к другим критериям и не лишают этот критерий подтверждённых нестандартных приёмов."
+          },
+          {
+            "name": "Потенциал развития и масштабирования",
+            "score": 18,
+            "max": 20,
+            "awarded": "Архитектура модульна: чтение данных, признаки, роли, кластеры, ranking, экспорт, viewer и assistant разделены; есть дополнительные data_requests, routes, cycles и resilience.",
+            "deductions": "Снято 2 балла за два подтверждённых ограничения переносимости: период в graph.json не берётся из входных данных, а runtime_sec в graph.json остаётся начальным null.",
+            "evidence": [
+              "src/moneygraph/pipeline.py:19-107",
+              "src/moneygraph/export.py:85-98",
+              "pyproject.toml:1-29"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "D2",
+                "reason": "Документированный CLI принимает произвольный data_dir, но graph.json всегда сообщает period 2026-07-01 — 2026-07-31; это делает перенос на другой период семантически неверным без изменения кода."
+              },
+              {
+                "points": 1,
+                "findingId": "D3",
+                "reason": "summary передаётся в graph_json до присвоения измеренного runtime_sec, поэтому интерактивный graph.json не содержит фактическое время пересчёта, хотя metrics.json его получает."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Разделение слоёв",
+                "implementation": "Проект разделён на load, features, temporal, roles, clusters, priority, export, viewer и assistant; CLI связывает эти компоненты тонким маршрутизатором.",
+                "value": "Такую структуру можно расширять новыми правилами, источниками и интерфейсами без переписывания всего сценария.",
+                "verification": "source",
+                "evidence": [
+                  "src/moneygraph/pipeline.py:11-16",
+                  "src/moneygraph/cli.py:10-40"
+                ]
+              },
+              {
+                "aspect": "Расширение аналитических выходов",
+                "implementation": "Кроме обязательных CSV, экспортируются graph.json, metrics.json, cycles.csv, routes.csv, resilience.csv, data_requests.csv и p_forward_table.csv.",
+                "value": "Это создаёт основу для расследования, контроля качества и последующей интеграции с хранилищем или case-management.",
+                "verification": "observed",
+                "evidence": [
+                  "src/moneygraph/pipeline.py:61-85",
+                  "captures/20261001T112948153224-scenario4.stdout.log"
+                ]
+              },
+              {
+                "aspect": "Детерминированность аналитики",
+                "implementation": "Louvain, layout и sensitivity используют фиксированные seed-параметры; top ranking имеет tie-break по обороту и gid.",
+                "value": "Повторные пересчёты можно сопоставлять, что важно для аудита и пакетной эксплуатации.",
+                "verification": "source",
+                "evidence": [
+                  "src/moneygraph/config.py:130-133",
+                  "src/moneygraph/priority.py:63-65",
+                  "src/moneygraph/clusters.py:29-49"
+                ]
+              },
+              {
+                "aspect": "Изоляция внешней интеграции",
+                "implementation": "OpenAI провайдер загружается только при наличии OPENAI_API_KEY, а основная аналитика не импортирует внешний сервис для расчёта ролей.",
+                "value": "Пайплайн масштабируется в среде без внешней квоты; LLM можно заменить или отключить отдельно.",
+                "verification": "source",
+                "evidence": [
+                  "src/moneygraph/assistant/llm.py:183-202",
+                  "README.md:124-130"
+                ]
+              }
+            ],
+            "scoreReasoning": "Модульность, детерминированность и разделение optional LLM дают хороший путь от MVP к пакетной системе. D2 и D3 малы для фиксированного кейса, но важны при переносе в несколько периодов или при сравнении производительности, поэтому максимальный балл не поставлен."
+          },
+          {
+            "name": "Презентация, демо и ответы на вопросы",
+            "score": 20,
+            "max": 20,
+            "awarded": "README содержит задачу, ограничения, архитектуру, команды запуска, описание выходов, методику ролей, demo-сценарий и объяснение assistant. Локальное демо из репозитория воспроизведено через CLI и HTTP; устную презентацию и визуальное поведение браузера я не выдаю за проверенные.",
+            "deductions": "Нет подтверждённых дефектов, требующих снятия баллов по этому критерию.",
+            "evidence": [
+              "README.md:1-15",
+              "README.md:112-130",
+              "README.md:299-310",
+              "captures/20261001T113125155051-test.stdout.log"
+            ],
+            "deductionItems": [],
+            "awardedDetails": [
+              {
+                "aspect": "Воспроизводимая инструкция",
+                "implementation": "README даёт uv sync, uv run moneygraph, uv run pytest, explain и serve, а также описывает расположение входов и выходов.",
+                "value": "Проверяющий понимает путь от чистого checkout до результата без устных пояснений команды.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:112-130",
+                  "INSTALL.md:1-25"
+                ]
+              },
+              {
+                "aspect": "Понятная демонстрационная история",
+                "implementation": "Demo-сценарий проходит от пересчёта через top-1 и координатора к узлу глубины 4, assistant и data_requests.",
+                "value": "Сценарий показывает как обязательный результат, так и обработку главной ловушки кейса, а не только красивый граф.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:299-310"
+                ]
+              },
+              {
+                "aspect": "Фактически доступный HTTP-сценарий",
+                "implementation": "HTTP-сервер отдаёт viewer.html, /api/health и POST /api/ask; fallback отвечает без OpenAI ключа.",
+                "value": "Пользователь может показать рабочую серверную часть без обязательной внешней инфраструктуры.",
+                "verification": "observed",
+                "evidence": [
+                  "src/moneygraph/serve.py:71-105",
+                  "captures/20261001T113125155051-test.stdout.log"
+                ]
+              },
+              {
+                "aspect": "Честная граница визуальной проверки",
+                "implementation": "Статически подтверждены generated viewer, поиск и описанные controls по исходникам, но фактическое визуальное поведение браузером не проверялось из-за политики задания.",
+                "value": "Оценка не приписывает проекту непроверенное устное демо или визуальный эффект и всё же учитывает воспроизводимый локальный путь.",
+                "verification": "source",
+                "evidence": [
+                  "src/moneygraph/pipeline.py:84-91",
+                  "README.md:246-280"
+                ]
+              }
+            ],
+            "scoreReasoning": "README необычно полно покрывает пятичасовой сценарий, а CLI/HTTP-путь реально отработал. Полный балл означает качество доступного репозитория и локального демо; это не утверждение, что была устная презентация или что визуальный UI проверен браузером."
+          }
+        ],
+        "total": 95
+      },
+      "case": {
+        "criteria": [
+          {
+            "name": "Соответствие задаче и работоспособность",
+            "score": 22,
+            "max": 25,
+            "awarded": "Все обязательные артефакты кейса создаются из трёх parquet, все 2248 узлов получают роль, score, cluster, priority и evidence, а depth=4 обрабатывается отдельно.",
+            "deductions": "Снято 3 балла за несоответствие заявленному правилу не использовать неполный входящий баланс seed.",
+            "evidence": [
+              "README.md:41-67",
+              "src/moneygraph/roles.py:116-185",
+              "tests/test_outputs.py:25-49",
+              "captures/20261001T112948153224-scenario4.stdout.log"
+            ],
+            "deductionItems": [
+              {
+                "points": 3,
+                "findingId": "D1",
+                "reason": "Кейс отдельно предупреждает, что входящие seed занижены и баланс некорректен; при этом coordinator/consolidator используют in_deg/in_kzt, а конкретный seed в nodes_roles.csv получил consolidator по in_deg=7≥4."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Полный набор входов",
+                "implementation": "load.py читает edges.parquet, nodes.parquet и transactions.parquet, приводит идентификаторы к int64 и даты к datetime.",
+                "value": "Формат входа кейса поддержан напрямую, без конвертации в выдуманную схему.",
+                "verification": "observed",
+                "evidence": [
+                  "src/moneygraph/load.py:12-20",
+                  "captures/20261001T112948153224-scenario4.stdout.log"
+                ]
+              },
+              {
+                "aspect": "Роли для всех узлов",
+                "implementation": "Экспорт содержит 2248 строк и шесть требуемых значений role; validation проверяет множество gid, диапазоны role_score/priority_score и числовое evidence.",
+                "value": "Основной deliverable кейса выполнен полностью, включая периферию и узлы без рёбер.",
+                "verification": "observed",
+                "evidence": [
+                  "src/moneygraph/validate.py:21-47",
+                  "tests/test_outputs.py:29-35",
+                  "captures/20261001T112948153224-scenario4.stdout.log"
+                ]
+              },
+              {
+                "aspect": "Кластеры и top-list",
+                "implementation": "Louvain формирует 72 кластера, cluster_table экспортирует размер, seed, внутренний оборот и hypothesis, а top_nodes.csv содержит 50 строк по rank.",
+                "value": "Помимо классификации узлов, решение даёт групповой контекст и очередь проверки не менее требуемых 20 узлов.",
+                "verification": "observed",
+                "evidence": [
+                  "src/moneygraph/clusters.py:108-139",
+                  "captures/20261001T112948153224-scenario4.stdout.log"
+                ]
+              },
+              {
+                "aspect": "Глубина 4",
+                "implementation": "Все 444 узла depth=4 получают sink_status=truncated_depth и роль по p_forward, а тест требует именно такую маркировку и текст evidence.",
+                "value": "Ключевая ловушка задания не проигнорирована и не превращена в массовое подтверждение terminal.",
+                "verification": "observed",
+                "evidence": [
+                  "src/moneygraph/roles.py:171-185",
+                  "tests/test_outputs.py:37-43",
+                  "captures/20261001T113125155051-test.stdout.log"
+                ]
+              }
+            ],
+            "scoreReasoning": "По объёму и работоспособности решение почти полностью соответствует кейсу: обязательные файлы, роли, clusters, top-list, directed graph и обработка обрыва подтверждены. D1 удерживает от максимума, потому что это именно объявленная организаторами ловушка, а не косметика."
+          },
+          {
+            "name": "Техническая реализация",
+            "score": 22,
+            "max": 25,
+            "awarded": "Реализация хорошо декомпозирована, использует NetworkX, pandas, igraph, временные признаки и read-only assistant tools, а проверки входа и экспорта исполняются.",
+            "deductions": "Снято 3 балла: 1 за D1, 1 за фиксированный период в graph.json и 1 за неверное время в graph.json.",
+            "evidence": [
+              "pyproject.toml:7-29",
+              "src/moneygraph/pipeline.py:19-107",
+              "src/moneygraph/export.py:52-98",
+              "captures/20261001T113125155051-test.stdout.log"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "D1",
+                "reason": "Семантика partial incoming для seed учтена в тексте, но не проведена через все ветви roles и priority."
+              },
+              {
+                "points": 1,
+                "findingId": "D2",
+                "reason": "export.graph_json сообщает фиксированный июльский период вместо периода фактически прочитанных transactions."
+              },
+              {
+                "points": 1,
+                "findingId": "D3",
+                "reason": "graph.json получает summary с runtime_sec=None до присвоения измеренного времени; фактическое время есть только в metrics.json и логе."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Поток данных и инварианты",
+                "implementation": "sanity_check сопоставляет агрегаты transactions и edges, затем graph строится с sum_kzt, n_tx и depth; расчёты используют узлы, а не только рёбра.",
+                "value": "Это технически корректная основа для сохранения orphan/seed узлов и объяснения чисел в карточке.",
+                "verification": "source",
+                "evidence": [
+                  "src/moneygraph/load.py:23-46",
+                  "src/moneygraph/load.py:49-63"
+                ]
+              },
+              {
+                "aspect": "Объяснимые правила",
+                "implementation": "config.py централизует пороги, roles.py выбирает первое сработавшее правило, хранит rule_fired, alt_role, evidence и sink_status.",
+                "value": "Вместо непрозрачной классификации оператор видит, почему конкретный gid получил роль и насколько выражен признак.",
+                "verification": "source",
+                "evidence": [
+                  "src/moneygraph/config.py:7-35",
+                  "src/moneygraph/roles.py:86-169"
+                ]
+              },
+              {
+                "aspect": "Graph analytics",
+                "implementation": "Используются weighted PageRank, betweenness, Louvain на неориентированной проекции, temporal features и повторяющиеся маршруты.",
+                "value": "Архитектура соответствует структуре финансовой сети и не сводит задачу к одному количеству переводов.",
+                "verification": "source",
+                "evidence": [
+                  "src/moneygraph/load.py:49-63",
+                  "src/moneygraph/features.py:23-39",
+                  "src/moneygraph/clusters.py:14-50"
+                ]
+              },
+              {
+                "aspect": "HTTP и optional LLM",
+                "implementation": "serve.py ограничивает тело POST, обрабатывает CORS, JSON ошибки и отдачу файлов; llm.py не создаёт провайдер без ключа, agent.py имеет fallback.",
+                "value": "Демо-интерфейс остаётся запускаемым без внешнего сервиса, но при наличии ключа имеет расширяемый tool-calling слой.",
+                "verification": "observed",
+                "evidence": [
+                  "src/moneygraph/serve.py:35-105",
+                  "src/moneygraph/assistant/llm.py:183-202",
+                  "captures/20261001T113125155051-test.stdout.log"
+                ]
+              }
+            ],
+            "scoreReasoning": "Техническая база сильная и подтверждена запуском. Три небольших, но реальные source-проблемы не ломают фиксированный кейс, однако влияют на аналитическую корректность seed и на качество метаданных при повторном использовании пайплайна."
+          },
+          {
+            "name": "README и воспроизводимость",
+            "score": 24,
+            "max": 25,
+            "awarded": "Документация достаточно подробна для понимания архитектуры, порогов, ограничений, запуска, тестов и demo-сценария; команда запуска и тестовый путь воспроизведены.",
+            "deductions": "Снят 1 балл за то, что обещанный общий CLI-путь допускает другой data_dir, но метаданные graph.json не полностью следуют этому входу.",
+            "evidence": [
+              "README.md:112-130",
+              "README.md:170-204",
+              "INSTALL.md:1-25",
+              "captures/20261001T113125155051-test.stdout.log"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "D2",
+                "reason": "Документация описывает запуск с альтернативным путём данных, но source фиксирует период в graph.json; на другом периоде часть пользовательской документации результата будет неверной."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Команды запуска",
+                "implementation": "README и INSTALL описывают uv sync, пересчёт, pytest, explain, serve и варианты --data/--out.",
+                "value": "Путь воспроизводим на чистой среде и не зависит от ручного заполнения CSV.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:112-130",
+                  "INSTALL.md:89-117"
+                ]
+              },
+              {
+                "aspect": "Документация алгоритма",
+                "implementation": "README объясняет роли, thresholds, confidence, priority components, depth-4 inference, temporal flags и кластеры с ссылкой на исходники.",
+                "value": "Проверяющий может сопоставить CSV с формулой, а не принимать output как black box.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:170-204",
+                  "README.md:214-236"
+                ]
+              },
+              {
+                "aspect": "Прямое подтверждение на case-data",
+                "implementation": "Пересчёт на предоставленных edges, nodes и transactions завершился с проверкой схемы OK за 17.2 секунды; отдельный pytest дал 7 passed.",
+                "value": "Документация не только выглядит правдоподобно, но и ведёт к работоспособному результату на организаторском наборе.",
+                "verification": "observed",
+                "evidence": [
+                  "captures/20261001T112948153224-scenario4.stdout.log",
+                  "captures/20261001T113125155051-test.stdout.log"
+                ]
+              },
+              {
+                "aspect": "Описание ограничений",
+                "implementation": "README отдельно раскрывает обрыв обхода, частичные входящие, порог, отсутствующие атрибуты, отсутствие ground truth и гипотетический характер выводов.",
+                "value": "Это делает воспроизведение интерпретируемым и не создаёт ложного ожидания production-данных.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:68-70",
+                  "README.md:203-209",
+                  "README.md:318-320"
+                ]
+              }
+            ],
+            "scoreReasoning": "Почти максимальный балл подтверждён и содержанием, и запуском. D2 — единственное снижение: для фиксированного кейса это не ломает проверку, но противоречит обещанию универсального запуска на альтернативном data_dir."
+          },
+          {
+            "name": "Ценность и применимость решения",
+            "score": 14,
+            "max": 15,
+            "awarded": "Результат пригоден для первичного AML triage: он показывает направления, роли, суммы, временные сигналы, кластеры, top-лист и data requests.",
+            "deductions": "Снят 1 балл за то, что неполные входящие seed могут влиять на часть прикладного вывода, хотя ограничения явно описаны.",
+            "evidence": [
+              "README.md:136-166",
+              "src/moneygraph/extras.py:58-76",
+              "out/nodes_roles.csv:18",
+              "captures/20261001T112948153224-scenario4.stdout.log"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "D1",
+                "reason": "Прикладная очередь проверки может поднять seed по observed incoming count/balance, которые в условиях кейса не являются полными; это требует осторожности со стороны аналитика."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Рабочий результат для аналитика",
+                "implementation": "top_nodes.csv содержит 50 ранжированных узлов с why, а cards.py раскрывает роль, priority parts, потоки, контрагентов и даты.",
+                "value": "Результат можно использовать как список первых ручных проверок и как объяснение выбора.",
+                "verification": "source",
+                "evidence": [
+                  "src/moneygraph/pipeline.py:54-59",
+                  "src/moneygraph/cards.py:102-175"
+                ]
+              },
+              {
+                "aspect": "Последующие запросы данных",
+                "implementation": "data_requests строит строки для seed без переводов, truncated узлов, unseen inflow и поздних поступлений.",
+                "value": "Инструмент не заканчивается на score, а формирует практичный мост к углублённой проверке.",
+                "verification": "source",
+                "evidence": [
+                  "src/moneygraph/extras.py:58-76",
+                  "README.md:136-151"
+                ]
+              },
+              {
+                "aspect": "Интерактивное исследование",
+                "implementation": "viewer graph JSON хранит directed edges, role, depth, cluster, priority, flags и транзакционные даты; server отдаёт его как viewer.",
+                "value": "Аналитик может переходить от общей структуры к конкретному gid и его цепочке.",
+                "verification": "observed",
+                "evidence": [
+                  "src/moneygraph/export.py:59-98",
+                  "captures/20261001T113125155051-test.stdout.log"
+                ]
+              },
+              {
+                "aspect": "Безопасный язык выводов",
+                "implementation": "Код и README используют формулировки hypothesis, признаки, truncated и требуют не придумывать ФИО или атрибуты.",
+                "value": "Для реального AML-процесса это важнее эффектного, но юридически рискованного утверждения о виновности.",
+                "verification": "source",
+                "evidence": [
+                  "src/moneygraph/clusters.py:142-174",
+                  "src/moneygraph/assistant/agent.py:26-40"
+                ]
+              }
+            ],
+            "scoreReasoning": "Практическая применимость хорошо доказана для первичного triage на синтетическом/обезличенном графе. Один балл удержан за D1: даже при правильном предупреждении аналитический порядок должен быть устойчив к известному артефакту seed-входящих."
+          },
+          {
+            "name": "Потенциал развития и оригинальность подхода",
+            "score": 9,
+            "max": 10,
+            "awarded": "Решение имеет хороший путь к расширению: дополнительные периоды, новые правила, реальные атрибуты, хранилище результатов, заменяемый LLM и контроль устойчивости уже предусмотрены модульно.",
+            "deductions": "Снят 1 балл за фиксированный период graph.json, который ограничивает безопасное расширение на новые выгрузки без небольшого исправления.",
+            "evidence": [
+              "src/moneygraph/config.py:68-141",
+              "src/moneygraph/assistant/llm.py:96-162",
+              "src/moneygraph/export.py:85-98",
+              "README.md:284-295"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "D2",
+                "reason": "Hardcoded period в основном graph metadata — конкретный барьер для многопериодного применения и сравнения выгрузок."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Расширяемые пороги",
+                "implementation": "Config хранит пороги ролей, временные окна, веса priority, seed discount, параметры Louvain и sensitivity в одном dataclass.",
+                "value": "Следующий кейс может менять методику централизованно, не разыскивая magic numbers по проекту.",
+                "verification": "source",
+                "evidence": [
+                  "src/moneygraph/config.py:68-141"
+                ]
+              },
+              {
+                "aspect": "Замена провайдера",
+                "implementation": "LLMProvider отделён Protocol-ом от OpenAIProvider, а assistant работает с нейтральными tool schemas и read-only functions.",
+                "value": "Внешняя модель может быть заменена без изменения графового расчёта и интерфейса tools.",
+                "verification": "source",
+                "evidence": [
+                  "src/moneygraph/assistant/llm.py:48-54",
+                  "src/moneygraph/assistant/llm.py:96-176"
+                ]
+              },
+              {
+                "aspect": "Расширение расследования",
+                "implementation": "tools.py уже содержит overview, get_node, neighbors, top_nodes, cluster_summary, find_paths, search_nodes и common_counterparties.",
+                "value": "Это естественная основа для case-management, сравнения периодов и запросов аналитика без выдачи LLM прямого доступа к данным.",
+                "verification": "source",
+                "evidence": [
+                  "src/moneygraph/assistant/tools.py:1-15",
+                  "src/moneygraph/assistant/tools.py:150-300"
+                ]
+              },
+              {
+                "aspect": "Самопроверяемость методики",
+                "implementation": "Пайплайн экспортирует forward table, backtest AUC, calibration, cluster stability и ranking sensitivity.",
+                "value": "При добавлении размеченных данных эти показатели можно связать с offline evaluation, не выбрасывая текущий explainable MVP.",
+                "verification": "observed",
+                "evidence": [
+                  "src/moneygraph/features.py:41-83",
+                  "src/moneygraph/priority.py:69-82",
+                  "captures/20261001T112948153224-scenario4.stdout.log"
+                ]
+              }
+            ],
+            "scoreReasoning": "Потенциал выше среднего для пятичасового прототипа: модульность и дополнительные outputs уже задают направление развития. D2 не делает кейс неработоспособным, но требует исправить один источник метаданных прежде чем масштабировать на несколько периодов."
+          }
+        ],
+        "total": 91
+      },
+      "judgeScore": 93,
+      "caseRequirements": [
+        {
+          "requirement": "Один локальный воспроизводимый запуск от edges.parquet, nodes.parquet и transactions.parquet до трёх обязательных CSV менее чем за 5 минут.",
+          "status": "met",
+          "explanation": "На предоставленных case-data/data пайплайн завершился за 17.2 секунды и создал nodes_roles.csv, clusters.csv и top_nodes.csv; schema check завершился OK.",
+          "evidence": [
+            "src/moneygraph/pipeline.py:19-107",
+            "captures/20261001T112948153224-scenario4.stdout.log"
+          ]
+        },
+        {
+          "requirement": "Для всех 2248 узлов есть роль из словаря, role_score, cluster, priority и числовое evidence.",
+          "status": "met",
+          "explanation": "Свежая выгрузка содержит 2248 строк; проектская validation и test_every_node_has_role_and_evidence проверяют количество, множество gid, диапазоны и evidence.",
+          "evidence": [
+            "src/moneygraph/validate.py:21-47",
+            "tests/test_outputs.py:29-35",
+            "captures/20261001T112948153224-scenario4.stdout.log"
+          ]
+        },
+        {
+          "requirement": "Шесть ролей и объяснимые правила/пороги.",
+          "status": "partial",
+          "explanation": "Все шесть ролей и пороги реализованы и документированы, но D1 нарушает заявленное особое правило для seed: часть решений использует их неполные входящие метрики.",
+          "evidence": [
+            "src/moneygraph/config.py:7-35",
+            "src/moneygraph/roles.py:116-235",
+            "README.md:170-204",
+            "out/nodes_roles.csv:18"
+          ]
+        },
+        {
+          "requirement": "Кластеризация сети с размером, числом seed, оборотом, top_gids и гипотезой.",
+          "status": "met",
+          "explanation": "Louvain на неориентированной проекции дал 72 кластера; cluster_table экспортирует требуемые поля и hypothesis.",
+          "evidence": [
+            "src/moneygraph/clusters.py:14-50",
+            "src/moneygraph/clusters.py:108-139",
+            "captures/20261001T112948153224-scenario4.stdout.log"
+          ]
+        },
+        {
+          "requirement": "Top-list не менее 20 узлов с обоснованием.",
+          "status": "met",
+          "explanation": "Создан top_nodes.csv на 50 строк, rank начинается с 1, сортировка и согласованность с nodes_roles проверяются.",
+          "evidence": [
+            "src/moneygraph/pipeline.py:54-59",
+            "src/moneygraph/validate.py:61-73",
+            "tests/test_outputs.py:61-67"
+          ]
+        },
+        {
+          "requirement": "Directed visualization с поиском gid и раскрытием цепочки.",
+          "status": "partial",
+          "explanation": "Исходники экспортируют directed graph JSON, viewer.html и реализуют поиск/карточки/цепочки; HTTP отдача viewer подтверждена. Визуальное поведение браузером не проверялось по обязательной пользовательской политике.",
+          "evidence": [
+            "src/moneygraph/export.py:59-98",
+            "src/moneygraph/serve.py:71-81",
+            "README.md:246-280",
+            "captures/20261001T113125155051-test.stdout.log"
+          ]
+        },
+        {
+          "requirement": "Корректно учитывать обрыв на depth=4 и не считать нулевую исходящую степень доказанным terminal.",
+          "status": "met",
+          "explanation": "Все 444 depth=4 помечены truncated_depth, роль вычисляется через p_forward по известным коленам, а тест запрещает подтверждённые sinks.",
+          "evidence": [
+            "src/moneygraph/features.py:94-102",
+            "src/moneygraph/roles.py:171-185",
+            "tests/test_outputs.py:37-43"
+          ]
+        },
+        {
+          "requirement": "Не использовать хардкод gid или внешние вымышленные данные.",
+          "status": "met",
+          "explanation": "Тест проверяет отсутствие 18-значных gid-литералов в src; карточки и graph строятся из входных данных, а assistant ограничен graph tools.",
+          "evidence": [
+            "tests/test_outputs.py:69-72",
+            "src/moneygraph/assistant/tools.py:1-15"
+          ]
+        },
+        {
+          "requirement": "Формулировать результаты как гипотезы и учитывать частичную видимость входящих/отсутствие атрибутов.",
+          "status": "partial",
+          "explanation": "Ограничения и гипотетический язык хорошо реализованы, но D1 показывает, что ограничение неполного incoming не проведено во все решения для seed.",
+          "evidence": [
+            "README.md:203-209",
+            "src/moneygraph/clusters.py:142-174",
+            "src/moneygraph/roles.py:149-169"
+          ]
+        }
+      ],
+      "testData": {
+        "provided": [
+          "cases/2/case-data/README.md",
+          "cases/2/case-data/data/edges.parquet",
+          "cases/2/case-data/data/nodes.parquet",
+          "cases/2/case-data/data/transactions.parquet",
+          "cases/2/case-data/starter/README.md",
+          "cases/2/case-data/starter/requirements.txt",
+          "cases/2/case-data/starter/starter.py",
+          "cases/2/case-data/ТЗ Финансы Граф денег_ восстановление финансовой структуры организованной группы по транзакционной сети.md",
+          "cases/2/task.txt"
+        ],
+        "used": [
+          "cases/2/task.txt",
+          "cases/2/case-data/README.md",
+          "cases/2/case-data/ТЗ Финансы Граф денег_ восстановление финансовой структуры организованной группы по транзакционной сети.md",
+          "cases/2/case-data/data/edges.parquet",
+          "cases/2/case-data/data/nodes.parquet",
+          "cases/2/case-data/data/transactions.parquet",
+          "cases/2/case-data/starter/starter.py",
+          "tests/test_outputs.py"
+        ],
+        "checks": [
+          {
+            "input": "Предоставленные edges.parquet, nodes.parquet и transactions.parquet.",
+            "method": "Запущен application pipeline с этими тремя файлами; sanity_check сравнил агрегаты transactions с edges, gid и orphan-узлы.",
+            "result": "2248 узлов, 3119 рёбер, 4840 транзакций, 81 seed, оборот 365890012 KZT; edges == transactions: OK; 19 узлов без рёбер.",
+            "conclusion": "Схема и внутренние агрегаты тестового набора совместимы с загрузчиком проекта."
+          },
+          {
+            "input": "Тот же предоставленный граф, свежий out-каталог.",
+            "method": "Полный CLI-пересчёт от parquet до экспортов и встроенная validate-проверка.",
+            "result": "Созданы nodes_roles.csv на 2248 строк, clusters.csv на 72 строки, top_nodes.csv на 50 строк, graph.json, viewer.html и extras; schema check: OK; время 17.2 с.",
+            "conclusion": "Обязательный пакет выходов воспроизводится и укладывается в ограничение 5 минут."
+          },
+          {
+            "input": "Узлы глубины 4 из nodes.parquet.",
+            "method": "pytest test_truncated_nodes_are_never_confirmed_sinks и чтение свежего nodes_roles.csv.",
+            "result": "Найдено 444 depth=4; все имеют sink_status=truncated_depth, evidence содержит пометку четвёртого колена.",
+            "conclusion": "Ловушка обрыва обработана корректно для выданного графа."
+          },
+          {
+            "input": "Seed и типологии на полном графе.",
+            "method": "pytest test_seed_roles_do_not_use_incoming_balance, test_typology_names и static audit ветвей roles/priority.",
+            "result": "Тесты seed transit и типологий прошли; source-аудит выявил отдельное противоречие D1 для coordinator/consolidator и flow priority, а в output seed 100000005382566100 получил consolidator по in_deg=7≥4.",
+            "conclusion": "Большая часть защит работает, но кейсовое правило о неполном incoming seed не покрыто полностью."
+          },
+          {
+            "input": "Проектские tests/test_outputs.py.",
+            "method": "python -m pytest -q в изолированном окружении.",
+            "result": "7 passed in 14.42s; только предупреждение pytest о невозможности записать cache в read-only checkout.",
+            "conclusion": "Автотесты выходов и запрета hardcoded gid проходят; предупреждение относится к режиму проверки и не является дефектом проекта."
+          }
+        ],
+        "limitations": [
+          "Визуальная проверка viewer браузером не выполнялась по пользовательскому запрету; HTTP-отдача и статические источники проверены.",
+          "OpenAI credentials намеренно не предоставлялись; основной pipeline и deterministic fallback проверены, реальный LLM-ответ не проверялся.",
+          "В датасете нет ground truth ролей и атрибутов клиента, поэтому оценена обоснованность эвристик, а не accuracy."
+        ]
+      },
+      "runtime": {
+        "status": "working",
+        "build": "Зависимости проекта установлены в изолированном окружении; импорты, тесты и полный pipeline успешно выполнились.",
+        "start": "Локальный сервер moneygraph serve реально стартовал внутри проверки; GET /api/health и GET /viewer.html вернули 200.",
+        "scenario": "Основной сценарий воспроизведён на предоставленных parquet: свежие CSV, graph.json, viewer.html и CLI-карточка узла созданы; POST /api/ask без ключа вернул fallback.",
+        "environment": "Изолированное окружение Python 3.12 с ограниченными ресурсами, без API-ключей; внешние credentials не использовались.",
+        "summary": "Проект working для обязательного локального сценария. Ограничение внешнего LLM отделено от запуска: без ключа работает deterministic fallback.",
+        "checks": [
+          {
+            "command": "moneygraph --data data --out out",
+            "result": "Полный пересчёт на case-data завершён с кодом 0; 2248 узлов, 3119 рёбер, 4840 транзакций; три CSV и viewer.html созданы; встроенная schema check: OK; 17.2 с.",
+            "id": "R1",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Из трёх parquet получить обязательные выгрузки, направленный граф и объяснимые метрики менее чем за 5 минут."
+          },
+          {
+            "command": "python -m pytest -q",
+            "result": "7 passed in 14.42s. Есть только предупреждение pytest cache из-за read-only checkout, без падения тестов.",
+            "id": "R2",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Все проектские проверки схемы, depth=4, seed transit, типологий, top-list и hardcoded gid проходят."
+          },
+          {
+            "command": "moneygraph serve",
+            "result": "GET /api/health: HTTP 200, JSON с ok=true и llm=false; GET /viewer.html: HTTP 200, text/html, 2666531 байт.",
+            "id": "R3",
+            "stage": "start",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Сервер стартует без внешнего ключа и отдаёт health и сгенерированный экран."
+          },
+          {
+            "command": "POST /api/ask",
+            "result": "HTTP 200, mode=fallback, непустой answer и 5 найденных gid; ответ построен без OpenAI API.",
+            "id": "R4",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "При отсутствии credentials основная аналитика и локальный assistant fallback остаются доступными."
+          }
+        ],
+        "limitations": [
+          "Реальный OpenAI provider не вызывался из-за отсутствия намеренно не предоставленных credentials.",
+          "Фактическое визуальное поведение WebGL/поиска в браузере не проверялось; подтверждены HTTP-доставка и исходники."
+        ]
+      },
+      "liveDemo": {
+        "status": "none",
+        "url": null,
+        "notes": "Публичная Live-ссылка в проверяемом репозитории не использовалась и не требовалась для локального кейса; локальный HTTP-сценарий подтверждён проверкой R3/R4."
+      },
+      "fiveHourContext": "Оценка учитывает пятичасовой MVP: не требовались production-хранилище, онлайн-поток, ground truth, реальные персональные атрибуты или обязательный внешний LLM. Для этого горизонта объём результата высокий: объяснимые роли, учёт обрыва, временные сигналы, кластеры, устойчивость, viewer, CLI и fallback. Снижения сделаны только за подтверждённые source-дефекты D1-D3, а не за отсутствие нашей квоты, live URL, устной презентации или визуального осмотра.",
+      "strengths": [
+        "Полный сценарий от трёх parquet до обязательных экспортов и directed graph воспроизведён на предоставленных данных.",
+        "444 узла глубины 4 отделены от подтверждённых sinks через p_forward и truncated_depth.",
+        "Роли, evidence, priority и cluster hypothesis объяснимы по исходникам и отражены в пользовательских CSV/карточках.",
+        "Временные паттерны, повторные маршруты, циклы, resilience и data requests расширяют базовый degree-анализ.",
+        "Документация содержит рабочие команды, методику и короткий demo-сценарий; семь тестов проходят.",
+        "LLM изолирован от основного расчёта, а без ключа HTTP assistant имеет проверенный deterministic fallback."
+      ],
+      "gaps": [
+        "D1: README обещает не использовать входящий баланс seed, но roles.py использует in_deg/in_kzt в ветвях coordinator/consolidator, а priority.py включает flow из in_kzt; свежий output подтверждает seed-консолидатор по in_deg=7≥4.",
+        "D2: export.py жёстко записывает period 2026-07-01 — 2026-07-31 в graph.json, хотя CLI принимает произвольный data_dir.",
+        "D3: pipeline.py передаёт в graph_json summary с runtime_sec=None, а фактическое время присваивает только после записи graph.json; metrics.json и лог корректны, graph.json нет."
+      ],
+      "futureAdvice": [
+        {
+          "principle": "Разделяйте наблюдаемое поведение seed и частичный баланс",
+          "why": "D1 показывает, что входящие seed-метрики реально участвуют в классификации и priority, хотя кейс предупреждает об их заниженности; это может менять роль и очередь.",
+          "how": "В следующем кейсе заведите явные observed_incomplete признаки и исключите in_kzt/in_deg из балансных правил seed либо используйте только отдельно доказанные seed-to-seed связи; добавьте синтетическую регрессию, где изменение скрытого incoming seed не меняет его роль и priority-компоненты.",
+          "findingIds": [
+            "D1"
+          ],
+          "successCheck": "Тест с одинаковыми исходящими переводами и разными невидимыми входящими даёт одинаковые seed role и seed-agnostic части ranking; отчёт явно показывает, какие seed-признаки допустимы.",
+          "timeboxMinutes": 35
+        },
+        {
+          "principle": "Производите метаданные из фактически загруженного входа",
+          "why": "D2 фиксирует июльский период в graph.json, поэтому перенос documented CLI на другую выгрузку создаёт неверную подпись результата.",
+          "how": "Сформируйте period из tx.date.min() и tx.date.max(), передайте его через summary/meta и добавьте проверку на маленьком parquet с другим месяцем.",
+          "findingIds": [
+            "D2"
+          ],
+          "successCheck": "После запуска на двух периодах graph.json в каждом случае содержит соответствующие min/max даты без изменения исходного кода.",
+          "timeboxMinutes": 20
+        },
+        {
+          "principle": "Фиксируйте измерения до формирования всех производных артефактов",
+          "why": "D3 оставляет runtime_sec=null в graph.json, хотя тот же показатель уже вычисляется для metrics.json.",
+          "how": "Присвойте runtime_sec перед graph_json и добавьте assertion, что graph.meta.summary.runtime_sec не является null и совпадает с metrics.json.",
+          "findingIds": [
+            "D3"
+          ],
+          "successCheck": "Свежий graph.json содержит положительное runtime_sec, согласованное с metrics.json с допустимым округлением.",
+          "timeboxMinutes": 10
+        }
+      ],
+      "uncertainties": [
+        "Визуальная работа WebGL, фильтров, поиска и подсветки не проверялась браузером по обязательной политике пользовательской визуальной проверки.",
+        "OpenAI chat/tool-calling путь прослежен по исходникам, но не вызван без предоставленного ключа; fallback проверен HTTP.",
+        "Ground truth ролей отсутствует в кейсе, поэтому нельзя численно подтвердить accuracy классификации.",
+        "Публичная Live-демонстрация и устные ответы не являлись доступными артефактами и не использовались как основание для штрафа."
+      ],
+      "reviewPolicyVersion": 2,
+      "assessmentStatus": "ready",
+      "findings": [
+        {
+          "id": "S1",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Основной pipeline воспроизводит обязательные экспорты на полном предоставленном графе.",
+          "expected": "Один локальный запуск от трёх parquet должен создать три CSV, directed graph и экран менее чем за 5 минут.",
+          "actual": "Получены 2248 строк nodes_roles.csv, 72 строки clusters.csv, 50 строк top_nodes.csv, graph.json и viewer.html; schema check OK за 17.2 с.",
+          "evidence": [
+            "captures/20261001T112948153224-scenario4.stdout.log",
+            "src/moneygraph/pipeline.py:19-107"
+          ],
+          "checkIds": [
+            "R1"
+          ]
+        },
+        {
+          "id": "S2",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Автотесты защищают ключевые требования кейса.",
+          "expected": "Тестовый набор проекта должен проверить схему, полноту узлов, depth=4, seed-ограничение, типологии, top-list и отсутствие hardcoded gid.",
+          "actual": "7 тестов прошли.",
+          "evidence": [
+            "tests/test_outputs.py:25-72",
+            "captures/20261001T113125155051-test.stdout.log"
+          ],
+          "checkIds": [
+            "R2"
+          ]
+        },
+        {
+          "id": "S3",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "HTTP-сервер и локальный fallback assistant работоспособны без ключа.",
+          "expected": "Health и viewer должны отдаваться, а POST assistant не должен блокировать основной локальный сценарий без OpenAI credentials.",
+          "actual": "GET /api/health и GET /viewer.html вернули 200; POST /api/ask вернул 200, mode=fallback, answer и 5 gid.",
+          "evidence": [
+            "captures/20261001T113125155051-test.stdout.log",
+            "src/moneygraph/serve.py:71-105"
+          ],
+          "checkIds": [
+            "R3",
+            "R4"
+          ]
+        },
+        {
+          "id": "S4",
+          "kind": "strength",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Глубина 4 обрабатывается как цензурирование наблюдения, а не как доказанный terminal.",
+          "expected": "Узлы depth=4 должны получать отдельный статус и объяснение вероятности forwarding.",
+          "actual": "roles.py использует p_forward и sink_status=truncated_depth; tests требуют эту маркировку для всех 444 узлов depth=4.",
+          "evidence": [
+            "src/moneygraph/roles.py:171-185",
+            "tests/test_outputs.py:37-43"
+          ],
+          "checkIds": [
+            "R1",
+            "R2"
+          ]
+        },
+        {
+          "id": "D1",
+          "kind": "defect",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Неполные входящие метрики seed участвуют в ролях и priority, несмотря на заявленное ограничение.",
+          "expected": "При частично наблюдаемых входящих seed баланс и входящие количества не должны определять seed role/priority либо должны быть явно скорректированы.",
+          "actual": "roles.py:118-169 проверяет in_deg/in_kzt в coordinator/consolidator для seed; priority.py:43-60 включает in_kzt в flow для всех узлов. В nodes_roles.csv:18 seed 100000005382566100 получил consolidator по R3 in_deg=7≥4 и evidence с 393066 KZT.",
+          "evidence": [
+            "README.md:203-209",
+            "src/moneygraph/roles.py:116-169",
+            "src/moneygraph/priority.py:43-60",
+            "out/nodes_roles.csv:18"
+          ],
+          "checkIds": [
+            "R1"
+          ]
+        },
+        {
+          "id": "D2",
+          "kind": "defect",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Период в graph.json захардкожен и не соответствует произвольному входному data_dir.",
+          "expected": "Метаданные graph.json должны отражать min/max date реально загруженных transactions.",
+          "actual": "export.py:86-89 всегда записывает period [2026-07-01, 2026-07-31], а CLI и README документируют запуск с альтернативным --data.",
+          "evidence": [
+            "src/moneygraph/export.py:85-98",
+            "src/moneygraph/cli.py:28-40",
+            "README.md:120-123"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "D3",
+          "kind": "defect",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "runtime_sec в graph.json записывается до измерения времени.",
+          "expected": "Производные метаданные graph.json должны содержать фактическое положительное время завершённого пересчёта.",
+          "actual": "pipeline.py:72-84 создаёт summary с runtime_sec=None и передаёт его в graph_json; pipeline.py:94 присваивает время только после записи graph.json.",
+          "evidence": [
+            "src/moneygraph/pipeline.py:72-95"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "L1",
+          "kind": "limitation",
+          "verification": "observed",
+          "responsibility": "review_environment",
+          "claim": "Внешний OpenAI provider не был вызван.",
+          "expected": "Для полноценной проверки LLM нужен предоставленный ключ и доступный endpoint.",
+          "actual": "Credentials не предоставлены; /api/ask отработал deterministic fallback, а код provider прослежен статически.",
+          "evidence": [
+            "api_requirements: credentialsProvided=false",
+            "captures/20261001T113125155051-test.stdout.log",
+            "src/moneygraph/assistant/llm.py:183-202"
+          ],
+          "checkIds": [
+            "R3",
+            "R4"
+          ]
+        },
+        {
+          "id": "L2",
+          "kind": "limitation",
+          "verification": "unverified",
+          "responsibility": "review_environment",
+          "claim": "Визуальное поведение viewer не подтверждено браузерным осмотром.",
+          "expected": "Визуальная интерактивность должна быть проверена пользователем согласно заданной политике.",
+          "actual": "Проверены только статическая генерация viewer.html и HTTP 200; браузерный/скриншотный осмотр намеренно не выполнялся.",
+          "evidence": [
+            "src/moneygraph/pipeline.py:84-91",
+            "captures/20261001T113125155051-test.stdout.log"
+          ],
+          "checkIds": [
+            "R3"
+          ]
+        }
+      ],
+      "gapFindingIds": [
+        "D1",
+        "D2",
+        "D3"
+      ]
+    }
+  ],
+  "score": 93.0,
+  "status": "complete",
+  "expectedJudges": 1
+}

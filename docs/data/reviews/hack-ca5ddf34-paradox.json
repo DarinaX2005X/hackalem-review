@@ -1,0 +1,858 @@
+{
+  "methodVersion": 4,
+  "repoId": "hack-ca5ddf34-paradox",
+  "repoUrl": "https://github.com/BAITC-Hacks/hack-ca5ddf34-paradox",
+  "caseId": 10,
+  "snapshot": "6bbe26cfe9749f56885aea325802fc6e2a0b746d",
+  "judges": [
+    {
+      "methodVersion": 4,
+      "repoId": "hack-ca5ddf34-paradox",
+      "caseId": 10,
+      "model": "GPT-5.6 Luna",
+      "snapshot": "6bbe26cfe9749f56885aea325802fc6e2a0b746d",
+      "overallSummary": "Команда собрала цельный прототип чат-консультанта с серверным поиском каталога, объяснимым подбором кандидатов, предложением корзины до подтверждения и защитными проверками на сервере. Локальная сборка и оба набора тестов проходят. Оценка удержана ниже максимума тремя подтверждёнными пробелами: backend не переносит сертификаты каталога в карточку, отбрасывает описание и большинство не-whitelist характеристик, а база условий не содержит ответа о минимальной партии. Живой запуск и запросы к EKT/OpenAI не воспроизведены из-за отсутствующих credentials; это ограничение проверки, а не штраф.",
+      "global": {
+        "criteria": [
+          {
+            "name": "Ценность решения",
+            "score": 22,
+            "max": 25,
+            "awarded": "Высокая практическая ценность для клиента и менеджера, но покрытие каталожной информации и условий покупки неполное.",
+            "deductions": "Снято 3 балла за подтверждённые пробелы в сертификатах, полноте характеристик и минимальной партии.",
+            "evidence": [
+              "README.md:3-9",
+              "cases/10/task.txt:1-3",
+              "src/knowledge/ekt-terms.ts:5-12",
+              "DEF-01",
+              "DEF-02",
+              "DEF-03"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "DEF-01",
+                "reason": "Требование показывать сертификат, если он есть в каталоге, не достигает пользовательского результата: live-сертификаты не попадают из backend в карточку."
+              },
+              {
+                "points": 1,
+                "findingId": "DEF-02",
+                "reason": "Покупатель получает только ограниченный набор нормализованных полей, поэтому обещание консультации по характеристикам не покрывает произвольные свойства и описание товара."
+              },
+              {
+                "points": 1,
+                "findingId": "DEF-03",
+                "reason": "В обязательных условиях покупки нет сведений о минимальной партии, поэтому на этот вопрос нельзя дать содержательный ответ из встроенной базы."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Сокращение пути от вопроса к решению",
+                "implementation": "README описывает маршрут клиент → чат → сведения о товаре/наличии/аналоге → предложение → отдельное подтверждение → ссылка на корзину. HTTP-адаптер разделяет chat и confirm, поэтому консультация не смешана с изменением корзины.",
+                "value": "Это непосредственно отвечает на проблему затянутой переписки с менеджером и делает следующий шаг покупки понятным для клиента.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:19-25",
+                  "src/http/app.ts:91-126",
+                  "docs/API.md:14-36"
+                ]
+              },
+              {
+                "aspect": "Объяснимый подбор замены",
+                "implementation": "EktCatalogReader сравнивает категорию, бренд, число полюсов, ток, напряжение, отключающую способность и монтаж; результат содержит matchedFields, differentFields, unknownFields и объяснение, а кандидат получает статус проверки совместимости.",
+                "value": "Закупщик видит не просто похожее название, а причины сходства и различий и не получает опасного обещания электрической совместимости.",
+                "verification": "source",
+                "evidence": [
+                  "src/integration/ekt-reader.ts:58-116",
+                  "src/agent/instructions.ts:4-8",
+                  "tests/integration/ekt-reader.test.ts:168-183"
+                ]
+              },
+              {
+                "aspect": "Безопасное действие с корзиной",
+                "implementation": "Подготовка предложения выполняет проверки цены, городского остатка, уже имеющегося количества и кратности; подтверждение повторяет загрузку товара, цену, остаток и кратность в DemoCartProvider.",
+                "value": "Клиент не получает скрытого изменения корзины, а риск добавить больше доступного остатка или устаревшую цену существенно снижен.",
+                "verification": "observed",
+                "evidence": [
+                  "src/agent/tools.ts:215-281",
+                  "src/cart/demo-provider.ts:83-173",
+                  "tests/cart/demo-provider.test.ts:24-145",
+                  "CHK-BACKEND-TESTS"
+                ]
+              },
+              {
+                "aspect": "Ограниченная, но полезная обработка вложений",
+                "implementation": "PDF, DOCX, XLSX и JPEG принимаются до 10 МБ, проходят проверку расширения, MIME и сигнатуры, затем модель извлекает строки товара в редактируемый черновик; платёжные данные фильтруются.",
+                "value": "Это расширяет сценарий с ручного запроса до спецификации или фото и при этом не превращает распознанный документ в автоматическую покупку.",
+                "verification": "observed",
+                "evidence": [
+                  "src/attachments/extract.ts:49-115",
+                  "src/attachments/extract.ts:147-202",
+                  "tests/attachments/extract.test.ts:1-150",
+                  "ekt-ai-frontend/tests/ui.test.cjs:576-605"
+                ]
+              }
+            ],
+            "scoreReasoning": "22/25 заслужены ясной проблемой, заметным сокращением ручных консультаций, безопасным cart-flow и объяснимыми аналогами. Пробелы DEF-01 и DEF-02 затрагивают обещанную полноту сведений о товаре, а DEF-03 — один из явно перечисленных типов условий покупки. Они существенны для ценности консультанта, но не уничтожают основной сценарий поиска, сравнения и подготовки покупки за пять часов."
+          },
+          {
+            "name": "Результат и качество решения",
+            "score": 16,
+            "max": 20,
+            "awarded": "Целостный локальный прототип подтверждён тестами и имеет хорошо разделённые серверный и клиентский контуры; живой внешний сценарий и часть данных остаются ограниченными.",
+            "deductions": "Снято 4 балла за три подтверждённых функциональных пробела; отсутствие внешних credentials не использовалось как штраф.",
+            "evidence": [
+              "CHK-BUILD",
+              "CHK-BACKEND-TESTS",
+              "CHK-FRONTEND-SUITE",
+              "src/http/app.ts:79-142",
+              "DEF-01",
+              "DEF-02",
+              "DEF-03"
+            ],
+            "deductionItems": [
+              {
+                "points": 1.5,
+                "findingId": "DEF-01",
+                "reason": "Карточка не может показать сертификат, полученный из live API, потому что ProductDetails и toDetails его не возвращают."
+              },
+              {
+                "points": 1.5,
+                "findingId": "DEF-02",
+                "reason": "Технический результат ограничен семью-восьмью нормализованными полями; описание и прочие свойства теряются до ответа API."
+              },
+              {
+                "points": 1,
+                "findingId": "DEF-03",
+                "reason": "Сценарий вопроса о минимальной партии не имеет данных, которые мог бы вернуть get_purchase_terms."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Серверный контракт и сессия",
+                "implementation": "Fastify создаёт cookie-сессию, хранит историю последнего контекста, выдаёт CSRF-токен и предоставляет /api/session, /api/chat, /api/cart и /api/cart/confirm. Ошибки Zod, корзины и вложений переводятся в ограниченные JSON-ответы.",
+                "value": "Компоненты можно состыковать с UI через документированный контракт без передачи session ID или секретов в браузер.",
+                "verification": "source",
+                "evidence": [
+                  "src/http/app.ts:28-81",
+                  "src/http/app.ts:83-142",
+                  "docs/API.md:5-36"
+                ]
+              },
+              {
+                "aspect": "Подтверждённый пользовательский результат",
+                "implementation": "Frontend показывает proposal до подтверждения, блокирует повторное подтверждение после неопределённой ошибки, отправляет CSRF только в confirm и обновляет корзину только из серверного ответа. DOM-тесты проверяют поиск, сравнение, proposal, explicit confirm, 409 и cart URL.",
+                "value": "Критический сценарий не только описан, но и проверен на уровне реальных файлов UI и API-формата.",
+                "verification": "observed",
+                "evidence": [
+                  "ekt-ai-frontend/api.js:93-193",
+                  "ekt-ai-frontend/app.js:380-610",
+                  "ekt-ai-frontend/tests/ui.test.cjs:430-575",
+                  "CHK-FRONTEND-SUITE"
+                ]
+              },
+              {
+                "aspect": "Повторная проверка состояния",
+                "implementation": "DemoCartProvider хранит proposal отдельно от items, привязывает его к сессии, ставит TTL, сериализует подтверждения lock-ом и повторно резолвит товар перед записью.",
+                "value": "Это хорошее качество именно для прототипа корзины: stale price, stock, orderMultiple, чужая сессия и повторный клик не превращаются в тихую ошибку.",
+                "verification": "observed",
+                "evidence": [
+                  "src/cart/demo-provider.ts:124-174",
+                  "src/cart/demo-provider.ts:213-224",
+                  "tests/cart/demo-provider.test.ts:38-145",
+                  "tests/http/app.test.ts:60-103"
+                ]
+              },
+              {
+                "aspect": "Воспроизводимость без live UI-проверки",
+                "implementation": "Frontend собирается в автономный index.html, а demo.html содержит офлайн-образцы; build/check гарантируют актуальность generated HTML. Офлайн DOM-тест проверяет поиск, сравнение, proposal и ту же вкладку корзины.",
+                "value": "Результат можно показать локально за короткое время даже без внешнего API, при этом README честно отделяет образцы от live-данных.",
+                "verification": "observed",
+                "evidence": [
+                  "README.md:91-96",
+                  "ekt-ai-frontend/build.mjs:16-56",
+                  "ekt-ai-frontend/tests/ui.test.cjs:836-865",
+                  "CHK-FRONTEND-SUITE"
+                ]
+              }
+            ],
+            "scoreReasoning": "16/20: компиляция, backend unit/domain/HTTP-contract тесты и frontend suite проходят, а архитектура покрывает путь от чата до корзины. До максимума не хватает полноты товарной карточки (DEF-01, DEF-02) и одного обязательного класса условий (DEF-03). Основная корзина остаётся process-local демонстрацией, что отмечено как ограничение прототипа, но не превращено в штраф за отсутствие production-интеграции."
+          },
+          {
+            "name": "Инновационность",
+            "score": 12,
+            "max": 15,
+            "awarded": "Есть обоснованный safety-first и source-backed подход к AI-консультации, хотя базовые строительные блоки остаются стандартными для tool-calling ассистента.",
+            "deductions": "Снято 3 балла: нестандартность ценна в объяснимом сравнении и безопасном подтверждении, но неполная модель каталога ограничивает отличие решения от обычного поиска с LLM.",
+            "evidence": [
+              "src/agent/instructions.ts:2-10",
+              "src/agent/runner.ts:59-108",
+              "src/integration/ekt-reader.ts:76-116",
+              "DEF-01",
+              "DEF-02",
+              "DEF-03"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "DEF-01",
+                "reason": "Сертификаты не участвуют в source-backed карточке, поэтому один из заявленных нестандартных trust-сигналов не работает на live-данных."
+              },
+              {
+                "points": 1,
+                "findingId": "DEF-02",
+                "reason": "Сравнение ограничено фиксированным набором полей и не использует богатое описание/свойства каталога, что сужает преимущество над обычным поиском."
+              },
+              {
+                "points": 1,
+                "findingId": "DEF-03",
+                "reason": "Для условий отсутствует часть предметной базы, поэтому AI не получает полного доменного контекста даже при корректном tool-calling контуре."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Инструменты вместо свободной галлюцинации",
+                "implementation": "Runner передаёт модели строгие схемы пяти инструментов, выполняет вызовы с ограничением раундов, а presenter строит карточки и сравнения из tool events, не парся модельный текст.",
+                "value": "Это сильнее обычного чат-ответа: факты и действия имеют отдельный контролируемый канал, а предел раундов не позволяет бесконечному tool loop скрыться в интерфейсе.",
+                "verification": "source",
+                "evidence": [
+                  "src/agent/schemas.ts:147-224",
+                  "src/agent/runner.ts:66-94",
+                  "src/app/presenter.ts:28-75"
+                ]
+              },
+              {
+                "aspect": "Кандидат, а не опасное обещание совместимости",
+                "implementation": "Алгоритм отбрасывает категорийные и критические несовпадения, учитывает положительный stock в выбранном городе, сортирует по совпадениям/отключающей способности/остатку и маркирует candidate_requires_verification.",
+                "value": "Такой консервативный output полезен в электротехнике, где похожее название не доказывает заменяемость.",
+                "verification": "observed",
+                "evidence": [
+                  "src/integration/ekt-reader.ts:84-115",
+                  "tests/integration/ekt-reader.test.ts:168-183"
+                ]
+              },
+              {
+                "aspect": "Безопасное разделение намерения и действия",
+                "implementation": "AI имеет только prepare_cart_item, а единственная запись идёт через отдельный HTTP confirm после cookie/Origin/CSRF проверки; tool-инструкция запрещает считать текстовое «да» подтверждением.",
+                "value": "Это аккуратный паттерн для торгового AI: модель предлагает, человек явно подтверждает, сервер повторно проверяет.",
+                "verification": "source",
+                "evidence": [
+                  "src/agent/instructions.ts:8",
+                  "src/http/app.ts:115-126",
+                  "src/cart/confirmation.ts:15-18"
+                ]
+              },
+              {
+                "aspect": "Обработка недоверенного входа",
+                "implementation": "Инструкции трактуют документы и tool output как данные, attachment extractor игнорирует платёжные реквизиты, а ссылки и поля UI проходят безопасную нормализацию.",
+                "value": "Это заметный инженерный акцент для ассистента, принимающего файлы и внешние карточки товаров.",
+                "verification": "source",
+                "evidence": [
+                  "src/attachments/extract.ts:99-106",
+                  "src/attachments/extract.ts:207-228",
+                  "ekt-ai-frontend/view-model.js:220-267"
+                ]
+              }
+            ],
+            "scoreReasoning": "12/15: объяснимый retrieval/comparison, разделение proposal и confirm и защитная обработка вложений дают собственное преимущество. Подход всё же основан на знакомой связке LLM function calling + каталог, а DEF-01–DEF-03 уменьшают полноту именно тех trust- и domain-слоёв, которые могли бы сделать решение более отличительным."
+          },
+          {
+            "name": "Потенциал развития и масштабирования",
+            "score": 17,
+            "max": 20,
+            "awarded": "Архитектура хорошо подготовлена к замене источников и расширению сценариев, но текущая модель состояния и покрытие каталога остаются прототипными.",
+            "deductions": "Снято 3 балла за подтверждённые узкие места в модели данных, которые придётся устранить при переносе на широкий каталог и новые товарные группы.",
+            "evidence": [
+              "README.md:34-48",
+              "src/app/ekt-assistant.ts:28-75",
+              "src/cart/demo-provider.ts:45-51",
+              "DEF-01",
+              "DEF-02",
+              "DEF-03"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "DEF-01",
+                "reason": "Расширение на реальные документные атрибуты потребует менять публичный ProductDetails-контракт и presenter, поскольку сертификаты сейчас не проходят через backend."
+              },
+              {
+                "points": 1,
+                "findingId": "DEF-02",
+                "reason": "Фиксированный whitelist характеристик плохо масштабируется на новые товарные категории с другими полями."
+              },
+              {
+                "points": 1,
+                "findingId": "DEF-03",
+                "reason": "Неполная knowledge-база условий создаёт отдельную ручную работу при подключении регионов, B2B-правил и новых каналов покупки."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Модульные границы",
+                "implementation": "CatalogReader, EktClient, EktCatalogReader, PurchaseTermsReader, CartProvider и AttachmentExtractor определены отдельными интерфейсами; composition root собирает их в EktAssistantRuntime.",
+                "value": "На следующем этапе можно заменить API, БД, реальную корзину или extractor, не переписывая HTTP и UI-контракт целиком.",
+                "verification": "source",
+                "evidence": [
+                  "src/agent/tools.ts:20-44",
+                  "src/app/ekt-assistant.ts:28-75",
+                  "src/http/app.ts:16-27"
+                ]
+              },
+              {
+                "aspect": "Расширение ассортимента и аналогов",
+                "implementation": "Индекс поддерживает пагинацию, точный артикул, aliases и полноту покрытия; alternative retriever отделяет category/brand query от live detail-запросов и ограничивает параллелизм.",
+                "value": "Это разумная база для большего каталога и новых групп, где критерии сравнения можно добавлять в одном адаптере.",
+                "verification": "source",
+                "evidence": [
+                  "src/catalog/index.ts:61-139",
+                  "src/integration/ekt-reader.ts:58-83",
+                  "src/catalog/ekt-client.ts:75-85"
+                ]
+              },
+              {
+                "aspect": "Подготовка к нескольким клиентам",
+                "implementation": "Корзина и proposal привязаны к HttpOnly cookie-сессии, а confirm проверяет принадлежность proposal, CSRF и Origin; frontend не хранит session ID.",
+                "value": "Паттерн уже учитывает базовую изоляцию клиентов и пригоден для последующего переноса session/cart в постоянное хранилище.",
+                "verification": "source",
+                "evidence": [
+                  "src/http/app.ts:45-65",
+                  "src/http/app.ts:115-126",
+                  "ekt-ai-frontend/README.md:15-19"
+                ]
+              },
+              {
+                "aspect": "Честная граница MVP",
+                "implementation": "README прямо называет корзину демонстрационной и process-local, отделяет offline samples от live API и перечисляет внешние зависимости.",
+                "value": "Для пятичасового хакатона это делает дальнейшую работу понятной: сначала заменить provider и persist state, затем подключать UI к реальному checkout.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:3",
+                  "README.md:22-25",
+                  "src/cart/demo-provider.ts:45-46",
+                  "README.md:96-110"
+                ]
+              }
+            ],
+            "scoreReasoning": "17/20: интерфейсные границы, индекс, source-backed comparison и session-bound provider дают хороший путь к развитию. Ограничение связано не с отсутствием production-функций как таковых, а с тем, что DEF-01 и DEF-02 требуют расширить контракт товарных данных, а DEF-03 — доменную базу условий перед масштабированием на новые категории и регионы."
+          },
+          {
+            "name": "Презентация, демо и ответы на вопросы",
+            "score": 18,
+            "max": 20,
+            "awarded": "README и репозиторий дают воспроизводимый локальный путь, честно разделяют live и offline режимы и объясняют API; устная презентация и визуальная проверка в этой оценке отсутствовали.",
+            "deductions": "Снято 2 балла за неполное раскрытие результата в live-карточке: сертификаты и произвольные характеристики не доходят до интерфейса.",
+            "evidence": [
+              "README.md:50-110",
+              "ekt-ai-frontend/README.md:5-35",
+              "ekt-ai-frontend/tests/ui.test.cjs:836-865",
+              "DEF-01",
+              "DEF-02"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "DEF-01",
+                "reason": "README обещает карточки сертификатов и UI умеет их отображать, но live backend не передаёт certificates, поэтому заявленный демо-аспект будет пустым при реальном API."
+              },
+              {
+                "points": 1,
+                "findingId": "DEF-02",
+                "reason": "Объяснение карточки выглядит убедительно, но фактически демонстрирует только whitelist полей; это сужает доказуемость консультации по характеристикам."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Пошаговый сценарий для жюри",
+                "implementation": "README содержит конкретный запрос для аналога Legrand DPX3 160, выбор города, проверку предложения без изменения корзины и отдельное подтверждение с переходом на /cart.",
+                "value": "Жюри может воспроизвести ключевой happy path по тексту, а не угадывать скрытые действия.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:89-96"
+                ]
+              },
+              {
+                "aspect": "Документированный контракт",
+                "implementation": "docs/API.md фиксирует запросы/ответы session, chat, cart, confirm и attachments, а frontend README описывает proxy, cookies, CSRF, ошибки и ограничения.",
+                "value": "Архитектура и ожидаемый пользовательский результат читаются из репозитория без устных пояснений.",
+                "verification": "source",
+                "evidence": [
+                  "docs/API.md:5-36",
+                  "docs/API.md:38-43",
+                  "ekt-ai-frontend/README.md:39-78"
+                ]
+              },
+              {
+                "aspect": "Репродуцируемое offline demo",
+                "implementation": "Отдельный demo.html работает на образцовых данных, не делает сетевых вызовов и тестом проходит сценарий поиска, сравнения, explicit confirmation и корзины.",
+                "value": "Это позволяет показать интерфейс при недоступных credentials, при этом README не выдаёт образцы за live интеграцию.",
+                "verification": "observed",
+                "evidence": [
+                  "README.md:96",
+                  "ekt-ai-frontend/demo.html:809-970",
+                  "ekt-ai-frontend/tests/ui.test.cjs:836-865",
+                  "CHK-FRONTEND-SUITE"
+                ]
+              },
+              {
+                "aspect": "Честное описание границ",
+                "implementation": "README сообщает о демонстрационной корзине, требуемых EKT/OpenAI зависимостях, меняющихся остатках и том, что offline data не доказывают live интеграцию.",
+                "value": "Такая оговорка повышает доверие к демо и предотвращает неверное ожидание реального заказа.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:22-25",
+                  "README.md:54-67",
+                  "README.md:96-110"
+                ]
+              }
+            ],
+            "scoreReasoning": "18/20: README, API-документация, конкретный сценарий и passing offline test дают сильную воспроизводимость. Я не снижал баллы за отсутствие публичной ссылки, устной презентации или визуальной проверки. Снижение связано только с DEF-01 и DEF-02: часть обещанного содержимого карточки не может быть показана на live-ответе."
+          }
+        ],
+        "total": 85
+      },
+      "case": null,
+      "judgeScore": 85,
+      "caseRequirements": [
+        {
+          "requirement": "Консультация по существующему товару: название, артикул, цена, наличие и технические сведения из каталога",
+          "status": "partial",
+          "explanation": "Поиск, detail-запрос, цена, городской stock и нормализованные характеристики реализованы. Однако описание и свойства вне фиксированного whitelist отбрасываются, поэтому полная консультация по карточке не гарантирована.",
+          "evidence": [
+            "src/integration/ekt-reader.ts:135-211",
+            "src/catalog/normalize.ts:54-69",
+            "DEF-02",
+            "tests/integration/ekt-reader.test.ts:77-89"
+          ]
+        },
+        {
+          "requirement": "Сертификаты: дать ссылку/файл, если сертификат есть в данных",
+          "status": "missing",
+          "explanation": "Frontend имеет адаптер и место для certificate links, но backend ProductDetails не содержит certificates, EktProductDetail/normalize/toDetails их не передают. На live-карточке источник сертификата поэтому недоступен.",
+          "evidence": [
+            "src/agent/schemas.ts:38-42",
+            "src/integration/ekt-reader.ts:135-149",
+            "ekt-ai-frontend/view-model.js:232-267",
+            "DEF-01"
+          ]
+        },
+        {
+          "requirement": "При нулевом остатке предложить релевантный аналог с объяснением и положительным остатком в выбранном городе",
+          "status": "met",
+          "explanation": "Alternative retriever исключает исходный товар, несовместимую категорию и критические несовпадения, фильтрует нулевой stock выбранного города и возвращает совпадения, различия, неизвестные поля и caveat о проверке совместимости.",
+          "evidence": [
+            "src/integration/ekt-reader.ts:58-116",
+            "src/agent/schemas.ts:50-58",
+            "tests/integration/ekt-reader.test.ts:98-183"
+          ]
+        },
+        {
+          "requirement": "Ответы об условиях покупки: оплата, доставка и минимальная партия",
+          "status": "partial",
+          "explanation": "Оплата, доставка и возвраты представлены source-backed записями и доступны через get_purchase_terms. Минимальная партия не входит в ektPurchaseTerms, поэтому этот обязательный вопрос не покрыт.",
+          "evidence": [
+            "src/knowledge/ekt-terms.ts:5-12",
+            "src/knowledge/purchase-terms.ts:11-27",
+            "src/agent/tools.ts:202-212",
+            "DEF-03"
+          ]
+        },
+        {
+          "requirement": "Без явного подтверждения корзина не меняется",
+          "status": "met",
+          "explanation": "Чат вызывает только подготовку proposal; запись выполняется отдельным POST /api/cart/confirm с явным true внутри серверного обработчика и CSRF/Origin проверками. Unit, HTTP-contract и DOM-тесты проверяют пустую корзину до confirm.",
+          "evidence": [
+            "src/http/app.ts:90-126",
+            "src/cart/confirmation.ts:15-18",
+            "tests/http/app.test.ts:60-89",
+            "ekt-ai-frontend/tests/ui.test.cjs:430-475"
+          ]
+        },
+        {
+          "requirement": "После подтверждения добавить нужное количество, не превышая остаток, с учётом кратности",
+          "status": "met",
+          "explanation": "Подготовка и подтверждение проверяют доступный городской stock, уже добавленное количество, цену и orderMultiple; confirm повторно загружает товар перед записью. Тесты покрывают shortage, price change, expiry, city stock и increment.",
+          "evidence": [
+            "src/cart/demo-provider.ts:83-120",
+            "src/cart/demo-provider.ts:142-173",
+            "tests/cart/demo-provider.test.ts:66-145",
+            "ekt-ai-frontend/tests/ui.test.cjs:606-634"
+          ]
+        },
+        {
+          "requirement": "После добавления вернуть прямую ссылку на актуальное состояние корзины",
+          "status": "met",
+          "explanation": "Успешный confirm возвращает cart с cartUrl, а /cart строит страницу из текущего session cart. Реализованная корзина демонстрационная и process-local, но для MVP ссылка и актуальное состояние прототипа работают.",
+          "evidence": [
+            "src/cart/provider.ts:24-29",
+            "src/cart/demo-provider.ts:204-210",
+            "src/http/app.ts:103-112",
+            "tests/http/app.test.ts:78-89",
+            "LIM-01"
+          ]
+        },
+        {
+          "requirement": "Принимать текст, фото, Excel, Word и PDF; распознавание не должно сразу покупать",
+          "status": "met",
+          "explanation": "Backend принимает PDF/DOCX/XLSX/JPG/JPEG до 10 МБ, валидирует MIME и сигнатуру, извлекает item rows и возвращает их для ручной проверки. Frontend не отправляет chat и не меняет cart во время upload.",
+          "evidence": [
+            "src/attachments/extract.ts:49-115",
+            "src/http/app.ts:129-142",
+            "ekt-ai-frontend/app.js:496-515",
+            "tests/attachments/extract.test.ts:1-150",
+            "ekt-ai-frontend/tests/ui.test.cjs:576-605"
+          ]
+        },
+        {
+          "requirement": "Не выдумывать цену/наличие и объяснять неопределённость",
+          "status": "met",
+          "explanation": "Инструменты требуют source URL, отделяют null price/unknown stock, фиксируют conflicts и не объявляют analogue гарантированно совместимым. UI не превращает unknown stock в zero и блокирует неполное proposal.",
+          "evidence": [
+            "src/agent/tools.ts:89-111",
+            "src/agent/tools.ts:169-181",
+            "src/integration/ekt-reader.ts:301-373",
+            "ekt-ai-frontend/view-model.js:56-73",
+            "ekt-ai-frontend/view-model.js:270-307"
+          ]
+        },
+        {
+          "requirement": "Не хранить платёжные данные и защищать session/cart от несанкционированной записи",
+          "status": "met",
+          "explanation": "Секреты остаются на backend, cookies HttpOnly/SameSite, confirm требует Origin и CSRF, proposal принадлежит session, а extractor отбрасывает payment/card/bank details. Платёжного состояния в модели корзины нет.",
+          "evidence": [
+            "src/http/app.ts:45-65",
+            "src/http/app.ts:115-126",
+            "src/attachments/extract.ts:99-106",
+            "src/attachments/extract.ts:207-228",
+            "README.md:64-66"
+          ]
+        }
+      ],
+      "testData": {
+        "provided": [
+          "cases/10/case-data/HackAlem AI_ ИИ-ассистент для чата на сайте ekt.kz.md",
+          "cases/10/case-data/ИИ-ассистент для чата на сайте ekt.kz ДАННЫЕ.docx.md"
+        ],
+        "used": [
+          "cases/10/case-data/HackAlem AI_ ИИ-ассистент для чата на сайте ekt.kz.md",
+          "cases/10/case-data/ИИ-ассистент для чата на сайте ekt.kz ДАННЫЕ.docx.md",
+          "tests/integration/ekt-reader.test.ts",
+          "tests/http/app.test.ts",
+          "ekt-ai-frontend/tests/ui.test.cjs"
+        ],
+        "checks": [
+          {
+            "input": "Требования из основного case-data документа: существующий товар, нулевой остаток/аналог, условия, подтверждённая корзина, вложения.",
+            "method": "Сопоставил каждое требование с исходниками и локальными тестами; не публиковал содержимое credentials.",
+            "result": "Основные требования покрыты caseRequirements; сертификаты, произвольные свойства и минимальная партия имеют отдельные source findings.",
+            "conclusion": "Проверка применимости кейса выполнена."
+          },
+          {
+            "input": "Endpoint paths /api/products и /api/products/detail из документа с тестовым API.",
+            "method": "Сверил пути, Basic Auth и query id/page с EktClient и тестовыми fetch-стабами; внешний API не вызывался без переданных credentials.",
+            "result": "EktClient формирует GET /api/products?page=N и GET /api/products/detail?id=..., передаёт Authorization Basic и валидирует JSON; интеграционные стабы прошли.",
+            "conclusion": "Контракт прослежен по коду; live response остаётся непроверенным ограничением."
+          },
+          {
+            "input": "Existing/zero-stock/alternative synthetic fixtures in tests/integration/ekt-reader.test.ts.",
+            "method": "Запустил backend test suite, включая mapping details, city stock, critical mismatches and alternative ranking.",
+            "result": "Все 3 integration tests passed; positive city stock is required and zero stock in the requested city is excluded.",
+            "conclusion": "Локальная domain-проверка аналога пройдена."
+          },
+          {
+            "input": "Proposal/cart fixtures in tests/http/app.test.ts and tests/cart/demo-provider.test.ts.",
+            "method": "Запустил backend test suite; проверил chat до confirm, missing CSRF, same-session confirm, idempotency, stock/price/expiry/multiple.",
+            "result": "Backend suite: 9 files, 54 tests passed; HTTP contract keeps cart empty before confirm and returns cartUrl after confirm.",
+            "conclusion": "Локальный cart сценарий пройден на демонстрационном provider."
+          },
+          {
+            "input": "Attachment and UI fixtures in tests/attachments/extract.test.ts and ekt-ai-frontend/tests/ui.test.cjs.",
+            "method": "Запустил frontend suite and backend attachment tests; проверил file extraction stays in draft and explicit UI confirm.",
+            "result": "Frontend suite passed 57 tests; attachment/security and offline demo scenarios passed.",
+            "conclusion": "Поддержка предоставленных типов входа подтверждена на локальных fixtures."
+          }
+        ],
+        "limitations": [
+          "В кейс-пакете нет открытого production response body с товарами, сертификатами и условиями; внешний EKT API не вызывался без credentials.",
+          "OpenAI и EKT credentials намеренно не переданы, поэтому live catalog warm-up и модельный ответ не были выполнены.",
+          "Офлайн fixture/demo использует образцовые данные и не доказывает актуальность реальных цены, остатка или сертификата."
+        ]
+      },
+      "runtime": {
+        "status": "blocked",
+        "build": "Backend TypeScript build passed. Frontend generated HTML build and freshness check passed.",
+        "start": "Main server start was attempted but stopped before listening because the OpenAI SDK rejected the absent OPENAI_API_KEY. This is a credential/environment limitation, not evidence of a project code defect.",
+        "scenario": "The live external scenario was not run. The core HTTP adapter, domain services, frontend contract, offline demo and synthetic integration fixtures were exercised successfully; the actual EKT/OpenAI path remains unverified.",
+        "environment": "Node.js 20.19.6 with npm dependencies installed in isolated resource-limited runs; no project or review credentials were supplied. Visual/browser behavior was not inspected.",
+        "summary": "Сборка и локальные тесты рабочие; старт полного сервера заблокирован отсутствующим внешним credential, а пользовательский сценарий подтверждён только через contract/domain/offline проверки.",
+        "checks": [
+          {
+            "command": "npm run build",
+            "result": "tsc --noEmit завершился с exit code 0.",
+            "id": "CHK-BUILD",
+            "stage": "build",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Backend TypeScript compiles without errors."
+          },
+          {
+            "command": "npm test",
+            "result": "Vitest: 9 test files, 54 tests passed, including catalog, tools, cart, presenter, attachments, integration and HTTP app tests.",
+            "id": "CHK-BACKEND-TESTS",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Backend unit/domain/HTTP-contract checks pass and chat does not mutate cart before explicit confirm."
+          },
+          {
+            "command": "npm run build",
+            "result": "Frontend build produced the self-contained index.html successfully.",
+            "id": "CHK-FRONTEND-BUILD",
+            "stage": "build",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Frontend source template and assets produce a complete generated HTML."
+          },
+          {
+            "command": "npm test && npm run check",
+            "result": "Node test runner: 57 tests passed; syntax checks passed; generated HTML was reported up to date.",
+            "id": "CHK-FRONTEND-SUITE",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Frontend contract, proxy, view-model, DOM scenario and offline demo checks pass."
+          },
+          {
+            "command": "npm run start",
+            "result": "Process exited before listen with OpenAIError: Missing credentials. Please pass an apiKey, or set OPENAI_API_KEY.",
+            "id": "CHK-START",
+            "stage": "start",
+            "status": "blocked",
+            "cause": "review_environment",
+            "expected": "Backend starts and exposes its HTTP routes when required external credentials are available."
+          }
+        ],
+        "limitations": [
+          "CHK-START не позволяет подтвердить реальный listener и live /health без OpenAI/EKT credentials.",
+          "Fastify HTTP проверен через app.inject и не заменяет запрос к запущенному серверу.",
+          "Визуальное поведение UI не проверялось согласно заданной политике; DOM и статические проверки не являются визуальным тестом."
+        ]
+      },
+      "liveDemo": {
+        "status": "none",
+        "url": null,
+        "notes": "Публичной live-ссылки в репозитории нет. Локальный ekt-ai-frontend/demo.html — честно обозначенное offline demo на образцовых данных; отсутствие публичного URL не использовано как причина снижения баллов."
+      },
+      "fiveHourContext": "Для пятичасового MVP объём выбран разумно: команда довела до тестируемого состояния поиск, аналоги, proposal/confirm, attachments, proxy и offline demo, не выдавая демонстрационную корзину за реальный заказ. Максимум не выставлен из-за трёх конкретных функциональных пробелов в данных, а не из-за отсутствия production persistence или платных ключей.",
+      "strengths": [
+        "Source-backed tool contract и presenter не дают модели свободно подменять карточки товара своим текстом.",
+        "Alternative flow фильтрует нулевой stock в выбранном городе и показывает match/different/unknown вместо безоговорочной совместимости.",
+        "Cart proposal отделён от confirm; сервер повторно проверяет сессию, CSRF, цену, stock, expiry и orderMultiple.",
+        "Вложения валидируются по размеру, MIME и сигнатуре, а payment/card details исключаются из extraction output.",
+        "README, docs/API.md, generated frontend и passing local suites образуют воспроизводимый путь демонстрации."
+      ],
+      "gaps": [
+        "Сертификаты из товарного API не доходят до ProductDetails и live UI; карточка может показать только «Сертификат не указан» — DEF-01.",
+        "Backend теряет description и все свойства каталога, кроме фиксированного набора extractFacts; консультация по произвольным техническим характеристикам неполна — DEF-02.",
+        "В ektPurchaseTerms нет минимальной партии/минимального заказа, поэтому обязательный вопрос об этом условии получает unverified вместо содержательного ответа — DEF-03."
+      ],
+      "futureAdvice": [
+        {
+          "principle": "Сохраняйте доменные данные до UI, а не только заранее выбранные поля.",
+          "why": "DEF-01 и DEF-02 показывают, что backend обещает карточку товара, но сертификаты, description и неизвестные свойства обрываются до presenter; пользователь теряет проверяемые сведения.",
+          "how": "В следующем кейсе введите расширяемый ProductAttribute/Document контракт: передавайте сертификаты и bounded unknown facts с source, затем добавьте один contract test на round-trip API → presenter → UI.",
+          "findingIds": [
+            "DEF-01",
+            "DEF-02"
+          ],
+          "successCheck": "Fixture с сертификатом и нестандартным свойством появляется в /api/chat и в карточке как безопасная ссылка/строка с исходным source, не меняя cart.",
+          "timeboxMinutes": 45
+        },
+        {
+          "principle": "Покрывайте обязательные бизнес-термины отдельной матрицей источников.",
+          "why": "DEF-03 возник потому, что payment/delivery/returns есть, а минимальная партия отсутствует в ektPurchaseTerms; инструмент корректно сообщает unverified, но кейс остаётся неполным.",
+          "how": "Перед подключением LLM составьте таблицу topic × city × customer type, у каждой строки сохраните source URL и явный статус verified/unverified; добавьте fixture на каждый must-have topic.",
+          "findingIds": [
+            "DEF-03"
+          ],
+          "successCheck": "Запрос о минимальной партии возвращает конкретное source-backed условие либо явно объяснённый unverified без выдуманной цифры.",
+          "timeboxMinutes": 30
+        },
+        {
+          "principle": "Сохраняйте один контракт между предложением и подтверждённым действием.",
+          "why": "STR-01 показывает сильный результат команды: proposal не меняет корзину, а same-session confirm обновляет её один раз и возвращает cart URL.",
+          "how": "В другом хакатоне закрепите этот паттерн отдельным provider contract test: сначала snapshot предложения, затем повторная проверка состояния, idempotent confirm и возврат актуальной корзины независимо от конкретного cart adapter.",
+          "findingIds": [
+            "STR-01"
+          ],
+          "successCheck": "Один и тот же contract test подтверждает пустую корзину до confirm, одну запись после confirm, безопасный повтор и URL актуальной корзины.",
+          "timeboxMinutes": 60
+        }
+      ],
+      "uncertainties": [
+        "EKT API и OpenAI не вызывались: credentials отсутствуют, поэтому актуальные поля товара, сертификаты, цена и live модельный ответ не подтверждены.",
+        "Офлайн demo и synthetic fetch fixtures подтверждают обработку контрактов, но не реальное содержимое каталога ekt.kz.",
+        "Визуальная доступность, responsive layout и фактические браузерные переходы не проверялись; DOM-тесты не являются visual review."
+      ],
+      "reviewPolicyVersion": 2,
+      "assessmentStatus": "ready",
+      "findings": [
+        {
+          "id": "DEF-01",
+          "kind": "defect",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Live product certificates are not carried from the EKT detail payload to the public product card.",
+          "expected": "Если у товара есть сертификат, чат и карточка должны вернуть его безопасную ссылку или файл с source.",
+          "actual": "EktProductDetail/normalizeProduct retain no certificate field, ProductDetails has only price/stock/facts, and toDetails returns no certificates. Frontend certificate rendering therefore receives no live certificate data.",
+          "evidence": [
+            "src/catalog/types.ts:26-31",
+            "src/agent/schemas.ts:38-42",
+            "src/integration/ekt-reader.ts:135-149",
+            "ekt-ai-frontend/view-model.js:232-267"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "DEF-02",
+          "kind": "defect",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "The catalog adapter drops product description and properties outside a fixed technical-field whitelist.",
+          "expected": "Консультант должен давать характеристики и контекст, реально присутствующие в карточке каталога, либо явно показывать их как unknown.",
+          "actual": "normalizeProduct stores description/properties internally, but extractFacts maps only OBYEM, brand, poleCount, ratedCurrentA, ratedVoltageV, breakingCapacityKA, mounting and orderMultiple; toDetails exposes only the resulting facts and omits description.",
+          "evidence": [
+            "src/catalog/normalize.ts:54-69",
+            "src/integration/ekt-reader.ts:167-211",
+            "src/integration/ekt-reader.ts:135-149",
+            "docs/API.md:14-20"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "DEF-03",
+          "kind": "defect",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "The purchase-terms knowledge base has no minimum-purchase/minimum-lot entry.",
+          "expected": "На вопрос о минимальной партии ассистент должен вернуть проверенное условие или честно объяснить, что оно не верифицировано; кейс explicitly expects this topic to be answerable.",
+          "actual": "ektPurchaseTerms contains payment, delivery and returns entries only. get_purchase_terms can return unverified for the missing topic, but cannot provide a substantive minimum-lot answer.",
+          "evidence": [
+            "src/knowledge/ekt-terms.ts:5-12",
+            "src/knowledge/purchase-terms.ts:19-26",
+            "src/agent/tools.ts:202-212",
+            "cases/10/case-data/HackAlem AI_ ИИ-ассистент для чата на сайте ekt.kz.md:31-36"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "STR-01",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "The local contract and domain checks observed a cart that remained unchanged before explicit confirmation and updated once after a valid confirm.",
+          "expected": "Chat proposal alone must not mutate cart; valid same-session confirm must update it exactly once.",
+          "actual": "tests/http/app.test.ts passed the before/after assertions, missing-CSRF rejection and idempotent second confirm.",
+          "evidence": [
+            "tests/http/app.test.ts:60-90",
+            "CHK-BACKEND-TESTS"
+          ],
+          "checkIds": [
+            "CHK-BACKEND-TESTS"
+          ]
+        },
+        {
+          "id": "STR-02",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "The alternative domain fixtures observed city-stock filtering and surfaced critical differences/unknowns without claiming compatibility.",
+          "expected": "Zero-stock candidates in the requested city must be excluded and the remaining candidate must show comparison caveats.",
+          "actual": "All integration tests passed, including exclusion of NO-ALMATY-STOCK and reporting current/breaking-capacity differences.",
+          "evidence": [
+            "tests/integration/ekt-reader.test.ts:168-183",
+            "CHK-BACKEND-TESTS"
+          ],
+          "checkIds": [
+            "CHK-BACKEND-TESTS"
+          ]
+        },
+        {
+          "id": "STR-03",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Backend and frontend suites observed attachment validation, extraction draft behavior, explicit confirmation UI and offline demo behavior.",
+          "expected": "Supported attachments should be safe to parse without changing cart, and the offline demo should be reproducible.",
+          "actual": "Backend 54-test suite and frontend 57-test suite passed; the frontend tests include attachment, confirmation, timeout, stock and offline demo cases.",
+          "evidence": [
+            "tests/attachments/extract.test.ts:1-150",
+            "ekt-ai-frontend/tests/ui.test.cjs:576-605",
+            "ekt-ai-frontend/tests/ui.test.cjs:836-865",
+            "CHK-BACKEND-TESTS",
+            "CHK-FRONTEND-SUITE"
+          ],
+          "checkIds": [
+            "CHK-BACKEND-TESTS",
+            "CHK-FRONTEND-SUITE"
+          ]
+        },
+        {
+          "id": "LIM-01",
+          "kind": "limitation",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "The implemented cart is a process-local demonstration cart, not a real ekt.kz cart or checkout integration.",
+          "expected": "A production deployment would need persistent/session-safe integration with the merchant cart while retaining the confirmation gate.",
+          "actual": "README and DemoCartProvider explicitly identify a demonstration, in-memory provider; /cart returns its own demo page and the runtime does not call a merchant cart API.",
+          "evidence": [
+            "README.md:3",
+            "README.md:22-25",
+            "src/cart/demo-provider.ts:45-51",
+            "src/http/app.ts:103-112"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "LIM-02",
+          "kind": "limitation",
+          "verification": "observed",
+          "responsibility": "review_environment",
+          "claim": "The full server could not be started in this review without external credentials.",
+          "expected": "With the documented EKT and OpenAI credentials, the server should warm the catalog and listen for HTTP requests.",
+          "actual": "npm run start exited before listening with the OpenAI SDK missing-credentials error; no project credentials were supplied.",
+          "evidence": [
+            "CHK-START",
+            "captures/20261002T131043266908-start.stdout.log",
+            "captures/20261002T131043266908-start.stderr.log"
+          ],
+          "checkIds": [
+            "CHK-START"
+          ]
+        },
+        {
+          "id": "LIM-03",
+          "kind": "limitation",
+          "verification": "unverified",
+          "responsibility": "review_environment",
+          "claim": "Visual/browser behavior was not assessed.",
+          "expected": "A visual review would inspect responsive layout, focus, contrast and actual browser navigation.",
+          "actual": "Only static, Node, DOM, domain and HTTP-contract checks were used, per the user-owned visual verification policy.",
+          "evidence": [
+            "runtime.limitations",
+            "uncertainties"
+          ],
+          "checkIds": []
+        }
+      ],
+      "gapFindingIds": [
+        "DEF-01",
+        "DEF-02",
+        "DEF-03"
+      ]
+    }
+  ],
+  "score": 85.0,
+  "status": "complete",
+  "expectedJudges": 1
+}

@@ -1,0 +1,855 @@
+{
+  "methodVersion": 4,
+  "repoId": "hack-2f144651-furia",
+  "repoUrl": "https://github.com/BAITC-Hacks/hack-2f144651-furia",
+  "caseId": 5,
+  "snapshot": "421e02ed42ef1b5dd9483245c69428d97c327b43",
+  "judges": [
+    {
+      "methodVersion": 4,
+      "repoId": "hack-2f144651-furia",
+      "caseId": 5,
+      "model": "GPT-5.6 Luna",
+      "snapshot": "421e02ed42ef1b5dd9483245c69428d97c327b43",
+      "overallSummary": "Оценка готова и основана на исходниках, синтетическом smoke-сценарии, полном локальном тестовом прогоне, HTTP-проверке старта Streamlit и попытке импорта всех предоставленных XLSX. Проект даёт цельный локальный MVP: импорт канонических данных, расчёт прогноза и потребности, объяснение по позиции, группировку по поставщику, ручную корректировку, утверждение и CSV/XLSX-экспорт. Smoke-проверка подтвердила 4 позиции, 2 поставщика, ручной ноль и approved-экспорт; 424 теста прошли, 20 opt-in тестов пропущены без приватных архивов. На предоставленных IEK/Systeme XLSX адаптер строго остановился на конкретных ошибках исходных таблиц: Excel-ошибке #N/A в MOQ IEK и конфликте order_multiple у Systeme. Это ограничивает проверку реального заказа, но не является автоматически дефектом проекта. Подтверждённые проектные недостатки: неоднозначный выбор позиции при одинаковом SKU и названии на разных складах, неограниченные по времени/размеру Streamlit-кеши импортов и устаревшая формулировка интерфейса о проверке только макетов; также детектор разовых заказов консервативно отключается при истории менее 12 положительных событий.",
+      "global": {
+        "criteria": [
+          {
+            "name": "Ценность решения",
+            "score": 23,
+            "max": 25,
+            "awarded": "Даёт закупщику практичный локальный инструмент для перехода от разрозненных таблиц к объяснимому черновику заказа.",
+            "deductions": "Снято 2 балла за то, что основной пользовательский выбор позиции не различает одинаковые SKU/названия на разных складах, из-за чего ценность multi-warehouse сценария снижается.",
+            "evidence": [
+              "README.md:1",
+              "src/ekt/engine.py:158",
+              "src/ekt_ui/details.py:112"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "F-D09",
+                "reason": "Неоднозначный селектор карточки может привести закупщика к просмотру не той складской позиции; это прямо ухудшает практическую ценность результата при повторяющемся SKU."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Реальная закупочная задача",
+                "implementation": "Модель связывает товар, поставщика, складскую область, историю продаж, текущий остаток, подтверждённые поставки, горизонт, страховой запас, MOQ и кратность в одном расчёте; `calculate` строит строку предложения и объяснение на базе этих входов.",
+                "value": "Решение адресует понятную ежедневную работу закупщика: получить не только число заказа, но и причины, источники и риск дефицита.",
+                "verification": "source",
+                "evidence": [
+                  "src/ekt/engine.py:158-171",
+                  "src/ekt/engine.py:190-205",
+                  "src/ekt/engine.py:279-293"
+                ]
+              },
+              {
+                "aspect": "Объяснимость для принятия решения",
+                "implementation": "В строку результата попадают прогноз, safety stock, доступный остаток, своевременный путь, net need, MOQ/кратность, исключённый разовый спрос, восстановленный stockout-спрос, сезонный источник и `source_refs`; текст `explanation` собирает эти величины в одно объяснение.",
+                "value": "Закупщик может сопоставить заказ с входными данными и не обязан доверять непрозрачному числу.",
+                "verification": "source",
+                "evidence": [
+                  "src/ekt/engine.py:275-293",
+                  "tests/test_acceptance.py:134-140"
+                ]
+              },
+              {
+                "aspect": "Практическая контрольная точка",
+                "implementation": "Результат остаётся черновиком, пока менеджер не выберет позиции и не подтвердит их; ручной ноль и причина правки проходят через общий контракт review.",
+                "value": "Это снижает риск автоматической отправки ошибочного пополнения и соответствует операционной природе задачи.",
+                "verification": "observed",
+                "evidence": [
+                  "src/ekt/review.py:88-103",
+                  "captures/20261002T061521008281-test.stdout.log"
+                ]
+              },
+              {
+                "aspect": "Граница ценности",
+                "implementation": "Экспорт прямо помечен как локальный review export, а UI сообщает, что шаблон 1С не согласован; исходные партнёрские наборы также не дали готовый Bundle из-за ошибок входных таблиц.",
+                "value": "Команда не маскирует отсутствие проверенной интеграции с учётной системой и не выдаёт синтетический результат за реальную закупку.",
+                "verification": "source",
+                "evidence": [
+                  "src/ekt_ui/review.py:103-116",
+                  "captures/20261002T062235969992-scenario.stdout.log"
+                ]
+              }
+            ],
+            "scoreReasoning": "23/25 заслужены за прямое попадание в задачу закупщика, трассируемое объяснение и ручной контроль. До максимума не хватает устранения неоднозначности складской карточки: таблица показывает warehouse_scope, но launcher формирует подпись только из SKU и названия. Неполученный реальный заказ не использован как штраф, поскольку строгий адаптер остановился на подтверждённых ошибках предоставленных исходников."
+          },
+          {
+            "name": "Результат и качество решения",
+            "score": 16,
+            "max": 20,
+            "awarded": "Основной локальный сценарий целостен и воспроизводим на демонстрационном наборе; критические ветки расчёта покрыты тестами.",
+            "deductions": "Снято 4 балла за неоднозначный выбор склада, отсутствие ограничений на жизненный цикл импортных кешей и неполную применимость детектора выбросов на короткой истории.",
+            "evidence": [
+              "scripts/smoke.py:1-25",
+              "tests/test_acceptance.py:16-161",
+              "src/ekt_ui/details.py:110-113",
+              "src/ekt_ui/imports.py:10-18"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "F-D09",
+                "reason": "Даже при корректной строке расчёта пользовательский переход к деталям не гарантирует выбор нужного warehouse_scope."
+              },
+              {
+                "points": 2,
+                "findingId": "F-D11",
+                "reason": "Кеширование произвольных загруженных bytes без TTL/max_entries создаёт подтверждённый ресурсный риск для длительной сессии и снижает эксплуатационную надёжность MVP."
+              },
+              {
+                "points": 1,
+                "findingId": "F-D13",
+                "reason": "При менее 12 положительных customer/date событий детектор не применяет удаление крупного заказа и только предупреждает менеджера; требование устойчивости к выбросу тогда выполняется лишь частично."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Воспроизводимый расчётный конвейер",
+                "implementation": "Smoke читает канонический ZIP демо, выполняет `calculate`, создаёт initial edits, меняет первую позицию на ноль, утверждает и сериализует CSV/XLSX. Весь путь выполнен без внешнего API.",
+                "value": "Это проверяет не отдельную функцию, а сквозной пользовательский результат от входа до согласованного экспорта.",
+                "verification": "observed",
+                "evidence": [
+                  "scripts/smoke.py:7-25",
+                  "captures/20261002T061521008281-test.stdout.log"
+                ]
+              },
+              {
+                "aspect": "Тестовая глубина доменной логики",
+                "implementation": "Acceptance-тесты отдельно меняют историю, lead time, growth, category, stock и inbound; отдельные тесты проверяют сезонность, устойчивый рост, перекрытие stockout, нулевые продажи, разовые счета, customer split, повторяющиеся крупные покупки, поставщиков и исключение возвратов/приходов.",
+                "value": "Проверено влияние существенных входов и опасных сценариев, а не только happy path.",
+                "verification": "observed",
+                "evidence": [
+                  "tests/test_acceptance.py:16-161",
+                  "tests/test_demand.py:1-100",
+                  "captures/20261002T061521008281-test.stdout.log"
+                ]
+              },
+              {
+                "aspect": "Защита жизненного цикла заказа",
+                "implementation": "Approval подписывается хешем расчёта и правок; изменение входов или правок делает старое утверждение неприменимым, а `approve` требует причину для любого отличающегося количества.",
+                "value": "Результат не должен незаметно превратиться из утверждённого в изменённый заказ.",
+                "verification": "source",
+                "evidence": [
+                  "src/ekt/review.py:21-35",
+                  "src/ekt/review.py:63-103",
+                  "tests/logic/test_audit_review_integrity.py:13-76"
+                ]
+              },
+              {
+                "aspect": "Качество обработки ошибок",
+                "implementation": "Импорт публикуется только после полного успешного разбора; ошибка сохраняется в UI, а предыдущий Bundle не теряется. Partner adapter не подменяет ошибочные значения нулём и останавливается с сообщением о конкретном источнике.",
+                "value": "Строгая остановка лучше скрытой порчи заказа, особенно для MOQ и единиц измерения.",
+                "verification": "source",
+                "evidence": [
+                  "src/ekt_ui/imports.py:20-48",
+                  "src/ekt/partner.py:177-190",
+                  "captures/20261002T062235969992-scenario.stdout.log"
+                ]
+              },
+              {
+                "aspect": "Ограничение применимости выбросов",
+                "implementation": "Код требует минимум 12 положительных customer/date событий для robust detector; при меньшем числе возвращает исходные строки и добавляет явное предупреждение.",
+                "value": "Консервативная политика защищает от ложного удаления регулярных покупок, но оставляет короткую историю без автоматической компенсации выброса.",
+                "verification": "source",
+                "evidence": [
+                  "src/ekt/demand.py:46-64",
+                  "src/ekt/demand.py:106-116",
+                  "tests/test_acceptance.py:90-116"
+                ]
+              }
+            ],
+            "scoreReasoning": "16/20 отражает полностью работающий synthetic MVP и сильный набор доменных тестов. Снижения относятся к качеству пользовательского результата, а не к отсутствию браузерной проверки: складская неоднозначность и короткая история остаются в коде, а кеши не ограничены явным TTL/размером."
+          },
+          {
+            "name": "Инновационность",
+            "score": 13,
+            "max": 15,
+            "awarded": "Нестандартность есть в объединении робастного спроса, явной компенсации stockout, сезонного prior, объяснимой политики закупки и защищённого review-процесса.",
+            "deductions": "Снято 2 балла за эвристический характер detector/forecast и консервативный отказ от удаления выбросов при короткой истории.",
+            "evidence": [
+              "src/ekt/demand.py:64-99",
+              "src/ekt/forecast.py:100-220",
+              "tests/test_acceptance.py:40-132"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "F-D13",
+                "reason": "Инновационная часть устойчивости к разовым покупкам не является всеобщей: при истории ниже порога проект не выполняет детекцию, поэтому преимущество относительно простого среднего доказано только на достаточной истории."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Робастный спрос вместо простого среднего",
+                "implementation": "Детектор группирует положительные продажи по customer/date с fallback к документу или строке, сравнивает объём с устойчивым порогом median/MAD, сохраняет повторяющиеся крупные покупки и broad peaks, а разовые события исключает из регулярного спроса.",
+                "value": "Это нестандартно учитывает бизнес-смысл разовой закупки и не наказывает регулярного крупного клиента автоматически.",
+                "verification": "source",
+                "evidence": [
+                  "src/ekt/demand.py:33-99",
+                  "tests/test_demand.py:16-53",
+                  "tests/test_acceptance.py:90-132"
+                ]
+              },
+              {
+                "aspect": "Компенсация наблюдаемого stockout",
+                "implementation": "Подтверждённые интервалы объединяются булевым union; для дней дефицита оценивается спрос по доступным дням того же месяца, а уже наблюдённая часть не добавляется повторно.",
+                "value": "Потерянный спрос отделён от нулевых продаж и перекрывающихся интервалов, что является существенным улучшением над наивным подсчётом продаж.",
+                "verification": "observed",
+                "evidence": [
+                  "src/ekt/demand.py:98-99",
+                  "src/ekt/demand.py:175-196",
+                  "tests/test_acceptance.py:68-88,143-153"
+                ]
+              },
+              {
+                "aspect": "Прозрачная сезонность и устойчивый тренд",
+                "implementation": "Forecast использует два полных цикла для собственного календарного профиля, robust line для тренда, prior только с known_as_of не позже cutoff и отдельный growth plan без пересекающихся интервалов.",
+                "value": "Подход объясним, предотвращает часть leakage и отличает повторяемый календарный пик от одиночного всплеска.",
+                "verification": "source",
+                "evidence": [
+                  "src/ekt/forecast.py:100-220",
+                  "tests/test_acceptance.py:40-66"
+                ]
+              },
+              {
+                "aspect": "Инновация доведена до операционного решения",
+                "implementation": "Расчёт не заканчивается прогнозом: он учитывает ETA партий, safety stock, MOQ/кратность, risk date, urgency и source refs, после чего проходит локальное утверждение.",
+                "value": "Связка аналитики и контролируемого решения полезнее изолированного forecasting-демо.",
+                "verification": "source",
+                "evidence": [
+                  "src/ekt/engine.py:231-293",
+                  "src/ekt/review.py:88-103"
+                ]
+              }
+            ],
+            "scoreReasoning": "13/15: решение заметно превосходит простой mean forecast за счёт stockout, сезонности, customer-aware outlier logic и объяснений. Снижение связано с явной границей применимости outlier detector, а не с требованием production ML."
+          },
+          {
+            "name": "Потенциал развития и масштабирования",
+            "score": 17,
+            "max": 20,
+            "awarded": "Архитектура модульная и расширяема на новые таблицы, поставщиков и политики; есть валидация, provenance и ресурсные лимиты на одну импортную операцию.",
+            "deductions": "Снято 3 балла за неограниченный жизненный цикл cache_data для загруженных файлов и за необходимость завершить различимость складских позиций и короткоисторический outlier-путь перед расширением.",
+            "evidence": [
+              "src/ekt/application.py:10-24",
+              "src/ekt/ingest.py:20-45",
+              "src/ekt_ui/imports.py:10-18",
+              "src/ekt_ui/details.py:110-113"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "F-D11",
+                "reason": "При масштабировании числа разных импортов cache_data сохраняет результаты без явного TTL/max_entries; это оставляет ресурсную границу неопределённой."
+              },
+              {
+                "points": 1,
+                "findingId": "F-D09",
+                "reason": "Масштабирование на несколько складов ухудшается, если карточки с одинаковым SKU и названием нельзя различить в селекторе."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Канонический контракт и provenance",
+                "implementation": "Schema нормализует таблицы, сохраняет source_file/source_sheet/source_row/data_mode, проверяет обязательные поля, конечность чисел, внешние ключи, дубли и интервалы.",
+                "value": "Новый поставщик или источник может быть подключён через тот же контракт с трассируемым происхождением, а не через незаметные ad hoc поля.",
+                "verification": "source",
+                "evidence": [
+                  "src/ekt/schema.py:1-30",
+                  "src/ekt/schema.py:90-170"
+                ]
+              },
+              {
+                "aspect": "Разделение адаптера и ядра",
+                "implementation": "Partner adapter преобразует отчёты IEK/Systeme в Bundle, application заменяет только затронутого поставщика, а engine работает с единым canonical API.",
+                "value": "Это создаёт понятную точку расширения для нового поставщика и позволяет сохранять остальные данные набора.",
+                "verification": "source",
+                "evidence": [
+                  "src/ekt/partner.py:123-190",
+                  "src/ekt/application.py:10-28",
+                  "tests/backend/test_application.py:29-58"
+                ]
+              },
+              {
+                "aspect": "Ресурсные ограничения импорта",
+                "implementation": "ImportBudget считает входные байты, распакованные байты, файлы, строки и ячейки; ZIP/XLSX проверяются до создания больших таблиц.",
+                "value": "Для локального MVP это хорошая основа безопасного приёма пользовательских файлов и понятных отказов.",
+                "verification": "source",
+                "evidence": [
+                  "src/ekt/ingest.py:20-45",
+                  "src/ekt/ingest.py:148-185",
+                  "tests/backend/test_import_budget_edges.py:1-150"
+                ]
+              },
+              {
+                "aspect": "Документированный путь развития",
+                "implementation": "README, INPUT_GUIDE, METHODOLOGY и интерфейсные модули разделяют входы, расчёт и review; acceptance-тесты задают поведение при добавлении новых факторов.",
+                "value": "Команде проще развивать доменную логику независимо от Streamlit-представления и добавлять новые поставщики.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:1-80",
+                  "docs/INPUT_GUIDE.md:1-80",
+                  "tests/test_acceptance.py:16-161"
+                ]
+              },
+              {
+                "aspect": "Масштабируемость, требующая доработки",
+                "implementation": "Partner/demo loaders обёрнуты в `st.cache_data` без параметров TTL или max_entries, а детали используют подпись только SKU/название.",
+                "value": "На длинной сессии с множеством уникальных загрузок и складов это может привести к росту памяти и ошибочному пользовательскому выбору.",
+                "verification": "source",
+                "evidence": [
+                  "src/ekt_ui/imports.py:10-18",
+                  "src/ekt_ui/details.py:110-113"
+                ]
+              }
+            ],
+            "scoreReasoning": "17/20: канонический контракт, provenance, адаптеры и входные бюджеты дают сильную основу расширения. До более высокой оценки нужны ограниченный cache lifecycle и различимость складов; это реальные архитектурные детали, но не препятствие для пятичасового локального прототипа."
+          },
+          {
+            "name": "Презентация, демо и ответы на вопросы",
+            "score": 17,
+            "max": 20,
+            "awarded": "README и документация описывают локальный запуск, методологию, ограничения и smoke-команду; воспроизводимое демо подтверждено без устного выступления.",
+            "deductions": "Снято 3 балла за устаревший текст partner-import экрана и неоднозначный переход к деталям; публичную ссылку, видео и устное выступление не учитывал как штраф.",
+            "evidence": [
+              "README.md:1-80",
+              "docs/DEMO.md:1-100",
+              "src/ekt_ui/imports.py:53",
+              "src/ekt_ui/details.py:110-113",
+              "captures/20261002T061521008281-test.stdout.log"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "F-D12",
+                "reason": "Надпись «пока проверены только на макетах» в UI противоречит тому, что адаптер имеет отдельный путь и строгие ошибки на предоставленных оригинальных XLSX; это снижает ясность демонстрации статуса решения."
+              },
+              {
+                "points": 1,
+                "findingId": "F-D09",
+                "reason": "Воспроизводимое демо с несколькими складами не объясняет, как выбрать нужную карточку при совпадении SKU и названия."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "README как инструкция демонстрации",
+                "implementation": "README перечисляет зависимости, команды smoke/pytest/pip check, канонический формат импорта и предупреждает, что CSV/XLSX не являются согласованным шаблоном 1С.",
+                "value": "Участник или проверяющий может запустить локальную демонстрацию без устных пояснений.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:1-80",
+                  "README.md:180-250"
+                ]
+              },
+              {
+                "aspect": "Демо показывает результат, а не только экран",
+                "implementation": "scripts/smoke.py явно печатает mode, positions, suppliers, размеры экспортов, manual_zero и approval; фактический запуск вернул synthetic, 4, 2, положительные bytes, 0.0 и approved.",
+                "value": "Есть компактный проверяемый критерий успешного сценария.",
+                "verification": "observed",
+                "evidence": [
+                  "scripts/smoke.py:7-25",
+                  "captures/20261002T061521008281-test.stdout.log"
+                ]
+              },
+              {
+                "aspect": "Документированы ограничения",
+                "implementation": "Документы раскрывают отсутствие согласованного шаблона 1С, локальность утверждения и различие синтетического теста с реальной закупкой; код также сохраняет source refs и warnings.",
+                "value": "Презентация не создаёт ложного впечатления автоматической отправки поставщику или измеренной экономии.",
+                "verification": "source",
+                "evidence": [
+                  "src/ekt_ui/review.py:103-116",
+                  "docs/INPUT_GUIDE.md:1-100",
+                  "docs/STATUS.md:1-100"
+                ]
+              },
+              {
+                "aspect": "Проверенный старт без визуального обхода",
+                "implementation": "Streamlit стартовал в headless-режиме, а HTTP GET `/_stcore/health` вернул `ok`; визуальная проверка сознательно не выполнялась.",
+                "value": "Доступность приложения подтверждена технически, а граница визуальной проверки честно обозначена.",
+                "verification": "observed",
+                "evidence": [
+                  "captures/20261002T062546217728-start.stdout.log",
+                  "captures/20261002T062546217728-start.stderr.log"
+                ]
+              },
+              {
+                "aspect": "Документационная несогласованность",
+                "implementation": "Partner import экран сообщает, что адаптеры проверены только на макетах, хотя код разбирает реальные форматы и выдаёт конкретные ошибки на фактически предоставленных XLSX.",
+                "value": "Такая формулировка мешает корректно объяснить аудитории текущий статус и границу готовности.",
+                "verification": "source",
+                "evidence": [
+                  "src/ekt_ui/imports.py:53",
+                  "src/ekt/partner.py:177-190",
+                  "captures/20261002T062235969992-scenario.stdout.log"
+                ]
+              }
+            ],
+            "scoreReasoning": "17/20: README, smoke и локальная документация достаточно ясны для воспроизводимого демо, а технический старт подтверждён. Устная презентация и public URL отсутствовали и не штрафовались. Снижение только за наблюдаемые несогласованности интерфейса и выбора складской карточки."
+          }
+        ],
+        "total": 86
+      },
+      "case": null,
+      "judgeScore": 86,
+      "caseRequirements": [
+        {
+          "requirement": "Расчёт заказа использует историю продаж, текущий остаток, товары в пути, категорию, lead/review policy и план роста.",
+          "status": "met",
+          "explanation": "На synthetic acceptance каждый из перечисленных входов меняет результат, а engine использует policy, stock snapshot, подтверждённый inbound и growth plan в одном расчёте.",
+          "evidence": [
+            "tests/test_acceptance.py:16-38",
+            "src/ekt/engine.py:203-293"
+          ]
+        },
+        {
+          "requirement": "Сезонность и устойчивый рост отличаются от нейтрального прогноза и одиночного всплеска.",
+          "status": "met",
+          "explanation": "Тесты строят повторяющийся календарный пик и линейно растущую историю; forecast выделяет собственный seasonal profile, robust trend и отдельный growth plan.",
+          "evidence": [
+            "tests/test_acceptance.py:40-66",
+            "src/ekt/forecast.py:100-220"
+          ]
+        },
+        {
+          "requirement": "Подтверждённый stockout компенсируется без двойного учёта, а нулевые продажи сами по себе не объявляются stockout.",
+          "status": "met",
+          "explanation": "Перекрывающиеся интервалы объединяются, добавляется только imputed lost demand, а zero-sales fixture оставляет imputed равным нулю.",
+          "evidence": [
+            "tests/test_acceptance.py:68-88,143-153",
+            "src/ekt/demand.py:98-99",
+            "src/ekt/demand.py:175-196"
+          ]
+        },
+        {
+          "requirement": "Разовые крупные покупки исключаются, включая разбитые счета одного клиента; регулярные крупные покупки сохраняются.",
+          "status": "partial",
+          "explanation": "При достаточной истории и customer_id тесты подтверждают обе ветки. При менее 12 положительных customer/date событий код намеренно оставляет крупные события и выдаёт предупреждение; при отсутствии customer_id клиентская группировка невозможна.",
+          "evidence": [
+            "tests/test_acceptance.py:90-132",
+            "src/ekt/demand.py:46-64",
+            "src/ekt/demand.py:106-116"
+          ]
+        },
+        {
+          "requirement": "Результат содержит количество, объяснение, urgency/risk и группируется по поставщику с различением позиций.",
+          "status": "met",
+          "explanation": "Synthetic Bundle даёт 4 строки от 2 поставщиков, explanations/source_refs/urgency заполнены, а одинаковый SKU получает разные supplier-scoped row_id. Селектор деталей всё ещё неоднозначен только для совпадающих складских подписей.",
+          "evidence": [
+            "tests/test_acceptance.py:134-140",
+            "src/ekt/engine.py:188-205",
+            "src/ekt/engine.py:279-293",
+            "captures/20261002T061521008281-test.stdout.log"
+          ]
+        },
+        {
+          "requirement": "Заказ не отправляется без ручного подтверждения и ручная корректировка требует причины.",
+          "status": "met",
+          "explanation": "В коде отсутствует отправка поставщику; export остаётся draft до совпадения approval signature, а изменённое количество без reason отклоняется.",
+          "evidence": [
+            "src/ekt/review.py:88-103",
+            "src/ekt_ui/review.py:136-149",
+            "scripts/smoke.py:12-25"
+          ]
+        },
+        {
+          "requirement": "Данные клиентов обезличены и не раскрываются в экспортируемом результате.",
+          "status": "partial",
+          "explanation": "Демо и partner adapter сохраняют customer_id как nullable каноническое поле, partner-путь сам устанавливает customer_id=None, а customer-aware логика работает только с предоставленным идентификатором. Отдельной проверки, что любой внешний идентификатор уже обезличен, нет.",
+          "evidence": [
+            "src/ekt/partner.py:205-210",
+            "src/ekt/demand.py:33-45",
+            "src/ekt/schema.py:1-30"
+          ]
+        },
+        {
+          "requirement": "Чувствительность к inbound, сезонности, stockout и выбросу проверена.",
+          "status": "met",
+          "explanation": "Acceptance тесты отдельно меняют inbound, seasonal pattern, stockout intervals and a one-off invoice; фактический полный прогон прошёл. Реальные партнёрские XLSX дополнительно поданы адаптеру, но были строго отклонены на входных конфликтах.",
+          "evidence": [
+            "tests/test_acceptance.py:16-153",
+            "captures/20261002T061521008281-test.stdout.log",
+            "captures/20261002T062235969992-scenario.stdout.log"
+          ]
+        },
+        {
+          "requirement": "Предоставленные IEK и Systeme таблицы импортируются в рабочий расчёт.",
+          "status": "unverified",
+          "explanation": "Все 12 XLSX были собраны в два архивных входа и переданы `read_partner`. IEK остановился на Excel error #N/A в MOQ, Systeme — на конфликте order_multiple; поэтому реальный Bundle и заказ не получены. Это ограничение исходных входов/проверки, не доказательство скрытой подмены нулём.",
+          "evidence": [
+            "captures/20261002T062235969992-scenario.stdout.log",
+            "src/ekt/partner.py:177-190"
+          ]
+        },
+        {
+          "requirement": "Результат можно сохранить как локальный CSV/XLSX для дальнейшей ручной загрузки.",
+          "status": "met",
+          "explanation": "Smoke создал оба непустых экспорта; код добавляет объяснения, метаданные расчёта и защиту экспортируемого XML-текста.",
+          "evidence": [
+            "scripts/smoke.py:12-25",
+            "src/ekt/export.py:1-88",
+            "captures/20261002T061521008281-test.stdout.log"
+          ]
+        }
+      ],
+      "testData": {
+        "provided": [
+          "cases/5/case-data/HackAlem AI_ Автоматизация формирования заказов поставщикам.docx.md",
+          "cases/5/case-data/IEK/MOQ  ИЭК.xlsx",
+          "cases/5/case-data/IEK/Динамика продаж_2025-2026.xlsx",
+          "cases/5/case-data/IEK/Ежемесячные остатки продукции за последние 2 года  ИЭК.xlsx",
+          "cases/5/case-data/IEK/Ежемесячные продажи в количественном выражении за последние 2 года.xlsx",
+          "cases/5/case-data/IEK/Путь ИЭК 22.09.2026.xlsx",
+          "cases/5/case-data/IEK/Сезонность ИЭК.xlsx",
+          "cases/5/case-data/Systeme electric/MOQ SystemElectric.xlsx",
+          "cases/5/case-data/Systeme electric/Динамика продаж_Syseme Electric_2025-2026.xlsx",
+          "cases/5/case-data/Systeme electric/Ежемесячные остатки SystemElectric 2024-2026.xlsx",
+          "cases/5/case-data/Systeme electric/Ежемесячные продажи в кол-м выражении SystemElectric 2024-2026.xlsx",
+          "cases/5/case-data/Systeme electric/Сезонность SystemElectric 2024-2026.xlsx",
+          "cases/5/case-data/Systeme electric/Товар в пути_SystemElectric на 22.09.2026.xlsx"
+        ],
+        "used": [
+          "cases/5/case-data/IEK/MOQ  ИЭК.xlsx",
+          "cases/5/case-data/IEK/Динамика продаж_2025-2026.xlsx",
+          "cases/5/case-data/IEK/Ежемесячные остатки продукции за последние 2 года  ИЭК.xlsx",
+          "cases/5/case-data/IEK/Ежемесячные продажи в количественном выражении за последние 2 года.xlsx",
+          "cases/5/case-data/IEK/Путь ИЭК 22.09.2026.xlsx",
+          "cases/5/case-data/IEK/Сезонность ИЭК.xlsx",
+          "cases/5/case-data/Systeme electric/MOQ SystemElectric.xlsx",
+          "cases/5/case-data/Systeme electric/Динамика продаж_Syseme Electric_2025-2026.xlsx",
+          "cases/5/case-data/Systeme electric/Ежемесячные остатки SystemElectric 2024-2026.xlsx",
+          "cases/5/case-data/Systeme electric/Ежемесячные продажи в кол-м выражении SystemElectric 2024-2026.xlsx",
+          "cases/5/case-data/Systeme electric/Сезонность SystemElectric 2024-2026.xlsx",
+          "cases/5/case-data/Systeme electric/Товар в пути_SystemElectric на 22.09.2026.xlsx"
+        ],
+        "checks": [
+          {
+            "input": "Синтетический canonical ZIP из demo_bundle()",
+            "method": "Запущен scripts/smoke.py: read_canonical → calculate → initial_edits → approve → export_frame → CSV/XLSX.",
+            "result": "pass; synthetic, 4 positions, 2 suppliers, csv_bytes=6585, xlsx_bytes=8630, manual_zero=0.0, approval=approved.",
+            "conclusion": "Сквозной локальный результат воспроизведён."
+          },
+          {
+            "input": "Синтетические fixtures из всего каталога tests",
+            "method": "python -m pytest -q -p no:cacheprovider в Python 3.12 контейнере.",
+            "result": "424 passed, 20 skipped, 0 failed/errors; pip check: No broken requirements found.",
+            "conclusion": "Расчётные, backend и AppTest-проверки прошли; 20 opt-in partner-original checks не запускались без специального архива."
+          },
+          {
+            "input": "Все 6 XLSX IEK из предоставленной папки",
+            "method": "Собраны без изменения содержимого в ZIP и переданы ekt.partner.read_partner на дату 2026-09-22.",
+            "result": "fail/strict rejection: ValueError `MOQ  ИЭК.xlsx: Некорректное числовое значение: '#N/A'; пустая ячейка и ошибка не равнозначны`.",
+            "conclusion": "Импорт не создал Bundle; ошибка исходной ячейки сохранена, не превращена в ноль."
+          },
+          {
+            "input": "Все 6 XLSX Systeme electric из предоставленной папки",
+            "method": "Собраны без изменения содержимого в ZIP и переданы ekt.partner.read_partner с meaning=multiple на дату 2026-09-22.",
+            "result": "fail/strict rejection: ValueError о конфликте `order_multiple` для SKU 030200002: MOQ=1.0 против monthly sales=0.0.",
+            "conclusion": "Импорт требует согласования источников; готовый реальный заказ не заявляется."
+          },
+          {
+            "input": "app.py / Streamlit headless start",
+            "method": "Запущен `python -m streamlit run app.py --server.headless true`; затем HTTP GET `/_stcore/health`.",
+            "result": "pass; HTTP body `ok`.",
+            "conclusion": "Приложение стартует; визуальное поведение не проверялось согласно политике."
+          }
+        ],
+        "limitations": [
+          "Предоставленные исходные XLSX не дали валидный Bundle из-за конкретных ошибок/конфликтов; реальная сумма заказа и полная сверка строк не оценивались.",
+          "20 opt-in тестов private partner originals пропущены в общем pytest без специального архива; отдельная проверка фактически предоставленных XLSX выполнена через тот же partner adapter.",
+          "Визуальная браузерная проверка запрещена пользовательской политикой; HTTP health и Streamlit AppTest/статические тесты не заменяют ручную оценку UI.",
+          "Публичный live URL, видео и устная презентация не проверялись и не использованы как основания для штрафа."
+        ]
+      },
+      "runtime": {
+        "status": "working",
+        "build": "Зависимости установлены в изолированном Python 3.12 окружении; `python -m pip check` завершился `No broken requirements found`.",
+        "start": "Streamlit стартовал в headless-режиме; HTTP GET `/_stcore/health` вернул `ok`.",
+        "scenario": "Основной локальный сценарий воспроизведён через scripts/smoke.py: импорт демо, расчёт, ручная корректировка, утверждение и два экспорта.",
+        "environment": "Python 3.12, зависимости из pyproject.toml, без API-ключей и внешних сервисов; визуальная проверка не выполнялась.",
+        "summary": "Runtime working для локального synthetic MVP. Партнёрский путь реально вызван на всех предоставленных XLSX, но остановлен строгой валидацией исходных конфликтов; это ограничение проверки, а не автоматический runtime failure проекта.",
+        "checks": [
+          {
+            "command": "python -m pip check",
+            "result": "No broken requirements found.",
+            "id": "build-deps",
+            "stage": "build",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Все установленные зависимости совместимы."
+          },
+          {
+            "command": "python -m streamlit run app.py --server.headless true",
+            "result": "Приложение поднялось; GET /_stcore/health вернул HTTP-успех и body `ok`.",
+            "id": "start-streamlit",
+            "stage": "start",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Приложение стартует и отвечает на health endpoint."
+          },
+          {
+            "command": "python scripts/smoke.py",
+            "result": "synthetic, 4 positions, 2 suppliers, csv_bytes=6585, xlsx_bytes=8630, manual_zero=0.0, approval=approved.",
+            "id": "scenario-smoke",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Сквозной расчёт и утверждённый CSV/XLSX результат."
+          },
+          {
+            "command": "python -m pytest -q -p no:cacheprovider",
+            "result": "424 passed, 20 skipped, 0 failed/errors.",
+            "id": "scenario-pytest",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Основной набор unit/domain/backend/frontend AppTest проверок без failures."
+          },
+          {
+            "command": "read_partner(IEK upload, report_date=2026-09-22)",
+            "result": "Strict ValueError on Excel error #N/A in MOQ IEK; no Bundle.",
+            "id": "scenario-partner-iek",
+            "stage": "scenario",
+            "status": "blocked",
+            "cause": "review_environment",
+            "expected": "Предоставленный архив IEK превращается в валидный Bundle или возвращает объяснимую ошибку входа."
+          },
+          {
+            "command": "read_partner(Systeme upload, report_date=2026-09-22)",
+            "result": "Strict ValueError on conflicting order_multiple values; no Bundle.",
+            "id": "scenario-partner-systeme",
+            "stage": "scenario",
+            "status": "blocked",
+            "cause": "review_environment",
+            "expected": "Предоставленный архив Systeme превращается в валидный Bundle или возвращает объяснимую ошибку входа."
+          }
+        ],
+        "limitations": [
+          "Партнёрские сценарии заблокированы содержимым предоставленных XLSX: IEK содержит Excel error #N/A в MOQ, Systeme — конфликт правил количества.",
+          "Визуальная проверка UI не выполнялась; старт подтверждён HTTP health и автоматическими AppTest в общем pytest."
+        ]
+      },
+      "liveDemo": {
+        "status": "none",
+        "url": null,
+        "notes": "Публичная Live-ссылка в доступных материалах не проверялась; отсутствие URL не использовано как штраф."
+      },
+      "fiveHourContext": "Для пятичасового хакатона это сильный локальный MVP: есть доменный расчёт, объяснения, чувствительность к обязательным факторам, ручное утверждение и воспроизводимое демо. Не требовалась production-интеграция, но три подтверждённые детали удерживают оценку от максимума: неоднозначность multi-warehouse выбора, неограниченный cache lifecycle и частичная применимость outlier detector на короткой истории. Реальные таблицы не стали основанием для штрафа, потому что строгий отказ произошёл на конкретных ошибках самих предоставленных входов.",
+      "strengths": [
+        "Сквозной synthetic-сценарий фактически прошёл от canonical ZIP до approved CSV/XLSX с 4 позициями и 2 поставщиками.",
+        "Полный pytest прогон дал 424 passed без failures/errors; доменные acceptance-тесты покрывают сезонность, рост, stockout, one-off/customer split, inbound и ручное утверждение.",
+        "Ядро расчёта разделено на ingest/schema, demand, forecast, engine, review/export и partner adapter; provenance и объяснения сохраняются в результате.",
+        "Строгий импорт не подменяет ошибки MOQ и конфликтующие количества нулями; пользователь получает объяснимый отказ и сохранение предыдущего набора.",
+        "Утверждение подписывает конкретный расчёт и правки; внешняя отправка поставщику отсутствует, поэтому draft не может быть выдан за отправленный заказ."
+      ],
+      "gaps": [
+        "F-D09: селектор карточки в src/ekt_ui/details.py:112 формирует подпись только из SKU и названия; одинаковые позиции на разных складах визуально неразличимы.",
+        "F-D11: src/ekt_ui/imports.py:10-18 использует st.cache_data без явного TTL/max_entries для загруженных bytes, оставляя ресурсный риск длительной сессии.",
+        "F-D12: src/ekt_ui/imports.py:53 сообщает «пока проверены только на макетах», что не согласовано с фактическим строгим адаптером и статусом реальных входных ошибок.",
+        "F-D13: src/ekt/demand.py:112-116 отключает детектор разовых покупок при менее 12 положительных событий, поэтому требование outlier robustness имеет подтверждённую границу применимости."
+      ],
+      "futureAdvice": [
+        {
+          "principle": "Идентичность пользовательской позиции должна быть полной во всех точках выбора.",
+          "why": "F-D09: таблица содержит warehouse_scope, но карточка выбирается по подписи SKU/name; при совпадении пользователь не видит уникального контекста.",
+          "how": "Во всех format_func и заголовках деталей используйте составную подпись supplier · SKU · warehouse_scope · name; добавьте AppTest с двумя одинаковыми SKU/name и разными scope.",
+          "findingIds": [
+            "F-D09"
+          ],
+          "successCheck": "В тесте две позиции с одинаковыми SKU/name получают разные видимые подписи и открывают соответствующие details/source_refs.",
+          "timeboxMinutes": 30
+        },
+        {
+          "principle": "Кеш входных файлов должен иметь явную ресурсную политику.",
+          "why": "F-D11: cached_partner принимает bytes загруженного файла, но код не задаёт TTL или max_entries; множество уникальных импортов может удерживаться дольше рабочей сессии.",
+          "how": "Задайте ограниченный cache lifecycle и одновременно контролируйте суммарный бюджет набора; проверьте повторный импорт и серию уникальных архивов на сохранение рабочего Bundle.",
+          "findingIds": [
+            "F-D11"
+          ],
+          "successCheck": "Серия уникальных импортов не растит кеш безгранично, а превышение общего бюджета даёт контролируемую ошибку без падения экрана.",
+          "timeboxMinutes": 45
+        },
+        {
+          "principle": "Статус проверки должен быть единственным согласованным источником истины.",
+          "why": "F-D12: текст UI утверждает, что адаптеры проверены только на макетах, хотя фактический путь строгого отказа уже различает реальные ошибки IEK/Systeme.",
+          "how": "Синхронизируйте caption, README и статусные документы с наблюдаемым результатом: адаптер реализован, исходные файлы отвергнуты с конкретными ошибками, валидный Bundle не получен.",
+          "findingIds": [
+            "F-D12"
+          ],
+          "successCheck": "В интерфейсе и README одинаково описаны pass/blocked границы partner import, без заявления о полном успешном реальном импорте.",
+          "timeboxMinutes": 25
+        },
+        {
+          "principle": "Для короткой истории нужен явный режим качества данных, а не молчаливое ожидание детектора.",
+          "why": "F-D13: ниже 12 событий код сохраняет крупную покупку и выдаёт предупреждение; пользователь получает ограниченный outlier protection.",
+          "how": "Сделайте режим `insufficient_history` видимым в качестве результата и добавьте безопасный ручной review либо отдельную robust-оценку с явной неопределённостью; закрепите сценарии 1–11 и 12+ событий.",
+          "findingIds": [
+            "F-D13"
+          ],
+          "successCheck": "Для короткой истории UI явно показывает ограничение, а для достаточной истории тест подтверждает удаление редкого события без удаления повторяющейся покупки.",
+          "timeboxMinutes": 40
+        }
+      ],
+      "uncertainties": [
+        "Реальная экономия, точность прогноза на закупках и совместимость с конкретной 1С не измерялись.",
+        "Полный partner Bundle не был получен из предоставленных XLSX из-за их содержимых ошибок; нельзя делать вывод о числах заказа на этих источниках.",
+        "Визуальная компоновка, доступность и читаемость Streamlit UI не оценивались браузером; подтверждены только исходники, AppTest и HTTP health.",
+        "20 opt-in проверок private partner originals пропущены в общем прогоне без специального архива; отдельный фактический запуск адаптера на 12 предоставленных XLSX зафиксирован в testData."
+      ],
+      "reviewPolicyVersion": 2,
+      "assessmentStatus": "ready",
+      "findings": [
+        {
+          "id": "F-S01",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Основной локальный синтетический сценарий создаёт расчёт, позволяет изменить количество вручную, утвердить выбранную позицию и сформировать CSV/XLSX.",
+          "expected": "Полный MVP-путь от входа до контролируемого результата.",
+          "actual": "Smoke завершился synthetic, 4 positions, 2 suppliers, positive CSV/XLSX bytes, manual_zero=0.0, approval=approved.",
+          "evidence": [
+            "scripts/smoke.py:7-25",
+            "captures/20261002T061521008281-test.stdout.log"
+          ],
+          "checkIds": [
+            "scenario-smoke"
+          ]
+        },
+        {
+          "id": "F-S02",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Полный доступный набор тестов проходит без failed/errors.",
+          "expected": "Unit/domain/backend/frontend AppTest проверки должны завершиться без failures.",
+          "actual": "424 passed, 20 skipped, 0 failed/errors.",
+          "evidence": [
+            "captures/20261002T061521008281-test.stdout.log"
+          ],
+          "checkIds": [
+            "scenario-pytest"
+          ]
+        },
+        {
+          "id": "F-S03",
+          "kind": "strength",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Расчёт учитывает stockout, inbound, сезонность, рост, MOQ, safety stock и объясняет результат.",
+          "expected": "Каждый существенный вход должен иметь путь в расчёт и объяснение.",
+          "actual": "Engine собирает эти величины в row/explanation; demand и forecast имеют отдельные обработчики.",
+          "evidence": [
+            "src/ekt/engine.py:203-293",
+            "src/ekt/demand.py:98-196",
+            "src/ekt/forecast.py:100-220"
+          ],
+          "checkIds": [
+            "scenario-smoke",
+            "scenario-pytest"
+          ]
+        },
+        {
+          "id": "F-S04",
+          "kind": "strength",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Утверждение привязано к fingerprint расчёта и текущим правкам, а изменённая величина требует причины.",
+          "expected": "Изменённый после расчёта заказ не должен сохранять старое approval.",
+          "actual": "review_signature включает расчёт, конфигурацию, строки и edits; approve проверяет manager_override и reason.",
+          "evidence": [
+            "src/ekt/review.py:63-103",
+            "tests/logic/test_audit_review_integrity.py:13-76"
+          ],
+          "checkIds": [
+            "scenario-pytest"
+          ]
+        },
+        {
+          "id": "F-L01",
+          "kind": "limitation",
+          "verification": "observed",
+          "responsibility": "review_environment",
+          "claim": "Предоставленные IEK/Systeme XLSX не были преобразованы в Bundle.",
+          "expected": "Валидные входные таблицы должны быть импортированы в рабочий Bundle для проверки реального заказа.",
+          "actual": "IEK rejected on `#N/A` in MOQ; Systeme rejected on conflicting order_multiple values; adapter returned explicit ValueError in both cases.",
+          "evidence": [
+            "captures/20261002T062235969992-scenario.stdout.log",
+            "src/ekt/partner.py:177-190"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "F-D09",
+          "kind": "defect",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Launcher карточки не различает одинаковые SKU и название, если warehouse_scope различается.",
+          "expected": "Каждая складская позиция должна иметь однозначную видимую подпись.",
+          "actual": "src/ekt_ui/details.py использует format_func `sku_1c · name`; warehouse_scope не включён в подпись, хотя присутствует в строке результата.",
+          "evidence": [
+            "src/ekt_ui/details.py:110-113",
+            "src/ekt_ui/review.py:61-93"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "F-D11",
+          "kind": "defect",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Кеш partner/demo импортов не имеет явного TTL или max_entries.",
+          "expected": "Длительная интерактивная сессия должна иметь ограниченный кеш загруженных данных.",
+          "actual": "`@st.cache_data(show_spinner=False)` оборачивает cached_demo и cached_partner без TTL/max_entries; cached_partner принимает полные upload bytes.",
+          "evidence": [
+            "src/ekt_ui/imports.py:10-18"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "F-D12",
+          "kind": "defect",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Partner import UI сообщает, что адаптеры проверены только на макетах.",
+          "expected": "UI должен точно описывать, что проверено и какая граница осталась.",
+          "actual": "Caption в imports.py говорит «пока проверены только на макетах», тогда как adapter имеет реальный parsing/strict rejection path и был вызван на предоставленных XLSX.",
+          "evidence": [
+            "src/ekt_ui/imports.py:53",
+            "src/ekt/partner.py:177-190",
+            "captures/20261002T062235969992-scenario.stdout.log"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "F-D13",
+          "kind": "defect",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Детектор разовых заказов не применяется при короткой истории.",
+          "expected": "Требование устойчивости к одной крупной покупке должно иметь определённое поведение для допустимого входного набора.",
+          "actual": "detector_status возвращает insufficient_history при count < 12; build_demand добавляет warning, но detect_oneoffs возвращает исходные события без исключения.",
+          "evidence": [
+            "src/ekt/demand.py:46-64",
+            "src/ekt/demand.py:106-116",
+            "tests/test_acceptance.py:90-116"
+          ],
+          "checkIds": [
+            "scenario-pytest"
+          ]
+        }
+      ],
+      "gapFindingIds": [
+        "F-D09",
+        "F-D11",
+        "F-D12",
+        "F-D13"
+      ]
+    }
+  ],
+  "score": 86.0,
+  "status": "complete",
+  "expectedJudges": 1
+}

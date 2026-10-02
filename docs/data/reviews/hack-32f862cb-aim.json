@@ -1,0 +1,829 @@
+{
+  "methodVersion": 4,
+  "repoId": "hack-32f862cb-aim",
+  "repoUrl": "https://github.com/BAITC-Hacks/hack-32f862cb-aim",
+  "caseId": 5,
+  "snapshot": "4339345777700145f2492274e7466f1f12a4d3ff",
+  "judges": [
+    {
+      "methodVersion": 4,
+      "repoId": "hack-32f862cb-aim",
+      "caseId": 5,
+      "model": "GPT-5.6 Luna",
+      "snapshot": "4339345777700145f2492274e7466f1f12a4d3ff",
+      "overallSummary": "OptiStock — сильный, воспроизводимый backend/frontend MVP для расчёта пополнения: он импортирует полный комплект из 12 XLSX, строит объяснимые рекомендации по SKU, учитывает остатки, поставки в пути, MOQ, сезонность, тренд, рост, оценку stockout и выбросы, группирует черновики по поставщикам и не позволяет экспортировать заказ до ручного утверждения. Реальный HTTP-сценарий на предоставленных данных завершён успешно, а 48 доменных и API-тестов прошли. Главная подтверждённая граница — отсутствие customer_id в нормализованном событии и, соответственно, отсутствие проверки выброса именно одного клиента; код честно сообщает об этом. Точные интервалы stockout, полноценный текущий остаток IEK и контракт 1С также не следуют из предоставленных файлов, поэтому отмечены как ограничения проверки и MVP, а не превращены в штрафы.",
+      "global": {
+        "criteria": [
+          {
+            "name": "Ценность решения",
+            "score": 24,
+            "max": 25,
+            "awarded": "Решение почти полностью превращает ручной расчёт пополнения в понятный рабочий процесс закупщика.",
+            "deductions": "1 балл удержан за подтверждённое отсутствие customer-level обработки, необходимой для сценария разовой покупки одного клиента.",
+            "evidence": [
+              "LOGISTICS_CASE.md:11-23",
+              "README.md:1-80",
+              "http-demo",
+              "F-CUSTOMER-OUTLIER"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "F-CUSTOMER-OUTLIER",
+                "reason": "Задача требует устойчивости к разовой покупке одного клиента, но фактический импорт и расчёт не сохраняют customer_id и не могут отличить такую покупку от другой покупки по документу."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Понятная боль закупщика",
+                "implementation": "В материалах проекта целевой пользователь определён как менеджер закупа, который выбирает набор или категорию, получает рекомендации, проверяет объяснение, корректирует и утверждает заказ; это реализовано как последовательность импорт → план → рекомендации → заказ.",
+                "value": "Польза адресует конкретные потери от Excel-расчётов: ручную работу, дефицит и избыточный запас, а результат имеет форму, пригодную для ежедневного процесса закупок.",
+                "verification": "source",
+                "evidence": [
+                  "LOGISTICS_CASE.md:9-23",
+                  "backend/optistock/api.py:190-220",
+                  "backend/optistock/api.py:328-439"
+                ]
+              },
+              {
+                "aspect": "Работа на реальном комплекте данных",
+                "implementation": "Сервис прочитал шесть книг IEK и шесть книг Systeme electric через штатный sample endpoint и сохранил provenance источников по типу и строке; HTTP-сценарий получил 3 909 уникальных пар поставщик/код и 248 884 числовые операции.",
+                "value": "Это существенно больше демонстрации на нескольких вручную созданных строках: менеджер получает расчёт на полном предоставленном ассортименте и видит ограничения тестового набора.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/optistock/ingestion.py:126-149",
+                  "backend/optistock/ingestion.py:199-223",
+                  "http-demo"
+                ]
+              },
+              {
+                "aspect": "Экономическая логика пополнения",
+                "implementation": "Расчёт строит дневной спрос на горизонт lead time + review, добавляет safety stock, вычитает свободный остаток и поставки по датам, затем применяет минимум, кратность и конверсию бухты; поступление, пришедшее после раннего дефицита, не стирает предшествующий риск.",
+                "value": "Такая цепочка непосредственно связывает рекомендацию с риском stockout и закупочным ограничением, а не выдаёт необъяснимое среднее продаж.",
+                "verification": "source",
+                "evidence": [
+                  "backend/optistock/planning.py:184-243",
+                  "tests/test_planning.py:32-51",
+                  "tests/test_case_criteria.py:14-39"
+                ]
+              },
+              {
+                "aspect": "Контролируемость решения менеджером",
+                "implementation": "API сначала создаёт draft-заказы, принимает количество и обязательную причину правки, проверяет revision и только отдельным approve переводит заказ в approved; экспорт до approval отклоняется.",
+                "value": "Это снижает операционный риск автоматического заказа и оставляет ответственному сотруднику контроль над фактическим количеством.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/optistock/api.py:432-520",
+                  "backend/optistock/services.py:328-429",
+                  "http-demo"
+                ]
+              },
+              {
+                "aspect": "Подтверждённая граница ценности",
+                "implementation": "Система не имитирует клиентские данные: события хранят дату, документ и количество, а объяснение явно содержит предупреждение об отсутствии customer_id; поставленный набор также не содержит такого поля.",
+                "value": "Честная граница лучше ложной точности, но сценарий одного клиента остаётся недоступным и снижает полноту ценности на один балл.",
+                "verification": "source",
+                "evidence": [
+                  "backend/optistock/ingestion.py:246-254",
+                  "backend/optistock/planning.py:119-126",
+                  "DATA_REVIEW.md:31-38",
+                  "F-CUSTOMER-OUTLIER"
+                ]
+              }
+            ],
+            "scoreReasoning": "24/25 заслужены за полный путь от исходных таблиц до управляемого заказа, реальное применение к обоим поставщикам и понятное объяснение экономического эффекта. Единственное снятие — не гипотетическая нехватка проверки, а видимая в модели граница: customer_id не проходит через ParsedItem и документный фильтр не может выполнить требование именно про одного клиента. Остальные ограничения относятся к неполному исходному набору или будущему контракту 1С и поэтому здесь не штрафуются."
+          },
+          {
+            "name": "Результат и качество решения",
+            "score": 19,
+            "max": 20,
+            "awarded": "Основной пользовательский результат воспроизведён end-to-end; продукт выдаёт рассчитанные, объяснённые и подтверждаемые черновики по поставщикам.",
+            "deductions": "1 балл удержан за неполную реализацию customer-level outlier сценария; визуальное поведение не оценивалось по установленной политике проверки.",
+            "evidence": [
+              "unit-domain-final",
+              "http-demo",
+              "build-frontend",
+              "F-CUSTOMER-OUTLIER"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "F-CUSTOMER-OUTLIER",
+                "reason": "В рабочем сценарии результат устойчив к документному выбросу, но не доказан и не реализован для разового заказа, выделенного по обезличенному клиенту, что является частью качества кейсового результата."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Проверенный runtime-сценарий",
+                "implementation": "Собранный backend стартовал с мигрированной PostgreSQL, readiness ответила успешно; затем demo.py импортировал комплект, дождался асинхронного worker, создал план, черновики, изменение с причиной, approval и CSV.",
+                "value": "Проверен именно пользовательский результат и переходы состояний, а не только наличие маршрутов или успешная компиляция.",
+                "verification": "observed",
+                "evidence": [
+                  "runtime.checks: start-api",
+                  "http-demo",
+                  "scripts/demo.py:1-82"
+                ]
+              },
+              {
+                "aspect": "Масштаб результата",
+                "implementation": "Реальный прогон создал 490 рекомендаций к закупке, 161 критичную позицию и два заказа: 335 строк IEK и 155 строк Systeme electric; импортная сводка содержит 3 909 товаров.",
+                "value": "Сценарий остаётся полезным на полном тестовом ассортименте, а не ломается после одной демонстрационной позиции.",
+                "verification": "observed",
+                "evidence": [
+                  "http-demo",
+                  "tests/test_samples.py:8-18"
+                ]
+              },
+              {
+                "aspect": "Числовая объяснимость",
+                "implementation": "Каждая рекомендация сохраняет модель, дату среза, исходный и очищенный ряд, trend ratio, сезонный профиль, прогноз, safety stock, остаток, входящие поставки, raw quantity, округление, stockout adjustments, outlier exclusions и источники.",
+                "value": "Закупщик может проверить, откуда взялось количество и какое допущение нужно изменить, вместо принятия непрозрачного ответа.",
+                "verification": "source",
+                "evidence": [
+                  "backend/optistock/planning.py:254-285",
+                  "frontend/src/components/ProductDrawer.tsx:90-153",
+                  "tests/test_agent.py:13-39"
+                ]
+              },
+              {
+                "aspect": "Защита от ошибочного заказа",
+                "implementation": "Сервер запрещает export для draft, проверяет права и ревизии, сохраняет audit event, а frontend показывает отдельные состояния draft/approved/cancelled и запрашивает причину изменения.",
+                "value": "Критический destructive action не скрыт внутри расчёта: утверждение и выгрузка отделены от рекомендации.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/optistock/api.py:509-520",
+                  "backend/optistock/services.py:364-429",
+                  "frontend/src/pages/Orders.tsx:48-67",
+                  "tests/test_workflow.py:56-96"
+                ]
+              },
+              {
+                "aspect": "Проверка чувствительности",
+                "implementation": "Доменные тесты отдельно меняют остаток, входящую поставку, категорию, рост, сезонность, stockout, incomplete month, MOQ/кратность и документный выброс; полный suite дал 48 passed.",
+                "value": "Качество результата подтверждается контролируемыми причинно-следственными тестами, а не только snapshot-ожиданием одного числа.",
+                "verification": "observed",
+                "evidence": [
+                  "tests/test_case_criteria.py:14-112",
+                  "tests/test_planning.py:32-143",
+                  "unit-domain-final"
+                ]
+              }
+            ],
+            "scoreReasoning": "19/20 отражают работающий и повторяемый пользовательский результат: сборка, API readiness, полный импорт, расчёт, редактирование, approval и экспорт прошли. Небольшое снятие связано с тем, что один из обязательных вариантов выброса не поддерживается на уровне данных. Отсутствие браузерной проверки не уменьшает балл, поскольку визуальная проверка выполняется пользователем; backend/frontend static build и HTTP/API доказательства при этом есть."
+          },
+          {
+            "name": "Инновационность",
+            "score": 14,
+            "max": 15,
+            "awarded": "Для пятичасового MVP это заметно более содержательный подход, чем среднее продаж и ручной CSV: команда собрала детерминированную модель с объяснениями, quality-проверками и агентом-оркестратором.",
+            "deductions": "1 балл удержан за то, что заявленная идея удаления разовой покупки не доведена до клиентского уровня, хотя документный уровень реализован.",
+            "evidence": [
+              "backend/optistock/planning.py:48-115",
+              "backend/optistock/agent.py:41-146",
+              "tests/test_case_criteria.py:56-112",
+              "F-CUSTOMER-OUTLIER"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "F-CUSTOMER-OUTLIER",
+                "reason": "Нестандартный outlier-подход работает по документам и повторяющимся месяцам, но не использует customer-level сигнал, который отдельно указан в требовании кейса."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Robust seasonal forecast",
+                "implementation": "Профиль сезонности нормализуется по месячным значениям, берётся медиана нескольких профилей, спрос переводится в дневной ряд, а тренд сверяет одинаковые 3- и 6-месячные окна год-к-году и ограничивается диапазоном.",
+                "value": "Это собственная объяснимая комбинация сезонности и устойчивого роста, заметно отличающаяся от наивного среднего за всю историю.",
+                "verification": "source",
+                "evidence": [
+                  "backend/optistock/planning.py:17-28",
+                  "backend/optistock/planning.py:152-163",
+                  "tests/test_case_criteria.py:30-40"
+                ]
+              },
+              {
+                "aspect": "Conservative outlier correction",
+                "implementation": "Документы агрегируются по дате и номеру, для достаточного количества наблюдений применяется log-MAD, для короткой истории — высокий monthly-median fallback; исключение применяется только при сверке суммы документа с месячным рядом, а повторяющийся оптовый спрос сохраняется.",
+                "value": "Алгоритм сочетает устойчивость к проектному выбросу и защиту от удаления регулярного опта, причём результат записывается в объяснение.",
+                "verification": "source",
+                "evidence": [
+                  "backend/optistock/planning.py:48-101",
+                  "tests/test_case_criteria.py:56-112"
+                ]
+              },
+              {
+                "aspect": "Stockout как видимая поправка",
+                "implementation": "Нулевой месячный остаток не трактуется как нулевой спрос: расчёт восстанавливает ожидаемую величину с учётом профиля и добавляет stockout_adjustments и предупреждение о proxy-методе.",
+                "value": "Даже при неполном входе модель показывает, что это оценка потерянного спроса, а не маскирует допущение под факт.",
+                "verification": "source",
+                "evidence": [
+                  "backend/optistock/planning.py:102-115",
+                  "tests/test_case_criteria.py:43-54",
+                  "tests/test_planning.py:73-83"
+                ]
+              },
+              {
+                "aspect": "Агент как проверяющий слой",
+                "implementation": "AgentRun выполняет quality inspection, считает supplier summaries, сравнивает план с выключенными outlier corrections, формирует exceptions и создаёт только draft orders; approval отсутствует в агентском job.",
+                "value": "LLM/agent-подобный интерфейс не подменяет детерминированный расчёт и добавляет объяснимую проверку качества в один сценарий.",
+                "verification": "source",
+                "evidence": [
+                  "backend/optistock/agent.py:41-146",
+                  "tests/test_agent.py:13-39"
+                ]
+              },
+              {
+                "aspect": "Дисциплина неопределённости",
+                "implementation": "Расчёт сохраняет warning для test_dataset, assumed inventory, scenario lead time/safety, supplier seasonality proxy и отсутствия customer ID; UI выводит источники и предупреждения.",
+                "value": "Инновационность не построена на необоснованном AI-утверждении: ограничения встроены в результат и пригодны для последующей проверки.",
+                "verification": "source",
+                "evidence": [
+                  "backend/optistock/planning.py:119-126",
+                  "frontend/src/components/ProductDrawer.tsx:134-153",
+                  "LOGISTICS_CASE.md:41-47"
+                ]
+              }
+            ],
+            "scoreReasoning": "14/15 — высокий балл за сочетание робастной очистки, сезонности, тренда, dated incoming simulation, объяснений и агентского quality-слоя в коротком MVP. Один балл удержан именно за незавершённость наиболее специфичной части outlier-идеи: клиентский сигнал отсутствует в событии и не может участвовать в методе. Это не обесценивает документный метод, но ограничивает заявленное отличие от обычного robust forecast."
+          },
+          {
+            "name": "Потенциал развития и масштабирования",
+            "score": 19,
+            "max": 20,
+            "awarded": "Архитектура уже разложена на версии данных, асинхронные jobs, PostgreSQL-модель, роли, ревизии, источники и поставщиков; расширение до production-процесса реалистично.",
+            "deductions": "1 балл удержан за подтверждённый продуктовый предел MVP: клиентское измерение не проходит через модель. Отсутствие контракта 1С отмечено как limitation, но не штрафуется.",
+            "evidence": [
+              "backend/optistock/models.py:32-150",
+              "backend/optistock/services.py:170-326",
+              "LOGISTICS_CASE.md:49-56",
+              "F-CUSTOMER-OUTLIER",
+              "L-EXPORT-CONTRACT"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "F-CUSTOMER-OUTLIER",
+                "reason": "Без customer_id и customer-level aggregation расширение на сценарии персонализированных проектных покупок потребует изменения ingestion, JSONB-события, алгоритма и тестового контракта."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Версионированная предметная модель",
+                "implementation": "Сущности Dataset, SourceFile, Item, Plan, Recommendation, PurchaseOrder, OrderLine, SupplierState и AuditEvent разделяют снимок входа, расчёт, заказ и его ревизии; JSONB хранит происхождение и объяснение.",
+                "value": "Новые поставщики, поля и алгоритмы можно добавлять без смешивания разных срезов и без потери аудита старого заказа.",
+                "verification": "source",
+                "evidence": [
+                  "backend/optistock/models.py:41-150",
+                  "README.md:95-133"
+                ]
+              },
+              {
+                "aspect": "Асинхронное выполнение и устойчивость",
+                "implementation": "Импорт, план и агент идут через Job, lease, повторную постановку и отдельный worker; результат публикуется транзакционно после проверки lease, а idempotency и supplier revision предотвращают повторное или устаревшее действие.",
+                "value": "Это хорошая основа для увеличения числа файлов и пользователей: тяжёлый Excel-расчёт не блокирует HTTP и не создаёт двойные заказы при повторе.",
+                "verification": "source",
+                "evidence": [
+                  "backend/optistock/services.py:157-326",
+                  "backend/optistock/worker.py:1-170",
+                  "tests/test_workflow.py:96-214",
+                  "tests/test_agent.py:13-39"
+                ]
+              },
+              {
+                "aspect": "Расширение по поставщикам",
+                "implementation": "Импорт выбирает адаптер по заголовкам, сохраняет supplier/code как составной ключ, группирует рекомендации и заказы по supplier; HTTP demo одновременно создал IEK и Systeme electric orders.",
+                "value": "Следующий источник можно подключать к общей модели без изменения пользовательского цикла заказа, сохраняя отдельные правила единиц и полей.",
+                "verification": "observed",
+                "evidence": [
+                  "backend/optistock/ingestion.py:151-183",
+                  "backend/optistock/services.py:328-352",
+                  "http-demo"
+                ]
+              },
+              {
+                "aspect": "Безопасность и governance",
+                "implementation": "Bearer credentials хранятся как SHA-256, роли разделяют viewer/planner/approver, mutating requests требуют Idempotency-Key, approve записывает actor/time, а клиентские идентификаторы в текущем наборе не копируются.",
+                "value": "Это создаёт путь от прототипа к контролируемому многопользовательскому процессу, а не только локальный notebook.",
+                "verification": "source",
+                "evidence": [
+                  "backend/optistock/api.py:73-98",
+                  "backend/optistock/services.py:34-63",
+                  "tests/test_workflow.py:98-129"
+                ]
+              },
+              {
+                "aspect": "Конкретные следующие расширения",
+                "implementation": "Документация выделяет отсутствующие интервалы stockout, свободный текущий остаток IEK, customer ID, срок поставки и образец 1С как отдельные данные, а не скрытые нули; код уже имеет scenario inputs для срока, safety, роста и missing inventory.",
+                "value": "Команда оставила понятную дорожную карту, позволяющую заменить proxy реальными источниками по одному контракту за раз.",
+                "verification": "source",
+                "evidence": [
+                  "DATA_REVIEW.md:35-59",
+                  "backend/optistock/schemas.py:15-34",
+                  "LOGISTICS_CASE.md:49-56"
+                ]
+              }
+            ],
+            "scoreReasoning": "19/20: архитектура заметно масштабируемее одноразового скрипта и уже показывает разделение данных, jobs, ролей и поставщиков. Снижение касается реальной границы расширения, а не отсутствия HA или production-объёма, которые не требовались пятичасовому MVP. Customer-level outlier должен быть добавлен отдельным входным соглашением; отсутствие образца 1С оставлено как limitation без штрафа."
+          },
+          {
+            "name": "Презентация, демо и ответы на вопросы",
+            "score": 19,
+            "max": 20,
+            "awarded": "README и сопроводительные документы хорошо объясняют проблему, ограничения, запуск и проверяемый сценарий; воспроизводимое демо из репозитория реально работает.",
+            "deductions": "1 балл удержан за отсутствие доказанного customer-level кейса; отсутствие публичной ссылки, контракта 1С и визуального просмотра само по себе не штрафовалось.",
+            "evidence": [
+              "README.md:1-220",
+              "LOGISTICS_CASE.md:9-62",
+              "VERIFICATION.md:1-55",
+              "http-demo",
+              "L-EXPORT-CONTRACT"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "F-CUSTOMER-OUTLIER",
+                "reason": "Материалы честно описывают document-level outliers и отсутствие customer ID, но не могут показать требуемый пример выброса одного клиента."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Структурированное объяснение кейса",
+                "implementation": "LOGISTICS_CASE.md последовательно раскрывает пользователя, входы, выходы, обязательные проверки, ограничения и различие между требованиями PDF и проектными решениями.",
+                "value": "Читателю легко понять, что именно обещает продукт и какие утверждения являются допущениями команды.",
+                "verification": "source",
+                "evidence": [
+                  "LOGISTICS_CASE.md:9-47"
+                ]
+              },
+              {
+                "aspect": "Воспроизводимая инструкция",
+                "implementation": "README описывает compose-сервисы, миграции, API/worker, sample data, roles, scripts/demo.py, scripts/jury_demo.py и сохранение результатов; фактический demo.py был запущен на полном наборе.",
+                "value": "Демо можно повторить из репозитория без устного пояснения и без подмены расчёта mock-данными.",
+                "verification": "observed",
+                "evidence": [
+                  "README.md:1-80",
+                  "README.md:150-220",
+                  "scripts/demo.py:1-82",
+                  "http-demo"
+                ]
+              },
+              {
+                "aspect": "Доказательная детализация",
+                "implementation": "Документы показывают численную сводку импорта, ограничения дат и схем Excel, а код сохраняет source references и объяснения по SKU; тесты названы по каждому обязательному чувствительному фактору.",
+                "value": "Отчётность помогает жюри отличить реализованный механизм от красивого описания.",
+                "verification": "source",
+                "evidence": [
+                  "DATA_REVIEW.md:9-48",
+                  "tests/test_case_criteria.py:14-112",
+                  "frontend/src/components/ProductDrawer.tsx:90-153"
+                ]
+              },
+              {
+                "aspect": "Демо без опасной автоматизации",
+                "implementation": "Сценарий явно проходит через draft и ручной approve, а export до approval получает 409; в результате HTTP-прогона получены два approved CSV после изменения с причиной.",
+                "value": "Ключевой риск кейса виден в демонстрации как проверяемое поведение, а не только как фраза в README.",
+                "verification": "observed",
+                "evidence": [
+                  "tests/test_workflow.py:56-96",
+                  "backend/optistock/api.py:509-520",
+                  "http-demo"
+                ]
+              },
+              {
+                "aspect": "Честная коммуникация неопределённости",
+                "implementation": "README и DATA_REVIEW отдельно говорят о proxy stockout, отсутствии customer ID, неполном текущем остатке и неизвестном формате 1С; API summary возвращает эти ограничения вместе с тестовым набором.",
+                "value": "Такой уровень оговорок повышает доверие и делает дальнейшее обсуждение с владельцем процесса предметным.",
+                "verification": "source",
+                "evidence": [
+                  "DATA_REVIEW.md:35-59",
+                  "backend/optistock/services.py:215-227",
+                  "http-demo"
+                ]
+              }
+            ],
+            "scoreReasoning": "19/20 — документация глубже типичного хакатонного README и подкреплена реальным воспроизводимым HTTP-сценарием. Снижение отражает содержательный предел демонстрируемого результата: нельзя показать customer-level выброс без соответствующего входа. Совместимость CSV с конкретной 1С отмечена как limitation без штрафа, поскольку образец не предоставлен. Отсутствие публичной live-ссылки, устного выступления, слайдов и визуальной проверки по правилам не является причиной снятия баллов."
+          }
+        ],
+        "total": 95
+      },
+      "case": null,
+      "judgeScore": 95,
+      "caseRequirements": [
+        {
+          "requirement": "Продажи, остатки, товары в пути, категории и прогноз прироста участвуют в расчёте.",
+          "status": "partial",
+          "explanation": "Расчёт и тесты имеют отдельные переключатели и причинные проверки для продаж, запасов, incoming, категории и growth. На реальном комплекте текущий свободный остаток доступен не для всех поставщиков/позиций, а часть условий заказа задаётся сценарием; код это помечает, но полное покрытие исходным набором не доказано.",
+          "evidence": [
+            "backend/optistock/ingestion.py:223-281",
+            "backend/optistock/planning.py:165-209",
+            "tests/test_case_criteria.py:14-28",
+            "http-demo"
+          ]
+        },
+        {
+          "requirement": "Прогноз отражает сезонность и устойчивый рост.",
+          "status": "met",
+          "explanation": "Профиль сезонности нормализуется по месячным данным, тренд проверяется на сопоставимых 3- и 6-месячных окнах год-к-году, а тесты показывают изменение forecast_quantity при сезонности и устойчивом росте.",
+          "evidence": [
+            "backend/optistock/planning.py:17-28",
+            "backend/optistock/planning.py:152-163",
+            "tests/test_case_criteria.py:30-40",
+            "unit-domain-final"
+          ]
+        },
+        {
+          "requirement": "Stockout компенсирует потерянный спрос, а нулевые продажи при отсутствии товара не считаются обычным нулевым спросом.",
+          "status": "partial",
+          "explanation": "Алгоритм повышает историю при нулевом месячном остатке и сохраняет stockout_adjustments; синтетический тест подтверждает рост заказа. На реальных XLSX нет точных интервалов отсутствия, поэтому применён явно помеченный zero_snapshot_proxy, а не точная длительность stockout.",
+          "evidence": [
+            "backend/optistock/planning.py:102-115",
+            "tests/test_case_criteria.py:43-54",
+            "DATA_REVIEW.md:45-48",
+            "http-demo"
+          ]
+        },
+        {
+          "requirement": "Разовая крупная покупка, включая покупку одного клиента, не искажает регулярный заказ.",
+          "status": "partial",
+          "explanation": "Документные выбросы корректируются только после сверки с месячной суммой, повторяющийся wholesale demand сохраняется, и тесты это подтверждают. Но customer_id не импортируется: реализован сценарий выброса по документу, не выделение покупки именно одного клиента.",
+          "evidence": [
+            "backend/optistock/ingestion.py:246-254",
+            "backend/optistock/planning.py:48-101",
+            "backend/optistock/planning.py:119-126",
+            "tests/test_case_criteria.py:56-112",
+            "F-CUSTOMER-OUTLIER"
+          ]
+        },
+        {
+          "requirement": "Каждая рекомендация имеет числовое объяснение, итог доступен в разрезе поставщиков.",
+          "status": "met",
+          "explanation": "Recommendation сохраняет детальную числовую цепочку и source references; draft_orders группирует строки по supplier. Реальный прогон создал два поставщицких заказа и экспортировал их после approval.",
+          "evidence": [
+            "backend/optistock/planning.py:254-285",
+            "backend/optistock/services.py:328-352",
+            "tests/test_agent.py:13-39",
+            "http-demo"
+          ]
+        },
+        {
+          "requirement": "Заказ не отправляется без ручного подтверждения ответственного сотрудника.",
+          "status": "met",
+          "explanation": "Создаются только draft orders, export draft возвращает конфликт, approve проверяет revision и отдельные права; demo прошёл edit → approve → export, а не автоматическую отправку поставщику.",
+          "evidence": [
+            "backend/optistock/api.py:432-520",
+            "backend/optistock/services.py:401-429",
+            "tests/test_workflow.py:56-96",
+            "http-demo"
+          ]
+        },
+        {
+          "requirement": "Клиентские данные обезличены.",
+          "status": "met",
+          "explanation": "В предоставленных таблицах customer ID отсутствует, и текущий импорт не добавляет PII; документация и explanation явно сообщают об отсутствии customer ID. Это выполняет приватность текущего набора, но одновременно ограничивает customer-level outlier сценарий.",
+          "evidence": [
+            "DATA_REVIEW.md:31-38",
+            "backend/optistock/ingestion.py:246-254",
+            "backend/optistock/planning.py:119-126"
+          ]
+        },
+        {
+          "requirement": "Проверена чувствительность к товарам в пути, сезонности, stockout и выбросу.",
+          "status": "met",
+          "explanation": "Отдельные тесты меняют incoming date/quantity, seasonal profile, stockout snapshots и one-off documents; HTTP-прогон дополнительно обработал реальные transit/sales/MOQ/seasonality книги. Для customer ID чувствительность не проверяется, потому что такого поля нет.",
+          "evidence": [
+            "tests/test_planning.py:32-143",
+            "tests/test_case_criteria.py:30-112",
+            "tests/test_samples.py:8-18",
+            "unit-domain-final",
+            "http-demo"
+          ]
+        }
+      ],
+      "testData": {
+        "provided": [
+          "cases/5/case-data/IEK/MOQ  ИЭК.xlsx",
+          "cases/5/case-data/IEK/Динамика продаж_2025-2026.xlsx",
+          "cases/5/case-data/IEK/Ежемесячные остатки продукции за последние 2 года  ИЭК.xlsx",
+          "cases/5/case-data/IEK/Ежемесячные продажи в количественном выражении за последние 2 года.xlsx",
+          "cases/5/case-data/IEK/Путь ИЭК 22.09.2026.xlsx",
+          "cases/5/case-data/IEK/Сезонность ИЭК.xlsx",
+          "cases/5/case-data/Systeme electric/MOQ SystemElectric.xlsx",
+          "cases/5/case-data/Systeme electric/Динамика продаж_Syseme Electric_2025-2026.xlsx",
+          "cases/5/case-data/Systeme electric/Ежемесячные остатки SystemElectric 2024-2026.xlsx",
+          "cases/5/case-data/Systeme electric/Ежемесячные продажи в кол-м выражении SystemElectric 2024-2026.xlsx",
+          "cases/5/case-data/Systeme electric/Сезонность SystemElectric 2024-2026.xlsx",
+          "cases/5/case-data/Systeme electric/Товар в пути_SystemElectric на 22.09.2026.xlsx"
+        ],
+        "used": [
+          "IEK/MOQ  ИЭК.xlsx",
+          "IEK/Динамика продаж_2025-2026.xlsx",
+          "IEK/Ежемесячные остатки продукции за последние 2 года  ИЭК.xlsx",
+          "IEK/Ежемесячные продажи в количественном выражении за последние 2 года.xlsx",
+          "IEK/Путь ИЭК 22.09.2026.xlsx",
+          "IEK/Сезонность ИЭК.xlsx",
+          "Systeme electric/MOQ SystemElectric.xlsx",
+          "Systeme electric/Динамика продаж_Syseme Electric_2025-2026.xlsx",
+          "Systeme electric/Ежемесячные остатки SystemElectric 2024-2026.xlsx",
+          "Systeme electric/Ежемесячные продажи в кол-м выражении SystemElectric 2024-2026.xlsx",
+          "Systeme electric/Сезонность SystemElectric 2024-2026.xlsx",
+          "Systeme electric/Товар в пути_SystemElectric на 22.09.2026.xlsx"
+        ],
+        "checks": [
+          {
+            "input": "Все шесть XLSX IEK и все шесть XLSX Systeme electric через sample import среза 2026-09-22.",
+            "method": "Реальный HTTP import через scripts/demo.py и worker; после job succeeded прочитана dataset summary.",
+            "result": "12 файлов, 3 909 товаров, 3 185 IEK, 724 Systeme electric, 248 884 операции; job завершился succeeded.",
+            "conclusion": "Штатный парсер принимает полный предоставленный комплект без silent row loss; ограничения набора сохранены в summary."
+          },
+          {
+            "input": "Полный набор XLSX в test_all_twelve_original_workbooks_import_without_silent_row_loss.",
+            "method": "python -m pytest -q внутри собранного backend image с выделенной PostgreSQL test database.",
+            "result": "Тест samples прошёл вместе с полным suite; проверены 3 909 items, 248 884 events, 31 skipped transaction rows, месячная история и invalid MOQ.",
+            "conclusion": "Парсер и контрольные количества согласованы с предоставленными файлами."
+          },
+          {
+            "input": "Синтетические контролируемые изменения sales, available/incoming, category и growth.",
+            "method": "tests/test_case_criteria.py::test_sales_stock_incoming_category_and_growth_each_change_order.",
+            "result": "Тест прошёл; каждая изменённая причина меняет calculated order в ожидаемом направлении.",
+            "conclusion": "Код имеет причинное влияние факторов, а не только поля интерфейса."
+          },
+          {
+            "input": "Seasonality, sustained growth, stockout, one-off document, repeated wholesale and short-history cases.",
+            "method": "Остальные тесты tests/test_case_criteria.py и tests/test_planning.py.",
+            "result": "Тесты сезонности/тренда, stockout correction, robust outlier fallback, missing history, late incoming, MOQ и incomplete month прошли.",
+            "conclusion": "Основные обязательные sensitivity scenarios воспроизводимы на доменном уровне; customer-level scenario не представлен входом."
+          },
+          {
+            "input": "Полный workflow: draft → edit with reason → stale revision rejection → approve → CSV → audit → cancel.",
+            "method": "tests/test_workflow.py и реальный scripts/demo.py по HTTP.",
+            "result": "48/48 backend tests passed; HTTP demo создал 335 и 155 строк в двух approved supplier CSV после ручного approval.",
+            "conclusion": "Пользовательский результат и защитные переходы состояний работают end-to-end."
+          }
+        ],
+        "limitations": [
+          "В исходных XLSX нет customer_id, поэтому customer-level outlier не мог быть проверен и не реализован в текущей нормализованной схеме.",
+          "Точные интервалы stockout и полный текущий свободный остаток IEK отсутствуют; часть оценок использует monthly snapshot proxy или scenario input.",
+          "Образец импорта заказа в 1С не предоставлен, поэтому CSV проверен как результат, но совместимость с конкретной конфигурацией 1С не доказана.",
+          "Внешний OpenAI credential не предоставлялся; локальный детерминированный расчёт и API workflow проверены без него, AI provider path оценён по исходникам."
+        ]
+      },
+      "runtime": {
+        "status": "working",
+        "build": "Backend image build passed with Python 3.13 and locked project dependencies; frontend production Vite/TypeScript build passed.",
+        "start": "PostgreSQL, migrations, API and worker started successfully; readiness check returned the ready response.",
+        "scenario": "The shipped HTTP demo reproduced import → asynchronous plan → supplier drafts → edit with reason → manual approval → CSV export on all 12 supplied XLSX files.",
+        "environment": "Изолированные контейнеры с Python 3.13, Node.js 24, PostgreSQL 16; исходные таблицы смонтированы только для чтения, внешние API-ключи не использовались.",
+        "summary": "Runtime считается working: основной backend сценарий воспроизведён на реальных данных, а frontend production artifact и lint также собраны успешно.",
+        "checks": [
+          {
+            "command": "pip install --no-deps . (в Dockerfile backend)",
+            "result": "Backend image built successfully; package optistock installed.",
+            "id": "build-backend",
+            "stage": "build",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Собираемый образ с импортируемым приложением и зависимостями проекта."
+          },
+          {
+            "command": "npm run build",
+            "result": "Vite production build passed; TypeScript compilation completed and dist was produced.",
+            "id": "build-frontend",
+            "stage": "build",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Frontend production bundle без ошибок TypeScript/Vite."
+          },
+          {
+            "command": "npm run lint",
+            "result": "oxlint found 0 warnings and 0 errors on 39 files.",
+            "id": "frontend-lint",
+            "stage": "build",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Статическая проверка frontend проходит без ошибок."
+          },
+          {
+            "command": "GET /health/ready",
+            "result": "HTTP demo успешно выполнил readiness request перед защищёнными операциями; API и миграции были доступны.",
+            "id": "start-api",
+            "stage": "start",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Приложение стартует после миграций и readiness подтверждает доступность базы."
+          },
+          {
+            "command": "python -m pytest -q",
+            "result": "48 passed, 1 библиотечное предупреждение Starlette/httpx; exit code 0.",
+            "id": "unit-domain-final",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Доменный расчёт, импорт, workflow, agent, backtest и API tests проходят на выделенной test database."
+          },
+          {
+            "command": "python scripts/demo.py --url <API_URL> --key-file <API_KEY_FILE> (шаблон)",
+            "result": "Import job succeeded; plan job succeeded; 3 909 items imported; 490 reorder recommendations; two supplier orders were edited, approved and exported as CSV.",
+            "id": "http-demo",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Полный HTTP-сценарий на 12 предоставленных XLSX завершается содержательным supplier-order результатом."
+          }
+        ],
+        "limitations": [
+          "Визуальное поведение и browser navigation не проверялись: по политике этого ревью визуальную проверку выполняет пользователь.",
+          "Публичная live-ссылка и внешний OpenAI provider не проверялись; это не блокировало локальный детерминированный сценарий.",
+          "Оценка CSV ограничена отсутствием предоставленного контракта конкретной 1С."
+        ]
+      },
+      "liveDemo": {
+        "status": "none",
+        "url": null,
+        "notes": "Публичная live-ссылка в репозитории не предоставлена; локальный HTTP/API сценарий из репозитория подтверждён отдельно."
+      },
+      "fiveHourContext": "Для пятичасового MVP объём реализации высокий: команда покрыла импорт двух поставщиков, детерминированный planning core, робастные сценарии, API, worker, роли, ревизии, audit, React workspace и воспроизводимые проверки. Неполнота customer-level outlier, точных stockout intervals и 1С-контракта отражает границы доступных входов и незавершённые интеграционные соглашения, а не требование production HA.",
+      "strengths": [
+        "Полный import → plan → draft → edit → approve → export сценарий подтверждён на всех 12 предоставленных XLSX.",
+        "Детерминированная формула объединяет сезонность, тренд, рост, запас, dated incoming, MOQ, кратность и единицы с числовым объяснением.",
+        "Робастная очистка выбросов, stockout proxy, incomplete-month защита и backtest покрыты доменными тестами.",
+        "Асинхронные jobs, leases, idempotency, роли, ревизии поставщика и audit делают MVP операционно зрелым.",
+        "README, DATA_REVIEW и LOGISTICS_CASE явно разделяют факты, допущения и ограничения тестовых данных."
+      ],
+      "gaps": [
+        "Customer-level outlier не реализован: нормализованные transaction events сохраняют только date/document/quantity, а planner сам добавляет предупреждение no_customer_id_document_level_outliers. Требование про разовую крупную покупку одного клиента поэтому покрыто только документным proxy."
+      ],
+      "futureAdvice": [
+        {
+          "principle": "Сначала фиксировать минимальный контракт измерения, от которого зависит бизнес-решение.",
+          "why": "F-CUSTOMER-OUTLIER показывает, что robust document-level метод работает, но без customer_id нельзя доказать и выполнить вариант одного клиента; эффект — requirement остаётся partial.",
+          "how": "В следующем кейсе до выбора алгоритма добавить в canonical event customer_id_hash, scope/warehouse и document_id, затем сделать один fixture с двумя товарами одного клиента и отдельным повторяющимся оптом; провести сравнение order quantity до/после удаления только клиентского события.",
+          "findingIds": [
+            "F-CUSTOMER-OUTLIER"
+          ],
+          "successCheck": "В объяснении рекомендации видны customer-level exclusion и исходный обезличенный ключ, а повторная покупка разных клиентов не удаляется; контрольный тест проходит без хранения PII.",
+          "timeboxMinutes": 35
+        }
+      ],
+      "uncertainties": [
+        "Предоставленные таблицы не содержат точных интервалов отсутствия товара; stockout результат на реальном наборе нельзя трактовать как измеренную длительность дефицита.",
+        "Полный текущий свободный остаток и единый справочник сроков поставки присутствуют не для всех входов; часть сценария задаётся явными параметрами.",
+        "Customer ID отсутствует в данных, поэтому проверка one-customer outlier ограничена source audit и не может быть заменена синтетическим утверждением о реальном наборе.",
+        "Внешний AI provider и публичная live-среда не предоставлены; API и локальный deterministic path проверены без них.",
+        "Визуальная проверка UI не выполнялась согласно пользовательской политике проверки."
+      ],
+      "reviewPolicyVersion": 2,
+      "assessmentStatus": "ready",
+      "findings": [
+        {
+          "id": "S-IMPORT-12-XLSX",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Штатный импорт принимает все 12 workbook и сохраняет содержательный набор SKU/операций.",
+          "expected": "Предоставленные IEK и Systeme electric файлы должны пройти через тот же путь, который использует приложение.",
+          "actual": "HTTP demo получил 12 files, 3 909 items и 248 884 transaction rows; sample import job succeeded.",
+          "evidence": [
+            "backend/optistock/services.py:83-94",
+            "backend/optistock/ingestion.py:126-149",
+            "http-demo",
+            "tests/test_samples.py:8-18"
+          ],
+          "checkIds": [
+            "http-demo",
+            "unit-domain-final"
+          ]
+        },
+        {
+          "id": "S-SENSITIVITY-CORE",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Доменная модель реагирует на входящие поставки, сезонность, рост, stockout, остаток, категорию и выбросы.",
+          "expected": "Изменение каждого фактора должно давать контролируемое изменение recommendation или forecast.",
+          "actual": "Named case/planning tests passed; incoming dates, category safety, growth, seasonality, stockout corrections and outlier comparisons were exercised.",
+          "evidence": [
+            "tests/test_case_criteria.py:14-112",
+            "tests/test_planning.py:32-143",
+            "unit-domain-final"
+          ],
+          "checkIds": [
+            "unit-domain-final"
+          ]
+        },
+        {
+          "id": "S-MANUAL-APPROVAL",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Сервис не экспортирует draft order до ручного approval и поддерживает revisioned edit с причиной.",
+          "expected": "Рекомендация должна оставаться обратимой и проверяемой ответственным сотрудником.",
+          "actual": "HTTP demo прошёл draft → edit with reason → approve → export; workflow test подтверждает export draft conflict, audit и cancel.",
+          "evidence": [
+            "backend/optistock/services.py:328-429",
+            "backend/optistock/api.py:473-520",
+            "tests/test_workflow.py:56-96",
+            "http-demo"
+          ],
+          "checkIds": [
+            "unit-domain-final",
+            "http-demo"
+          ]
+        },
+        {
+          "id": "S-EXPLAINED-SUPPLIER-ORDERS",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Recommendations имеют числовое объяснение и собираются в отдельные supplier orders.",
+          "expected": "Результат должен содержать quantity, rationale, risk и supplier grouping.",
+          "actual": "Explanation содержит прогноз, запас, inventory, incoming, rounding, corrections и sources; реальный прогон создал два supplier CSV.",
+          "evidence": [
+            "backend/optistock/planning.py:254-285",
+            "backend/optistock/services.py:328-352",
+            "http-demo"
+          ],
+          "checkIds": [
+            "http-demo"
+          ]
+        },
+        {
+          "id": "F-CUSTOMER-OUTLIER",
+          "kind": "defect",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Реализация не поддерживает исключение разовой покупки именно одного клиента.",
+          "expected": "При наличии обезличенного customer ID алгоритм должен различать customer-level one-off от повторяющегося спроса и не искажать регулярный order.",
+          "actual": "Parsed transaction event сохраняет только date, document, q и source; `planning.py` добавляет `no_customer_id_document_level_outliers`, а outlier logic группирует по date/document. Нормализованного customer_id и теста с одним клиентом нет.",
+          "evidence": [
+            "backend/optistock/ingestion.py:246-254",
+            "backend/optistock/planning.py:48-101",
+            "backend/optistock/planning.py:119-126",
+            "tests/test_case_criteria.py:56-112"
+          ],
+          "checkIds": [
+            "unit-domain-final"
+          ]
+        },
+        {
+          "id": "L-STOCKOUT-MONTHLY-PROXY",
+          "kind": "limitation",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Stockout на текущем наборе оценивается по нулевому месячному snapshot, а не по точному интервалу отсутствия.",
+          "expected": "Точные stockout intervals должны давать сопоставимую оценку потерянного спроса по дням/сезону.",
+          "actual": "Код применяет zero_snapshot_proxy и сохраняет предупреждение; DATA_REVIEW сообщает, что точных интервалов в 12 XLSX нет.",
+          "evidence": [
+            "backend/optistock/planning.py:102-115",
+            "DATA_REVIEW.md:45-48",
+            "tests/test_planning.py:73-83"
+          ],
+          "checkIds": [
+            "unit-domain-final"
+          ]
+        },
+        {
+          "id": "L-EXPORT-CONTRACT",
+          "kind": "limitation",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "CSV export работает, но совместимость с конкретным импортом 1С не установлена.",
+          "expected": "Формат выхода должен быть сопоставлен с предоставленным образцом учётной системы.",
+          "actual": "API отдаёт CSV после approval, но DATA_REVIEW и LOGISTICS_CASE фиксируют отсутствие образца 1С; код не содержит проверяемого целевого schema contract.",
+          "evidence": [
+            "backend/optistock/api.py:503-556",
+            "LOGISTICS_CASE.md:45-47",
+            "DATA_REVIEW.md:49-56"
+          ],
+          "checkIds": [
+            "http-demo"
+          ]
+        },
+        {
+          "id": "L-INVENTORY-COVERAGE",
+          "kind": "limitation",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Для Item без available расчёт использует latest snapshot или явное assumed_zero, поэтому покрытие текущего остатка зависит от входного поставщика и сценария.",
+          "expected": "Текущий свободный остаток должен быть подтверждённым и сопоставимым для каждого SKU.",
+          "actual": "Код отмечает inventory_source и warning current_inventory_is_assumed; DATA_REVIEW указывает на отсутствие сопоставимой текущей ведомости IEK в комплекте.",
+          "evidence": [
+            "backend/optistock/planning.py:165-179",
+            "backend/optistock/schemas.py:29-34",
+            "DATA_REVIEW.md:45-48"
+          ],
+          "checkIds": [
+            "http-demo",
+            "unit-domain-final"
+          ]
+        }
+      ],
+      "gapFindingIds": [
+        "F-CUSTOMER-OUTLIER"
+      ]
+    }
+  ],
+  "score": 95.0,
+  "status": "complete",
+  "expectedJudges": 1
+}

@@ -1,0 +1,875 @@
+{
+  "methodVersion": 4,
+  "repoId": "hack-10cbfaad-nyu",
+  "repoUrl": "https://github.com/BAITC-Hacks/hack-10cbfaad-nyu",
+  "caseId": 10,
+  "snapshot": "28fdc7ceb8cb66305d39903762f53960ac9744de",
+  "judges": [
+    {
+      "methodVersion": 4,
+      "repoId": "hack-10cbfaad-nyu",
+      "caseId": 10,
+      "model": "GPT-5.6 Luna",
+      "snapshot": "28fdc7ceb8cb66305d39903762f53960ac9744de",
+      "overallSummary": "Команда собрала воспроизводимый MVP из веб-приложения, AI Service и Product Service. Рабочий локальный контур подтверждён: production-сборка web проходит, оба Python-сервиса стартуют в контейнерах, поиск по предоставленному fixture возвращает товар 515291, а контрактные тесты AI Service и Product Service проходят на поддерживаемом PostgreSQL-пути. Архитектура аккуратно разделяет поиск, нормализацию каталога, LLM-инструменты, предложения корзины и проверку остатков. Основные ограничения — не подключён реальный Cart API, условия покупки остаются заглушкой, сертификаты всегда отдаются как unknown, а JPEG только принимается без OCR/передачи изображения в модель. Поэтому это хороший технический каркас и демонстрационный сценарий, но не полный пользовательский сценарий покупки.",
+      "global": {
+        "criteria": [
+          {
+            "name": "Ценность решения",
+            "score": 20,
+            "max": 25,
+            "awarded": "Решение адресует понятную коммерческую боль — задержку консультации по электротехническим товарам — и заметно сокращает путь от запроса до найденной позиции и безопасного предложения добавить её в корзину.",
+            "deductions": "До максимума не хватает ключевых частей ценности покупки: фактического изменения реальной корзины, достоверных условий покупки и полноценной работы с сертификатами/изображениями.",
+            "evidence": [
+              "cases/10/task.txt:2-4",
+              "cases/10/case-data/HackAlem AI_ ИИ-ассистент для чата на сайте ekt.kz.md:12-27",
+              "README.md:8-16",
+              "captures/20261002T103145434959-ai-tests-mounted.stdout.log"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "F-CART-001",
+                "reason": "Пользователь получает предложение и ссылку на демонстрационную, а не реальную корзину; ценность ускорения покупки заканчивается до оформления."
+              },
+              {
+                "points": 1,
+                "findingId": "F-CONDITIONS-001",
+                "reason": "Ответы об оплате, доставке и минимальной партии невозможно получить из проверенного источника, хотя это отдельная пользовательская боль кейса."
+              },
+              {
+                "points": 1,
+                "findingId": "F-CERT-001",
+                "reason": "Каталог не даёт ассистенту проверяемые сертификаты, поэтому часть консультационной ценности не реализована."
+              },
+              {
+                "points": 1,
+                "findingId": "F-MOCK-STOCK-001",
+                "reason": "Режим по умолчанию может вернуть синтетический остаток для товара 515291, что подрывает ценность достоверной консультации при неполной конфигурации."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Понятный B2B/B2C сценарий",
+                "implementation": "README описывает путь браузер → web → AI Service → Product Service → каталог, а интерфейс предлагает поиск по артикулу, названию и характеристикам. В кейсовом описании отдельно зафиксированы клиент интернет-магазина и закупщик компании.",
+                "value": "Это напрямую соответствует ситуации, когда менеджер тратит время на типовые вопросы, а клиент ждёт ответа. Пользовательская польза сформулирована через сокращение времени выбора и снижение оттока, а не через абстрактный чат.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:8-16",
+                  "web/app/page.tsx:1-5",
+                  "web/app/page.tsx:107-124",
+                  "cases/10/case-data/HackAlem AI_ ИИ-ассистент для чата на сайте ekt.kz.md:12-21"
+                ]
+              },
+              {
+                "aspect": "Каталог вместо свободной генерации",
+                "implementation": "AI Service передаёт поиск и детали в Product Service инструментами search_products и get_product; Product Service нормализует артикул, бренд, характеристики, цену, остатки, магазины и URL. Для fixture 515291 сохранены 23 единицы на складах.",
+                "value": "Ответы о товаре привязываются к данным каталога, что существенно полезнее общего LLM-совета для электротехники. Ошибки конфликтующих полей не скрываются, а помечаются data_quality.",
+                "verification": "observed",
+                "evidence": [
+                  "ai-service/app/tools.py:7-12",
+                  "services/product-service/app/service.py:163-200",
+                  "services/product-service/fixtures/product_515291_raw.json:1-30",
+                  "CHECK-PRODUCT-PG",
+                  "CHECK-RUNTIME-SEARCH"
+                ]
+              },
+              {
+                "aspect": "Безопасное намерение покупки",
+                "implementation": "LLM может вернуть только PROPOSE_CART_ADD; web сохраняет предложение в сессии, а отдельный маршрут подтверждения требует явного клика, UUID v4 Idempotency-Key, сверяет conversation_id и повторно проверяет остаток.",
+                "value": "Такой барьер снижает риск случайного изменения корзины и даёт пользователю понятную точку контроля перед действием. Это один из самых важных элементов ценности для коммерческого ассистента.",
+                "verification": "source",
+                "evidence": [
+                  "ai-service/app/service.py:12-16",
+                  "ai-service/app/tools.py:25-29",
+                  "web/app/api/v1/chat/messages/route.ts:77-93",
+                  "web/app/api/v1/cart/proposals/[proposal_id]/confirm/route.ts:27-80"
+                ]
+              },
+              {
+                "aspect": "Граница пользы до реальной покупки",
+                "implementation": "Подтверждение фактически вызывает MockEktCartAdapter, возвращающий EKT_CART_URL или /mock-cart. README и mock-cart прямо называют это демонстрацией и сообщают, что Cart API не подключён.",
+                "value": "Для пятичасового MVP это честно оформленная интеграционная граница, но пользователь не получает обещанного перехода к актуальному состоянию реальной корзины, поэтому максимальная ценность кейса недостижима.",
+                "verification": "source",
+                "evidence": [
+                  "web/lib/server/cart-adapter.ts:16-25",
+                  "web/README.md:30-47",
+                  "web/app/mock-cart/page.tsx:5-8"
+                ]
+              }
+            ],
+            "scoreReasoning": "20/25 заслужены за конкретную задачу, каталоговый источник фактов, безопасное предложение добавления и подтверждённый локальный путь поиска. Сняты 2 балла за отсутствие реального cart-вызова, 1 за незаполненные условия покупки, 1 за всегда неизвестные сертификаты и 1 за опасный mock-остаток по умолчанию. Это существенные, но локализованные пробелы: консультационная часть уже полезна, а покупательский контур пока демонстрационный."
+          },
+          {
+            "name": "Результат и качество решения",
+            "score": 12,
+            "max": 20,
+            "awarded": "Основной технический каркас собран и проверен: web компилируется, сервисы имеют контракты и обработку ошибок, а supported PostgreSQL test path проходит 28 проверок. Полный заявленный пользовательский результат не достигается из-за незавершённых функций кейса.",
+            "deductions": "Снижение связано с конкретными отсутствующими обработчиками, а не с тем, что внешние ключи не были предоставлены для ревью.",
+            "evidence": [
+              "captures/20261002T102622867006-web-lint.stdout.log",
+              "captures/20261002T102743651683-web-build.stdout.log",
+              "captures/20261002T103145434959-ai-tests-mounted.stdout.log",
+              "captures/20261002T103311152796-product-tests.stdout.log",
+              "CHECK-PRODUCT-PG",
+              "CHECK-WEB-HTTP"
+            ],
+            "deductionItems": [
+              {
+                "points": 4,
+                "findingId": "F-CART-001",
+                "reason": "Критический последний шаг сценария не меняет реальную корзину и не возвращает её актуальное состояние; это не только внешняя непроверенность, а явный mock-адаптер в коде."
+              },
+              {
+                "points": 1,
+                "findingId": "F-CONDITIONS-001",
+                "reason": "Инструмент условий всегда возвращает KNOWLEDGE_NOT_AVAILABLE, поэтому обязательный тип вопроса не имеет рабочего результата."
+              },
+              {
+                "points": 1,
+                "findingId": "F-CERT-001",
+                "reason": "Product Service формирует certificates как unknown с пустым items даже для live detail."
+              },
+              {
+                "points": 1,
+                "findingId": "F-JPEG-001",
+                "reason": "JPEG принимается, но из него извлекается только флаг vision_required; фактический анализ фото в путь модели не включён."
+              },
+              {
+                "points": 1,
+                "findingId": "F-MOCK-STOCK-001",
+                "reason": "Fallback остатка для режима mock не получает данные каталога и может разрешить подтверждение по синтетическому числу."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Сборка и типовой web-контракт",
+                "implementation": "npm ci, npm run lint и npm run build были выполнены; build завершился с compiled successfully, типы прошли, Next.js собрал статические / и /mock-cart и динамические API routes. Lint дал только предупреждение no-img-element.",
+                "value": "Результат не является набором несвязанных исходников: веб-артефакт действительно собирается и имеет воспроизводимую структуру маршрутов.",
+                "verification": "observed",
+                "evidence": [
+                  "captures/20261002T102507861222-web-install-cmd.stdout.log",
+                  "captures/20261002T102622867006-web-lint.stdout.log",
+                  "captures/20261002T102743651683-web-build.stdout.log"
+                ]
+              },
+              {
+                "aspect": "Каталоговый сервис и качество данных",
+                "implementation": "Product Service имеет отдельные live detail и live availability вызовы, строгие Pydantic-схемы, Basic Auth клиента ekt.kz, retries для 502/503/504 и нормализованные поля для поиска/аналогов. PostgreSQL-вариант набора тестов прошёл 28/28.",
+                "value": "Это даёт рабочую основу для реального каталога: cached search отделён от live availability, ошибки внешнего API маппятся в понятные коды, а остаток не подменяется кэшем в live endpoint.",
+                "verification": "observed",
+                "evidence": [
+                  "services/product-service/app/ekt_client.py:26-110",
+                  "services/product-service/app/service.py:337-362",
+                  "services/product-service/app/main.py:203-250",
+                  "captures/20261002T103311152796-product-tests.stdout.log"
+                ]
+              },
+              {
+                "aspect": "Проверяемая защита корзины",
+                "implementation": "Route подтверждения проверяет сессию, срок предложения, повторный idempotency result, актуальный quantity_total и отказ с INSUFFICIENT_STOCK при превышении остатка. После успешного адаптера предложение маркируется COMPLETED.",
+                "value": "Даже при незавершённой интеграции это качественный серверный контракт: одно только наличие кнопки не может обойти проверку предложения и актуального остатка.",
+                "verification": "source",
+                "evidence": [
+                  "web/lib/server/proposals.ts:42-80",
+                  "web/app/api/v1/cart/proposals/[proposal_id]/confirm/route.ts:27-98"
+                ]
+              },
+              {
+                "aspect": "Проверенный вертикальный путь",
+                "implementation": "В контейнерном прогоне загрузлен fixture 515291, GET /health вернул healthy, POST поиска по 027228 вернул один товар, а AI Service в mock mode на POST с 027228 вернул структурированный ChatResponse с product id 515291.",
+                "value": "Это подтверждает связку database → Product Service → AI Service и наличие пользовательского результата, а не только успешную компиляцию отдельных модулей.",
+                "verification": "observed",
+                "evidence": [
+                  "CHECK-RUNTIME-HEALTH",
+                  "CHECK-RUNTIME-SEARCH",
+                  "CHECK-RUNTIME-AI",
+                  "CHECK-WEB-HTTP"
+                ]
+              }
+            ],
+            "scoreReasoning": "12/20: сборка, старт, каталог и защитный маршрут подтверждены, а 9 AI-тестов и 28 PostgreSQL-тестов дают хорошую инженерную базу. До целостного качества не хватает 4 баллов из-за явного mock Cart API, по одному за условия, сертификаты, JPEG и mock-остаток. В результате пользовательский поиск уже работает, но обязательный сценарий от консультации до реальной корзины остаётся частичным."
+          },
+          {
+            "name": "Инновационность",
+            "score": 12,
+            "max": 15,
+            "awarded": "Нестандартность есть главным образом в объяснимом каталоговом слое и безопасном tool-calling контуре, а не в самой идее чат-ассистента. Подход технически осмыслен, но ограничен типовыми LLM-инструментами и не доведён до уникального покупательского опыта.",
+            "deductions": "Снижение отражает то, что несколько заявленных differentiators не работают в полном контуре: условия и сертификаты не подключены, корзина остаётся mock.",
+            "evidence": [
+              "ai-service/app/tools.py:7-29",
+              "services/product-service/app/service.py:236-286",
+              "services/product-service/app/service.py:365-436",
+              "web/lib/server/cart-adapter.ts:16-25"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "F-CART-001",
+                "reason": "Без реальной корзины безопасный proposal-контур остаётся хорошей инженерной заготовкой, а не законченным отличием продукта."
+              },
+              {
+                "points": 1,
+                "findingId": "F-CONDITIONS-001",
+                "reason": "Заявленный verified knowledge tool не содержит собственной базы или retrieval-логики и всегда отвечает заглушкой."
+              },
+              {
+                "points": 1,
+                "findingId": "F-CERT-001",
+                "reason": "Каталоговая модель выделяет поле certificates, но фактически не использует его, что уменьшает оригинальность data-aware консультации."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Структурированные LLM-инструменты",
+                "implementation": "Вместо передачи модели права менять состояние команда выделила search_products, get_product, find_analogs, get_purchase_conditions и propose_cart_add; системный промпт запрещает выдумывать факты и прямое изменение корзины.",
+                "value": "Это более безопасный и объяснимый паттерн, чем свободный текстовый чат: действия отделены от ответа, а продуктовые факты должны приходить от внутреннего сервиса.",
+                "verification": "source",
+                "evidence": [
+                  "ai-service/app/tools.py:7-29",
+                  "ai-service/app/service.py:12-16"
+                ]
+              },
+              {
+                "aspect": "Ранжирование аналогов с различиями",
+                "implementation": "Product Service сравнивает brand, product_type, poles, breaking_capacity_ka, voltage, installation_type и nominal_current_a с весами, возвращая matched_fields и different_fields. Тест создаёт второй DRX250 с отличающимся током и проверяет поле различия.",
+                "value": "Для электротехнического товара объяснение отличий полезнее непрозрачного списка рекомендаций: менеджер или закупщик видит, почему позиция является кандидатом, а не получает безусловное утверждение совместимости.",
+                "verification": "observed",
+                "evidence": [
+                  "services/product-service/app/service.py:365-436",
+                  "services/product-service/tests/test_api.py:168-186",
+                  "captures/20261002T103311152796-product-tests.stdout.log"
+                ]
+              },
+              {
+                "aspect": "Контроль качества источника",
+                "implementation": "Normalizer ищет конфликтующие характеристики между properties, name и description и сохраняет raw_payload, warnings и has_conflicts. Fixture намеренно содержит 160A в описании и 250A в свойстве; тест ожидает None для спорного поля и explicit warning.",
+                "value": "Это зрелее обычного демо с безусловной генерацией числа: система умеет показать неопределённость и не выдаёт конфликтующее значение как достоверное.",
+                "verification": "observed",
+                "evidence": [
+                  "services/product-service/app/normalizer.py:119-148",
+                  "services/product-service/tests/test_normalizer.py:37-55",
+                  "services/product-service/fixtures/product_515291_raw.json:3-5",
+                  "services/product-service/fixtures/product_515291_raw.json:25-27"
+                ]
+              },
+              {
+                "aspect": "Безопасное предложение вместо agentic checkout",
+                "implementation": "propose_cart_add создаёт UUID proposal без cart call, web связывает его с cookie-сессией и Idempotency-Key, а подтверждение выполняется отдельным endpoint.",
+                "value": "Для commerce-ассистента это важное ограничение автономности: модель может предложить действие, но не получает неограниченное право совершать его сама.",
+                "verification": "source",
+                "evidence": [
+                  "ai-service/app/tools.py:25-29",
+                  "web/app/api/v1/chat/messages/route.ts:77-93",
+                  "web/app/api/v1/cart/proposals/[proposal_id]/confirm/route.ts:27-98"
+                ]
+              }
+            ],
+            "scoreReasoning": "12/15: tool boundary, data-quality warnings и объяснимое сравнение аналогов дают содержательное отличие от простого LLM-чата. Снято по одному баллу за mock-корзину, заглушку условий и неиспользуемые сертификаты. Остаток баллов удержан не за отсутствие модных технологий, а за то, что именно заявленные источниковые преимущества не замкнуты в полный сценарий."
+          },
+          {
+            "name": "Потенциал развития и масштабирования",
+            "score": 17,
+            "max": 20,
+            "awarded": "Сервисная декомпозиция, строгие контракты, PostgreSQL-поиск, Redis-история, multipart-вложения и adapter boundary дают хороший путь к расширению каталога и провайдеров. Потенциал ограничен незавершённой интеграцией покупки и отсутствием наполненного knowledge/certificates слоя.",
+            "deductions": "Снятие относится к конкретным границам готовности расширения, а не к отсутствию production-масштаба, который не требовался за пять часов.",
+            "evidence": [
+              "README.md:8-16",
+              "README.md:129-200",
+              "ai-service/app/history.py:6-35",
+              "web/lib/server/cart-adapter.ts:12-25"
+            ],
+            "deductionItems": [
+              {
+                "points": 2,
+                "findingId": "F-CART-001",
+                "reason": "Без реализованного adapter contract масштабирование на реальную платформу ekt.kz требует отдельного критического этапа до использования в разных каналах."
+              },
+              {
+                "points": 1,
+                "findingId": "F-CONDITIONS-001",
+                "reason": "Knowledge layer не масштабируется на новые условия, пока get_purchase_conditions не читает источник и не версионирует ответы."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Разделение сервисов",
+                "implementation": "web отвечает за UI и серверные маршруты, AI Service — за историю, файлы и LLM, Product Service — за каталог, нормализацию, live detail/availability и аналоги. Внутренние запросы защищены токеном.",
+                "value": "Компоненты можно развивать независимо: смена LLM-провайдера не требует переписывать нормализацию каталога, а интеграция корзины имеет отдельную границу.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:8-16",
+                  "ai-service/app/product_client.py:10-34",
+                  "services/product-service/app/main.py:128-250"
+                ]
+              },
+              {
+                "aspect": "Переиспользуемый каталоговый слой",
+                "implementation": "Normalizer принимает исходную структуру ekt.kz, сохраняет raw_payload и строит индексируемый search_text; sync_catalog останавливается на повторяющихся ID и умеет деактивировать невидимые товары при полном sync.",
+                "value": "Такой слой пригоден для расширения выборки, новых полей и повторных синхронизаций без того, чтобы LLM напрямую зависела от формата внешнего API.",
+                "verification": "observed",
+                "evidence": [
+                  "services/product-service/app/normalizer.py:167-271",
+                  "services/product-service/app/service.py:440-526",
+                  "services/product-service/tests/test_api.py:189-235"
+                ]
+              },
+              {
+                "aspect": "Контуры состояния и истории",
+                "implementation": "ConversationStore использует Redis с TTL и локальное хранилище для тестов/локального MVP; предложения и idempotency records привязаны к cookie-сессии и имеют TTL предложения.",
+                "value": "Это даёт ясный путь от одиночного прототипа к нескольким web-инстансам после замены in-memory proposal store на общее хранилище и подключения реального cart service.",
+                "verification": "source",
+                "evidence": [
+                  "ai-service/app/history.py:6-35",
+                  "web/lib/server/proposals.ts:23-80",
+                  "web/README.md:30-47"
+                ]
+              },
+              {
+                "aspect": "Расширяемые входы и провайдеры",
+                "implementation": "AI Service имеет общий LlmProvider, HTTP-реализации openai/deepseek/gemini, mock-провайдер для контрактов и разбор XLSX/DOCX/PDF через специализированные библиотеки; web использует standalone Next output.",
+                "value": "Архитектура позволяет добавлять провайдера, форматы документов и новые отраслевые поля без изменения пользовательского контракта чата.",
+                "verification": "source",
+                "evidence": [
+                  "ai-service/app/provider.py:17-75",
+                  "ai-service/app/files.py:27-48",
+                  "web/next.config.mjs:1-7",
+                  "README.md:176-200"
+                ]
+              }
+            ],
+            "scoreReasoning": "17/20: декомпозиция и данные создают реальный путь развития на другие категории и каналы, а тесты фиксируют контракты. Снято 2 балла за отсутствие реального Cart API и 1 за неготовый knowledge tool. Я не штрафовал за отсутствие production-оркестрации, казахстанского языка или функций вне must-have за пределами пятичасового MVP."
+          },
+          {
+            "name": "Презентация, демо и ответы на вопросы",
+            "score": 17,
+            "max": 20,
+            "awarded": "Устной презентации и вопросов не было; по правилам оценены README, ясность архитектуры и воспроизводимость локального демо. README подробный, содержит запуск, env-переменные, команды проверок и честно описывает незавершённую корзину. Репозиторий даёт воспроизводимый HTTP/CLI-сценарий, но демонстрационный результат не скрывает незавершённость обязательных функций.",
+            "deductions": "Снижение — за ограничения самого представленного результата, а не за отсутствие публичной ссылки или устного выступления.",
+            "evidence": [
+              "README.md:1-16",
+              "README.md:36-125",
+              "web/README.md:24-49",
+              "captures/20261002T102743651683-web-build.stdout.log",
+              "CHECK-WEB-HTTP"
+            ],
+            "deductionItems": [
+              {
+                "points": 1,
+                "findingId": "F-CART-001",
+                "reason": "Репозиторий позволяет показать только mock-cart, поэтому демонстрация полного сценария заказа неубедительна как пользовательский результат."
+              },
+              {
+                "points": 1,
+                "findingId": "F-CONDITIONS-001",
+                "reason": "В README описаны условия как часть задачи, но в воспроизводимом сценарии соответствующий инструмент явно сообщает, что данные не настроены."
+              },
+              {
+                "points": 1,
+                "findingId": "F-CERT-001",
+                "reason": "Документация обещает каталоговую консультацию, но сертификаты в ответе сервиса остаются unknown; это сужает демонстрируемый охват."
+              }
+            ],
+            "awardedDetails": [
+              {
+                "aspect": "Инструкция запуска",
+                "implementation": "README последовательно описывает Product Service/PostgreSQL, Redis, AI Service, web, env-переменные, health check, синхронизацию и команды lint/build/test.",
+                "value": "Участнику или жюри понятны зависимости и ожидаемые ответы; инструкции достаточно конкретны для локального повторения без устного объяснения.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:36-125",
+                  "web/README.md:5-22"
+                ]
+              },
+              {
+                "aspect": "Честное описание границ",
+                "implementation": "README и web/README прямо говорят, что внешний Cart API не подключён, текущая страница — Mock-корзина, а для реальной интеграции потребуется реализовать вызов после получения контракта.",
+                "value": "Это повышает доверие к демо: незавершённость не маскируется за настоящую оплату или заказ. Ограничение всё равно влияет на балл результата, но не является штрафом за отсутствие ссылки.",
+                "verification": "source",
+                "evidence": [
+                  "README.md:186-200",
+                  "web/README.md:30-47",
+                  "web/app/mock-cart/page.tsx:5-8"
+                ]
+              },
+              {
+                "aspect": "Воспроизводимый результат",
+                "implementation": "Выполнены web build и HTTP GET /, Product Service /health и поиск по загруженному fixture, а AI Service вернул структурированный ChatResponse для 027228.",
+                "value": "Репозиторий позволяет показать работающий технический срез из команд и API, что соответствует критерию демо при отсутствии устного выступления.",
+                "verification": "observed",
+                "evidence": [
+                  "captures/20261002T102743651683-web-build.stdout.log",
+                  "CHECK-RUNTIME-HEALTH",
+                  "CHECK-RUNTIME-SEARCH",
+                  "CHECK-RUNTIME-AI",
+                  "CHECK-WEB-HTTP"
+                ]
+              },
+              {
+                "aspect": "Понятный интерфейсный контур",
+                "implementation": "Главная страница показывает чат, статусы проверки, быстрые примеры поиска и отдельное подтверждение предложения с кнопками Отмена/Подтвердить.",
+                "value": "Даже без визуальной проверки по исходникам видна последовательность демонстрации: запрос → карточка/предложение → явное подтверждение. Визуальное качество намеренно не заявляется как проверенное.",
+                "verification": "source",
+                "evidence": [
+                  "web/app/page.tsx:1-5",
+                  "web/components/chat/Chat.tsx:88-154",
+                  "web/components/cart/CartConfirmation.tsx:45-69"
+                ]
+              }
+            ],
+            "scoreReasoning": "17/20: README и локальная демонстрация хорошо объясняют архитектуру и воспроизводимый технический путь. Снято по одному баллу за mock-корзину, недоступные условия и unknown-сертификаты. Публичный URL, видео, устное выступление и ответы не считались обязательными и отдельно не штрафовались."
+          }
+        ],
+        "total": 78
+      },
+      "case": null,
+      "judgeScore": 78,
+      "caseRequirements": [
+        {
+          "requirement": "По существующему артикулу ассистент использует каталог и сообщает товар, характеристики, цену/наличие с указанием свежести, а при наличии сертификата даёт сертификат или ссылку.",
+          "status": "partial",
+          "explanation": "По fixture 515291 Product Service возвращает артикул 027228, описание, нормализованные характеристики, cached остаток 23 и live detail/availability контракты; AI Service получает карточку и текстовый результат. Однако product_view всегда задаёт certificates.status=unknown и пустой список, поэтому сертификатный фрагмент требования не реализован.",
+          "evidence": [
+            "services/product-service/app/service.py:163-200",
+            "services/product-service/app/schemas.py:96-114",
+            "services/product-service/fixtures/product_515291_raw.json:1-30",
+            "services/product-service/tests/test_api.py:132-152",
+            "CHECK-RUNTIME-SEARCH"
+          ]
+        },
+        {
+          "requirement": "При нулевом остатке предлагается релевантный аналог с кратким обоснованием различий.",
+          "status": "partial",
+          "explanation": "Алгоритм аналогов сравнивает семь технических полей, фильтрует in-stock кандидатов по запросу и возвращает matched_fields/different_fields; PostgreSQL-тест с двумя DRX250 это подтверждает. AI tool вызывает find_analogs, но не передаёт require_in_stock, а отдельного end-to-end теста с нулевым остатком и ответом LLM в наборе нет.",
+          "evidence": [
+            "ai-service/app/tools.py:9-10",
+            "ai-service/app/product_client.py:22-23",
+            "services/product-service/app/service.py:365-436",
+            "services/product-service/tests/test_api.py:168-186",
+            "CHECK-PRODUCT-PG"
+          ]
+        },
+        {
+          "requirement": "На вопросы об оплате, доставке и минимальной партии даётся содержательный ответ из проверенных условий.",
+          "status": "missing",
+          "explanation": "Инструмент get_purchase_conditions зарегистрирован, но execute_tool всегда возвращает KNOWLEDGE_NOT_AVAILABLE; knowledge_dir не читается и в репозитории нет подключённого источника условий.",
+          "evidence": [
+            "ai-service/app/tools.py:16-24",
+            "ai-service/app/service.py:20-31",
+            "README.md:129-140"
+          ]
+        },
+        {
+          "requirement": "Товар добавляется только после явного подтверждения пользователя, с количеством не выше актуального остатка.",
+          "status": "partial",
+          "explanation": "Путь proposal действительно не меняет корзину во время ответа, подтверждение требует отдельного POST, сессии, conversation_id, idempotency key и live availability check; превышение остатка возвращает 409. Но фактический адаптер после этих проверок остаётся MockEktCartAdapter, а режим по умолчанию availability может использовать синтетический остаток.",
+          "evidence": [
+            "ai-service/app/service.py:12-16",
+            "web/app/api/v1/chat/messages/route.ts:77-93",
+            "web/app/api/v1/cart/proposals/[proposal_id]/confirm/route.ts:27-98",
+            "web/lib/server/availability.ts:8-28",
+            "web/lib/server/cart-adapter.ts:16-25"
+          ]
+        },
+        {
+          "requirement": "После добавления предоставляется прямая ссылка на актуальное состояние корзины/оформление заказа.",
+          "status": "missing",
+          "explanation": "Ссылка технически формируется, но по умолчанию это /mock-cart, а MockEktCartAdapter не вызывает Cart API. Страница прямо маркирует себя как демонстрационная Mock-корзина.",
+          "evidence": [
+            "web/lib/server/cart-adapter.ts:16-25",
+            "web/app/api/v1/cart/proposals/[proposal_id]/confirm/route.ts:82-98",
+            "web/app/mock-cart/page.tsx:5-8",
+            "web/README.md:30-47"
+          ]
+        },
+        {
+          "requirement": "Принимаются текст, фото и Excel/Word/PDF/JPEG-вложения в контексте сессии.",
+          "status": "partial",
+          "explanation": "Web и AI Service принимают PDF, XLSX, DOCX и image/jpeg; XLSX/DOCX/PDF извлекаются в текстовый контекст, история поддерживается Redis с TTL. JPEG только маркируется vision_required и передаёт пустой text, поэтому фото не анализируется.",
+          "evidence": [
+            "web/components/files/FileUpload.tsx:25",
+            "web/app/api/v1/files/route.ts:12-64",
+            "ai-service/app/files.py:27-47",
+            "ai-service/app/history.py:6-35",
+            "ai-service/tests/test_contracts.py:110-132",
+            "CHECK-AI-TESTS"
+          ]
+        },
+        {
+          "requirement": "Не выдумываются цена и наличие, не меняется корзина без подтверждения и не хранятся платёжные данные.",
+          "status": "partial",
+          "explanation": "Системный промпт запрещает выдумывать price/availability/URLs, cached и live статусы разделены, предложение корзины отделено от подтверждения, а платёжных полей или платёжного хранилища в коде нет. Однако fallback availability в mock-режиме возвращает 23 для конкретного ID независимо от каталога, что нарушает гарантию достоверности при такой конфигурации.",
+          "evidence": [
+            "ai-service/app/service.py:12-16",
+            "ai-service/app/service.py:72-81",
+            "web/lib/server/availability.ts:10-16",
+            "web/app/api/v1/cart/proposals/[proposal_id]/confirm/route.ts:61-80"
+          ]
+        }
+      ],
+      "testData": {
+        "provided": [
+          "cases/10/case-data/HackAlem AI_ ИИ-ассистент для чата на сайте ekt.kz.md",
+          "cases/10/case-data/ИИ-ассистент для чата на сайте ekt.kz ДАННЫЕ.docx.md",
+          "services/product-service/fixtures/product_515291_raw.json"
+        ],
+        "used": [
+          "cases/10/case-data/HackAlem AI_ ИИ-ассистент для чата на сайте ekt.kz.md использован для must-have, форматов входа и ограничений",
+          "cases/10/case-data/ИИ-ассистент для чата на сайте ekt.kz ДАННЫЕ.docx.md использован для проверки заявленного API-контракта и понимания, что реальные credentials в отчёт не переносятся",
+          "services/product-service/fixtures/product_515291_raw.json реально использован тестами нормализации, поиска, live detail/availability и runtime load_fixture"
+        ],
+        "checks": [
+          {
+            "input": "fixture product_515291_raw.json: id=515291, supplier article 027228, quantity=23, stores и конфликт 160A/250A",
+            "method": "Product Service pytest на PostgreSQL; test_search_priority_filters_and_empty_result, test_live_detail_and_availability, test_fixture_conflict_is_explicit_and_raw_data_is_preserved",
+            "result": "28 тестов прошли; поиск нашёл id 515291, live stub вернул availability 23 и конфликт характеристик был сохранён как warning.",
+            "conclusion": "Основная структура предоставленного товара совместима с нормализатором и каталоговым контрактом."
+          },
+          {
+            "input": "Два синтетических товара DRX250: источник 515291 и кандидат 515292 с quantity=4 и nominal current=200A",
+            "method": "Product Service test_analog_candidates_have_differences с require_in_stock=true",
+            "result": "В поддерживаемом PostgreSQL-пути тест прошёл и проверил candidate, id 515292 и different_fields.nominal_current_a.",
+            "conclusion": "Алгоритм ранжирования и объяснения различий работает на применимом синтетическом сценарии аналогов."
+          },
+          {
+            "input": "ChatRequest 'Привет', естественный запрос '027228', пустой запрос и XLSX attachment, mock LLM",
+            "method": "AI Service contract pytest в изолированном контейнере",
+            "result": "9 тестов прошли; проверены fixed response shape, выделение query, validation, Gemini HTTP contract, XLSX upload и proposal без cart call.",
+            "conclusion": "Контракт AI Service и безопасный proposal flow подтверждены без внешнего ключа."
+          },
+          {
+            "input": "POST search по 027228 после загрузки fixture в Product Service runtime",
+            "method": "HTTP POST /internal/v1/products/search с внутренним токеном; затем POST /internal/v1/chat/messages в AI Service mock mode",
+            "result": "Product Service вернул total_returned=1 и product.id=515291; AI Service вернул ChatResponse с products[0].id=515291, без actions и errors.",
+            "conclusion": "Вертикальная связка database → Product Service → AI Service воспроизведена на предоставленном товаре."
+          }
+        ],
+        "limitations": [
+          "В тестовом пакете нет отдельного нулевого остатка и готового реального сертификата для end-to-end проверки",
+          "Реальный ekt.kz API и LLM credentials намеренно не предоставлялись для ревью, поэтому live внешний ответ не подменялся mock-данными",
+          "Реальный Cart API отсутствует в проекте, поэтому его поведение нельзя считать проверенным или реализованным",
+          "Визуальная проверка браузера не выполнялась по обязательному ограничению; оценены исходники, сборка и HTTP/API."
+        ]
+      },
+      "runtime": {
+        "status": "partial",
+        "build": "web: npm ci, npm run lint и npm run build прошли; AI Service и Product Service Docker runtime/test images собраны. Build web завершился compiled successfully и type check без ошибок; lint сообщил только предупреждение об img вместо next/image.",
+        "start": "Web runtime стартовал и GET / вернул HTTP 200 с содержимым EKT AI. Product Service стартовал с PostgreSQL и GET /health вернул {status: healthy}. AI Service стартовал на Uvicorn в mock mode и принял POST /internal/v1/chat/messages.",
+        "scenario": "После загрузки предоставленного fixture через app.load_fixture Product Service вернул товар 515291 по POST /internal/v1/products/search для 027228. AI Service с тем же Product Service вернул структурированный ответ с карточкой 515291. Полный checkout не воспроизведён как реальная покупка, потому что исходники используют MockEktCartAdapter; это подтверждённое ограничение проекта, а не отсутствие внешнего ключа.",
+        "environment": "Изолированные Docker-проверки на Python 3.12 для сервисов, Node 20 для web runtime, PostgreSQL 16 для поддерживаемого Product Service test path; внешние ключи LLM и ekt.kz не передавались.",
+        "summary": "Приложение deployable в локальном MVP-контуре и основной каталоговый сценарий работает. Статус partial отражает незавершённость обязательных purchase conditions/real cart/photo-certificate частей, а не падение старта.",
+        "checks": [
+          {
+            "command": "npm ci",
+            "result": "Установлено 391 пакетов; код выхода 0. npm сообщил 5 audit vulnerabilities и deprecated packages; это не остановило сборку.",
+            "id": "CHECK-WEB-INSTALL",
+            "stage": "build",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Зависимости web устанавливаются из package-lock без ошибки."
+          },
+          {
+            "command": "npm run lint",
+            "result": "Код выхода 0; одно предупреждение @next/next/no-img-element в web/components/products/ProductCard.tsx:14.",
+            "id": "CHECK-WEB-LINT",
+            "stage": "build",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Lint завершается успешно и не содержит ошибок."
+          },
+          {
+            "command": "npm run build",
+            "result": "Код выхода 0; Next.js 14.2.15 compiled successfully, type check и генерация 7 страниц завершены.",
+            "id": "CHECK-WEB-BUILD",
+            "stage": "build",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Production web build завершается успешно."
+          },
+          {
+            "command": "python -m pytest -q",
+            "result": "AI contract suite: 9 passed, 1 warning in 1.23s.",
+            "id": "CHECK-AI-TESTS",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Контрактные тесты AI Service проходят на mock provider."
+          },
+          {
+            "command": "python -m pytest -q",
+            "result": "Product Service suite against PostgreSQL: 28 passed, 1 warning in 1.20s, including catalog search, live detail/availability, analog differences, sync and validation tests.",
+            "id": "CHECK-PRODUCT-PG",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Тесты Product Service проходят на поддерживаемой PostgreSQL-конфигурации."
+          },
+          {
+            "command": "python -m pytest -q",
+            "result": "При запуске Product Service test image без TEST_DATABASE_URL 27 passed и 1 failed: test_analog_candidates_have_differences получил пустой items на SQLite из-за сравнения func.lower с кириллицей. Повторный запуск с PostgreSQL прошёл 28/28; это ограничение fallback test setup, не дефект поддерживаемой production БД.",
+            "id": "CHECK-PRODUCT-SQLITE-FALLBACK",
+            "stage": "scenario",
+            "status": "fail",
+            "cause": "project",
+            "expected": "Документированный fallback набора тестов завершается успешно на SQLite."
+          },
+          {
+            "command": "GET /health",
+            "result": "HTTP 200, body {\"status\":\"healthy\"} после старта Product Service с PostgreSQL.",
+            "id": "CHECK-RUNTIME-HEALTH",
+            "stage": "start",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Сервис стартует и проверка базы возвращает healthy."
+          },
+          {
+            "command": "POST /internal/v1/products/search",
+            "result": "HTTP 200; query=027228, total_returned=1, product.id=515291 после загрузки fixture.",
+            "id": "CHECK-RUNTIME-SEARCH",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Поиск по предоставленному артикулу возвращает соответствующий товар."
+          },
+          {
+            "command": "POST /internal/v1/chat/messages",
+            "result": "HTTP 200; AI mock mode вернул conversation_id/message_id, text и products[0].id=515291, actions=[] и errors=[] для сообщения 027228.",
+            "id": "CHECK-RUNTIME-AI",
+            "stage": "scenario",
+            "status": "pass",
+            "cause": "none",
+            "expected": "AI Service проксирует запрос к Product Service и возвращает структурированный ответ."
+          },
+          {
+            "command": "GET /",
+            "result": "HTTP 200; web production runtime отдал 8406 байт HTML, в содержимом присутствует EKT AI.",
+            "id": "CHECK-WEB-HTTP",
+            "stage": "start",
+            "status": "pass",
+            "cause": "none",
+            "expected": "Web runtime стартует и отдаёт главную страницу по HTTP."
+          }
+        ],
+        "limitations": [
+          "Live LLM/eKT calls не проверялись без credentials; локальный mock использован только для контракта, не объявлен реальным качеством модели",
+          "Real Cart API отсутствует в коде и не может быть проверен через HTTP",
+          "Fallback SQLite test path имеет Unicode lower portability issue; supported PostgreSQL path прошёл полностью",
+          "Визуальный браузерный сценарий оставлен непроверенным по пользовательскому запрету на browser automation."
+        ]
+      },
+      "liveDemo": {
+        "status": "none",
+        "url": null,
+        "notes": "Публичная live-ссылка, видео или слайды в проверяемом репозитории не заявлены. По правилам отсутствие URL отдельно баллы не снимает; локальный HTTP/CLI-сценарий был воспроизведён."
+      },
+      "fiveHourContext": "Для пяти часов это сильный технический MVP: команда успела разделить три сервиса, добавить нормализацию каталога, live/cached distinction, аналоговый поиск, вложения, историю, proposal/idempotency и тесты. Оценка не требует production-уровня, полноценной платёжной системы, казахского языка или отключаемых внешних интеграций. При этом условия покупки, сертификаты, фотоанализ и реальный cart endpoint относятся непосредственно к must-have кейса, поэтому их явные заглушки удерживают результат от верхнего диапазона.",
+      "strengths": [
+        "Воспроизводимая сборка и HTTP/API старт всех трёх частей без браузерной автоматизации.",
+        "Хорошая граница доверия: LLM предлагает действие, а web отдельно проверяет сессию, срок, idempotency и актуальный остаток.",
+        "Product Service сохраняет raw payload и явно маркирует конфликтующие характеристики вместо выдумывания значения.",
+        "Аналоги возвращают matched_fields/different_fields, а не только непроверяемый список названий.",
+        "Тесты покрывают контракты AI Service, нормализацию, поиск, live availability, ошибки внешнего API и синхронизацию.",
+        "README достаточно подробный и честно сообщает, что Cart API пока не подключён."
+      ],
+      "gaps": [
+        "Реальный Cart API не реализован: подтверждение всегда работает через MockEktCartAdapter и ведёт на /mock-cart.",
+        "get_purchase_conditions является заглушкой KNOWLEDGE_NOT_AVAILABLE и не отвечает об оплате, доставке или минимальной партии.",
+        "Product Service всегда возвращает certificates.status=unknown и пустой список, поэтому сертификаты не консультируются.",
+        "JPEG принимается, но не распознаётся и не передаётся в vision-модель.",
+        "В mock availability fallback остаток товара 515291 равен 23 независимо от каталога; при отсутствии live-конфигурации это допускает синтетическое утверждение наличия."
+      ],
+      "futureAdvice": [
+        {
+          "principle": "Сначала замыкайте критический side effect за adapter contract",
+          "why": "F-CART-001 показывает, что proposal/idempotency слой уже есть, но последний вызов всегда mock и пользователь не получает актуальную корзину.",
+          "how": "В другом хакатоне зафиксируйте минимальный контракт addItem/getCartUrl, сделайте один тестовый HTTP adapter и только затем подключайте UI confirmation; mock оставьте отдельной реализацией, выбираемой явно.",
+          "findingIds": [
+            "F-CART-001"
+          ],
+          "successCheck": "Интеграционный тест после явного подтверждения видит один вызов Cart API с product_id/quantity/idempotency key и получает URL реальной корзины; повтор ключа не создаёт второй item.",
+          "timeboxMinutes": 60
+        },
+        {
+          "principle": "Каждое обещанное знание должно иметь проверяемый источник или честный отказ",
+          "why": "F-CONDITIONS-001 и F-CERT-001 показывают, что интерфейс инструментов уже объявлен, но conditions и certificates фактически не наполнены.",
+          "how": "Для другого кейса составьте таблицу must-have → поле источника → tool → тестовый input/output; подключите минимальный versioned JSON knowledge fixture и отдельный ответ unknown, если поле отсутствует.",
+          "findingIds": [
+            "F-CONDITIONS-001",
+            "F-CERT-001"
+          ],
+          "successCheck": "Тестовый вопрос об оплате возвращает содержательный текст с source id, а запрос товара с сертификатом возвращает непустой certificate item; при отсутствии данных ответ явно сообщает unknown без выдумывания.",
+          "timeboxMinutes": 45
+        },
+        {
+          "principle": "Не объявляйте поддержку формата, пока не завершён его полезный путь",
+          "why": "F-JPEG-001 показывает, что upload принимает JPEG, но downstream получает лишь vision_required и пустой text.",
+          "how": "В новом проекте проверьте каждый формат через входной файл, извлечение/передачу в модель и ожидаемый ответ; неподдерживаемый режим лучше маркировать как unsupported, чем показывать его как готовый.",
+          "findingIds": [
+            "F-JPEG-001"
+          ],
+          "successCheck": "На тестовой фотографии сервис либо извлекает/передаёт визуальный контент и возвращает распознанный артикул, либо HTTP/API явно сообщает, что vision не настроен.",
+          "timeboxMinutes": 30
+        }
+      ],
+      "uncertainties": [
+        "Фактический production-ответ ekt.kz и реальная квота LLM не проверялись: credentials намеренно не передавались.",
+        "Внешний контракт Cart API и его авторизация отсутствуют в репозитории, поэтому невозможно утверждать совместимость с боевой корзиной.",
+        "Визуальное поведение desktop/mobile, scroll и доступность компонентов не проверялись браузером; это не использовано как основание для штрафа.",
+        "SQLite failure воспроизводится только в fallback тестовой конфигурации; PostgreSQL, который указан в README и compose, прошёл все 28 тестов."
+      ],
+      "reviewPolicyVersion": 2,
+      "assessmentStatus": "ready",
+      "findings": [
+        {
+          "id": "F-CART-001",
+          "kind": "defect",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Подтверждённое добавление товара должно менять реальную корзину и возвращать актуальную ссылку.",
+          "expected": "EktCartAdapter вызывает реальный Cart API с session/product/quantity/idempotency и возвращает URL текущей корзины.",
+          "actual": "getCartAdapter всегда возвращает MockEktCartAdapter, addItem игнорирует input и возвращает EKT_CART_URL или /mock-cart; UI ведёт на демонстрационную страницу.",
+          "evidence": [
+            "web/lib/server/cart-adapter.ts:16-25",
+            "web/app/api/v1/cart/proposals/[proposal_id]/confirm/route.ts:82-98",
+            "web/app/mock-cart/page.tsx:5-8",
+            "web/README.md:30-47"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "F-CONDITIONS-001",
+          "kind": "defect",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Ассистент должен отвечать на вопросы об оплате, доставке и минимальной партии из проверенных условий.",
+          "expected": "get_purchase_conditions читает knowledge source и возвращает содержательный ответ или явный source-backed unknown.",
+          "actual": "execute_tool немедленно возвращает KNOWLEDGE_NOT_AVAILABLE; knowledge_dir не используется для загрузки условий.",
+          "evidence": [
+            "ai-service/app/tools.py:16-24",
+            "ai-service/app/service.py:20-31",
+            "README.md:129-140"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "F-CERT-001",
+          "kind": "defect",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Каталоговая консультация должна передавать сертификаты, если они есть в данных товара.",
+          "expected": "ProductView отражает verified/none certificate status и items из нормализованного каталога.",
+          "actual": "product_view безусловно формирует certificates: {status: unknown, items: []}; нормализованное поле сертификатов отсутствует.",
+          "evidence": [
+            "services/product-service/app/service.py:191-199",
+            "services/product-service/app/schemas.py:74-77",
+            "services/product-service/fixtures/product_515291_raw.json:1-30"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "F-JPEG-001",
+          "kind": "defect",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Поддержка фото/JPEG должна давать ассистенту содержимое изображения для консультации.",
+          "expected": "JPEG либо проходит OCR/vision path и передаётся модели, либо явно отклоняется как неподдерживаемый режим.",
+          "actual": "Файл принимается, но extract_file_data возвращает только kind=jpeg, vision_required=true и пустой text; chat строит контекст из extracted данных и не прикладывает bytes/image content к provider messages.",
+          "evidence": [
+            "ai-service/app/files.py:27-47",
+            "ai-service/app/service.py:24-31",
+            "web/components/files/FileUpload.tsx:25"
+          ],
+          "checkIds": [
+            "CHECK-AI-TESTS"
+          ]
+        },
+        {
+          "id": "F-MOCK-STOCK-001",
+          "kind": "defect",
+          "verification": "source",
+          "responsibility": "project",
+          "claim": "Наличие и количество нельзя выдумывать при подтверждении корзины.",
+          "expected": "При отсутствии live Product Service подтверждение блокируется или получает проверенный источник, а не синтетическое количество.",
+          "actual": "При CART_ADAPTER_MODE=mock или отсутствии переменной checkAvailability возвращает quantity_total=23 для productId 515291 и 0 для остальных без запроса каталога; example env выставляет live, но кодовый default остаётся mock.",
+          "evidence": [
+            "web/lib/server/availability.ts:8-16",
+            "web/.env.example:1-8",
+            "web/app/api/v1/cart/proposals/[proposal_id]/confirm/route.ts:61-80"
+          ],
+          "checkIds": []
+        },
+        {
+          "id": "S-ARCH-001",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Трёхсервисный MVP и его локальный вертикальный путь воспроизводятся.",
+          "expected": "Сервисы собираются, стартуют и обмениваются структурированными данными на fixture.",
+          "actual": "web build и HTTP root прошли; Product Service health/search и AI Service chat на товаре 515291 прошли.",
+          "evidence": [
+            "captures/20261002T102743651683-web-build.stdout.log",
+            "CHECK-RUNTIME-HEALTH",
+            "CHECK-RUNTIME-SEARCH",
+            "CHECK-RUNTIME-AI",
+            "CHECK-WEB-HTTP"
+          ],
+          "checkIds": [
+            "CHECK-WEB-BUILD",
+            "CHECK-RUNTIME-HEALTH",
+            "CHECK-RUNTIME-SEARCH",
+            "CHECK-RUNTIME-AI",
+            "CHECK-WEB-HTTP"
+          ]
+        },
+        {
+          "id": "S-DATA-001",
+          "kind": "strength",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "Нормализатор не скрывает конфликтующие характеристики и аналоговый слой возвращает различия.",
+          "expected": "Противоречивые поля маркируются, а аналог содержит объяснимые matched/different fields.",
+          "actual": "Fixture conflict и analog candidate проверены тестами; PostgreSQL suite 28/28.",
+          "evidence": [
+            "services/product-service/app/normalizer.py:119-148",
+            "services/product-service/tests/test_normalizer.py:37-55",
+            "services/product-service/tests/test_api.py:168-186",
+            "CHECK-PRODUCT-PG"
+          ],
+          "checkIds": [
+            "CHECK-PRODUCT-PG"
+          ]
+        },
+        {
+          "id": "L-SQLITE-001",
+          "kind": "limitation",
+          "verification": "observed",
+          "responsibility": "project",
+          "claim": "SQLite fallback в тестах не проходит аналоговый сценарий с кириллическим product_type.",
+          "expected": "Запуск python -m pytest -q без TEST_DATABASE_URL должен завершать весь fallback suite.",
+          "actual": "27 passed, 1 failed: analog items пусты из-за func.lower сравнения кириллического типа; supported PostgreSQL run 28/28 passed.",
+          "evidence": [
+            "services/product-service/tests/conftest.py:34-50",
+            "services/product-service/app/service.py:383-392",
+            "captures/20261002T103311152796-product-tests.stdout.log",
+            "CHECK-PRODUCT-SQLITE-FALLBACK",
+            "CHECK-PRODUCT-PG"
+          ],
+          "checkIds": [
+            "CHECK-PRODUCT-SQLITE-FALLBACK",
+            "CHECK-PRODUCT-PG"
+          ]
+        }
+      ],
+      "gapFindingIds": [
+        "F-CART-001",
+        "F-CONDITIONS-001",
+        "F-CERT-001",
+        "F-JPEG-001",
+        "F-MOCK-STOCK-001"
+      ]
+    }
+  ],
+  "score": 78.0,
+  "status": "complete",
+  "expectedJudges": 1
+}
